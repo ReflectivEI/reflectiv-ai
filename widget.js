@@ -1,5 +1,5 @@
 /*
- * ReflectivAI Widget — coach-v2, RP hardening (full)
+ * ReflectivAI Widget — coach-v2, RP hardening (full, with history)
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
  * Stability measures:
  * - Persist mode & scenario in sessionStorage
@@ -11,6 +11,7 @@
  * - Crash-proof buildUI; surface boot errors in-modal
  * - CSP-safe style injection
  * - Model + temperature pinned per mode
+ * - NEW: History builder so the model always sees prior turns
  */
 (function () {
   // -------- error surfacing --------
@@ -161,6 +162,15 @@
   function splitSentences(text) {
     const t = String(text || "");
     return t.replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
+  }
+
+  // ---------- history builder (NEW) ----------
+  function historyAsMessages(maxTurns = 30) {
+    const turns = conversation.slice(-maxTurns);
+    return turns.map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content
+    }));
   }
 
   const BRAND_RE = /\b(descovy|biktarvy|cabenuva|truvada|prep)\b/i;
@@ -1363,12 +1373,15 @@ Allowable questions reflect the HCP’s POV. Output only the HCP utterance.`;
         return;
       }
 
+      // append user turn to our local conversation first
       conversation.push({
         role: "user",
         content: userText,
         _speaker: currentMode === "role-play" ? "rep" : "user"
       });
       persistRolePlayState();
+
+      // trim stored conversation before building history
       trimConversationIfNeeded();
       renderMessages();
       renderCoach();
@@ -1376,19 +1389,14 @@ Allowable questions reflect the HCP’s POV. Output only the HCP utterance.`;
       const sc = scenariosById.get(currentScenarioId);
       const messages = [];
 
-      // Stable Context Anchor
+      // ==== SYSTEM ANCHORS FIRST ====
       if (currentMode === "role-play") {
-        messages.unshift({
+        messages.push({
           role: "system",
           content:
             "Stay purely in character as the healthcare provider. Speak as 'I'. Do not coach the rep. Continue from your last HCP reply."
         });
-      }
 
-      if (systemPrompt && currentMode !== "role-play")
-        messages.push({ role: "system", content: systemPrompt });
-
-      if (currentMode === "role-play") {
         const personaLine = currentPersonaHint();
         const detail = sc
           ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${
@@ -1404,24 +1412,23 @@ Allowable questions reflect the HCP’s POV. Output only the HCP utterance.`;
 Context:
 ${personaLine}
 ${detail}`;
-        messages.unshift({ role: "system", content: rails });
+        messages.push({ role: "system", content: rails });
 
-        // Auto-Reinforcement on long convos
         if (conversation.length % 10 === 0) {
-          messages.unshift({
+          messages.push({
             role: "system",
             content:
               "Reminder: you are the HCP in this simulated clinical conversation. Use first-person and continue from your last answer."
           });
         }
       } else {
+        if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
         messages.push({ role: "system", content: buildPreface(currentMode, sc) });
       }
 
-      messages.push({ role: "user", content: userText });
-
-      // Auto-Trim before call
-      trimConversationIfNeeded();
+      // ==== INCLUDE PRIOR TURNS (NEW) ====
+      messages.push(...historyAsMessages(currentMode === "role-play" ? 30 : 40));
+      // Do NOT push the current user again; it's already in conversation/history.
 
       // Last line of defense – short timeout rollback
       if (pendingRecoveryTimer) {
