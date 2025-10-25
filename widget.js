@@ -1331,13 +1331,26 @@ Allowable questions reflect the HCP’s POV. Output only the HCP utterance.`;
     pendingRecoveryTimer = null;
 
   function trimConversationIfNeeded() {
-    if (currentMode === "role-play" && conversation.length > 35) {
-      conversation = conversation.slice(-30); // keep last 30 turns
-      console.warn("[ReflectivAI] Conversation auto-trimmed to last 30 turns.");
-    } else if (conversation.length > 60) {
-      conversation = conversation.slice(-40);
-    }
+  // Role-Play: keep more context to reduce drift
+  const RP_TRIM_TRIGGER = 50;   // was 35
+  const RP_KEEP = 42;           // was 30
+
+  if (currentMode === "role-play" && conversation.length > RP_TRIM_TRIGGER) {
+    conversation = conversation.slice(-RP_KEEP);
+    console.warn("[ReflectivAI] RP auto-trimmed to last", RP_KEEP, "turns.");
+    try { sessionStorage.setItem(RP_SESSION_KEY, JSON.stringify(conversation)); } catch {}
+    return;
   }
+
+  // Non-RP: unchanged light trim
+  const GEN_TRIM_TRIGGER = 60;
+  const GEN_KEEP = 40;
+  if (conversation.length > GEN_TRIM_TRIGGER) {
+    conversation = conversation.slice(-GEN_KEEP);
+  }
+ }
+  
+}
 
   async function sendMessage(userText) {
     // Double-send guard
