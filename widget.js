@@ -368,21 +368,18 @@
     return out;
   }
 
-  // -------- light HTML renderer --------
   function md(text) {
-    if (!text) return "";
-    let s = esc(String(text)).replace(/\r\n?/g, "\n");
-    s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-    s = s.replace(
-      /^(?:-\s+|\*\s+).+(?:\n(?:-\s+|\*\s+).+)*/gm,
-      (blk) => {
-        const items = blk
-          .split("\n")
-          .map((l) => l.replace(/^(?:-\s+|\*\s+)(.+)$/, "<li>$1</li>"))
-          .join("");
-        return `<ul>${items}</ul>`;
-      }
-    );
+  if (!text) return "";
+  let s = esc(String(text)).replace(/\r\n?/g, "\n");
+  // bold
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+  // remove stray bullets or asterisks that start lines (prevents • artifacts)
+  s = s.replace(/^[\s•*-]+\s*(?=[A-Za-z0-9])/gm, "");
+  // paragraphs
+  const parts = s.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, " ")}</p>`);
+  return parts.join("\n");
+}
+
     return s
       .split(/\n{2,}/)
       .map((p) => (p.startsWith("<ul>") ? p : `<p>${p.replace(/\n/g, "<br>")}</p>`))
