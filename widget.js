@@ -1253,38 +1253,58 @@ ${COMMON}`
     applyModeVisibility();
   }
 
-  // ---------- transport with timeout + endpoint fallback ----------
-  async function callModel(messages) {
-    // FALLBACKS: config.json -> HTML globals
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
-    if (!url) throw new Error("No API endpoint configured (set config.apiBase/workerUrl or window.COACH_ENDPOINT).");
+// ---------- callModel (hardened with retries, timeout, and backoff) ----------
+function rid() {
+  return Math.random().toString(36).slice(2);
+}
 
+async function callModel(messages) {
+  const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+
+  const attempt = async (n, delayMs) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort("timeout"), 30000); // +timeout for long answers
-
+    const timeout = setTimeout(() => controller.abort("timeout"), 45000); // up to 45s
     try {
       const r = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Req-Id": rid()
+        },
         body: JSON.stringify({
-          model: (cfg && cfg.model) || "llama-3.1-8b-instant",
+          model: (cfg?.model) || "llama-3.1-8b-instant",
           temperature: 0.2,
           stream: !!cfg?.stream,
-          max_output_tokens: (cfg && (cfg.max_output_tokens || cfg.maxTokens)) || 1400,
+          max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || 1400,
           messages
         }),
         signal: controller.signal
       });
-      if (!r.ok) {
-        const txt = await r.text().catch(() => "");
-        throw new Error(`HTTP ${r.status}: ${txt || "no body"}`);
-      }
+
+      if (!r.ok) throw new Error("HTTP " + r.status);
+
       const data = await r.json().catch(() => ({}));
-      return data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
+      return (
+        data?.content ||
+        data?.reply ||
+        data?.choices?.[0]?.message?.content ||
+        ""
+      );
+    } catch (e) {
+      // retry only on backend/network errors
+      if (n > 0 && /HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(String(e))) {
+        await new Promise((res) => setTimeout(res, delayMs));
+        return attempt(n - 1, delayMs * 2);
+      }
+      console.warn("Model call failed:", e);
+      return ""; // fallback empty
     } finally {
-      clearTimeout(timer);
+      clearTimeout(timeout);
     }
-  }
+  };
+
+  return attempt(2, 400); // up to 3 total tries
+}
 
   // ---------- final-eval helper ----------
   async function evaluateConversation() {
