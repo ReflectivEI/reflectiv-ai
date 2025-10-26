@@ -365,29 +365,37 @@
     const openIdx = s.indexOf("<coach>");
     if (openIdx === -1) return { coach: null, clean: sanitizeLLM(s) };
 
-    const cleanText = sanitizeLLM(s.slice(0, openIdx).trim());
-    let tail = s.slice(openIdx + "<coach>".length);
+const head = s.slice(0, openIdx);
+const tail = s.slice(openIdx + "<coach>".length);
 
-    const closeIdx = tail.indexOf("</coach>");
-    let block = closeIdx >= 0 ? tail.slice(0, closeIdx) : tail;
+const closeIdx = tail.indexOf("</coach>");
+let block = closeIdx >= 0 ? tail.slice(0, closeIdx) : tail;
 
-    const braceStart = block.indexOf("{");
-    if (braceStart === -1) return { coach: null, clean: cleanText };
+const braceStart = block.indexOf("{");
+if (braceStart === -1) return { coach: null, clean: sanitizeLLM(head) };
 
-    let depth = 0,
-      end = -1;
-    for (let i = braceStart; i < block.length; i++) {
-      const ch = block[i];
-      if (ch === "{") depth++;
-      if (ch === "}") {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
-    }
-    if (end === -1) return { coach: null, clean: cleanText };
+let depth = 0, end = -1;
+for (let i = braceStart; i < block.length; i++) {
+  const ch = block[i];
+  if (ch === "{") depth++;
+  if (ch === "}") depth--;
+  if (depth === 0) {
+    end = i;
+    break;
+  }
+}
+if (end === -1) return { coach: null, clean: sanitizeLLM(head) };
+
+let jsonTxt = block.slice(braceStart, end + 1);
+let coach = {};
+try {
+  coach = JSON.parse(jsonTxt);
+} catch (e) {
+  console.warn("Coach JSON parse error", e);
+}
+const after = closeIdx >= 0 ? tail.slice(closeIdx + "</coach>".length) : "";
+const clean = sanitizeLLM((head + " " + after).trim());
+return { coach, clean };
 
     let jsonTxt = block
       .slice(braceStart, end + 1)
