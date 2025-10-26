@@ -545,10 +545,62 @@ async function askRemote(q){
 
 /* ------------ Minimal local routing fallback (no hard copy) ------------ */
 function localRoute(q){
-  const s=String(q||'').toLowerCase();
-  if(/^(hi|hello|hey)\b/.test(s)) return {text:"Hi, I’m Alora. Ask about the platform, EI, simulations, analytics, or how the Coach works.",chips:CHIPS_BASE};
-  if(/\b(pricing|price|cost)\b/.test(s)) return {text:"Pricing is shared during a brief demo.",chips:[['Request Demo','request-demo']]}
-  if(/\b(coach|open coach|try simulation|simulation)\b/.test(s)) return {text:"Opening the Coach.",action:'open-coach',chips:CHIPS_BASE};
+  const s = String(q || '').toLowerCase();
+
+  // Basic greeting
+  if (/^(hi|hello|hey)\b/.test(s))
+    return {
+      text: "Hi, I’m Alora. Ask about the platform, Emotional Intelligence, simulations, analytics, or how the Coach works.",
+      chips: CHIPS_BASE
+    };
+
+  // Pricing inquiries
+  if (/\b(pricing|price|cost)\b/.test(s))
+    return {
+      text: "Pricing details are shared during a brief demo with our partnerships team.",
+      chips: [['Request Demo','request-demo']]
+    };
+
+  // Analytics or metrics
+  if (/\b(analytics|dashboard|metrics|report|insight|data)\b/.test(s))
+    return {
+      text: "ReflectivAI’s analytics include Accuracy Index, Readiness Velocity, Empathy Index, Compliance Guardrails, and Confidence Delta—turning behavioral data into performance insight.",
+      action: 'see-analytics',
+      chips: [['See Analytics','see-analytics'],['Request Demo','request-demo']]
+    };
+
+  // Emotional Intelligence or EI
+  if (/\b(emotional intelligence|ei|empathy|tone|listening|self-awareness)\b/.test(s))
+    return {
+      text: "ReflectivAI’s EI framework measures empathy, listening, tone, and clarity—coaching reps to build trust and confidence with HCPs. Explore Why EI to learn more.",
+      action: 'see-ei',
+      chips: [['Why EI','see-ei'],['Open Coach','open-coach']]
+    };
+
+  // Platform or features
+  if (/\b(platform|modules?|features?|tools?)\b/.test(s))
+    return {
+      text: "The ReflectivAI platform blends Product Knowledge, Sales Simulation, Role Play, and Relationship Intelligence modules—all designed for life-sciences compliance and coaching.",
+      action: 'see-platform',
+      chips: [['See Platform','see-platform'],['Open Coach','open-coach']]
+    };
+
+  // Personas or scenarios
+  if (/\b(personas?|hcp|roleplay|scenarios?)\b/.test(s))
+    return {
+      text: "You can practice with realistic HCP personas by specialty—Oncologists, NPs, PAs, and more—across disease states like Oncology, Cardiology, and Vaccines.",
+      action: 'see-personas',
+      chips: [['See Personas','see-personas'],['Try Simulation','open-coach']]
+    };
+
+  // Coach or simulation
+  if (/\b(coach|simulation|simulator|practice|training)\b/.test(s))
+    return {
+      text: "Opening the AI Coach. Choose Product Knowledge, Sales Simulation, or Role Play to start interactive training.",
+      action: 'open-coach',
+      chips: CHIPS_BASE
+    };
+
   return null;
 }
 
