@@ -386,6 +386,7 @@ for (let i = braceStart; i < block.length; i++) {
 }
 if (end === -1) return { coach: null, clean: sanitizeLLM(head) };
 
+// parse JSON inside <coach>…</coach>
 const jsonTxt = block.slice(braceStart, end + 1);
 let coach = {};
 try {
@@ -396,16 +397,6 @@ try {
 const after = closeIdx >= 0 ? tail.slice(closeIdx + "</coach>".length) : "";
 const clean = sanitizeLLM((head + " " + after).trim());
 return { coach, clean };
-
-    let jsonTxt = block
-      .slice(braceStart, end + 1)
-      .replace(/[“”]/g, '"')
-      .replace(/[‘’]/g, "'");
-    let coach = null;
-    try {
-      coach = JSON.parse(jsonTxt);
-    } catch (e) {}
-    return { coach, clean: cleanText };
   }
 
   // ---------- local scoring (deterministic v3) ----------
