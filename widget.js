@@ -417,8 +417,8 @@
         /(renal|egfr|creatinine|bmd|resistance|ddi|interaction|efficacy|safety|adherence|formulary|access|prior auth|prep|tdf|taf|bictegravir|cabotegravir|rilpivirine|descovy|biktarvy|cabenuva)/i.test(
           t
         ),
-      tooLong: words > 180,
-      idealLen: inRange(words, 45, 120)
+      tooLong: words > 220,           // widened for Sales Simulation
+      idealLen: inRange(words, 45, 160)
     };
 
     const accuracy = sig.accuracyCue ? (sig.label ? 5 : 4) : 3;
@@ -702,9 +702,10 @@ ${
 }
 
 # Style
-- 3–6 sentences and one closing question.
+- 4–8 sentences and one closing question.
 - Only appropriate, publicly known, label-aligned facts.
 - No pricing advice or PHI. No off-label.
+- Include a clearly labeled "Suggested Phrasing:" section as part of the chat response.
 
 ${COMMON}`
       ).trim();
@@ -778,6 +779,7 @@ ${COMMON}`
 #reflectiv-widget .speaker{display:inline-block;margin:0 0 6px 2px;padding:2px 8px;font-size:11px;font-weight:700;border-radius:999px;border:1px solid #cfd6df}
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
+#reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
       `;
@@ -1040,7 +1042,6 @@ ${COMMON}`
         meta.innerHTML = "";
         return;
       }
-      // CHANGE: remove Therapeutic Area / HCP Role / Background. Keep only Today’s Goal.
       meta.innerHTML = `
         <div class="meta-card">
           <div><strong>Today’s Goal:</strong> ${esc(sc.goal || "—")}</div>
@@ -1050,22 +1051,25 @@ ${COMMON}`
     function renderMessages() {
       const msgsEl = shell.querySelector(".chat-messages");
       msgsEl.innerHTML = "";
-      const rp = currentMode === "role-play";
 
       for (const m of conversation) {
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
-        if (rp) {
+        // Speaker chips: Role Play = HCP/Rep. Sales Simulation = Sales Coach/Rep.
+        if (currentMode === "role-play") {
           const chipText =
-            m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "Assistant" : "You";
-          const chipCls = m._speaker === "hcp" ? "speaker hcp" : m._speaker === "rep" ? "speaker rep" : "speaker";
+            m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "HCP" : "Rep";
+          const chipCls = m._speaker === "hcp" || m.role === "assistant" ? "speaker hcp" : "speaker rep";
           const chip = el("div", chipCls, chipText);
+          c.appendChild(chip);
+        } else if (currentMode === "sales-simulation") {
+          const isCoach = m.role === "assistant";
+          const chip = el("div", isCoach ? "speaker coach" : "speaker rep", isCoach ? "Sales Coach" : "Rep");
           c.appendChild(chip);
         }
 
         const body = el("div");
-        // CHANGE: normalize “My Approach” -> “Rep Approach” before markdown render
         const normalized = normalizeGuidanceLabels(m.content);
         body.innerHTML = md(normalized);
         c.appendChild(body);
@@ -1092,7 +1096,7 @@ ${COMMON}`
       }
       coach.style.display = "";
 
-      // Hide per-turn coaching in Role Play until final evaluation
+      // Role Play: hide until final eval
       if (currentMode === "role-play") {
         const last = conversation[conversation.length - 1];
         if (!last || !last._finalEval) {
@@ -1108,6 +1112,22 @@ ${COMMON}`
       }
       const fb = last._coach;
       const scores = fb.scores || fb.subscores || {};
+
+      // Sales Simulation yellow panel spec:
+      // Static headers Focus/Strategy. No score chips. No Suggested Phrasing here.
+      if (currentMode === "sales-simulation") {
+        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+        body.innerHTML = `
+          <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
+          <ul class="coach-list">
+            <li><strong>Focus:</strong> ${workedStr}</li>
+            <li><strong>Strategy:</strong> ${improveStr}</li>
+          </ul>`;
+        return;
+      }
+
+      // Emotional-assessment and Role Play final eval keep score view
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
       const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
       body.innerHTML = `
@@ -1240,7 +1260,7 @@ ${COMMON}`
     if (!url) throw new Error("No API endpoint configured (set config.apiBase/workerUrl or window.COACH_ENDPOINT).");
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort("timeout"), 22000);
+    const timer = setTimeout(() => controller.abort("timeout"), 30000); // +timeout for long answers
 
     try {
       const r = await fetch(url, {
@@ -1250,6 +1270,7 @@ ${COMMON}`
           model: (cfg && cfg.model) || "llama-3.1-8b-instant",
           temperature: 0.2,
           stream: !!cfg?.stream,
+          max_tokens: (cfg && cfg.maxTokens) || 900, // longer Sales Coach answers
           messages
         }),
         signal: controller.signal
@@ -1317,7 +1338,7 @@ async function sendMessage(userText) {
 
   try {
     // normalize input
-    userText = clampLen((userText || "").trim(), 1200);
+    userText = clampLen((userText || "").trim(), 1600);
     if (!userText) return;
     lastUserMessage = userText;
 
@@ -1372,113 +1393,114 @@ ${detail}`;
     }
 
     // 3) User turn
-      messages.push({ role: "user", content: userText });
+    messages.push({ role: "user", content: userText });
 
-      try {
-        if (currentMode !== "role-play") {
-          const sysExtras =
-            typeof EIContext !== "undefined" && EIContext?.getSystemExtras
-              ? await EIContext.getSystemExtras().catch(() => null)
-              : null;
-          if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
-        }
-
-        let raw = await callModel(messages);
-        if (!raw) raw = "From my perspective, we review patient histories and adherence to guide decisions.";
-
-        const { coach, clean } = extractCoach(raw);
-        let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
-
-        // enforce HCP-only in RP
-        if (currentMode === "role-play") {
-          replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
-        }
-
-        // anti-echo: if assistant equals user prompt
-        if (norm(replyText) === norm(userText)) {
-          replyText = "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.";
-        }
-
-        // prevent duplicate/cycling assistant replies (ring buffer)
-        let candidate = norm(replyText);
-        if (candidate && (candidate === lastAssistantNorm || isRecent(candidate))) {
-          const alts = [
-            "In my clinic, we review history, behaviors, and adherence to understand risk.",
-            "I rely on history and follow-up patterns to guide decisions.",
-            "We focus on adherence and recent exposures when assessing candidacy."
-          ];
-          replyText = alts[Math.floor(Math.random()*alts.length)];
-          candidate = norm(replyText);
-        }
-        lastAssistantNorm = candidate;
-        pushRecent(candidate);
-
-        replyText = clampLen(replyText, 1400);
-
-        const computed = scoreReply(userText, replyText, currentMode);
-
-        const finalCoach = (() => {
-          if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
-            const scores = coach.scores || coach.subscores;
-            const overall =
-              typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
-            return {
-              overall: overall ?? computed.overall,
-              scores,
-              feedback: coach.feedback || computed.feedback,
-              worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
-              improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
-              phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
-              context: coach.context || { rep_question: userText, hcp_reply: replyText },
-              score: overall ?? computed.overall,
-              subscores: scores
-            };
-          }
-          return computed;
-        })();
-
-        conversation.push({
-          role: "assistant",
-          content: replyText,
-          _coach: finalCoach,
-          _speaker: currentMode === "role-play" ? "hcp" : "assistant"
-        });
-        trimConversationIfNeeded();
-        renderMessages();
-        renderCoach();
-
-        if (currentMode === "emotional-assessment") generateFeedback();
-
-        if (cfg && cfg.analyticsEndpoint) {
-          fetch(cfg.analyticsEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ts: Date.now(),
-              schema: cfg.schemaVersion || "coach-v2",
-              mode: currentMode,
-              scenarioId: currentScenarioId,
-              turn: conversation.length,
-              context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
-              overall: finalCoach.overall,
-              scores: finalCoach.scores
-            })
-          }).catch(() => {});
-        }
-      } catch (e) {
-        conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
-        trimConversationIfNeeded();
-        renderMessages();
+    try {
+      if (currentMode !== "role-play") {
+        const sysExtras =
+          typeof EIContext !== "undefined" && EIContext?.getSystemExtras
+            ? await EIContext.getSystemExtras().catch(() => null)
+            : null;
+        if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
       }
-    } finally {
-      const shellEl2 = mount.querySelector(".reflectiv-chat");
-      const sendBtn2 = shellEl2?._sendBtn;
-      const ta2 = shellEl2?._ta;
-      if (sendBtn2) sendBtn2.disabled = false;
-      if (ta2) { ta2.disabled = false; ta2.focus(); }
-      isSending = false;
+
+      let raw = await callModel(messages);
+      if (!raw) raw = "From my perspective, we review patient histories and adherence to guide decisions.";
+
+      const { coach, clean } = extractCoach(raw);
+      let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
+
+      // enforce HCP-only in RP
+      if (currentMode === "role-play") {
+        replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+      }
+
+      // anti-echo: if assistant equals user prompt
+      if (norm(replyText) === norm(userText)) {
+        replyText = "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.";
+      }
+
+      // prevent duplicate/cycling assistant replies (ring buffer)
+      let candidate = norm(replyText);
+      if (candidate && (candidate === lastAssistantNorm || isRecent(candidate))) {
+        const alts = [
+          "In my clinic, we review history, behaviors, and adherence to understand risk.",
+          "I rely on history and follow-up patterns to guide decisions.",
+          "We focus on adherence and recent exposures when assessing candidacy."
+        ];
+        replyText = alts[Math.floor(Math.random()*alts.length)];
+        candidate = norm(replyText);
+      }
+      lastAssistantNorm = candidate;
+      pushRecent(candidate);
+
+      // allow longer Sales Coach responses
+      replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2200 : 1400);
+
+      const computed = scoreReply(userText, replyText, currentMode);
+
+      const finalCoach = (() => {
+        if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
+          const scores = coach.scores || coach.subscores;
+          const overall =
+            typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
+          return {
+            overall: overall ?? computed.overall,
+            scores,
+            feedback: coach.feedback || computed.feedback,
+            worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
+            improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
+            phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
+            context: coach.context || { rep_question: userText, hcp_reply: replyText },
+            score: overall ?? computed.overall,
+            subscores: scores
+          };
+        }
+        return computed;
+      })();
+
+      conversation.push({
+        role: "assistant",
+        content: replyText,
+        _coach: finalCoach,
+        _speaker: currentMode === "role-play" ? "hcp" : "assistant"
+      });
+      trimConversationIfNeeded();
+      renderMessages();
+      renderCoach();
+
+      if (currentMode === "emotional-assessment") generateFeedback();
+
+      if (cfg && cfg.analyticsEndpoint) {
+        fetch(cfg.analyticsEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ts: Date.now(),
+            schema: cfg.schemaVersion || "coach-v2",
+            mode: currentMode,
+            scenarioId: currentScenarioId,
+            turn: conversation.length,
+            context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
+            overall: finalCoach.overall,
+            scores: finalCoach.scores
+          })
+        }).catch(() => {});
+      }
+    } catch (e) {
+      conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
+      trimConversationIfNeeded();
+      renderMessages();
     }
+  } finally {
+    const shellEl2 = mount.querySelector(".reflectiv-chat");
+    const sendBtn2 = shellEl2?._sendBtn;
+    const ta2 = shellEl2?._ta;
+    if (sendBtn2) sendBtn2.disabled = false;
+    if (ta2) { ta2.disabled = false; ta2.focus(); }
+    isSending = false;
   }
+}
 
   // ---------- scenarios loader ----------
   async function loadScenarios() {
