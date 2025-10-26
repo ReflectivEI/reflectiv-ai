@@ -451,19 +451,20 @@ return { coach, clean };
     if (sig.tooLong) overall -= 6;
     overall = Math.max(0, Math.min(100, Math.round(overall)));
 
-    const worked = [
-      sig.empathy ? "Acknowledged HCP context" : null,
-      sig.discovery ? "Closed with a clear discovery question" : null,
-      sig.label ? "Referenced label or guidelines" : null,
-      sig.accuracyCue ? "Tied points to clinical cues" : null
-    ].filter(Boolean);
+    // --- present-tense feedback text for yellow panel
+  const worked = [
+  sig.empathy ? "Acknowledge HCP context" : null,
+  sig.discovery ? "Close with a clear discovery question" : null,
+  sig.label ? "Reference label or guidelines" : null,
+  sig.accuracyCue ? "Tie points to clinical cues" : null
+].filter(Boolean);
 
-    const improve = [
-      sig.tooLong ? "Tighten to 3–5 sentences" : null,
-      sig.discovery ? null : "End with one specific question",
-      sig.label ? null : "Anchor claims to label or guideline",
-      clarity < 4 ? "Use one idea per sentence" : null
-    ].filter(Boolean);
+  const improve = [
+  sig.tooLong ? "Keep to 3–5 sentences" : null,
+  sig.discovery ? null : "End with one specific question",
+  sig.label ? null : "Anchor claims to label or guideline",
+  clarity < 4 ? "Use one idea per sentence" : null
+].filter(Boolean);
 
     const phrasing = sig.discovery
       ? "Given your criteria, which patients would be the best fit to start, and what would help you try one this month?"
