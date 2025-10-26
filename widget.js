@@ -1270,7 +1270,7 @@ ${COMMON}`
           model: (cfg && cfg.model) || "llama-3.1-8b-instant",
           temperature: 0.2,
           stream: !!cfg?.stream,
-          max_tokens: (cfg && cfg.maxTokens) || 900, // longer Sales Coach answers
+          max_output_tokens: (cfg && (cfg.max_output_tokens || cfg.maxTokens)) || 1400,
           messages
         }),
         signal: controller.signal
