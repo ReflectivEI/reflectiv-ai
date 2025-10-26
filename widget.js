@@ -142,7 +142,7 @@
 
     s = s.replace(/<coach>[\s\S]*?<\/coach>/gi, "");
     s = s.replace(
-      /(?:^|\n)\s*(?:\*\*)?\s*(?:Sales\s*Guidance|Challenge|My\s*Approach|Impact)\s*(?:\*\*)?\s*:\s*[\s\S]*?(?=\n\s*\n|$)/gmi,
+      /(?:^|\n)\s*(?:\*\*)?\s*(?:Sales\s*Guidance|Challenge|(?:My|Rep)\s*Approach|Impact)\s*(?:\*\*)?\s*:\s*[\s\S]*?(?=\n\s*\n|$)/gmi,
       ""
     );
 
@@ -323,6 +323,12 @@
       out = variants[Math.floor(Math.random() * variants.length)];
     }
     return out;
+  }
+
+  // --- label normalizer: convert any “My Approach” text to “Rep Approach”
+  function normalizeGuidanceLabels(text) {
+    if (!text) return "";
+    return String(text).replace(/\bMy\s*Approach\b/gi, "Rep Approach");
   }
 
   function md(text) {
@@ -1033,11 +1039,9 @@ ${COMMON}`
         meta.innerHTML = "";
         return;
       }
+      // CHANGE: remove Therapeutic Area / HCP Role / Background. Keep only Today’s Goal.
       meta.innerHTML = `
         <div class="meta-card">
-          <div><strong>Therapeutic Area:</strong> ${esc(sc.therapeuticArea || sc.diseaseState || "—")}</div>
-          <div><strong>HCP Role:</strong> ${esc(sc.hcpRole || "—")}</div>
-          <div><strong>Background:</strong> ${esc(sc.background || "—")}</div>
           <div><strong>Today’s Goal:</strong> ${esc(sc.goal || "—")}</div>
         </div>`;
     }
@@ -1060,7 +1064,9 @@ ${COMMON}`
         }
 
         const body = el("div");
-        body.innerHTML = md(m.content);
+        // CHANGE: normalize “My Approach” -> “Rep Approach” before markdown render
+        const normalized = normalizeGuidanceLabels(m.content);
+        body.innerHTML = md(normalized);
         c.appendChild(body);
 
         row.appendChild(c);
