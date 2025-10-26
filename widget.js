@@ -1349,6 +1349,8 @@ async function sendMessage(userText) {
 
     // 1) Core runtime rules (system.md)
     if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+    if (aboutEIText) messages.push({ role: "system", content: aboutEIText });
+
 
     // 2) EI foundation for Sales Simulation and Role Play (about-ei.md)
     if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
