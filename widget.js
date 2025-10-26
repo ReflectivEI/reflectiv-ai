@@ -1348,17 +1348,12 @@ async function sendMessage(userText) {
     const messages = [];
 
     // 1) Core runtime rules (system.md) + EI layer
-if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
-if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
-  messages.push({ role: "system", content: eiHeuristics });
-}
-
-    // 2) EI foundation for Sales Simulation and Role Play (about-ei.md)
+    if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
     if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
       messages.push({ role: "system", content: eiHeuristics });
     }
 
-    // 3) Mode/scenario preface
+    // 2) Mode/scenario preface
     if (currentMode === "role-play") {
       const personaLine = currentPersonaHint();
       const detail = sc
@@ -1376,7 +1371,7 @@ ${detail}`;
       messages.push({ role: "system", content: buildPreface(currentMode, sc) });
     }
 
-    // 4) User turn
+    // 3) User turn
       messages.push({ role: "user", content: userText });
 
       try {
