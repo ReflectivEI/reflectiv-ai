@@ -386,7 +386,7 @@ for (let i = braceStart; i < block.length; i++) {
 }
 if (end === -1) return { coach: null, clean: sanitizeLLM(head) };
 
-let jsonTxt = block.slice(braceStart, end + 1);
+const jsonTxt = block.slice(braceStart, end + 1);
 let coach = {};
 try {
   coach = JSON.parse(jsonTxt);
