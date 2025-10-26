@@ -440,97 +440,147 @@
       });
     })();
 
-    /* ---------- Alora wiring ---------- */
-    const aloraFab=document.getElementById('aloraFab');
-    const alora=document.getElementById('alora');
-    const aloraClose=document.getElementById('aloraClose');
-    const aloraBody=document.getElementById('aloraBody');
-    const aloraForm=document.getElementById('aloraForm');
-    const aloraInput=document.getElementById('aloraInput');
+    /* ---------- Alora wiring (remote-first, DOM context, low hard-code) ---------- */
+const aloraFab=document.getElementById('aloraFab');
+const alora=document.getElementById('alora');
+const aloraClose=document.getElementById('aloraClose');
+const aloraBody=document.getElementById('aloraBody');
+const aloraForm=document.getElementById('aloraForm');
+const aloraInput=document.getElementById('aloraInput');
 
-    function bot(t){const d=document.createElement('div');d.className='alora-msg bot';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
-    function user(t){const d=document.createElement('div');d.className='alora-msg user';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
-    function typing(show){if(show){const t=document.createElement('div');t.className='alora-typing';t.id='aloraTyping';let i=0;t.textContent='Alora is typing';aloraBody.appendChild(t);t._timer=setInterval(()=>{i=(i+1)%4;t.textContent='Alora is typing'+'.'.repeat(i)},300);aloraBody.scrollTop=aloraBody.scrollHeight}else{const t=document.getElementById('aloraTyping');if(t){clearInterval(t._timer);t.remove()}}}
+function bot(t){const d=document.createElement('div');d.className='alora-msg bot';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
+function user(t){const d=document.createElement('div');d.className='alora-msg user';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
+function typing(show){if(show){const t=document.createElement('div');t.className='alora-typing';t.id='aloraTyping';let i=0;t.textContent='Alora is typing';aloraBody.appendChild(t);t._timer=setInterval(()=>{i=(i+1)%4;t.textContent='Alora is typing'+'.'.repeat(i)},300);aloraBody.scrollTop=aloraBody.scrollHeight}else{const t=document.getElementById('aloraTyping');if(t){clearInterval(t._timer);t.remove()}}}
 
-    async function askAlora(q){
-      try{
-        const r=await fetch((window.ALORA_ENDPOINT||''),{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({role:'alora',site:'reflectivai',message:q})
-        });
-        if(r.ok){const j=await r.json();return j.reply||null}
-      }catch(e){}
-      return null;
-    }
+function scrollToId(id){
+  const el=document.getElementById(id) || document.querySelector(`[data-anchor='${id}']`) || document.querySelector(`[href='#${id}']`);
+  if(el){el.scrollIntoView({behavior:'smooth',block:'start'});return true}
+  return false;
+}
 
-    /* ---------- Alora persona v4: friendly, professional, knowledgeable ---------- */
-    const CHIPS_BASE=[['Open Coach','open-coach'],['Request Demo','request-demo'],['See Personas','see-personas'],['Why EI','see-ei']];
+const ACTIONS={
+  'open-coach':()=>openModal('#coachModal'),
+  'request-demo':()=>scrollToId('contact'),
+  'see-platform':()=>scrollToId('platform'),
+  'see-analytics':()=>scrollToId('analytics'),
+  'see-ei':()=>scrollToId('why-it-matters'),
+  'see-personas':()=>scrollToId('therapeutic-areas')
+};
 
-    function scrollToId(id){
-      const el=document.getElementById(id) || document.querySelector(`[data-anchor='${id}']`) || document.querySelector(`[href='#${id}']`);
-      if(el){el.scrollIntoView({behavior:'smooth',block:'start'});return true}
-      return false;
-    }
-    function aloraAction(cmd){
-      const c=String(cmd||'').toLowerCase();
-      if(c==='open-coach'){openModal('#coachModal');return true}
-      if(c==='request-demo') return scrollToId('contact');
-      if(c==='see-platform') return scrollToId('platform');
-      if(c==='see-analytics') return scrollToId('analytics');
-      if(c==='see-ei') return scrollToId('why-it-matters');
-      if(c==='see-personas') return scrollToId('therapeutic-areas');
-      return false;
-    }
-    function renderChips(pairs){
-      let wrap=aloraBody.querySelector('.alora-suggest');
-      if(!wrap){wrap=document.createElement('div');wrap.className='alora-suggest';aloraBody.appendChild(wrap)}
-      wrap.innerHTML='';
-      (pairs||[]).forEach(([label,cmd])=>{
-        const b=document.createElement('button');
-        b.type='button'; b.className='alora-chip'; b.textContent=label;
-        b.onclick=()=>aloraAction(cmd);
-        wrap.appendChild(b);
+const CHIPS_BASE=[['Open Coach','open-coach'],['Request Demo','request-demo'],['See Personas','see-personas'],['Why EI','see-ei']];
+
+function renderChips(pairs){
+  let wrap=aloraBody.querySelector('.alora-suggest');
+  if(!wrap){wrap=document.createElement('div');wrap.className='alora-suggest';aloraBody.appendChild(wrap)}
+  wrap.innerHTML='';
+  (pairs||[]).forEach(([label,cmd])=>{
+    const b=document.createElement('button');
+    b.type='button'; b.className='alora-chip'; b.textContent=label;
+    b.onclick=()=>ACTIONS[cmd]?.();
+    wrap.appendChild(b);
+  });
+}
+
+/* ------------ Live site knowledge harvest ------------ */
+function textOf(sel){
+  const el=document.querySelector(sel); if(!el) return "";
+  return (el.innerText||"").replace(/\s+/g,' ').trim();
+}
+function sectionDump(id,label){
+  const el=document.getElementById(id); if(!el) return "";
+  const head=el.querySelector('h1,h2,h3,h4');
+  const txt=(el.innerText||"").replace(/\s+/g,' ').trim();
+  return `[SECTION ${label||('#'+id)}] ${head?head.innerText+' — ':''}${txt}`.slice(0,4000);
+}
+function harvestSiteContext(){
+  const parts=[];
+  parts.push(`[TITLE] ${document.title||''}`);
+  parts.push(`[BRAND] ${textOf('header .brand')}`);
+  parts.push(sectionDump('platform','Platform'));
+  parts.push(sectionDump('analytics','Analytics'));
+  parts.push(sectionDump('therapeutic-areas','Therapeutic Areas & Personas'));
+  parts.push(sectionDump('why-it-matters','Why EI'));
+  parts.push(sectionDump('ethics','Ethics/Privacy/Governance'));
+  parts.push(sectionDump('contact','Contact'));
+  const w=document.getElementById('reflectiv-widget');
+  if(w){
+    parts.push('[COACH UI] Modes: Product Knowledge, Sales Simulation, Role Play, Emotional Assessment.');
+    parts.push('[COACH UI] Sales Simulation shows Focus/Strategy; Role Play supports "Evaluate this exchange".');
+  }
+  return parts.filter(Boolean).join('\n').slice(0,24000);
+}
+
+/* ------------ Remote call with persona + DOM context ------------ */
+async function askRemote(q){
+  const body={
+    role:'alora',
+    site:'reflectivai',
+    persona:(window.ALORA_PERSONA&&window.ALORA_PERSONA.system)||'',
+    site_context:harvestSiteContext(),
+    message:q
+  };
+  const doFetch=async(timeoutMs)=>{
+    const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort('timeout'),timeoutMs);
+    try{
+      const r=await fetch((window.ALORA_ENDPOINT||''),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body),
+        signal:ctl.signal
       });
-    }
-    function answer(q){
-      const s=(q||'').trim().toLowerCase();
-      if(/^(hi|hello|hey)\b/.test(s)) return {text:"Hi, I’m Alora. I can guide you around the platform, simulations, EI, analytics, integrations, and compliance.",chips:CHIPS_BASE};
-      if(s.includes('unique')||s.includes('stand out')||s.includes('different')) return {text:"What makes ReflectivAI unique: 1) Human coaching + AI simulations tied to EI signals. 2) Compliance-aware feedback that flags and rewrites risky lines. 3) Role-specific HCP personas by therapeutic area. 4) Analytics like Empathy Index and Readiness Velocity to prove lift. 5) Integrations with LMS/CRM and SSO for real rollout.",chips:[['See Platform','see-platform'],['Open Coach','open-coach'],['Request Demo','request-demo']]};
-      if(s.includes('price')||s.includes('pricing')||s.includes('cost')) return {text:"Pricing scales by team size and selected modules: Product Knowledge, Sales Simulation, EI Mode, and Analytics. We provide a tailored quote during a short demo.",chips:[['Request Demo','request-demo'],['See Analytics','see-analytics'],['Open Coach','open-coach']]};
-      if(s.includes('demo')||s.includes('request')) return {text:"Tap Request a Demo. We tailor the walkthrough to your roles, disease areas, and compliance needs.",chips:[['Request Demo','request-demo'],['See Personas','see-personas'],['Why EI','see-ei']]};
-      if(s.includes('simulate')||s.includes('coach')) return {text:"Open the Coach to role-play with HCP personas. You get live tips and scores for Empathy, Objection Handling, and Compliance after each turn.",chips:[['Open Coach','open-coach'],['See Personas','see-personas'],['See Platform','see-platform']],action:'open-coach'};
-      return {text:"I cover platform, simulations, EI, analytics, integrations, and compliance. Ask a question or request a demo for a focused walkthrough.",chips:CHIPS_BASE};
-    }
-    function respondLocal(q){
-      const r=answer(q||'');
-      try{ renderChips(r.chips); }catch(e){}
-      if(r.action) aloraAction(r.action);
-      return r.text;
-    }
-    function aloraOpen(){
-      alora.classList.add('open'); alora.setAttribute('aria-hidden','false');
-      if(!aloraBody.dataset.greeted){
-        bot("Hi, I’m Alora. Ask me about the platform, simulations, EI, pricing, integrations, or governance.");
-        renderChips([['What makes it unique?','see-platform'],['Open Coach','open-coach'],['See Analytics','see-analytics'],['Request Demo','request-demo']]);
-        aloraBody.dataset.greeted='1';
-      }
-    }
-    function aloraHide(){alora.classList.remove('open');alora.setAttribute('aria-hidden','true')}
+      clearTimeout(t);
+      if(!r.ok){ if(r.status>=500) throw new Error('server'); return null; }
+      const j=await r.json().catch(()=>null);
+      return j&&j.reply||null;
+    }catch(e){ clearTimeout(t); throw e; }
+  };
+  try{ return await doFetch(45000); }
+  catch(e){ try{ await new Promise(res=>setTimeout(res,600)); return await doFetch(45000); } catch(_){ return null; } }
+}
 
-    document.getElementById('aloraFab').addEventListener('click',aloraOpen);
-    document.getElementById('aloraClose').addEventListener('click',aloraHide);
+/* ------------ Minimal local routing fallback (no hard copy) ------------ */
+function localRoute(q){
+  const s=String(q||'').toLowerCase();
+  if(/^(hi|hello|hey)\b/.test(s)) return {text:"Hi, I’m Alora. Ask about the platform, EI, simulations, analytics, or how the Coach works.",chips:CHIPS_BASE};
+  if(/\b(pricing|price|cost)\b/.test(s)) return {text:"Pricing is shared during a brief demo.",chips:[['Request Demo','request-demo']]}
+  if(/\b(coach|open coach|try simulation|simulation)\b/.test(s)) return {text:"Opening the Coach.",action:'open-coach',chips:CHIPS_BASE};
+  return null;
+}
 
-    aloraForm.addEventListener('submit',async e=>{
-      e.preventDefault();
-      const q=aloraInput.value.trim(); if(!q) return;
-      aloraInput.value=''; user(q); typing(true);
-      const remote=await askAlora(q); typing(false);
-      bot(remote || respondLocal(q));
-    });
+/* ------------ Open/close ------------ */
+function aloraOpen(){
+  alora.classList.add('open'); alora.setAttribute('aria-hidden','false');
+  if(!aloraBody.dataset.greeted){
+    bot("Hi, I’m Alora. I can explain features, EI, simulations, analytics, and usage. Ask a question.");
+    renderChips([['Open Coach','open-coach'],['See Platform','see-platform'],['Why EI','see-ei'],['Request Demo','request-demo']]);
+    aloraBody.dataset.greeted='1';
+  }
+}
+function aloraHide(){alora.classList.remove('open');alora.setAttribute('aria-hidden','true')}
+aloraFab.addEventListener('click',aloraOpen);
+aloraClose.addEventListener('click',aloraHide);
 
-    /* Avoid white banner on bfcache restore */
-    if('scrollRestoration'in history){history.scrollRestoration='manual'}
-    window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo(0,0)})
+/* ------------ Submit: remote-first, retry, deterministic fallback ------------ */
+aloraForm.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const q=(aloraInput.value||'').trim(); if(!q) return;
+  aloraInput.value=''; user(q); typing(true);
+
+  let resp=await askRemote(q).catch(()=>null);
+  typing(false);
+
+  if(resp){ bot(resp); renderChips(CHIPS_BASE); return; }
+
+  const local=localRoute(q);
+  if(local){ if(local.action) ACTIONS[local.action]?.(); bot(local.text); renderChips(local.chips||CHIPS_BASE); return; }
+
+  bot("I could not reach the backend. You can still open the Coach, explore the Platform, or request a demo.");
+  renderChips(CHIPS_BASE);
+});
+
+/* Avoid white banner on bfcache restore */
+if('scrollRestoration' in history){history.scrollRestoration='manual'}
+window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo(0,0)})
 
   });
 })();
