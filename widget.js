@@ -1,5 +1,5 @@
 /* widget.js
- * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3)
+ * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + Rep-only eval patch r5
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
  * PROACTIVE SAFEGUARDS:
  * - duplicate-cycle guard (ring buffer)        - double-send lock
@@ -776,13 +776,20 @@ ${COMMON}`
 #reflectiv-widget .chat-input textarea{flex:1;resize:none;min-height:44px;max-height:120px;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;outline:none}
 #reflectiv-widget .chat-input .btn{min-width:86px;border:0;border-radius:999px;background:#2f3a4f;color:#fff;font-weight:600}
 #reflectiv-widget .coach-section{margin-top:0;padding:12px 14px;border:1px solid #e1e6ef;border-radius:12px;background:#fffbe8}
-#reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
+#reflectiv-widget .coach-section .coach-body{line-height:1.45}
+#reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;margin-bottom:4px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
 #reflectiv-widget .scenario-meta .meta-card{padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:10px}
 #reflectiv-widget .hidden{display:none!important}
 #reflectiv-widget .speaker{display:inline-block;margin:0 0 6px 2px;padding:2px 8px;font-size:11px;font-weight:700;border-radius:999px;border:1px solid #cfd6df}
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
 #reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
+#reflectiv-widget .coach-panel{background:#fff;border:1px solid #e1e6ef;border-radius:10px;padding:10px 12px;margin-top:8px}
+#reflectiv-widget .coach-panel h4{margin:0 0 6px 0;font-size:14px}
+#reflectiv-widget .coach-panel h5{margin:10px 0 4px 0;font-size:13px}
+#reflectiv-widget .coach-panel .coach-subs{margin:6px 0}
+#reflectiv-widget .coach-panel details{margin-top:8px}
+#reflectiv-widget .muted{color:#6b7280}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
       `;
@@ -1113,7 +1120,7 @@ ${COMMON}`
 
       const last = conversation[conversation.length - 1];
       if (!(last && last.role === "assistant" && last._coach)) {
-        body.innerHTML = `<span class="muted">Awaiting the first assistant reply…</span>`;
+        body.innerHTML = `<span class="muted">Awaiting the first assistant reply…</span>${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
         return;
       }
       const fb = last._coach;
@@ -1340,7 +1347,7 @@ ${COMMON}`
     conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
   }
 
-  /* ---------- Rep-only evaluation helpers ---------- */
+  /* ---------- Rep-only evaluation helpers (robust, JSON-first, graceful fallback) ---------- */
   function repTurns(history, max = 12) {
     const repLike = ["rep", "user"]; // Rep messages stored as _speaker:'rep' or role:'user'
     const seq = (history || []).filter(
@@ -1350,6 +1357,52 @@ ${COMMON}`
       role: (role || _speaker || "user"),
       content: String(content || "")
     }));
+  }
+
+  function extractFirstJson(txt) {
+    const s = String(txt || "");
+    // try fenced
+    const fence = s.match(/```json\s*([\s\S]*?)```/i);
+    if (fence && fence[1]) return fence[1];
+    // try first {...} block
+    const start = s.indexOf("{");
+    if (start === -1) return "";
+    let depth = 0;
+    for (let i = start; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) return s.slice(start, i + 1);
+      }
+    }
+    return "";
+  }
+
+  function summarizeRepText(repSeq) {
+    const txt = repSeq.map(t => t.content).join(" ").slice(0, 1600);
+    const sr = scoreReply("", txt);
+    const strengths = []
+      .concat(sr.worked || [])
+      .filter(Boolean);
+    const improvements = []
+      .concat(sr.improve || [])
+      .filter(Boolean);
+    const actionable = [sr.phrasing].filter(Boolean);
+    return {
+      scores: {
+        accuracy: sr.scores.accuracy,
+        compliance: sr.scores.compliance,
+        discovery: sr.scores.discovery,
+        clarity: sr.scores.clarity,
+        objectionHandling: sr.scores.objection_handling,
+        empathy: sr.scores.empathy
+      },
+      summary: "Rep-only snapshot based on recent utterances.",
+      strengths,
+      improvements,
+      actionable
+    };
   }
 
   async function evaluateRepOnly({ history, personaLabel, goal }) {
@@ -1362,7 +1415,8 @@ ${COMMON}`
       `Persona: ${personaLabel || "unspecified persona"}.`,
       `Scenario Goal: ${goal || "unspecified goal"}.`,
       "Rubric: Accuracy, Compliance, Discovery, Clarity, Objection Handling, Empathy.",
-      "Return JSON with keys: scores{accuracy,compliance,discovery,clarity,objectionHandling,empathy}, summary, strengths[], improvements[], actionable[]. Scores 1–5 integers."
+      "Return ONLY compact JSON. No prose outside JSON.",
+      `Format: {"scores":{"accuracy":1-5,"compliance":1-5,"discovery":1-5,"clarity":1-5,"objectionHandling":1-5,"empathy":1-5},"summary":"...", "strengths":["..."], "improvements":["..."], "actionable":["..."]}`
     ].join(" ");
 
     const user = {
@@ -1378,37 +1432,46 @@ ${COMMON}`
     try {
       raw = await callModel([{ role: "system", content: sys }, user]);
     } catch (e) {
-      return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
+      const d = summarizeRepText(transcript);
+      return { html: renderRepOnlyPanel(d, "Rep-only Evaluation") };
     }
 
     let data = null;
+    // strict JSON parse
     try { data = JSON.parse(raw); } catch (_) {}
-
-    // Fallback to simple text if JSON not returned
-    if (!data || !data.scores) {
-      const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
-      return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>${esc(safe)}</p></div>` };
+    if (!data) {
+      const body = extractFirstJson(raw);
+      if (body) {
+        try { data = JSON.parse(body); } catch (_) {}
+      }
     }
+    if (!data || !data.scores) {
+      // fallback: use local deterministic summary, but preserve any narrative as "details"
+      const det = summarizeRepText(transcript);
+      const narrative = sanitizeLLM(raw || "");
+      return { html: renderRepOnlyPanel(det, "Rep-only Evaluation", narrative) };
+    }
+    return { html: renderRepOnlyPanel(data, "Rep-only Evaluation") };
+  }
 
+  function renderRepOnlyPanel(data, title, narrativeText) {
     const s = data.scores || {};
+    const pill = (k, v) => `<span class="pill">${k}: ${v ?? "—"}</span>`;
     const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-    const html = `
+    const details = narrativeText ? `<details><summary>Model notes</summary>${md(normalizeGuidanceLabels(narrativeText))}</details>` : "";
+    return `
       <div class="coach-panel">
-        <h4>Rep-only Evaluation</h4>
+        <h4>${esc(title)}</h4>
         <div class="coach-subs">
-          <span class="pill">Accuracy: ${s.accuracy ?? "—"}</span>
-          <span class="pill">Compliance: ${s.compliance ?? "—"}</span>
-          <span class="pill">Discovery: ${s.discovery ?? "—"}</span>
-          <span class="pill">Clarity: ${s.clarity ?? "—"}</span>
-          <span class="pill">Objection Handling: ${s.objectionHandling ?? "—"}</span>
-          <span class="pill">Empathy: ${s.empathy ?? "—"}</span>
+          ${pill("Accuracy", s.accuracy)} ${pill("Compliance", s.compliance)} ${pill("Discovery", s.discovery)}
+          ${pill("Clarity", s.clarity)} ${pill("Objection Handling", s.objectionHandling)} ${pill("Empathy", s.empathy)}
         </div>
         ${data.summary ? `<p>${esc(data.summary)}</p>` : ""}
         <h5>Strengths</h5>${list(data.strengths)}
         <h5>Improvements</h5>${list(data.improvements)}
         <h5>Actionable Feedback</h5>${list(data.actionable)}
+        ${details}
       </div>`;
-    return { html };
   }
 
   // ---------- send ----------
@@ -1455,15 +1518,14 @@ ${COMMON}`
         return;
       }
 
-      // Rep-only evaluation trigger
-      const repEvalRe = /^\s*(evaluate\s+rep|rep\s+only\s+eval(?:uation)?|evaluate\s+the\s+rep)\s*$/i;
+      // Rep-only evaluation trigger (broadened)
+      const repEvalRe = /\b(evaluate\s*(the\s*)?rep\b|rep-?only\s*(eval(uation)?)?\b|rep\s*eval(uation)?\b|evaluate\s*rep\s*only\b)/i;
       if (repEvalRe.test(userText)) {
         const sc = scenariosById.get(currentScenarioId);
         const persona = sc?.hcpRole || sc?.label || "";
         const goal = sc?.goal || "";
         const res = await evaluateRepOnly({ history: conversation, personaLabel: persona, goal });
         repOnlyPanelHTML = res?.html || "<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable.</p></div>";
-        // show note, but do not add a new assistant message
         renderCoach();
         return;
       }
