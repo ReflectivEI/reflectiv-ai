@@ -1215,70 +1215,15 @@ ${COMMON}`
     return data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
   }
 
-  // Detect site once
-const __SITE__ = /reflectivai|reflectivei\.github\.io/i.test(location.host) ? "reflectivai" : "tony";
-
-// Strip coach artifacts from RP history
-function __stripRp(messages){
-  return (messages||[]).filter(m=>{
-    const t = (m.content||"").trim();
-    if (/^(accuracy|empathy|clarity|compliance|discovery|objection_handling)\s*:/i.test(t)) return false;
-    if (/\b(Evaluate( Rep)?|Summary only)\b/i.test(t)) return false;
-    return true;
-  });
-}
-
-/**
- * callModel(messages, opts)
- * opts.mode: "role-play" | "sales-simulation" | "product-knowledge"
- * opts.eval: true to trigger Evaluate Rep fast-path
- */
-async function callModel(messages, opts = {}) {
-  const mode = opts.mode || window.COACH_MODE || "role-play";
-  const isRP = mode === "role-play";
-  const isEval = !!opts.eval;
-
-  const base = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
-  const endpoint = base.endsWith("/chat") ? base : (base.replace(/\/$/,"") + "/chat");
-
-  let msgs = Array.isArray(messages) ? messages.slice() : [];
-
-  // RP history scrub
-  if (isRP) msgs = __stripRp(msgs);
-
-  // Final guard (client-side; Worker also adds one)
-  if (isRP) {
-    msgs.push({
-      role: "system",
-      name: "reflectiv_guard",
-      content: "You are the HCP only. Do not act as coach or rep. No scores. 1–4 sentence HCP replies."
-    });
-  }
-
-  const payload = {
-    site: __SITE__,
-    mode,
-    eval: isEval,                    // triggers evaluation path in Worker
-    model: cfg?.model || "llama-3.1-8b-instant",
-    temperature: (__SITE__ === "tony" && !isRP && !isEval) ? 0.275 : (isEval ? 0.1 : 0.5),
-    stream: true,                   // force streaming for faster first token
-    max_tokens: Number(cfg?.maxTokens || cfg?.max_output_tokens) || 1536,
-    messages: msgs
-  };
-
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  return res; // your SSE/render code handles the stream
-}
-
-// Optional helper for the “Evaluate Rep” chip/button:
-async function callModelEvaluate(messages){
-  return callModel(messages, { mode: "sales-simulation", eval: true });
-}
+  async function callModel(messages) {
+    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    const payload = {
+      model: (cfg?.model) || "llama-3.1-8b-instant",
+      temperature: 0.2,
+      stream: false,
+      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || 2200, // bumped up
+      messages
+    };
 
     // attempt with retries
     const attempt = async (n, delayMs) => {
