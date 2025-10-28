@@ -758,25 +758,17 @@ No lists or headings. No coaching or scores.`
       document.head.appendChild(style);
     }
 
-    // shell + skeleton
+    // shell
     const shell = el("div", "reflectiv-chat");
-    shell.innerHTML = `
-      <div class="chat-toolbar"><div class="sim-controls"></div></div>
-      <div class="scenario-meta"></div>
-      <div class="chat-messages">
-        <div class="message assistant"><div class="content">Loading ReflectivAI Coach…</div></div>
-      </div>
-      <div class="chat-input">
-        <textarea placeholder="Type your message…"></textarea>
-        <button class="btn">Send</button>
-      </div>
-    `;
     mount.appendChild(shell);
 
-    // rebuild real UI
+    // toolbar + controls
     const bar = el("div", "chat-toolbar");
-    const simControls = el("div", "sim-controls");
+    const controlsEl = el("div", "sim-controls");
+    bar.appendChild(controlsEl);
+    shell.appendChild(bar);
 
+    // controls
     const lcLabel = el("label", "", "Learning Center");
     lcLabel.htmlFor = "cw-mode";
     const modeSel = el("select");
@@ -889,23 +881,18 @@ No lists or headings. No coaching or scores.`
     }
 
     // mount controls
-    const simControls = shell.querySelector(".sim-controls");
-    simControls.appendChild(lcLabel);
-    simControls.appendChild(modeSel);
-    simControls.appendChild(coachLabel);
-    simControls.appendChild(coachSel);
-    simControls.appendChild(diseaseLabel);
-    simControls.appendChild(diseaseSelect);
-    simControls.appendChild(hcpLabel);
-    simControls.appendChild(hcpSelect);
-    simControls.appendChild(personaLabel);
-    simControls.appendChild(personaSelect);
-    simControls.appendChild(featureLabel);
-    simControls.appendChild(featureSelect);
-
-    bar.appendChild(simControls);
-    shell.innerHTML = "";
-    shell.appendChild(bar);
+    controlsEl.appendChild(lcLabel);
+    controlsEl.appendChild(modeSel);
+    controlsEl.appendChild(coachLabel);
+    controlsEl.appendChild(coachSel);
+    controlsEl.appendChild(diseaseLabel);
+    controlsEl.appendChild(diseaseSelect);
+    controlsEl.appendChild(hcpLabel);
+    controlsEl.appendChild(hcpSelect);
+    controlsEl.appendChild(personaLabel);
+    controlsEl.appendChild(personaSelect);
+    controlsEl.appendChild(featureLabel);
+    controlsEl.appendChild(featureSelect);
 
     const meta = el("div", "scenario-meta");
     shell.appendChild(meta);
