@@ -1,3 +1,4 @@
+
 /* widget.js
  * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r8
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
@@ -46,36 +47,6 @@
   }
 
   // ---------- config/state ----------
-
-  // ---- network config for ReflectivAI ----
-  const ENDPOINT = "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat"; // Cloudflare Worker v2 (wired to Azure)
-  const SITE_TAG = "reflectivai"; // lets Worker route traffic to Azure backend
-
-  async function sendToCoach(messages, { model = "gpt-4o-mini", temperature = 0.4, stream = false } = {}) {
-    try {
-      const r = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          site: SITE_TAG,
-          model,
-          temperature,
-          stream,
-          messages
-        })
-      });
-      if (!r.ok) {
-        const t = await r.text().catch(() => "");
-        throw new Error(`Coach API ${r.status}: ${t || "error"}`);
-      }
-      return await r.json();
-    } catch (err) {
-      console.error("sendToCoach error:", err);
-      return { role: "assistant", content: "The AI coach is temporarily unavailable. Please try again." };
-    }
-  }
-
-  // ---- learning context options ----
   const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play"];
   const LC_TO_INTERNAL = {
     "Emotional Intelligence": "emotional-assessment",
@@ -84,7 +55,6 @@
     "Role Play": "role-play"
   };
 
-  // ---- persistent state ----
   let cfg = null;
   let systemPrompt = "";
   let eiHeuristics = "";
@@ -1418,7 +1388,7 @@ ${COMMON}`
   }
 
   async function sendMessage(userText) {
-    if (isSending) return; // double-send lock
+    if (isSending) return;            // double-send lock
     isSending = true;
 
     const shellEl = mount.querySelector(".reflectiv-chat");
@@ -1446,87 +1416,175 @@ ${COMMON}`
         return;
       }
 
-      // push user turn
+      // Rep-only evaluation trigger
+      const repEvalRe = /^\s*(evaluate\s+rep|rep\s+only\s+eval(?:uation)?|evaluate\s+the\s+rep)\s*$/i;
+      if (repEvalRe.test(userText)) {
+        const sc = scenariosById.get(currentScenarioId);
+        const persona = sc?.hcpRole || sc?.label || "";
+        const goal = sc?.goal || "";
+        const res = await evaluateRepOnly({ history: conversation, personaLabel: persona, goal });
+        repOnlyPanelHTML = res?.html || "<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable.</p></div>";
+        renderCoach();
+        return;
+      }
+
+      // normal turn
       conversation.push({
         role: "user",
         content: userText,
-        _speaker: currentMode === "role-play" ? "rep" : undefined,
-        ts: Date.now()
+        _speaker: currentMode === "role-play" ? "rep" : "user"
       });
-      trimConversationIfNeeded();
-      renderMessages();
-
-      // build context (system preface + last 12 turns)
-      const sys = { role: "system", content: buildPreface(currentMode, scenariosById.get(currentScenarioId)) };
-      const msgs = [sys, ...conversation.slice(-12)];
-
-      // call backend (Worker → Azure for ReflectivAI)
-      const temperature = currentMode === "role-play" ? 0.5 : 0.4;
-      const resp1 = await sendToCoach(msgs, { model: "gpt-4o-mini", temperature, stream: false });
-
-      // --- get raw reply from Worker and apply cut-off guard (auto-continue up to 2 passes)
-      let raw = resp1?.content || resp1?.reply || "";
-      if (seemsTruncated(raw)) {
-        const contMsgs1 = [...msgs, { role: "user", content: "Continue your previous response. Complete the last sentence. Keep it concise." }];
-        const resp2 = await sendToCoach(contMsgs1, { model: "gpt-4o-mini", temperature, stream: false });
-        const more1 = resp2?.content || resp2?.reply || "";
-        if (more1) raw = (raw + "\n" + more1).trim();
-
-        if (seemsTruncated(raw)) {
-          const contMsgs2 = [...msgs, { role: "user", content: "Continue. Finish any unfinished bullets or sentences in 2–3 lines max." }];
-          const resp3 = await sendToCoach(contMsgs2, { model: "gpt-4o-mini", temperature, stream: false });
-          const more2 = resp3?.content || resp3?.reply || "";
-          if (more2) raw = (raw + "\n" + more2).trim();
-        }
-      }
-
-      // extract any <coach>{...}</coach> block and the clean assistant text
-      const { coach, clean } = extractCoach(raw);
-
-      // role mapping + RP hardening
-      let assistantSpeaker = currentMode === "role-play" ? "hcp" : "coach";
-      let replyText = clean || "The AI coach is temporarily unavailable. Please try again.";
-
-      if (currentMode === "role-play") {
-        const sc = scenariosById.get(currentScenarioId);
-        // enforce strict HCP-only POV and strip any guidance leakage
-        replyText = await enforceHcpOnly(replyText, sc, msgs, callModel);
-        replyText = sanitizeRolePlayOnly(replyText);
-      }
-
-      // append assistant turn
-      conversation.push({
-        role: "assistant",
-        content: replyText,
-        _speaker: assistantSpeaker,
-        ts: Date.now()
-      });
-
-      // if we received coach JSON, render as a separate "Coach" chat message and store subscores
-      if (coach) {
-        conversation.push({
-          role: "assistant",
-          content: renderCoachAsChat(coach),
-          _speaker: "coach",
-          _coach: coach,
-          ts: Date.now()
-        });
-      }
-
       trimConversationIfNeeded();
       renderMessages();
       renderCoach();
-    } catch (e) {
-      conversation.push({
-        role: "assistant",
-        content: "Sorry, an error occurred. Try again.",
-        _speaker: "coach",
-        ts: Date.now()
-      });
-      renderMessages();
+
+      if (currentMode === "emotional-assessment") generateFeedback();
+
+      const sc = scenariosById.get(currentScenarioId);
+      const messages = [];
+
+      // 1) Core runtime rules (system.md) + EI layer
+      if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+      if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
+        messages.push({ role: "system", content: eiHeuristics });
+      }
+
+      // 2) Mode/scenario preface
+      if (currentMode === "role-play") {
+        const personaLine = currentPersonaHint();
+        const detail = sc
+          ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${sc.hcpRole || "—"}. ${
+              sc.background ? `Background: ${sc.background}. ` : ""
+            }${sc.goal ? `Today’s Goal: ${sc.goal}.` : ""}`
+          : "";
+        const roleplayRails = buildPreface("role-play", sc) + `
+
+Context:
+${personaLine}
+${detail}`;
+        messages.push({ role: "system", content: roleplayRails });
+      } else {
+        messages.push({ role: "system", content: buildPreface(currentMode, sc) });
+      }
+
+      // 3) User turn
+      messages.push({ role: "user", content: userText });
+
+      try {
+        if (currentMode !== "role-play") {
+          const sysExtras =
+            typeof EIContext !== "undefined" && EIContext?.getSystemExtras
+              ? await EIContext.getSystemExtras().catch(() => null)
+              : null;
+          if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
+        }
+
+        let raw = await callModel(messages);
+        if (!raw) raw = "From my perspective, we review patient histories and adherence to guide decisions.";
+
+        const { coach, clean } = extractCoach(raw);
+        let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
+
+        // enforce HCP-only in RP
+        if (currentMode === "role-play") {
+          replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+        }
+
+        // anti-echo
+        if (norm(replyText) === norm(userText)) {
+          replyText = "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.";
+        }
+
+        // duplicate/cycling guard
+        let candidate = norm(replyText);
+        if (candidate && (candidate === lastAssistantNorm || isRecent(candidate))) {
+          const alts = [
+            "In my clinic, we review history, behaviors, and adherence to understand risk.",
+            "I rely on history and follow-up patterns to guide decisions.",
+            "We focus on adherence and recent exposures when assessing candidacy."
+          ];
+          replyText = alts[Math.floor(Math.random()*alts.length)];
+          candidate = norm(replyText);
+        }
+        lastAssistantNorm = candidate;
+        pushRecent(candidate);
+
+        // Length discipline: allow longer Sales Coach, clamp softly elsewhere
+        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2400 : 1400);
+
+        // Compute coach feedback
+        const computed = scoreReply(userText, replyText, currentMode);
+        const finalCoach = (() => {
+          if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
+            const scores = coach.scores || coach.subscores;
+            const overall =
+              typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
+            return {
+              overall: overall ?? computed.overall,
+              scores,
+              feedback: coach.feedback || computed.feedback,
+              worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
+              improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
+              phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
+              context: coach.context || { rep_question: userText, hcp_reply: replyText },
+              score: overall ?? computed.overall,
+              subscores: scores
+            };
+          }
+          return computed;
+        })();
+
+        // 1) Push assistant/HCP reply
+        conversation.push({
+          role: "assistant",
+          content: replyText,
+          _coach: finalCoach,
+          _speaker: currentMode === "role-play" ? "hcp" : "assistant"
+        });
+
+        // 2) Push Coach feedback as a separate chat message (per spec), except RP mid-flow
+        if (coachOn && currentMode !== "role-play") {
+          conversation.push({
+            role: "assistant",
+            content: renderCoachAsChat(finalCoach),
+            _coach: finalCoach,
+            _speaker: "coach"
+          });
+        }
+
+        trimConversationIfNeeded();
+        renderMessages();
+        renderCoach();
+
+        if (currentMode === "emotional-assessment") generateFeedback();
+
+        if (cfg && cfg.analyticsEndpoint) {
+          fetch(cfg.analyticsEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ts: Date.now(),
+              schema: cfg.schemaVersion || "coach-v2",
+              mode: currentMode,
+              scenarioId: currentScenarioId,
+              turn: conversation.length,
+              context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
+              overall: finalCoach.overall,
+              scores: finalCoach.scores
+            })
+          }).catch(() => {});
+        }
+      } catch (e) {
+        conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
+        trimConversationIfNeeded();
+        renderMessages();
+      }
     } finally {
-      if (sendBtn) sendBtn.disabled = false;
-      if (ta) ta.disabled = false;
+      const shellEl2 = mount.querySelector(".reflectiv-chat");
+      const sendBtn2 = shellEl2?._sendBtn;
+      const ta2 = shellEl2?._ta;
+      if (sendBtn2) sendBtn2.disabled = false;
+      if (ta2) { ta2.disabled = false; ta2.focus(); }
       isSending = false;
     }
   }
