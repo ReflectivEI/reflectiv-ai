@@ -1,5 +1,3 @@
-widget.js - updated 
-
 /* widget.js
  * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r8
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
@@ -46,6 +44,26 @@ widget.js - updated
 
     onReady(tryGet);
   }
+
+  // ---------- guarded global + optional auto-boot ----------
+  let __booted = false;
+  function boot() {
+    if (__booted) return;
+    __booted = true;
+    // buildUI will be defined later in this file
+    onReady(() => waitForMount(buildUI));
+  }
+  // expose minimal API
+  window.widget = Object.freeze({
+    boot,
+    open: () => { try { return openModal && openModal(); } catch (_) {} },
+    close: () => { try { return closeModal && closeModal(); } catch (_) {} }
+  });
+  // optional auto-boot if script tag has data-autoboot="true"
+  try {
+    const s = document.currentScript;
+    if (s && s.dataset && s.dataset.autoboot === "true") boot();
+  } catch {}
 
   // ---------- config/state ----------
   const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play"];
@@ -625,6 +643,7 @@ widget.js - updated
     if (p) return `HCP Persona: ${p}.`;
     return "";
   }
+})();
 
   // ---------- prompt preface ----------
   function buildPreface(mode, sc) {
