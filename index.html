@@ -15,7 +15,7 @@
                  font-src 'self' https://fonts.gstatic.com;
                  script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
                  connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev;
-                 base-uri 'self'; frame-ancestors 'none';">
+                 base-uri 'self';">
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -85,6 +85,7 @@
       var W = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
       window.WORKER_URL = W;
       window.COACH_ENDPOINT = W;
+      window.ALORA_ENDPOINT = W; // ensure Alora uses the same Worker
 
       function normalize(url) {
         try {
@@ -131,23 +132,8 @@
     };
   </script>
 
-  <!-- Coach script: single-load guard -->
+  <!-- Keep EI context -->
   <script src="assets/chat/ei-context.js?v=1"></script>
-  <script>
-    (function(){
-      const already = Array.from(document.scripts).some(s => /(?:^|\/)widget\.js(?:\?|$)/.test(s.src));
-      if (!already && !window.__REFLECTIV_WIDGET_PRESENT__) {
-        window.__REFLECTIV_WIDGET_PRESENT__ = true;
-        const s = document.createElement('script');
-        s.src = 'widget.js?v=20251025-1045';
-        s.defer = true;
-        s.id = 'reflectiv-widget-script';
-        document.head.appendChild(s);
-      } else {
-        window.__REFLECTIV_WIDGET_PRESENT__ = true;
-      }
-    })();
-  </script>
 
   <!-- Ensure Alora on top -->
   <style>#aloraFab{z-index:10001;pointer-events:auto}.alora{z-index:10001}</style>
@@ -679,7 +665,7 @@
     setTimeout(()=>{
       const tag=document.getElementById('reflectiv-widget-script');
       const root=document.getElementById('reflectiv-widget');
-      if(!tag) show('widget.js tag missing. Single-load guard failed.');
+      if(!tag) show('widget.js tag missing.');
       else if(!root) show('mount #reflectiv-widget not found.');
       else if(root.childElementCount===0) show('No UI mounted. Check COACH_ENDPOINT, CORS, and console.');
     },1200);
@@ -691,5 +677,8 @@
   })();
 })();
 </script>
+
+<!-- Auto-boot the Coach widget -->
+<script src="assets/chat/widget.js?v=20251025-10451" data-autoboot="true" defer id="reflectiv-widget-script"></script>
 </body>
 </html>
