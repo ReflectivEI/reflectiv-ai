@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0c2740">
   <title>ReflectivAI – AI Sales Enablement for Life Sciences</title>
-
-  <!-- Favicon (avoid 404) -->
-  <link rel="icon" href="logo-modern.png">
+  <link rel="icon" href="assets/favicon.ico">
 
   <!-- CSP: allow Worker, Tailwind, and Google Fonts -->
-  <!-- CSP NOTE:
-       - 'frame-ancestors' is ONLY enforced via HTTP response headers (not <meta>).
-       - GitHub Pages can’t set custom headers, so omit 'frame-ancestors' here.
-       - When deployed behind a proxy/Worker, set 'frame-ancestors' at the edge. -->
+  <!--
+    CSP NOTE:
+    - 'frame-ancestors' is ONLY enforced via HTTP response headers (not <meta>).
+      On GitHub Pages you can’t add custom headers, so we omit 'frame-ancestors' here.
+    - Keep connect-src to your Worker.
+  -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self';
                  img-src 'self' data:;
                  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-                 font-src 'self' https://fonts.gstatic.com;
+                 font-src  'self' https://fonts.gstatic.com;
                  script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
                  connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev;
                  base-uri 'self';">
@@ -85,7 +85,7 @@
   <!-- Coach styles -->
   <link rel="stylesheet" href="widget.css?v=20251021-4">
 
-  <!-- Endpoints + fetch normalizer (maps /chat→/agent, pins Worker URL) -->
+  <!-- Endpoints + fetch normalizer (pins v2 + maps /chat→/agent) -->
   <script>
     (function () {
       var W = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
@@ -94,13 +94,12 @@
 
       function normalize(url) {
         try {
-          var u = (url instanceof Request) ? new URL(url.url)
-                : (url instanceof URL) ? url
-                : new URL(String(url), location.origin);
+          var u = (url instanceof Request) ? new URL(url.url) :
+                  (url instanceof URL) ? url : new URL(String(url), location.origin);
           u.hostname = u.hostname.replace(/\.workers\.dev\.workers\.dev$/i, '.workers.dev');
           var isWorker = /\.workers\.dev$/i.test(u.hostname);
-          var isOur = /my-chat-agent(-v2)?\.tonyabdelmalak\.workers\.dev$/i.test(u.hostname);
-          if (!isWorker || !isOur) u = new URL(u.pathname + u.search + u.hash, W);
+          var isOurWorker = /my-chat-agent(-v2)?\.tonyabdelmalak\.workers\.dev$/i.test(u.hostname);
+          if (!isWorker || !isOurWorker) u = new URL(u.pathname + u.search + u.hash, W);
           var p = u.pathname;
           if (!p || p === '/' || /^\/chat\/?$/i.test(p)) p = '/agent';
           p = '/' + p.replace(/^\/+/, '').replace(/\/+$/,'');
@@ -134,7 +133,7 @@
   <!-- Alora persona -->
   <script>
     window.ALORA_PERSONA = {
-      system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, EI framework, and integrations, and can explain features contextually."
+      system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, EI framework, and platform integrations, and can explain any feature or benefit contextually."
     };
   </script>
 
@@ -663,6 +662,17 @@
   window.addEventListener('error',e=>show(e.message||'script error'));
   window.addEventListener('unhandledrejection',e=>show((e.reason&&e.reason.message)||String(e.reason)||'promise rejection'));
 
+  const btn=document.getElementById('openCoach');
+  btn&&btn.addEventListener('click',()=>{
+    setTimeout(()=>{
+      const tag=document.getElementById('reflectiv-widget-script');
+      const root=document.getElementById('reflectiv-widget');
+      if(!tag) show('widget.js tag missing. Check script include path.');
+      else if(!root) show('mount #reflectiv-widget not found.');
+      else if(root.childElementCount===0) show('No UI mounted. Check COACH_ENDPOINT, CORS, and console.');
+    },1200);
+  });
+
   (function logBoot(){
     const tag=document.getElementById('reflectiv-widget-script');
     console.log('[coach] tag:',!!tag,' endpoint:',window.COACH_ENDPOINT||'(missing)');
@@ -670,20 +680,11 @@
 })();
 </script>
 
-<!-- ===== Coach script: single-load + AUTOboot (place LAST) ===== -->
-<script>
-(function () {
-  if (window.__REFLECTIV_WIDGET_PRESENT__) return;
-  window.__REFLECTIV_WIDGET_PRESENT__ = true;
-  var s = document.createElement('script');
-  s.id = 'reflectiv-widget-script';
-  s.src = 'assets/chat/widget.js?v=20251025-10451';
-  s.defer = true;
-  s.setAttribute('data-autoboot','true');  // widget boots itself
-  s.onerror = function(){ console.error('Failed to load assets/chat/widget.js'); };
-  document.body.appendChild(s);
-})();
-</script>
+<!-- ===== Widget loader: correct path + autoboot ===== -->
+<script id="reflectiv-widget-script"
+        src="assets/chat/widget.js?v=20251028-1621"
+        data-autoboot="true"
+        defer></script>
 
 </body>
 </html>
