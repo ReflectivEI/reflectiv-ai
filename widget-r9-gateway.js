@@ -85,10 +85,19 @@
   };
 
   function uuid4(){
-    if (crypto && crypto.randomUUID) return crypto.randomUUID();
-    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
+    const g = (typeof self !== "undefined" ? self.crypto : (typeof window !== "undefined" ? window.crypto : null));
+    if (g?.randomUUID) return g.randomUUID();
+    if (g?.getRandomValues) {
+      return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ g.getRandomValues(new Uint8Array(1))[0] & 15 >> (c/4)).toString(16)
+      );
+    }
+    // last resort
+    let d = Date.now(), r;
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => {
+      r = (d + Math.random()*16) % 16 | 0; d = Math.floor(d/16);
+      return (ch === "x" ? r : (r&0x3|0x8)).toString(16);
+    });
   }
 
   function getSessionId(){
@@ -745,7 +754,7 @@ No lists or headings. No coaching or scores.`
 #reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
-      ";
+      `;
       document.head.appendChild(style);
     }
 
@@ -880,6 +889,7 @@ No lists or headings. No coaching or scores.`
     }
 
     // mount controls
+    const simControls = shell.querySelector(".sim-controls");
     simControls.appendChild(lcLabel);
     simControls.appendChild(modeSel);
     simControls.appendChild(coachLabel);
