@@ -47,54 +47,54 @@
 
   // ---------- config/state ----------
 
-// ---- network config for ReflectivAI ----
-const ENDPOINT = "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat"; // Cloudflare Worker v2 (wired to Azure)
-const SITE_TAG = "reflectivai"; // lets Worker route traffic to Azure backend
+  // ---- network config for ReflectivAI ----
+  const ENDPOINT = "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat"; // Cloudflare Worker v2 (wired to Azure)
+  const SITE_TAG = "reflectivai"; // lets Worker route traffic to Azure backend
 
-async function sendToCoach(messages, { model = "gpt-4o-mini", temperature = 0.4, stream = false } = {}) {
-  try {
-    const r = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        site: SITE_TAG,
-        model,
-        temperature,
-        stream,
-        messages
-      })
-    });
-    if (!r.ok) {
-      const t = await r.text().catch(() => "");
-      throw new Error(`Coach API ${r.status}: ${t || "error"}`);
+  async function sendToCoach(messages, { model = "gpt-4o-mini", temperature = 0.4, stream = false } = {}) {
+    try {
+      const r = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          site: SITE_TAG,
+          model,
+          temperature,
+          stream,
+          messages
+        })
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(() => "");
+        throw new Error(`Coach API ${r.status}: ${t || "error"}`);
+      }
+      return await r.json();
+    } catch (err) {
+      console.error("sendToCoach error:", err);
+      return { role: "assistant", content: "The AI coach is temporarily unavailable. Please try again." };
     }
-    return await r.json();
-  } catch (err) {
-    console.error("sendToCoach error:", err);
-    return { role: "assistant", content: "The AI coach is temporarily unavailable. Please try again." };
   }
-}
 
-// ---- learning context options ----
-const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play"];
-const LC_TO_INTERNAL = {
-  "Emotional Intelligence": "emotional-assessment",
-  "Product Knowledge": "product-knowledge",
-  "Sales Simulation": "sales-simulation",
-  "Role Play": "role-play"
-};
+  // ---- learning context options ----
+  const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play"];
+  const LC_TO_INTERNAL = {
+    "Emotional Intelligence": "emotional-assessment",
+    "Product Knowledge": "product-knowledge",
+    "Sales Simulation": "sales-simulation",
+    "Role Play": "role-play"
+  };
 
-// ---- persistent state ----
-let cfg = null;
-let systemPrompt = "";
-let eiHeuristics = "";
-let scenarios = [];
-let scenariosById = new Map();
+  // ---- persistent state ----
+  let cfg = null;
+  let systemPrompt = "";
+  let eiHeuristics = "";
+  let scenarios = [];
+  let scenariosById = new Map();
 
-let currentMode = "sales-simulation";
-let currentScenarioId = null;
-let conversation = [];
-let coachOn = true;
+  let currentMode = "sales-simulation";
+  let currentScenarioId = null;
+  let conversation = [];
+  let coachOn = true;
 
   // ---------- EI globals ----------
   let personaSelectElem = null;
@@ -1418,79 +1418,118 @@ ${COMMON}`
   }
 
   async function sendMessage(userText) {
-  if (isSending) return; // double-send lock
-  isSending = true;
+    if (isSending) return; // double-send lock
+    isSending = true;
 
-  const shellEl = mount.querySelector(".reflectiv-chat");
-  const renderMessages = shellEl._renderMessages;
-  const renderCoach = shellEl._renderCoach;
-  const sendBtn = shellEl._sendBtn;
-  const ta = shellEl._ta;
-  if (sendBtn) sendBtn.disabled = true;
-  if (ta) ta.disabled = true;
+    const shellEl = mount.querySelector(".reflectiv-chat");
+    const renderMessages = shellEl._renderMessages;
+    const renderCoach = shellEl._renderCoach;
+    const sendBtn = shellEl._sendBtn;
+    const ta = shellEl._ta;
+    if (sendBtn) sendBtn.disabled = true;
+    if (ta) ta.disabled = true;
 
-  try {
-    // normalize input
-    userText = clampLen((userText || "").trim(), 1600);
-    if (!userText) return;
-    lastUserMessage = userText;
+    try {
+      // normalize input
+      userText = clampLen((userText || "").trim(), 1600);
+      if (!userText) return;
+      lastUserMessage = userText;
 
-    // intercept evaluation intents
-    const evalRe =
-      /\b(evaluate|assessment|assess|grade|score)\b.*\b(conversation|exchange|dialog|dialogue|chat)\b|\bfinal (eval|evaluation|assessment)\b/i;
-    if (evalRe.test(userText)) {
-      await evaluateConversation();
+      // intercept evaluation intents
+      const evalRe =
+        /\b(evaluate|assessment|assess|grade|score)\b.*\b(conversation|exchange|dialog|dialogue|chat)\b|\bfinal (eval|evaluation|assessment)\b/i;
+      if (evalRe.test(userText)) {
+        await evaluateConversation();
+        trimConversationIfNeeded();
+        renderMessages();
+        renderCoach();
+        return;
+      }
+
+      // push user turn
+      conversation.push({
+        role: "user",
+        content: userText,
+        _speaker: currentMode === "role-play" ? "rep" : undefined,
+        ts: Date.now()
+      });
+      trimConversationIfNeeded();
+      renderMessages();
+
+      // build context (system preface + last 12 turns)
+      const sys = { role: "system", content: buildPreface(currentMode, scenariosById.get(currentScenarioId)) };
+      const msgs = [sys, ...conversation.slice(-12)];
+
+      // call backend (Worker → Azure for ReflectivAI)
+      const temperature = currentMode === "role-play" ? 0.5 : 0.4;
+      const resp1 = await sendToCoach(msgs, { model: "gpt-4o-mini", temperature, stream: false });
+
+      // --- get raw reply from Worker and apply cut-off guard (auto-continue up to 2 passes)
+      let raw = resp1?.content || resp1?.reply || "";
+      if (seemsTruncated(raw)) {
+        const contMsgs1 = [...msgs, { role: "user", content: "Continue your previous response. Complete the last sentence. Keep it concise." }];
+        const resp2 = await sendToCoach(contMsgs1, { model: "gpt-4o-mini", temperature, stream: false });
+        const more1 = resp2?.content || resp2?.reply || "";
+        if (more1) raw = (raw + "\n" + more1).trim();
+
+        if (seemsTruncated(raw)) {
+          const contMsgs2 = [...msgs, { role: "user", content: "Continue. Finish any unfinished bullets or sentences in 2–3 lines max." }];
+          const resp3 = await sendToCoach(contMsgs2, { model: "gpt-4o-mini", temperature, stream: false });
+          const more2 = resp3?.content || resp3?.reply || "";
+          if (more2) raw = (raw + "\n" + more2).trim();
+        }
+      }
+
+      // extract any <coach>{...}</coach> block and the clean assistant text
+      const { coach, clean } = extractCoach(raw);
+
+      // role mapping + RP hardening
+      let assistantSpeaker = currentMode === "role-play" ? "hcp" : "coach";
+      let replyText = clean || "The AI coach is temporarily unavailable. Please try again.";
+
+      if (currentMode === "role-play") {
+        const sc = scenariosById.get(currentScenarioId);
+        // enforce strict HCP-only POV and strip any guidance leakage
+        replyText = await enforceHcpOnly(replyText, sc, msgs, callModel);
+        replyText = sanitizeRolePlayOnly(replyText);
+      }
+
+      // append assistant turn
+      conversation.push({
+        role: "assistant",
+        content: replyText,
+        _speaker: assistantSpeaker,
+        ts: Date.now()
+      });
+
+      // if we received coach JSON, render as a separate "Coach" chat message and store subscores
+      if (coach) {
+        conversation.push({
+          role: "assistant",
+          content: renderCoachAsChat(coach),
+          _speaker: "coach",
+          _coach: coach,
+          ts: Date.now()
+        });
+      }
+
       trimConversationIfNeeded();
       renderMessages();
       renderCoach();
-      return;
+    } catch (e) {
+      conversation.push({
+        role: "assistant",
+        content: "Sorry, an error occurred. Try again.",
+        _speaker: "coach",
+        ts: Date.now()
+      });
+      renderMessages();
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+      if (ta) ta.disabled = false;
+      isSending = false;
     }
-
-    // push user turn
-    conversation.push({
-      role: "user",
-      content: userText,
-      _speaker: currentMode === "role-play" ? "rep" : undefined,
-      ts: Date.now()
-    });
-    trimConversationIfNeeded();
-    renderMessages();
-
-    // build context (system preface + last 12 turns)
-    const sys = { role: "system", content: buildPreface(currentMode, scenariosById.get(currentScenarioId)) };
-    const msgs = [sys, ...conversation.slice(-12)];
-
-    // call backend (Worker → Azure for ReflectivAI)
-    const temperature = currentMode === "role-play" ? 0.5 : 0.4;
-    const resp = await sendToCoach(msgs, { model: "gpt-4o-mini", temperature, stream: false });
-
-    // append assistant turn
-    const assistantSpeaker = currentMode === "role-play" ? "hcp" : "coach";
-    const content = resp?.content || "The coach is temporarily unavailable. Please try again.";
-    conversation.push({
-      role: "assistant",
-      content,
-      _speaker: assistantSpeaker,
-      ts: Date.now()
-    });
-
-    trimConversationIfNeeded();
-    renderMessages();
-    renderCoach();
-  } catch (e) {
-    conversation.push({
-      role: "assistant",
-      content: "Sorry, an error occurred. Try again.",
-      _speaker: "coach",
-      ts: Date.now()
-    });
-    renderMessages();
-  } finally {
-    if (sendBtn) sendBtn.disabled = false;
-    if (ta) ta.disabled = false;
-    isSending = false;
   }
-}
 
   // ---------- scenarios loader ----------
   async function loadScenarios() {
