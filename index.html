@@ -7,14 +7,6 @@
   <title>ReflectivAI – AI Sales Enablement for Life Sciences</title>
   <link rel="icon" href="assets/favicon.ico">
 
-  <!-- CSP: allow this origin and your Worker for XHR/fetch -->
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self';
-                 img-src 'self' data:;
-                 style-src 'self' 'unsafe-inline';
-                 script-src 'self' 'unsafe-inline';
-                 connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev;">
-
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -81,19 +73,15 @@
 
   <!-- Endpoints -->
   <script>
-    // Base only. The widget appends /agent and /evaluate.
     window.WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
-
-    // Back-compat globals. Safe no-ops for the new widget.
-    window.COACH_ENDPOINT = window.WORKER_URL;
-    // Alora will post simple Q&A to the same gateway via /agent.
-    window.ALORA_ENDPOINT = window.WORKER_URL + '/agent';
+    window.COACH_ENDPOINT = window.WORKER_URL + '/chat';
+    window.ALORA_ENDPOINT = window.WORKER_URL + '/chat';
   </script>
   <script>
-    window.ALORA_PERSONA = {
-      system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, emotional intelligence framework, and platform integrations, and can explain any feature or benefit contextually."
-    };
-  </script>
+  window.ALORA_PERSONA = {
+    system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, emotional intelligence framework, and platform integrations, and can explain any feature or benefit contextually."
+  };
+</script>
 
   <!-- Coach script -->
   <script src="assets/chat/ei-context.js?v=1"></script>
