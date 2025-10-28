@@ -1,15 +1,15 @@
+widget.js - updated 
+
 /* widget.js
- * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r9
+ * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r8
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
- * Gateway-aligned (r9):
- * - Uses persona-locked Worker gateway (/agent, /evaluate). No direct LLM calls.
- * - Session & sequencing: session_id in sessionStorage, monotonic seq, per-mode thread_id.
- * - Mode pin: sends current mode each turn; mismatch handled with clear UI error.
- * - RP firewall: keeps stricter local sanitizer + rewrite passes. UI never sends guidance text.
- * - Eval split: "Evaluate this exchange" -> /evaluate thread separate from RP thread.
- * - Error surfacing: handles stale_seq, leak_blocked, role_drift, mode_mismatch, rate_limited.
- * - Backoff + retry: 3 attempts with jitter for transient 5xx/network.
- * - Coach feedback: local deterministic scoring when Coach On. No JSON in RP path.
+ * KEY FIXES (r8):
+ * - Cut-off guard: higher max_output_tokens + mid-sentence detector + auto-continue (2 passes)
+ * - RP bullets lock: disable list parsing in RP; strip hyphen lines; normalize to sentences
+ * - Coach Feedback move: full feedback posted into chat as "Coach" message; yellow panel minimized
+ * - RP leak guard tightened: multi-pass rewrite, imperative-block removal, pronoun repair
+ * - Mode-toggle safety: per-mode renderer respects list policy and speaker chips
+ * - Length discipline: per-section caps and rails; soft clamp + ellipsis only for coach text
  */
 (function () {
   // ---------- safe bootstrapping ----------
@@ -77,64 +77,6 @@
 
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
-
-  // ---------- session + threads (gateway-aligned) ----------
-  const store = {
-    get(key, def){ try{ return JSON.parse(sessionStorage.getItem(key)); }catch(_){ return def; } },
-    set(key, val){ try{ sessionStorage.setItem(key, JSON.stringify(val)); }catch(_){ } },
-  };
-
-  function uuid4(){
-    const g = (typeof self !== "undefined" ? self.crypto : (typeof window !== "undefined" ? window.crypto : null));
-    if (g?.randomUUID) return g.randomUUID();
-    if (g?.getRandomValues) {
-      return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-        (c ^ g.getRandomValues(new Uint8Array(1))[0] & 15 >> (c/4)).toString(16)
-      );
-    }
-    // last resort
-    let d = Date.now(), r;
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => {
-      r = (d + Math.random()*16) % 16 | 0; d = Math.floor(d/16);
-      return (ch === "x" ? r : (r&0x3|0x8)).toString(16);
-    });
-  }
-
-  function getSessionId(){
-    let sid = store.get("reflectiv.session_id", null);
-    if (!sid) { sid = uuid4(); store.set("reflectiv.session_id", sid); }
-    return sid;
-  }
-
-  // per-mode thread ids; RP can also segment by scenario
-  function threadKeyFor(mode){
-    if (mode === "role-play" || mode === "sales-simulation") {
-      const sc = currentScenarioId || "generic";
-      return `reflectiv.thread.${mode}.${sc}`;
-    }
-    return `reflectiv.thread.${mode}.default`;
-  }
-
-  function getThreadId(mode){
-    const k = threadKeyFor(mode);
-    let tid = store.get(k, null);
-    if (!tid) { tid = uuid4(); store.set(k, tid); }
-    return tid;
-  }
-
-  function newThreadId(mode){
-    const k = threadKeyFor(mode);
-    const tid = uuid4();
-    store.set(k, tid);
-    return tid;
-  }
-
-  function nextSeq(){
-    let seq = store.get("reflectiv.seq", 0);
-    seq = (typeof seq === "number" ? seq : 0) + 1;
-    store.set("reflectiv.seq", seq);
-    return seq;
-  }
 
   // ---------- EI defaults ----------
   const DEFAULT_PERSONAS = [
@@ -338,17 +280,30 @@
     ].join("\n");
   }
 
-  async function enforceHcpOnly(replyText, sc) {
+  async function enforceHcpOnly(replyText, sc, messages, callModelFn) {
     let out = sanitizeRolePlayOnly(replyText);
     if (!isGuidanceLeak(out)) return out;
 
-    // Local rewrite passes are retained for UI safety, even though the gateway also enforces RP.
-    const hardened = [
+    // Pass 1: rewrite under stricter rails
+    const rewriteMsgs = [
       { role: "system", content: correctiveRails(sc) },
       { role: "user", content: out }
     ];
+    try {
+      const r1 = await callModelFn(rewriteMsgs);
+      out = sanitizeRolePlayOnly(r1);
+      if (!isGuidanceLeak(out)) return out;
+    } catch (_) {}
 
-    // In UI we cannot call the model directly; fall back to hard strip when leak suspected.
+    // Pass 2: fresh completion with corrective rails prepended to original convo
+    try {
+      const hardened = [{ role: "system", content: correctiveRails(sc) }, ...messages];
+      const r2 = await callModelFn(hardened);
+      out = sanitizeRolePlayOnly(r2);
+      if (!isGuidanceLeak(out)) return out;
+    } catch (_) {}
+
+    // Pass 3: last-ditch strip
     out = out.replace(
       new RegExp(
         String.raw`(?:^|\s)(?:I|We)\s+(?:can\s+)?(?:provide|offer|arrange|conduct|deliver|send|share|supply|set up|schedule|organize|host|walk (?:you|your team) through|train|educate)\b[^.!?]*[.!?]\s*`,
@@ -457,7 +412,9 @@
     let coach = {};
     try {
       coach = JSON.parse(jsonTxt);
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Coach JSON parse error", e);
+    }
     const after = closeIdx >= 0 ? tail.slice(closeIdx + "</coach>".length) : "";
     const clean = sanitizeLLM((head + " " + after).trim());
     return { coach, clean };
@@ -480,7 +437,7 @@
         /(renal|egfr|creatinine|bmd|resistance|ddi|interaction|efficacy|safety|adherence|formulary|access|prior auth|prep|tdf|taf|bictegravir|cabotegravir|rilpivirine|descovy|biktarvy|cabenuva)/i.test(
           t
         ),
-      tooLong: words > 220,
+      tooLong: words > 220,           // widened for Sales Simulation
       idealLen: inRange(words, 45, 160)
     };
 
@@ -669,8 +626,21 @@
     return "";
   }
 
-  // ---------- prompt preface (UI-only hints to gateway; no direct use now) ----------
+  // ---------- prompt preface ----------
   function buildPreface(mode, sc) {
+    const COMMON = `# ReflectivAI — Output Contract
+Return exactly two parts. No code blocks. No markdown headings.
+1) Sales Guidance: short, actionable, accurate guidance.
+2) <coach>{
+     "overall": 0-100,
+     "scores": { "accuracy":0-5,"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5 },
+     "worked": ["…"],
+     "improve": ["…"],
+     "phrasing": "…",
+     "feedback": "one concise paragraph",
+     "context": { "rep_question":"...", "hcp_reply":"..." }
+   }</coach>`;
+
     const personaLine = currentPersonaHint();
 
     if (mode === "sales-simulation") {
@@ -695,7 +665,9 @@ ${
 - 4–6 sentences max, then one closing question.
 - Only appropriate, publicly known, label-aligned facts.
 - No pricing advice or PHI. No off-label.
-- Keep each section under 90 words.`
+- Keep each section under 90 words.
+
+${COMMON}`
       ).trim();
     }
 
@@ -708,14 +680,29 @@ ${
         `# Role Play Contract — HCP Only
 You are the Healthcare Provider. Reply ONLY as the HCP. First-person. Realistic, concise clinical dialogue.
 ${personaLine}
-No lists or headings. No coaching or scores.`
+If the user types "Evaluate this exchange" or "Give feedback", step out of role and return EI-based reflection.
+
+Hard bans:
+- Do NOT output coaching, rubrics, scores, JSON, or any "<coach>" block.
+- Do NOT output headings or bullet lists.
+- Do NOT ask the rep about the rep’s process, approach, or clinic metrics.
+- Do NOT interview the rep with sales-discovery prompts.
+- Do NOT make offers like "I can provide/offer/arrange training, resources, handouts, or scripts," and do NOT propose to educate the rep or their staff.
+
+Allowable questions from HCP:
+- Clarify therapy, safety, logistics, coverage, workflow impact.
+- Questions must reflect HCP’s POV (“my clinic”, “my patients”, “our team”).
+
+Output only the HCP utterance. 2–5 sentences.`
       ).trim();
     }
 
     // emotional-assessment
     return (
       `Provide brief self-reflection tips tied to HCP communication.
-- 3–5 sentences, then one reflective question. Each sentence under 28 words.`
+- 3–5 sentences, then one reflective question. Each sentence under 28 words.
+
+${COMMON}`
     ).trim();
   }
 
@@ -758,17 +745,25 @@ No lists or headings. No coaching or scores.`
       document.head.appendChild(style);
     }
 
-    // shell
+    // shell + skeleton
     const shell = el("div", "reflectiv-chat");
+    shell.innerHTML = `
+      <div class="chat-toolbar"><div class="sim-controls"></div></div>
+      <div class="scenario-meta"></div>
+      <div class="chat-messages">
+        <div class="message assistant"><div class="content">Loading ReflectivAI Coach…</div></div>
+      </div>
+      <div class="chat-input">
+        <textarea placeholder="Type your message…"></textarea>
+        <button class="btn">Send</button>
+      </div>
+    `;
     mount.appendChild(shell);
 
-    // toolbar + controls
+    // rebuild real UI
     const bar = el("div", "chat-toolbar");
-    const controlsEl = el("div", "sim-controls");
-    bar.appendChild(controlsEl);
-    shell.appendChild(bar);
+    const simControls = el("div", "sim-controls");
 
-    // controls
     const lcLabel = el("label", "", "Learning Center");
     lcLabel.htmlFor = "cw-mode";
     const modeSel = el("select");
@@ -881,18 +876,22 @@ No lists or headings. No coaching or scores.`
     }
 
     // mount controls
-    controlsEl.appendChild(lcLabel);
-    controlsEl.appendChild(modeSel);
-    controlsEl.appendChild(coachLabel);
-    controlsEl.appendChild(coachSel);
-    controlsEl.appendChild(diseaseLabel);
-    controlsEl.appendChild(diseaseSelect);
-    controlsEl.appendChild(hcpLabel);
-    controlsEl.appendChild(hcpSelect);
-    controlsEl.appendChild(personaLabel);
-    controlsEl.appendChild(personaSelect);
-    controlsEl.appendChild(featureLabel);
-    controlsEl.appendChild(featureSelect);
+    simControls.appendChild(lcLabel);
+    simControls.appendChild(modeSel);
+    simControls.appendChild(coachLabel);
+    simControls.appendChild(coachSel);
+    simControls.appendChild(diseaseLabel);
+    simControls.appendChild(diseaseSelect);
+    simControls.appendChild(hcpLabel);
+    simControls.appendChild(hcpSelect);
+    simControls.appendChild(personaLabel);
+    simControls.appendChild(personaSelect);
+    simControls.appendChild(featureLabel);
+    simControls.appendChild(featureSelect);
+
+    bar.appendChild(simControls);
+    shell.innerHTML = "";
+    shell.appendChild(bar);
 
     const meta = el("div", "scenario-meta");
     shell.appendChild(meta);
@@ -1017,6 +1016,7 @@ No lists or headings. No coaching or scores.`
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
+        // Speaker chips: Role Play = HCP/Rep. Sales Simulation = Sales Coach/Rep. Coach message = Coach.
         if (m._speaker === "coach") {
           const chip = el("div", "speaker coach", "Coach");
           c.appendChild(chip);
@@ -1060,6 +1060,7 @@ No lists or headings. No coaching or scores.`
       }
       coach.style.display = "";
 
+      // Panel is minimized by design. Show only a tiny summary if last coach exists.
       const last = conversation.slice().reverse().find((m) => m._speaker === "coach");
       if (!last) {
         body.innerHTML = `<span class="muted" style="font-size:12px;color:#6b7484;">Coach panel minimized. Full feedback appears in chat.</span>`;
@@ -1077,7 +1078,7 @@ No lists or headings. No coaching or scores.`
       currentMode = LC_TO_INTERNAL[lc];
       const pk = currentMode === "product-knowledge";
 
-      coachLabel.classList.toggle("hidden", false);
+      coachLabel.classList.toggle("hidden", false); // keep toggle visible
       coachSel.classList.toggle("hidden", false);
 
       if (currentMode === "sales-simulation") {
@@ -1171,8 +1172,6 @@ No lists or headings. No coaching or scores.`
       if (!sel) return;
       const sc = scenariosById.get(sel);
       currentScenarioId = sc ? sc.id : null;
-      // new thread on scenario change for RP/SS modes
-      newThreadId(currentMode);
       renderMessages();
       renderCoach();
       renderMeta();
@@ -1190,75 +1189,177 @@ No lists or headings. No coaching or scores.`
     applyModeVisibility();
   }
 
-  // ---------- Gateway calls ----------
-  function rid(){ return Math.random().toString(36).slice(2); }
-  function norm(txt){return String(txt||"").toLowerCase().replace(/\s+/g," ").trim();}
+  // ---------- callModel (retries, timeout, backoff, auto-continue) ----------
+  function rid() {
+    return Math.random().toString(36).slice(2);
+  }
 
-  async function postJson(url, payload, { attempts = 3, baseDelay = 350 } = {}){
-    let lastErr = null;
-    for (let i=0;i<attempts;i++){
+  function seemsTruncated(text) {
+    if (!text) return true;
+    const t = String(text).trim();
+    if (!t) return true;
+    // ends without terminal punctuation or cut by clamp ellipsis
+    const noPeriod = !/[.!?]["’”)]?\s*$/.test(t);
+    const hasEllipsis = /…$/.test(t);
+    const longButNoStop = t.length > 800 && noPeriod;
+    return hasEllipsis || longButNoStop;
+  }
+
+  async function rawCall(url, payload, signal) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Req-Id": rid() },
+      body: JSON.stringify(payload),
+      signal
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json().catch(() => ({}));
+    return data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
+  }
+
+  async function callModel(messages) {
+    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    const payload = {
+      model: (cfg?.model) || "llama-3.1-8b-instant",
+      temperature: 0.2,
+      stream: false,
+      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || 2200, // bumped up
+      messages
+    };
+
+    // attempt with retries
+    const attempt = async (n, delayMs) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort("timeout"), 50000); // 50s
       try {
-        const r = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Req-Id": rid() },
-          body: JSON.stringify(payload)
-        });
-        const ct = r.headers.get("content-type")||"";
-        const data = ct.includes("application/json") ? await r.json() : { reply: await r.text() };
-        if (!r.ok) {
-          const err = new Error(data?.error || ("HTTP "+r.status));
-          err.status = r.status; err.payload = data;
-          throw err;
+        return await rawCall(url, payload, controller.signal);
+      } catch (e) {
+        if (n > 0 && /HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(String(e))) {
+          await new Promise((res) => setTimeout(res, delayMs));
+          return attempt(n - 1, delayMs * 2);
         }
-        return data;
-      } catch (e){
-        lastErr = e;
-        const msg = String(e && e.message || e);
-        if (!/timeout|NetworkError|Failed to fetch|HTTP 5\d\d/i.test(msg)) break;
-        await new Promise(res => setTimeout(res, baseDelay * Math.pow(2,i) + Math.random()*120));
+        console.warn("Model call failed:", e);
+        return "";
+      } finally {
+        clearTimeout(timeout);
       }
+    };
+
+    let text = await attempt(2, 400);
+    // auto-continue if truncated
+    let hops = 0;
+    while (seemsTruncated(text) && hops < 2) {
+      const contMsgs = [
+        ...messages,
+        { role: "user", content: "Continue your previous response. Complete the last sentence. Keep it concise." }
+      ];
+      payload.messages = contMsgs;
+      const more = await attempt(1, 400);
+      if (more) text = (text + "\n" + more).trim();
+      hops++;
     }
-    throw lastErr || new Error("network_error");
-  }
-
-  async function gatewayAgent(input){
-    const base = (cfg?.apiBase || cfg?.workerUrl || window.WORKER_URL || window.COACH_ENDPOINT || "").replace(/\/+$/,"");
-    const url = `${base}/agent`;
-    const session_id = getSessionId();
-    const thread_id = getThreadId(currentMode);
-    const seq = nextSeq();
-    const provider_sig = cfg?.provider_sig || undefined;
-    const payload = { session_id, thread_id, seq, mode: currentMode, input, provider_sig };
-    // optional hints
-    const sc = scenariosById.get(currentScenarioId);
-    if (sc) payload.scenario = { id: sc.id, role: sc.hcpRole||"", ta: sc.therapeuticArea||sc.diseaseState||"", goal: sc.goal||"" };
-    if (systemPrompt) payload.preface = buildPreface(currentMode, sc);
-
-    return await postJson(url, payload);
-  }
-
-  async function gatewayEvaluate(transcriptText){
-    const base = (cfg?.apiBase || cfg?.workerUrl || window.WORKER_URL || window.COACH_ENDPOINT || "").replace(/\/+$/,"");
-    const url = `${base}/evaluate`;
-    const session_id = getSessionId();
-    const evalThread = getThreadId("coach"); // separate thread namespace in gateway; UI still names it
-    const seq = nextSeq();
-    const provider_sig = cfg?.provider_sig || undefined;
-    const payload = { session_id, thread_id: evalThread, seq, mode: "coach", input: transcriptText, provider_sig };
-    return await postJson(url, payload);
+    return text;
   }
 
   // ---------- final-eval helper ----------
   async function evaluateConversation() {
-    const turns = conversation.map((m) => `${m._speaker||m.role}: ${m.content}`).join("\n").slice(0, 24000);
-    try{
-      const data = await gatewayEvaluate(turns);
-      const reply = String(data.reply || data.content || "Evaluation unavailable.");
-      conversation.push({ role: "assistant", content: reply, _speaker: "coach" });
-    } catch(e){
-      const code = (e && e.payload && e.payload.error) || e.message || "error";
-      conversation.push({ role: "assistant", content: `Evaluation error: ${code}`, _speaker: "coach" });
+    const sc = scenariosById.get(currentScenarioId);
+    const turns = conversation.length ? conversation : [{ role: "system", content: "No prior turns." }];
+    const convoText = turns.map((m) => `${m.role}: ${m.content}`).join("\n").slice(0, 24000);
+
+    const evalMsgs = [
+      systemPrompt ? { role: "system", content: systemPrompt } : null,
+      { role: "system", content: buildPreface("role-play", sc) + "\nEvaluate the whole exchange now." },
+      {
+        role: "user",
+        content:
+          `Evaluate this entire exchange for EI, clarity, accuracy, compliance, discovery, and objection handling. ` +
+          `Provide specific, actionable feedback and a 0-100 score.\n\nConversation:\n${convoText}`
+      }
+    ].filter(Boolean);
+
+    const raw = await callModel(evalMsgs);
+    const { coach, clean } = extractCoach(raw);
+    const finalCoach = coach || scoreReply("", clean);
+
+    // push final eval as coach message into chat
+    conversation.push({
+      role: "assistant",
+      content: renderCoachAsChat(finalCoach),
+      _coach: finalCoach,
+      _finalEval: true,
+      _speaker: "coach"
+    });
+  }
+
+  /* ---------- Rep-only evaluation helpers ---------- */
+  function repTurns(history, max = 12) {
+    const repLike = ["rep", "user"];
+    const seq = (history || []).filter(
+      (m) => repLike.includes(String(m._speaker || "").toLowerCase()) || repLike.includes(String(m.role || "").toLowerCase())
+    );
+    return seq.slice(-max).map(({ role, content, _speaker }) => ({
+      role: (role || _speaker || "user"),
+      content: String(content || "")
+    }));
+  }
+
+  async function evaluateRepOnly({ history, personaLabel, goal }) {
+    const transcript = repTurns(history);
+
+    const sys = [
+      "You are the ReflectivAI Coach.",
+      "Evaluate ONLY the Rep’s utterances.",
+      "Ignore HCP content except as context.",
+      `Persona: ${personaLabel || "unspecified persona"}.`,
+      `Scenario Goal: ${goal || "unspecified goal"}.`,
+      "Rubric: Accuracy, Compliance, Discovery, Clarity, Objection Handling, Empathy.",
+      "Return JSON with keys: scores{accuracy,compliance,discovery,clarity,objectionHandling,empathy}, summary, strengths[], improvements[], actionable[]. Scores 1–5 integers."
+    ].join(" ");
+
+    const user = {
+      role: "user",
+      content: JSON.stringify({
+        mode: "rep_only",
+        rubric: ["Accuracy", "Compliance", "Discovery", "Clarity", "Objection Handling", "Empathy"],
+        transcript
+      })
+    };
+
+    let raw = "";
+    try {
+      raw = await callModel([{ role: "system", content: sys }, user]);
+    } catch (e) {
+      return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
+
+    let data = null;
+    try { data = JSON.parse(raw); } catch (_) {}
+
+    if (!data || !data.scores) {
+      const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
+      return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>${esc(safe)}</p></div>` };
+    }
+
+    const s = data.scores || {};
+    const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+    const html = `
+      <div class="coach-panel">
+        <h4>Rep-only Evaluation</h4>
+        <div class="coach-subs">
+          <span class="pill">Accuracy: ${s.accuracy ?? "—"}</span>
+          <span class="pill">Compliance: ${s.compliance ?? "—"}</span>
+          <span class="pill">Discovery: ${s.discovery ?? "—"}</span>
+          <span class="pill">Clarity: ${s.clarity ?? "—"}</span>
+          <span class="pill">Objection Handling: ${s.objectionHandling ?? "—"}</span>
+          <span class="pill">Empathy: ${s.empathy ?? "—"}</span>
+        </div>
+        ${data.summary ? `<p>${esc(data.summary)}</p>` : ""}
+        <h5>Strengths</h5>${list(data.strengths)}
+        <h5>Improvements</h5>${list(data.improvements)}
+        <h5>Actionable Feedback</h5>${list(data.actionable)}
+      </div>`;
+    return { html };
   }
 
   function renderCoachAsChat(coach) {
@@ -1274,6 +1375,7 @@ No lists or headings. No coaching or scores.`
   }
 
   // ---------- send ----------
+  function norm(txt){return String(txt||"").toLowerCase().replace(/\s+/g," ").trim();}
   let lastAssistantNorm = "";
   let recentAssistantNorms = [];
   function pushRecent(n){ recentAssistantNorms.push(n); if(recentAssistantNorms.length>3) recentAssistantNorms.shift(); }
@@ -1321,8 +1423,7 @@ No lists or headings. No coaching or scores.`
         const sc = scenariosById.get(currentScenarioId);
         const persona = sc?.hcpRole || sc?.label || "";
         const goal = sc?.goal || "";
-        // Keep local rep-only panel behavior
-        const res = { html: "<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Use full evaluation command for gateway scoring.</p></div>" };
+        const res = await evaluateRepOnly({ history: conversation, personaLabel: persona, goal });
         repOnlyPanelHTML = res?.html || "<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable.</p></div>";
         renderCoach();
         return;
@@ -1340,123 +1441,144 @@ No lists or headings. No coaching or scores.`
 
       if (currentMode === "emotional-assessment") generateFeedback();
 
-      // ---- Gateway call ----
-      let data = null;
-      try{
-        data = await gatewayAgent(userText);
-      }catch(e){
-        const code = (e && e.payload && e.payload.error) || e.message || "error";
-        let msg = `Model error: ${code}`;
-        if (e.status === 409 && /mode_mismatch/i.test(code)) {
-          msg = "Mode mismatch. Resetting thread for this mode.";
-          newThreadId(currentMode);
-        } else if (e.status === 409 && /stale_seq/i.test(code)) {
-          msg = "Out-of-order request. Try again.";
-        } else if (e.status === 422 && (/leak_blocked|role_drift/i.test(code))) {
-          msg = "Reply blocked by gateway safety. Rephrase your question.";
-        } else if (e.status === 429) {
-          msg = "Rate limited. Wait a moment and retry.";
-        }
-        conversation.push({ role: "assistant", content: msg });
-        trimConversationIfNeeded();
-        renderMessages();
-        return;
+      const sc = scenariosById.get(currentScenarioId);
+      const messages = [];
+
+      // 1) Core runtime rules (system.md) + EI layer
+      if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+      if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
+        messages.push({ role: "system", content: eiHeuristics });
       }
 
-      let raw = String(data.reply || data.content || "");
-      if (!raw) raw = "From my perspective, we review patient histories and adherence to guide decisions.";
-
-      const { coach, clean } = extractCoach(raw);
-      let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
-
-      // enforce HCP-only in RP (UI layer, gateway already guards)
+      // 2) Mode/scenario preface
       if (currentMode === "role-play") {
-        replyText = await enforceHcpOnly(replyText, scenariosById.get(currentScenarioId));
+        const personaLine = currentPersonaHint();
+        const detail = sc
+          ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${sc.hcpRole || "—"}. ${
+              sc.background ? `Background: ${sc.background}. ` : ""
+            }${sc.goal ? `Today’s Goal: ${sc.goal}.` : ""}`
+          : "";
+        const roleplayRails = buildPreface("role-play", sc) + `
+
+Context:
+${personaLine}
+${detail}`;
+        messages.push({ role: "system", content: roleplayRails });
+      } else {
+        messages.push({ role: "system", content: buildPreface(currentMode, sc) });
       }
 
-      // anti-echo
-      if (norm(replyText) === norm(userText)) {
-        replyText = "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.";
-      }
+      // 3) User turn
+      messages.push({ role: "user", content: userText });
 
-      // duplicate/cycling guard
-      let candidate = norm(replyText);
-      if (candidate && (candidate === lastAssistantNorm || isRecent(candidate))) {
-        const alts = [
-          "In my clinic, we review history, behaviors, and adherence to understand risk.",
-          "I rely on history and follow-up patterns to guide decisions.",
-          "We focus on adherence and recent exposures when assessing candidacy."
-        ];
-        replyText = alts[Math.floor(Math.random()*alts.length)];
-        candidate = norm(replyText);
-      }
-      lastAssistantNorm = candidate;
-      pushRecent(candidate);
-
-      // Length discipline
-      replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2400 : 1400);
-
-      // Compute local coach feedback when enabled and not RP
-      const computed = scoreReply(userText, replyText, currentMode);
-      const finalCoach = (() => {
-        if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
-          const scores = coach.scores || coach.subscores;
-          const overall =
-            typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
-          return {
-            overall: overall ?? computed.overall,
-            scores,
-            feedback: coach.feedback || computed.feedback,
-            worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
-            improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
-            phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
-            context: coach.context || { rep_question: userText, hcp_reply: replyText },
-            score: overall ?? computed.overall,
-            subscores: scores
-          };
+      try {
+        if (currentMode !== "role-play") {
+          const sysExtras =
+            typeof EIContext !== "undefined" && EIContext?.getSystemExtras
+              ? await EIContext.getSystemExtras().catch(() => null)
+              : null;
+          if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
         }
-        return computed;
-      })();
 
-      // 1) Push assistant/HCP reply
-      conversation.push({
-        role: "assistant",
-        content: replyText,
-        _coach: finalCoach,
-        _speaker: currentMode === "role-play" ? "hcp" : "assistant"
-      });
+        let raw = await callModel(messages);
+        if (!raw) raw = "From my perspective, we review patient histories and adherence to guide decisions.";
 
-      // 2) Push Coach feedback as a separate chat message, except RP mid-flow
-      if (coachOn && currentMode !== "role-play") {
+        const { coach, clean } = extractCoach(raw);
+        let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
+
+        // enforce HCP-only in RP
+        if (currentMode === "role-play") {
+          replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+        }
+
+        // anti-echo
+        if (norm(replyText) === norm(userText)) {
+          replyText = "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.";
+        }
+
+        // duplicate/cycling guard
+        let candidate = norm(replyText);
+        if (candidate && (candidate === lastAssistantNorm || isRecent(candidate))) {
+          const alts = [
+            "In my clinic, we review history, behaviors, and adherence to understand risk.",
+            "I rely on history and follow-up patterns to guide decisions.",
+            "We focus on adherence and recent exposures when assessing candidacy."
+          ];
+          replyText = alts[Math.floor(Math.random()*alts.length)];
+          candidate = norm(replyText);
+        }
+        lastAssistantNorm = candidate;
+        pushRecent(candidate);
+
+        // Length discipline: allow longer Sales Coach, clamp softly elsewhere
+        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2400 : 1400);
+
+        // Compute coach feedback
+        const computed = scoreReply(userText, replyText, currentMode);
+        const finalCoach = (() => {
+          if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
+            const scores = coach.scores || coach.subscores;
+            const overall =
+              typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
+            return {
+              overall: overall ?? computed.overall,
+              scores,
+              feedback: coach.feedback || computed.feedback,
+              worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
+              improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
+              phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
+              context: coach.context || { rep_question: userText, hcp_reply: replyText },
+              score: overall ?? computed.overall,
+              subscores: scores
+            };
+          }
+          return computed;
+        })();
+
+        // 1) Push assistant/HCP reply
         conversation.push({
           role: "assistant",
-          content: renderCoachAsChat(finalCoach),
+          content: replyText,
           _coach: finalCoach,
-          _speaker: "coach"
+          _speaker: currentMode === "role-play" ? "hcp" : "assistant"
         });
-      }
 
-      trimConversationIfNeeded();
-      renderMessages();
-      renderCoach();
+        // 2) Push Coach feedback as a separate chat message (per spec), except RP mid-flow
+        if (coachOn && currentMode !== "role-play") {
+          conversation.push({
+            role: "assistant",
+            content: renderCoachAsChat(finalCoach),
+            _coach: finalCoach,
+            _speaker: "coach"
+          });
+        }
 
-      if (currentMode === "emotional-assessment") generateFeedback();
+        trimConversationIfNeeded();
+        renderMessages();
+        renderCoach();
 
-      if (cfg && cfg.analyticsEndpoint) {
-        fetch(cfg.analyticsEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ts: Date.now(),
-            schema: cfg.schemaVersion || "coach-v2",
-            mode: currentMode,
-            scenarioId: currentScenarioId,
-            turn: conversation.length,
-            context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
-            overall: finalCoach.overall,
-            scores: finalCoach.scores
-          })
-        }).catch(() => {});
+        if (currentMode === "emotional-assessment") generateFeedback();
+
+        if (cfg && cfg.analyticsEndpoint) {
+          fetch(cfg.analyticsEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ts: Date.now(),
+              schema: cfg.schemaVersion || "coach-v2",
+              mode: currentMode,
+              scenarioId: currentScenarioId,
+              turn: conversation.length,
+              context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
+              overall: finalCoach.overall,
+              scores: finalCoach.scores
+            })
+          }).catch(() => {});
+        }
+      } catch (e) {
+        conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
+        trimConversationIfNeeded();
+        renderMessages();
       }
     } finally {
       const shellEl2 = mount.querySelector(".reflectiv-chat");
@@ -1549,3 +1671,4 @@ No lists or headings. No coaching or scores.`
   // ---------- start ----------
   waitForMount(init);
 })();
+
