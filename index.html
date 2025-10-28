@@ -1,22 +1,26 @@
-
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="theme-color" content="#0c2740">
-
-  <!-- CSP: allow Worker, Tailwind, and Google Fonts -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev; base-uri 'self'; frame-ancestors 'none';">
-  <title>ReflectivAI – AI Sales Enablement for Life Sciences</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0c2740">
   <title>ReflectivAI – AI Sales Enablement for Life Sciences</title>
   <link rel="icon" href="assets/favicon.ico">
 
+  <!-- CSP: allow Worker, Tailwind, and Google Fonts -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 img-src 'self' data:;
+                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                 font-src 'self' https://fonts.gstatic.com;
+                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
+                 connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev;
+                 base-uri 'self'; frame-ancestors 'none';">
+
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Type + quick utilities -->
+  <!-- Fonts + base styles -->
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
     :root{
@@ -34,7 +38,7 @@
     .grid-mobile-center{text-align:center}
     @media (min-width:768px){.grid-mobile-center{text-align:left}}
 
-    /* -------- Modal system (self-contained) -------- */
+    /* -------- Modal system -------- */
     .modal{position:fixed;inset:0;z-index:10000;display:none}
     .modal.open{display:block}
     .modal::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.4)}
@@ -44,11 +48,11 @@
     .modal-close{border:0;background:transparent;padding:6px 10px;border-radius:10px;color:#475569;cursor:pointer}
     .modal-close:hover{background:#f1f5f9}
 
-    /* -------- Coach container shell -------- */
+    /* -------- Coach container -------- */
     #coachBody{padding:0;background:#fff}
     #reflectiv-widget{min-height:520px}
 
-    /* -------- Alora FAB + panel (self-contained) -------- */
+    /* -------- Alora FAB + panel -------- */
     #aloraFab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:999px;border:none;background:#0f2747;color:#fff;box-shadow:0 12px 24px rgba(15,39,71,.25);cursor:pointer;z-index:10001}
     #aloraFab svg{width:28px;height:28px}
     .alora{position:fixed;right:20px;bottom:92px;width:min(380px,92vw);max-height:min(72vh,820px);display:flex;flex-direction:column;border:1px solid #e5e7eb;border-radius:16px;background:#fff;box-shadow:var(--shadow);overflow:hidden;opacity:0;pointer-events:none;transform:translateY(8px);transition:.18s ease-out;z-index:10001}
@@ -72,18 +76,58 @@
 
   <!-- Site CSS -->
   <link rel="stylesheet" href="styles.css?v=20251021B">
-
   <!-- Coach styles -->
   <link rel="stylesheet" href="widget.css?v=20251021-4">
 
-  <!-- Endpoints -->
+  <!-- Endpoints + fetch normalizer (pins v2 + maps /chat→/agent) -->
   <script>
-  window.WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
-  window.COACH_ENDPOINT = window.WORKER_URL;  // no "/chat">
-  </script
+    (function () {
+      var W = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
+      window.WORKER_URL = W;
+      window.COACH_ENDPOINT = W;
+
+      function normalize(url) {
+        try {
+          var u = (url instanceof Request) ? new URL(url.url) :
+                  (url instanceof URL) ? url : new URL(String(url), location.origin);
+          u.hostname = u.hostname.replace(/\.workers\.dev\.workers\.dev$/i, '.workers.dev');
+          var isWorker = /\.workers\.dev$/i.test(u.hostname);
+          var isOurWorker = /my-chat-agent(-v2)?\.tonyabdelmalak\.workers\.dev$/i.test(u.hostname);
+          if (!isWorker || !isOurWorker) u = new URL(u.pathname + u.search + u.hash, W);
+          var p = u.pathname;
+          if (!p || p === '/' || /^\/chat\/?$/i.test(p)) p = '/agent';
+          p = '/' + p.replace(/^\/+/, '').replace(/\/+$/,'');
+          if (!/^\/(agent|evaluate|health|coach-metrics|version)$/i.test(p)) p = '/agent';
+          u.pathname = p;
+          return u.toString();
+        } catch (_) { return W + '/agent'; }
+      }
+
+      var _fetch = window.fetch;
+      window.fetch = function (input, init) {
+        try {
+          var urlStr = (input instanceof Request) ? input.url : String(input);
+          if (/my-chat-agent/i.test(urlStr) || /\/(agent|chat|evaluate|coach-metrics)\b/i.test(urlStr) || urlStr[0] === '/') {
+            var fixed = normalize(input);
+            var opts = init ? Object.assign({}, init) : {};
+            var path = new URL(fixed).pathname.toLowerCase();
+            if (!opts.method && (path === '/agent' || path === '/evaluate')) opts.method = 'POST';
+            if (opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+              opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+              opts.body = JSON.stringify(opts.body);
+            }
+            return _fetch(fixed, opts);
+          }
+        } catch (_) {}
+        return _fetch(input, init);
+      };
+    })();
+  </script>
+
+  <!-- Alora persona -->
   <script>
     window.ALORA_PERSONA = {
-      system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, emotional intelligence framework, and platform integrations, and can explain any feature or benefit contextually.">
+      system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, EI framework, and platform integrations, and can explain any feature or benefit contextually."
     };
   </script>
 
@@ -91,57 +135,57 @@
   <script src="assets/chat/ei-context.js?v=1"></script>
   <script>
     (function(){
-      // If any script tag already references widget.js, do not add another.
       const already = Array.from(document.scripts).some(s => /(?:^|\/)widget\.js(?:\?|$)/.test(s.src));
       if (!already && !window.__REFLECTIV_WIDGET_PRESENT__) {
-        window.__REFLECTIV_WIDGET_PRESENT__ = true; // flag for any dynamic loader
+        window.__REFLECTIV_WIDGET_PRESENT__ = true;
         const s = document.createElement('script');
         s.src = 'widget.js?v=20251025-1045';
         s.defer = true;
         s.id = 'reflectiv-widget-script';
         document.head.appendChild(s);
       } else {
-        // Ensure future dynamic loaders can see presence.
         window.__REFLECTIV_WIDGET_PRESENT__ = true;
       }
     })();
   </script>
 
-  <!-- Ensure Alora sits on top -->
+  <!-- Ensure Alora on top -->
   <style>#aloraFab{z-index:10001;pointer-events:auto}.alora{z-index:10001}</style>
 </head>
 
 <body class="bg-slate-50">
 
-<!-- Header & Navigation (Navy bg, Teal underline) -->
-<header class="site_header fixed top-0 left-0 w-full z-50">
-  <nav class="nav">
-    <a href="#home" class="brand">
-      <img src="logo-modern.png" alt="" width="28" height="28" />
+<!-- Header & Navigation -->
+<header class="site_header fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur border-b border-slate-200">
+  <nav class="nav max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <a href="#home" class="brand flex items-center gap-2 font-semibold text-slate-900">
+      <img src="logo-modern.png" alt="ReflectivAI" width="28" height="28" />
       <span>ReflectivAI</span>
     </a>
-    <ul class="nav-links" id="navLinks">
-      <li class="dropdown">
-        <a href="#platform">Platform ▾</a>
-        <ul class="dropdown-menu">
-          <li><a href="#simulations">Simulations</a></li>
-          <li><a href="#coach">AI Coach</a></li>
-          <li><a href="#learning">Learning Center</a></li>
+    <ul class="nav-links hidden md:flex items-center gap-6" id="navLinks">
+      <li class="dropdown relative">
+        <a href="#platform" class="hover:underline">Platform ▾</a>
+        <ul class="dropdown-menu absolute hidden bg-white border rounded-lg mt-2 p-2">
+          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#simulations">Simulations</a></li>
+          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#coach">AI Coach</a></li>
+          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#learning">Learning Center</a></li>
         </ul>
       </li>
-      <li class="dropdown">
-        <a href="#analytics">Analytics ▾</a>
-        <ul class="dropdown-menu">
-          <li><a href="#metrics">Performance Metrics</a></li>
-          <li><a href="#dashboards">Dashboards</a></li>
+      <li class="dropdown relative">
+        <a href="#analytics" class="hover:underline">Analytics ▾</a>
+        <ul class="dropdown-menu absolute hidden bg-white border rounded-lg mt-2 p-2">
+          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#metrics">Performance Metrics</a></li>
+          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#dashboards">Dashboards</a></li>
         </ul>
       </li>
-      <li><a href="#ethics">Ethics</a></li>
-      <li><a href="#" onclick="openAboutEI();return false;">About EI</a></li>
-      <li><a href="#contact" class="btn-demo">Request Demo</a></li>
+      <li><a class="hover:underline" href="#ethics">Ethics</a></li>
+      <li><a class="hover:underline" href="#" onclick="openAboutEI();return false;">About EI</a></li>
+      <li><a href="#contact" class="btn-demo px-4 py-2 rounded-full bg-slate-900 text-white">Request Demo</a></li>
     </ul>
-    <button class="hamburger" id="navHamburger" aria-label="Menu">
-      <span></span><span></span><span></span>
+    <button class="hamburger md:hidden" id="navHamburger" aria-label="Menu">
+      <span class="block w-6 h-0.5 bg-slate-900 mb-1"></span>
+      <span class="block w-6 h-0.5 bg-slate-900 mb-1"></span>
+      <span class="block w-6 h-0.5 bg-slate-900"></span>
     </button>
   </nav>
 </header>
@@ -188,7 +232,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center md:text-left">Platform Modules</h2>
     <div class="section-separator mx-auto md:mx-0"></div>
-    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:text-left mx-auto md:mx-0">Integrated tools designed for high-stakes life science interactions.</p>
+    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:mx-0">Integrated tools designed for high-stakes life science interactions.</p>
 
     <div class="grid md:grid-cols-3 gap-8">
       <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
@@ -301,10 +345,7 @@
         <button class="inline-flex h-10 items-center px-5 rounded-full bg-[#0f2747] text-white text-sm font-semibold hover:opacity-90 transition modal-close" data-close="#pill-modal">OK</button>
       </div>
     </div>
-  </di
-    
-    
-    v>
+  </div>
 </section>
 
 <!-- ===== Ethics ===== -->
@@ -398,7 +439,7 @@
   </div>
 </footer>
 
-<!-- ===== Card Modal kept (info cards) ===== -->
+<!-- ===== Card Modal (info cards) ===== -->
 <div id="cardModal" class="modal" aria-hidden="true">
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
     <div class="modal-head">
@@ -430,7 +471,7 @@
   <form id="aloraForm" class="alora-input" autocomplete="off"><input id="aloraInput" placeholder="Ask about ReflectivAI…"><button class="btn primary" type="submit">Send</button></form>
 </div>
 
-<!-- ===== Bootstrap JS for modals, pills, coach trigger, Alora persona v4 ===== -->
+<!-- ===== Bootstrap JS for modals, pills, coach trigger, Alora persona ===== -->
 <script>
 (function(){
   const onReady=(fn)=>{document.readyState!=='loading'?fn():document.addEventListener('DOMContentLoaded',fn,{once:true});};
@@ -462,7 +503,7 @@
       });
     })();
 
-    /* ---------- Alora wiring (remote-first, DOM context, low hard-code) ---------- */
+    /* ---------- Alora wiring ---------- */
     const aloraFab=document.getElementById('aloraFab');
     const alora=document.getElementById('alora');
     const aloraClose=document.getElementById('aloraClose');
@@ -620,9 +661,8 @@
 })();
 </script>
 
-  <script>
+<script>
 (function(){
-  // Surface errors inside the coach modal instead of a white screen
   function show(msg){
     const root=document.getElementById('reflectiv-widget');
     if(!root) return;
@@ -634,7 +674,6 @@
   window.addEventListener('error',e=>show(e.message||'script error'));
   window.addEventListener('unhandledrejection',e=>show((e.reason&&e.reason.message)||String(e.reason)||'promise rejection'));
 
-  // Verify load when opening the modal
   const btn=document.getElementById('openCoach');
   btn&&btn.addEventListener('click',()=>{
     setTimeout(()=>{
@@ -646,7 +685,6 @@
     },1200);
   });
 
-  // Optional: log quick status for debugging
   (function logBoot(){
     const hasTag=!!document.getElementById('reflectiv-widget-script');
     console.log('[coach] tag:',hasTag,' endpoint:',window.COACH_ENDPOINT||'(missing)');
