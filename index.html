@@ -612,6 +612,39 @@
   btn.addEventListener('click',()=>links.classList.toggle('open'));
 })();
 </script>
-  
+
+  <script>
+(function(){
+  // Surface errors inside the coach modal instead of a white screen
+  function show(msg){
+    const root=document.getElementById('reflectiv-widget');
+    if(!root) return;
+    const box=document.createElement('pre');
+    box.style.cssText='white-space:pre-wrap;background:#fff5f5;border:1px solid #fecaca;color:#7f1d1d;padding:12px;border-radius:8px;margin:12px;font:12px/1.35 ui-monospace,Menlo,Consolas,monospace';
+    box.textContent='Widget error: '+msg;
+    root.appendChild(box);
+  }
+  window.addEventListener('error',e=>show(e.message||'script error'));
+  window.addEventListener('unhandledrejection',e=>show((e.reason&&e.reason.message)||String(e.reason)||'promise rejection'));
+
+  // Verify load when opening the modal
+  const btn=document.getElementById('openCoach');
+  btn&&btn.addEventListener('click',()=>{
+    setTimeout(()=>{
+      const tag=document.getElementById('reflectiv-widget-script');
+      const root=document.getElementById('reflectiv-widget');
+      if(!tag) show('widget.js tag missing. Single-load guard failed.');
+      else if(!root) show('mount #reflectiv-widget not found.');
+      else if(root.childElementCount===0) show('No UI mounted. Check COACH_ENDPOINT, CORS, and console.');
+    },1200);
+  });
+
+  // Optional: log quick status for debugging
+  (function logBoot(){
+    const hasTag=!!document.getElementById('reflectiv-widget-script');
+    console.log('[coach] tag:',hasTag,' endpoint:',window.COACH_ENDPOINT||'(missing)');
+  })();
+})();
+</script>
 </body>
 </html>
