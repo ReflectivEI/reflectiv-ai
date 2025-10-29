@@ -91,6 +91,7 @@
       var W = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
       window.WORKER_URL = W;
       window.COACH_ENDPOINT = W;
+      window.ALORA_ENDPOINT = W; // ensure Alora hits the same worker
 
       function normalize(url) {
         try {
@@ -571,7 +572,7 @@
       const doFetch=async(timeoutMs)=>{
         const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort('timeout'),timeoutMs);
         try{
-          const r=await fetch((window.ALORA_ENDPOINT||''),{
+          const r=await fetch((window.ALORA_ENDPOINT||window.COACH_ENDPOINT||''),{
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify(body),
@@ -680,9 +681,9 @@
 })();
 </script>
 
-<!-- ===== Widget loader: correct path + autoboot ===== -->
+<!-- ===== Widget loader: ROOT-LEVEL PATH + autoboot ===== -->
 <script id="reflectiv-widget-script"
-        src="assets/chat/widget.js?v=20251028-1621"
+        src="/widget.js?v=20251028-1659"
         data-autoboot="true"
         defer></script>
 
