@@ -1,5 +1,5 @@
 /* widget.js
- * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + Rep-only eval patch r5
+ * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3)
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
  * PROACTIVE SAFEGUARDS:
  * - duplicate-cycle guard (ring buffer)        - double-send lock
@@ -55,7 +55,6 @@
 
   let cfg = null;
   let systemPrompt = "";
-  let eiHeuristics = "";
   let scenarios = [];
   let scenariosById = new Map();
 
@@ -71,9 +70,6 @@
   let personaLabelElem = null;
   let featureLabelElem = null;
   let lastUserMessage = "";
-
-  // ---------- Rep-only eval panel store ----------
-  let repOnlyPanelHTML = "";
 
   // ---------- EI defaults ----------
   const DEFAULT_PERSONAS = [
@@ -146,7 +142,7 @@
 
     s = s.replace(/<coach>[\s\S]*?<\/coach>/gi, "");
     s = s.replace(
-      /(?:^|\n)\s*(?:\*\*)?\s*(?:Sales\s*Guidance|Challenge|(?:My|Rep)\s*Approach|Impact)\s*(?:\*\*)?\s*:\s*[\s\S]*?(?=\n\s*\n|$)/gmi,
+      /(?:^|\n)\s*(?:\*\*)?\s*(?:Sales\s*Guidance|Challenge|My\s*Approach|Impact)\s*(?:\*\*)?\s*:\s*[\s\S]*?(?=\n\s*\n|$)/gmi,
       ""
     );
 
@@ -329,12 +325,6 @@
     return out;
   }
 
-  // --- label normalizer: convert any “My Approach” text to “Rep Approach”
-  function normalizeGuidanceLabels(text) {
-    if (!text) return "";
-    return String(text).replace(/\bMy\s*Approach\b/gi, "Rep Approach");
-  }
-
   function md(text) {
     if (!text) return "";
     let s = esc(String(text)).replace(/\r\n?/g, "\n");
@@ -368,38 +358,39 @@
     const openIdx = s.indexOf("<coach>");
     if (openIdx === -1) return { coach: null, clean: sanitizeLLM(s) };
 
-    const head = s.slice(0, openIdx);
-    const tail = s.slice(openIdx + "<coach>".length);
+    const cleanText = sanitizeLLM(s.slice(0, openIdx).trim());
+    let tail = s.slice(openIdx + "<coach>".length);
 
     const closeIdx = tail.indexOf("</coach>");
     let block = closeIdx >= 0 ? tail.slice(0, closeIdx) : tail;
 
     const braceStart = block.indexOf("{");
-    if (braceStart === -1) return { coach: null, clean: sanitizeLLM(head) };
+    if (braceStart === -1) return { coach: null, clean: cleanText };
 
-    let depth = 0, end = -1;
+    let depth = 0,
+      end = -1;
     for (let i = braceStart; i < block.length; i++) {
       const ch = block[i];
       if (ch === "{") depth++;
-      if (ch === "}") depth--;
-      if (depth === 0) {
-        end = i;
-        break;
+      if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
       }
     }
-    if (end === -1) return { coach: null, clean: sanitizeLLM(head) };
+    if (end === -1) return { coach: null, clean: cleanText };
 
-    // parse JSON inside <coach>…</coach>
-    const jsonTxt = block.slice(braceStart, end + 1);
-    let coach = {};
+    let jsonTxt = block
+      .slice(braceStart, end + 1)
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'");
+    let coach = null;
     try {
       coach = JSON.parse(jsonTxt);
-    } catch (e) {
-      console.warn("Coach JSON parse error", e);
-    }
-    const after = closeIdx >= 0 ? tail.slice(closeIdx + "</coach>".length) : "";
-    const clean = sanitizeLLM((head + " " + after).trim());
-    return { coach, clean };
+    } catch (e) {}
+    return { coach, clean: cleanText };
   }
 
   // ---------- local scoring (deterministic v3) ----------
@@ -419,8 +410,8 @@
         /(renal|egfr|creatinine|bmd|resistance|ddi|interaction|efficacy|safety|adherence|formulary|access|prior auth|prep|tdf|taf|bictegravir|cabotegravir|rilpivirine|descovy|biktarvy|cabenuva)/i.test(
           t
         ),
-      tooLong: words > 220,           // widened for Sales Simulation
-      idealLen: inRange(words, 45, 160)
+      tooLong: words > 180,
+      idealLen: inRange(words, 45, 120)
     };
 
     const accuracy = sig.accuracyCue ? (sig.label ? 5 : 4) : 3;
@@ -445,16 +436,15 @@
     if (sig.tooLong) overall -= 6;
     overall = Math.max(0, Math.min(100, Math.round(overall)));
 
-    // --- present-tense feedback text for yellow panel
     const worked = [
-      sig.empathy ? "Acknowledge HCP context" : null,
-      sig.discovery ? "Close with a clear discovery question" : null,
-      sig.label ? "Reference label or guidelines" : null,
-      sig.accuracyCue ? "Tie points to clinical cues" : null
+      sig.empathy ? "Acknowledged HCP context" : null,
+      sig.discovery ? "Closed with a clear discovery question" : null,
+      sig.label ? "Referenced label or guidelines" : null,
+      sig.accuracyCue ? "Tied points to clinical cues" : null
     ].filter(Boolean);
 
     const improve = [
-      sig.tooLong ? "Keep to 3–5 sentences" : null,
+      sig.tooLong ? "Tighten to 3–5 sentences" : null,
       sig.discovery ? null : "End with one specific question",
       sig.label ? null : "Anchor claims to label or guideline",
       clarity < 4 ? "Use one idea per sentence" : null
@@ -705,10 +695,9 @@ ${
 }
 
 # Style
-- 4–8 sentences and one closing question.
+- 3–6 sentences and one closing question.
 - Only appropriate, publicly known, label-aligned facts.
 - No pricing advice or PHI. No off-label.
-- Include a clearly labeled "Suggested Phrasing:" section as part of the chat response.
 
 ${COMMON}`
       ).trim();
@@ -776,20 +765,12 @@ ${COMMON}`
 #reflectiv-widget .chat-input textarea{flex:1;resize:none;min-height:44px;max-height:120px;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;outline:none}
 #reflectiv-widget .chat-input .btn{min-width:86px;border:0;border-radius:999px;background:#2f3a4f;color:#fff;font-weight:600}
 #reflectiv-widget .coach-section{margin-top:0;padding:12px 14px;border:1px solid #e1e6ef;border-radius:12px;background:#fffbe8}
-#reflectiv-widget .coach-section .coach-body{line-height:1.45}
-#reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;margin-bottom:4px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
+#reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
 #reflectiv-widget .scenario-meta .meta-card{padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:10px}
 #reflectiv-widget .hidden{display:none!important}
 #reflectiv-widget .speaker{display:inline-block;margin:0 0 6px 2px;padding:2px 8px;font-size:11px;font-weight:700;border-radius:999px;border:1px solid #cfd6df}
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
-#reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
-#reflectiv-widget .coach-panel{background:#fff;border:1px solid #e1e6ef;border-radius:10px;padding:10px 12px;margin-top:8px}
-#reflectiv-widget .coach-panel h4{margin:0 0 6px 0;font-size:14px}
-#reflectiv-widget .coach-panel h5{margin:10px 0 4px 0;font-size:13px}
-#reflectiv-widget .coach-panel .coach-subs{margin:6px 0}
-#reflectiv-widget .coach-panel details{margin-top:8px}
-#reflectiv-widget .muted{color:#6b7280}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
       `;
@@ -1054,6 +1035,9 @@ ${COMMON}`
       }
       meta.innerHTML = `
         <div class="meta-card">
+          <div><strong>Therapeutic Area:</strong> ${esc(sc.therapeuticArea || sc.diseaseState || "—")}</div>
+          <div><strong>HCP Role:</strong> ${esc(sc.hcpRole || "—")}</div>
+          <div><strong>Background:</strong> ${esc(sc.background || "—")}</div>
           <div><strong>Today’s Goal:</strong> ${esc(sc.goal || "—")}</div>
         </div>`;
     }
@@ -1061,27 +1045,22 @@ ${COMMON}`
     function renderMessages() {
       const msgsEl = shell.querySelector(".chat-messages");
       msgsEl.innerHTML = "";
+      const rp = currentMode === "role-play";
 
       for (const m of conversation) {
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
-        // Speaker chips: Role Play = HCP/Rep. Sales Simulation = Sales Coach/Rep.
-        if (currentMode === "role-play") {
+        if (rp) {
           const chipText =
-            m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "HCP" : "Rep";
-          const chipCls = m._speaker === "hcp" || m.role === "assistant" ? "speaker hcp" : "speaker rep";
+            m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "Assistant" : "You";
+          const chipCls = m._speaker === "hcp" ? "speaker hcp" : m._speaker === "rep" ? "speaker rep" : "speaker";
           const chip = el("div", chipCls, chipText);
-          c.appendChild(chip);
-        } else if (currentMode === "sales-simulation") {
-          const isCoach = m.role === "assistant";
-          const chip = el("div", isCoach ? "speaker coach" : "speaker rep", isCoach ? "Sales Coach" : "Rep");
           c.appendChild(chip);
         }
 
         const body = el("div");
-        const normalized = normalizeGuidanceLabels(m.content);
-        body.innerHTML = md(normalized);
+        body.innerHTML = md(m.content);
         c.appendChild(body);
 
         row.appendChild(c);
@@ -1106,41 +1085,22 @@ ${COMMON}`
       }
       coach.style.display = "";
 
-      // Role Play: hide until final eval
+      // Hide per-turn coaching in Role Play until final evaluation
       if (currentMode === "role-play") {
         const last = conversation[conversation.length - 1];
         if (!last || !last._finalEval) {
-          const extra = repOnlyPanelHTML
-            ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>`
-            : "";
-          body.innerHTML = `<span class="muted">Final evaluation will appear after you request it by typing “Evaluate this exchange”.</span>${extra}`;
+          body.innerHTML = `<span class="muted">Final evaluation will appear after you request it by typing “Evaluate this exchange”.</span>`;
           return;
         }
       }
 
       const last = conversation[conversation.length - 1];
       if (!(last && last.role === "assistant" && last._coach)) {
-        body.innerHTML = `<span class="muted">Awaiting the first assistant reply…</span>${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+        body.innerHTML = `<span class="muted">Awaiting the first assistant reply…</span>`;
         return;
       }
       const fb = last._coach;
       const scores = fb.scores || fb.subscores || {};
-
-      // Sales Simulation yellow panel spec:
-      if (currentMode === "sales-simulation") {
-        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        body.innerHTML = `
-          <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
-          <ul class="coach-list">
-            <li><strong>Focus:</strong> ${workedStr}</li>
-            <li><strong>Strategy:</strong> ${improveStr}</li>
-          </ul>
-          ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
-        return;
-      }
-
-      // Emotional-assessment and Role Play final eval keep score view
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
       const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
       body.innerHTML = `
@@ -1150,8 +1110,7 @@ ${COMMON}`
           <li><strong>What worked:</strong> ${esc(workedStr)}</li>
           <li><strong>What to improve:</strong> ${esc(improveStr)}</li>
           <li><strong>Suggested phrasing:</strong> ${esc(fb.phrasing || "—")}</li>
-        </ul>
-        ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+        </ul>`;
     }
 
     function applyModeVisibility() {
@@ -1172,7 +1131,6 @@ ${COMMON}`
         featureLabelElem.classList.add("hidden");
         eiFeatureSelectElem.classList.add("hidden");
         feedbackDisplayElem.innerHTML = "";
-        repOnlyPanelHTML = "";
         populateDiseases();
       } else if (currentMode === "product-knowledge") {
         diseaseLabel.classList.remove("hidden");
@@ -1184,7 +1142,6 @@ ${COMMON}`
         featureLabelElem.classList.add("hidden");
         eiFeatureSelectElem.classList.add("hidden");
         feedbackDisplayElem.innerHTML = "";
-        repOnlyPanelHTML = "";
         populateDiseases();
       } else if (currentMode === "role-play") {
         diseaseLabel.classList.remove("hidden");
@@ -1195,11 +1152,10 @@ ${COMMON}`
         personaSelectElem.classList.add("hidden");
         featureLabelElem.classList.add("hidden");
         eiFeatureSelectElem.classList.add("hidden");
-        repOnlyPanelHTML = "";
         feedbackDisplayElem.innerHTML = `
           <div class="coach-note">
             <strong>Role Play Mode:</strong> You chat with an HCP persona selected by Disease + HCP.
-            Type <em>"Evaluate this exchange"</em> for a full assessment, or <em>"Evaluate Rep"</em> for a Rep-only review.
+            Type <em>"Evaluate this exchange"</em> any time for a final assessment.
           </div>`;
         populateDiseases();
         if (diseaseSelect.value) populateHcpForDisease(diseaseSelect.value);
@@ -1217,7 +1173,6 @@ ${COMMON}`
         featureLabelElem.classList.remove("hidden");
         eiFeatureSelectElem.classList.remove("hidden");
         feedbackDisplayElem.innerHTML = "";
-        repOnlyPanelHTML = "";
         currentScenarioId = null;
         conversation = [];
         renderMessages();
@@ -1271,57 +1226,36 @@ ${COMMON}`
     applyModeVisibility();
   }
 
-  // ---------- callModel (hardened with retries, timeout, and backoff) ----------
-  function rid() {
-    return Math.random().toString(36).slice(2);
-  }
-
+  // ---------- transport with timeout + endpoint fallback ----------
   async function callModel(messages) {
+    // FALLBACKS: config.json -> HTML globals
     const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    if (!url) throw new Error("No API endpoint configured (set config.apiBase/workerUrl or window.COACH_ENDPOINT).");
 
-    const attempt = async (n, delayMs) => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort("timeout"), 45000); // up to 45s
-      try {
-        const r = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Req-Id": rid()
-          },
-          body: JSON.stringify({
-            model: (cfg?.model) || "llama-3.1-8b-instant",
-            temperature: 0.2,
-            stream: !!cfg?.stream,
-            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || 1400,
-            messages
-          }),
-          signal: controller.signal
-        });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort("timeout"), 22000);
 
-        if (!r.ok) throw new Error("HTTP " + r.status);
-
-        const data = await r.json().catch(() => ({}));
-        return (
-          data?.content ||
-          data?.reply ||
-          data?.choices?.[0]?.message?.content ||
-          ""
-        );
-      } catch (e) {
-        // retry only on backend/network errors
-        if (n > 0 && /HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(String(e))) {
-          await new Promise((res) => setTimeout(res, delayMs));
-          return attempt(n - 1, delayMs * 2);
-        }
-        console.warn("Model call failed:", e);
-        return ""; // fallback empty
-      } finally {
-        clearTimeout(timeout);
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: (cfg && cfg.model) || "llama-3.1-8b-instant",
+          temperature: 0.2,
+          stream: !!cfg?.stream,
+          messages
+        }),
+        signal: controller.signal
+      });
+      if (!r.ok) {
+        const txt = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status}: ${txt || "no body"}`);
       }
-    };
-
-    return attempt(2, 400); // up to 3 total tries
+      const data = await r.json().catch(() => ({}));
+      return data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   // ---------- final-eval helper ----------
@@ -1345,133 +1279,6 @@ ${COMMON}`
     const { coach, clean } = extractCoach(raw);
     const finalCoach = coach || scoreReply("", clean);
     conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
-  }
-
-  /* ---------- Rep-only evaluation helpers (robust, JSON-first, graceful fallback) ---------- */
-  function repTurns(history, max = 12) {
-    const repLike = ["rep", "user"]; // Rep messages stored as _speaker:'rep' or role:'user'
-    const seq = (history || []).filter(
-      (m) => repLike.includes(String(m._speaker || "").toLowerCase()) || repLike.includes(String(m.role || "").toLowerCase())
-    );
-    return seq.slice(-max).map(({ role, content, _speaker }) => ({
-      role: (role || _speaker || "user"),
-      content: String(content || "")
-    }));
-  }
-
-  function extractFirstJson(txt) {
-    const s = String(txt || "");
-    // try fenced
-    const fence = s.match(/```json\s*([\s\S]*?)```/i);
-    if (fence && fence[1]) return fence[1];
-    // try first {...} block
-    const start = s.indexOf("{");
-    if (start === -1) return "";
-    let depth = 0;
-    for (let i = start; i < s.length; i++) {
-      const ch = s[i];
-      if (ch === "{") depth++;
-      else if (ch === "}") {
-        depth--;
-        if (depth === 0) return s.slice(start, i + 1);
-      }
-    }
-    return "";
-  }
-
-  function summarizeRepText(repSeq) {
-    const txt = repSeq.map(t => t.content).join(" ").slice(0, 1600);
-    const sr = scoreReply("", txt);
-    const strengths = []
-      .concat(sr.worked || [])
-      .filter(Boolean);
-    const improvements = []
-      .concat(sr.improve || [])
-      .filter(Boolean);
-    const actionable = [sr.phrasing].filter(Boolean);
-    return {
-      scores: {
-        accuracy: sr.scores.accuracy,
-        compliance: sr.scores.compliance,
-        discovery: sr.scores.discovery,
-        clarity: sr.scores.clarity,
-        objectionHandling: sr.scores.objection_handling,
-        empathy: sr.scores.empathy
-      },
-      summary: "Rep-only snapshot based on recent utterances.",
-      strengths,
-      improvements,
-      actionable
-    };
-  }
-
-  async function evaluateRepOnly({ history, personaLabel, goal }) {
-    const transcript = repTurns(history);
-
-    const sys = [
-      "You are the ReflectivAI Coach.",
-      "Evaluate ONLY the Rep’s utterances.",
-      "Ignore HCP content except as context.",
-      `Persona: ${personaLabel || "unspecified persona"}.`,
-      `Scenario Goal: ${goal || "unspecified goal"}.`,
-      "Rubric: Accuracy, Compliance, Discovery, Clarity, Objection Handling, Empathy.",
-      "Return ONLY compact JSON. No prose outside JSON.",
-      `Format: {"scores":{"accuracy":1-5,"compliance":1-5,"discovery":1-5,"clarity":1-5,"objectionHandling":1-5,"empathy":1-5},"summary":"...", "strengths":["..."], "improvements":["..."], "actionable":["..."]}`
-    ].join(" ");
-
-    const user = {
-      role: "user",
-      content: JSON.stringify({
-        mode: "rep_only",
-        rubric: ["Accuracy", "Compliance", "Discovery", "Clarity", "Objection Handling", "Empathy"],
-        transcript
-      })
-    };
-
-    let raw = "";
-    try {
-      raw = await callModel([{ role: "system", content: sys }, user]);
-    } catch (e) {
-      const d = summarizeRepText(transcript);
-      return { html: renderRepOnlyPanel(d, "Rep-only Evaluation") };
-    }
-
-    let data = null;
-    // strict JSON parse
-    try { data = JSON.parse(raw); } catch (_) {}
-    if (!data) {
-      const body = extractFirstJson(raw);
-      if (body) {
-        try { data = JSON.parse(body); } catch (_) {}
-      }
-    }
-    if (!data || !data.scores) {
-      // fallback: use local deterministic summary, but preserve any narrative as "details"
-      const det = summarizeRepText(transcript);
-      const narrative = sanitizeLLM(raw || "");
-      return { html: renderRepOnlyPanel(det, "Rep-only Evaluation", narrative) };
-    }
-    return { html: renderRepOnlyPanel(data, "Rep-only Evaluation") };
-  }
-
-  function renderRepOnlyPanel(data, title, narrativeText) {
-    const s = data.scores || {};
-    const pill = (k, v) => `<span class="pill">${k}: ${v ?? "—"}</span>`;
-    const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-    const details = narrativeText ? `<details><summary>Model notes</summary>${md(normalizeGuidanceLabels(narrativeText))}</details>` : "";
-    return `
-      <div class="coach-panel">
-        <h4>${esc(title)}</h4>
-        <div class="coach-subs">
-          ${pill("Accuracy", s.accuracy)} ${pill("Compliance", s.compliance)} ${pill("Discovery", s.discovery)}
-          ${pill("Clarity", s.clarity)} ${pill("Objection Handling", s.objectionHandling)} ${pill("Empathy", s.empathy)}
-        </div>
-        ${data.summary ? `<p>${esc(data.summary)}</p>` : ""}
-        <h5>Strengths</h5>${list(data.strengths)}
-        <h5>Improvements</h5>${list(data.improvements)}
-        <h5>Actionable Feedback</h5>${list(data.actionable)}
-        ${details}
-      </div>`;
   }
 
   // ---------- send ----------
@@ -1503,7 +1310,7 @@ ${COMMON}`
 
     try {
       // normalize input
-      userText = clampLen((userText || "").trim(), 1600);
+      userText = clampLen((userText || "").trim(), 1200);
       if (!userText) return;
       lastUserMessage = userText;
 
@@ -1514,18 +1321,6 @@ ${COMMON}`
         await evaluateConversation();
         trimConversationIfNeeded();
         renderMessages();
-        renderCoach();
-        return;
-      }
-
-      // Rep-only evaluation trigger (broadened)
-      const repEvalRe = /\b(evaluate\s*(the\s*)?rep\b|rep-?only\s*(eval(uation)?)?\b|rep\s*eval(uation)?\b|evaluate\s*rep\s*only\b)/i;
-      if (repEvalRe.test(userText)) {
-        const sc = scenariosById.get(currentScenarioId);
-        const persona = sc?.hcpRole || sc?.label || "";
-        const goal = sc?.goal || "";
-        const res = await evaluateRepOnly({ history: conversation, personaLabel: persona, goal });
-        repOnlyPanelHTML = res?.html || "<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable.</p></div>";
         renderCoach();
         return;
       }
@@ -1545,13 +1340,8 @@ ${COMMON}`
       const sc = scenariosById.get(currentScenarioId);
       const messages = [];
 
-      // 1) Core runtime rules (system.md) + EI layer
-      if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
-      if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
-        messages.push({ role: "system", content: eiHeuristics });
-      }
+      if (systemPrompt && currentMode !== "role-play") messages.push({ role: "system", content: systemPrompt });
 
-      // 2) Mode/scenario preface
       if (currentMode === "role-play") {
         const personaLine = currentPersonaHint();
         const detail = sc
@@ -1564,12 +1354,11 @@ ${COMMON}`
 Context:
 ${personaLine}
 ${detail}`;
-        messages.push({ role: "system", content: roleplayRails });
+        messages.unshift({ role: "system", content: roleplayRails });
       } else {
         messages.push({ role: "system", content: buildPreface(currentMode, sc) });
       }
 
-      // 3) User turn
       messages.push({ role: "user", content: userText });
 
       try {
@@ -1611,8 +1400,7 @@ ${detail}`;
         lastAssistantNorm = candidate;
         pushRecent(candidate);
 
-        // allow longer Sales Coach responses
-        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2200 : 1400);
+        replyText = clampLen(replyText, 1400);
 
         const computed = scoreReply(userText, replyText, currentMode);
 
@@ -1743,14 +1531,6 @@ ${detail}`;
     } catch (e) {
       console.error("system.md load failed:", e);
       systemPrompt = "";
-    }
-
-    // EI foundation (about-ei.md)
-    try {
-      eiHeuristics = await fetchLocal("./assets/chat/about-ei.md");
-    } catch (e) {
-      console.warn("about-ei.md load failed:", e);
-      eiHeuristics = "";
     }
 
     await loadScenarios();
