@@ -7,26 +7,10 @@
   <title>ReflectivAI – AI Sales Enablement for Life Sciences</title>
   <link rel="icon" href="assets/favicon.ico">
 
-  <!-- CSP: allow Worker, Tailwind, and Google Fonts -->
-  <!--
-    CSP NOTE:
-    - 'frame-ancestors' is ONLY enforced via HTTP response headers (not <meta>).
-      On GitHub Pages you can’t add custom headers, so we omit 'frame-ancestors' here.
-    - Keep connect-src to your Worker.
-  -->
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self';
-                 img-src 'self' data:;
-                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-                 font-src  'self' https://fonts.gstatic.com;
-                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
-                 connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev;
-                 base-uri 'self';">
-
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Fonts + base styles -->
+  <!-- Type + quick utilities -->
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
     :root{
@@ -44,7 +28,7 @@
     .grid-mobile-center{text-align:center}
     @media (min-width:768px){.grid-mobile-center{text-align:left}}
 
-    /* -------- Modal system -------- */
+    /* -------- Modal system (self-contained) -------- */
     .modal{position:fixed;inset:0;z-index:10000;display:none}
     .modal.open{display:block}
     .modal::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.4)}
@@ -54,11 +38,11 @@
     .modal-close{border:0;background:transparent;padding:6px 10px;border-radius:10px;color:#475569;cursor:pointer}
     .modal-close:hover{background:#f1f5f9}
 
-    /* -------- Coach container -------- */
+    /* -------- Coach container shell -------- */
     #coachBody{padding:0;background:#fff}
     #reflectiv-widget{min-height:520px}
 
-    /* -------- Alora FAB + panel -------- */
+    /* -------- Alora FAB + panel (self-contained) -------- */
     #aloraFab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:999px;border:none;background:#0f2747;color:#fff;box-shadow:0 12px 24px rgba(15,39,71,.25);cursor:pointer;z-index:10001}
     #aloraFab svg{width:28px;height:28px}
     .alora{position:fixed;right:20px;bottom:92px;width:min(380px,92vw);max-height:min(72vh,820px);display:flex;flex-direction:column;border:1px solid #e5e7eb;border-radius:16px;background:#fff;box-shadow:var(--shadow);overflow:hidden;opacity:0;pointer-events:none;transform:translateY(8px);transition:.18s ease-out;z-index:10001}
@@ -75,109 +59,78 @@
     .alora-input input{flex:1;border:1px solid #e5e7eb;border-radius:999px;padding:10px 14px;font-size:14px}
     .alora-input .btn.primary{border:0;border-radius:999px;padding:10px 14px;background:#20bfa9;color:#083344;cursor:pointer;font-weight:700}
     .alora-input .btn.primary:hover{filter:brightness(.95)}
+    /* chips injected by JS */
     .alora-suggest{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
     .alora-chip{border:1px solid #0f2747;border-radius:999px;padding:6px 10px;background:#fff;color:#0f2747;font:600 12px/1.1 Inter,system-ui;cursor:pointer}
     .alora-chip:hover{background:#eef4fa}
   </style>
 
-  <!-- Site CSS -->
+  <!-- Site CSS (keep external if you want broader styles) -->
   <link rel="stylesheet" href="styles.css?v=20251021B">
-  <!-- Coach styles -->
+
+  <!-- Coach styles (keep if you rely on widget.css visuals) -->
   <link rel="stylesheet" href="widget.css?v=20251021-4">
 
-  <!-- Endpoints + fetch normalizer (pins v2 + maps /chat→/agent) -->
+  <!-- Endpoints -->
   <script>
-    (function () {
-      var W = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
-      window.WORKER_URL = W;
-      window.COACH_ENDPOINT = W;
-      window.ALORA_ENDPOINT = W; // ensure Alora hits the same worker
-
-      function normalize(url) {
-        try {
-          var u = (url instanceof Request) ? new URL(url.url) :
-                  (url instanceof URL) ? url : new URL(String(url), location.origin);
-          u.hostname = u.hostname.replace(/\.workers\.dev\.workers\.dev$/i, '.workers.dev');
-          var isWorker = /\.workers\.dev$/i.test(u.hostname);
-          var isOurWorker = /my-chat-agent(-v2)?\.tonyabdelmalak\.workers\.dev$/i.test(u.hostname);
-          if (!isWorker || !isOurWorker) u = new URL(u.pathname + u.search + u.hash, W);
-          var p = u.pathname;
-          if (!p || p === '/' || /^\/chat\/?$/i.test(p)) p = '/agent';
-          p = '/' + p.replace(/^\/+/, '').replace(/\/+$/,'');
-          if (!/^\/(agent|evaluate|health|coach-metrics|version)$/i.test(p)) p = '/agent';
-          u.pathname = p;
-          return u.toString();
-        } catch (_) { return W + '/agent'; }
-      }
-
-      var _fetch = window.fetch;
-      window.fetch = function (input, init) {
-        try {
-          var urlStr = (input instanceof Request) ? input.url : String(input);
-          if (/my-chat-agent/i.test(urlStr) || /\/(agent|chat|evaluate|coach-metrics)\b/i.test(urlStr) || urlStr[0] === '/') {
-            var fixed = normalize(input);
-            var opts = init ? Object.assign({}, init) : {};
-            var path = new URL(fixed).pathname.toLowerCase();
-            if (!opts.method && (path === '/agent' || path === '/evaluate')) opts.method = 'POST';
-            if (opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
-              opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
-              opts.body = JSON.stringify(opts.body);
-            }
-            return _fetch(fixed, opts);
-          }
-        } catch (_) {}
-        return _fetch(input, init);
-      };
-    })();
+    window.WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
+    window.COACH_ENDPOINT = window.WORKER_URL + '/chat';
+    window.ALORA_ENDPOINT = window.WORKER_URL + '/chat';
   </script>
-
-  <!-- Alora persona -->
   <script>
-    window.ALORA_PERSONA = {
-      system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, EI framework, and platform integrations, and can explain any feature or benefit contextually."
-    };
-  </script>
+  window.ALORA_PERSONA = {
+    system: "Alora: friendly, professional, EI-first product guide for ReflectivAI. She understands ReflectivAI’s AI-driven coaching, role-play, analytics, emotional intelligence framework, and platform integrations, and can explain any feature or benefit contextually."
+  };
+</script>
 
-  <!-- Ensure Alora on top -->
+  <!-- Coach script -->
+  <script src="assets/chat/ei-context.js?v=1"></script>
+  <script defer src="widget.js?v=20251025-1045"></script>
+
+  <!-- Ensure Alora sits on top -->
   <style>#aloraFab{z-index:10001;pointer-events:auto}.alora{z-index:10001}</style>
 </head>
 
 <body class="bg-slate-50">
 
-<!-- Header & Navigation -->
-<header class="site_header fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur border-b border-slate-200">
-  <nav class="nav max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-    <a href="#home" class="brand flex items-center gap-2 font-semibold text-slate-900">
-      <img src="logo-modern.png" alt="ReflectivAI" width="28" height="28" />
+<!-- Header & Navigation (Navy bg, Teal underline) -->
+<header class="site_header fixed top-0 left-0 w-full z-50">
+  <nav class="nav">
+    <!-- Brand -->
+    <a href="#home" class="brand">
+      <img src="logo-modern.png" alt="" width="28" height="28" />
       <span>ReflectivAI</span>
     </a>
-    <ul class="nav-links hidden md:flex items-center gap-6" id="navLinks">
-      <li class="dropdown relative">
-        <a href="#platform" class="hover:underline">Platform ▾</a>
-        <ul class="dropdown-menu absolute hidden bg-white border rounded-lg mt-2 p-2">
-          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#simulations">Simulations</a></li>
-          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#coach">AI Coach</a></li>
-          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#learning">Learning Center</a></li>
+
+    <!-- Links + Dropdowns -->
+    <ul class="nav-links" id="navLinks">
+      <li class="dropdown">
+        <a href="#platform">Platform ▾</a>
+        <ul class="dropdown-menu">
+          <li><a href="#simulations">Simulations</a></li>
+          <li><a href="#coach">AI Coach</a></li>
+          <li><a href="#learning">Learning Center</a></li>
         </ul>
       </li>
-      <li class="dropdown relative">
-        <a href="#analytics" class="hover:underline">Analytics ▾</a>
-        <ul class="dropdown-menu absolute hidden bg-white border rounded-lg mt-2 p-2">
-          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#metrics">Performance Metrics</a></li>
-          <li><a class="block px-3 py-2 hover:bg-slate-100 rounded" href="#dashboards">Dashboards</a></li>
+      <li class="dropdown">
+        <a href="#analytics">Analytics ▾</a>
+        <ul class="dropdown-menu">
+          <li><a href="#metrics">Performance Metrics</a></li>
+          <li><a href="#dashboards">Dashboards</a></li>
         </ul>
       </li>
-      <li><a class="hover:underline" href="#ethics">Ethics</a></li>
-      <li><a class="hover:underline" href="#" onclick="openAboutEI();return false;">About EI</a></li>
-      <li><a href="#contact" class="btn-demo px-4 py-2 rounded-full bg-slate-900 text-white">Request Demo</a></li>
+      <li><a href="#ethics">Ethics</a></li>
+      <li><a href="#" onclick="openAboutEI();return false;">About EI</a></li>
+      <li><a href="#contact" class="btn-demo">Request Demo</a></li>
     </ul>
-    <button class="hamburger md:hidden" id="navHamburger" aria-label="Menu">
-      <span class="block w-6 h-0.5 bg-slate-900 mb-1"></span>
-      <span class="block w-6 h-0.5 bg-slate-900 mb-1"></span>
-      <span class="block w-6 h-0.5 bg-slate-900"></span>
+
+    <!-- Mobile hamburger -->
+    <button class="hamburger" id="navHamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
     </button>
   </nav>
 </header>
+<!-- spacer so content isn't covered -->
 <div style="height:64px"></div>
 
 <!-- ===== Hero ===== -->
@@ -221,7 +174,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center md:text-left">Platform Modules</h2>
     <div class="section-separator mx-auto md:mx-0"></div>
-    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:mx-0">Integrated tools designed for high-stakes life science interactions.</p>
+    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:text-left mx-auto md:mx-0">Integrated tools designed for high-stakes life science interactions.</p>
 
     <div class="grid md:grid-cols-3 gap-8">
       <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
@@ -428,7 +381,7 @@
   </div>
 </footer>
 
-<!-- ===== Card Modal (info cards) ===== -->
+<!-- ===== Card Modal kept (info cards) ===== -->
 <div id="cardModal" class="modal" aria-hidden="true">
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
     <div class="modal-head">
@@ -460,7 +413,7 @@
   <form id="aloraForm" class="alora-input" autocomplete="off"><input id="aloraInput" placeholder="Ask about ReflectivAI…"><button class="btn primary" type="submit">Send</button></form>
 </div>
 
-<!-- ===== Bootstrap JS for modals, pills, coach trigger, Alora persona ===== -->
+<!-- ===== Bootstrap JS for modals, pills, coach trigger, Alora persona v4 ===== -->
 <script>
 (function(){
   const onReady=(fn)=>{document.readyState!=='loading'?fn():document.addEventListener('DOMContentLoaded',fn,{once:true});};
@@ -492,148 +445,199 @@
       });
     })();
 
-    /* ---------- Alora wiring ---------- */
-    const aloraFab=document.getElementById('aloraFab');
-    const alora=document.getElementById('alora');
-    const aloraClose=document.getElementById('aloraClose');
-    const aloraBody=document.getElementById('aloraBody');
-    const aloraForm=document.getElementById('aloraForm');
-    const aloraInput=document.getElementById('aloraInput');
+    /* ---------- Alora wiring (remote-first, DOM context, low hard-code) ---------- */
+const aloraFab=document.getElementById('aloraFab');
+const alora=document.getElementById('alora');
+const aloraClose=document.getElementById('aloraClose');
+const aloraBody=document.getElementById('aloraBody');
+const aloraForm=document.getElementById('aloraForm');
+const aloraInput=document.getElementById('aloraInput');
 
-    function bot(t){const d=document.createElement('div');d.className='alora-msg bot';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
-    function user(t){const d=document.createElement('div');d.className='alora-msg user';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
-    function typing(show){if(show){const t=document.createElement('div');t.className='alora-typing';t.id='aloraTyping';let i=0;t.textContent='Alora is typing';aloraBody.appendChild(t);t._timer=setInterval(()=>{i=(i+1)%4;t.textContent='Alora is typing'+'.'.repeat(i)},300);aloraBody.scrollTop=aloraBody.scrollHeight}else{const t=document.getElementById('aloraTyping');if(t){clearInterval(t._timer);t.remove()}}}
+function bot(t){const d=document.createElement('div');d.className='alora-msg bot';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
+function user(t){const d=document.createElement('div');d.className='alora-msg user';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
+function typing(show){if(show){const t=document.createElement('div');t.className='alora-typing';t.id='aloraTyping';let i=0;t.textContent='Alora is typing';aloraBody.appendChild(t);t._timer=setInterval(()=>{i=(i+1)%4;t.textContent='Alora is typing'+'.'.repeat(i)},300);aloraBody.scrollTop=aloraBody.scrollHeight}else{const t=document.getElementById('aloraTyping');if(t){clearInterval(t._timer);t.remove()}}}
 
-    function scrollToId(id){
-      const el=document.getElementById(id) || document.querySelector(`[data-anchor='${id}']`) || document.querySelector(`[href='#${id}']`);
-      if(el){el.scrollIntoView({behavior:'smooth',block:'start'});return true}
-      return false;
-    }
+function scrollToId(id){
+  const el=document.getElementById(id) || document.querySelector(`[data-anchor='${id}']`) || document.querySelector(`[href='#${id}']`);
+  if(el){el.scrollIntoView({behavior:'smooth',block:'start'});return true}
+  return false;
+}
 
-    const ACTIONS={
-      'open-coach':()=>openModal('#coachModal'),
-      'request-demo':()=>scrollToId('contact'),
-      'see-platform':()=>scrollToId('platform'),
-      'see-analytics':()=>scrollToId('analytics'),
-      'see-ei':()=>scrollToId('why-it-matters'),
-      'see-personas':()=>scrollToId('therapeutic-areas')
+const ACTIONS={
+  'open-coach':()=>openModal('#coachModal'),
+  'request-demo':()=>scrollToId('contact'),
+  'see-platform':()=>scrollToId('platform'),
+  'see-analytics':()=>scrollToId('analytics'),
+  'see-ei':()=>scrollToId('why-it-matters'),
+  'see-personas':()=>scrollToId('therapeutic-areas')
+};
+
+const CHIPS_BASE=[['Open Coach','open-coach'],['Request Demo','request-demo'],['See Personas','see-personas'],['Why EI','see-ei']];
+
+function renderChips(pairs){
+  let wrap=aloraBody.querySelector('.alora-suggest');
+  if(!wrap){wrap=document.createElement('div');wrap.className='alora-suggest';aloraBody.appendChild(wrap)}
+  wrap.innerHTML='';
+  (pairs||[]).forEach(([label,cmd])=>{
+    const b=document.createElement('button');
+    b.type='button'; b.className='alora-chip'; b.textContent=label;
+    b.onclick=()=>ACTIONS[cmd]?.();
+    wrap.appendChild(b);
+  });
+}
+
+/* ------------ Live site knowledge harvest ------------ */
+function textOf(sel){
+  const el=document.querySelector(sel); if(!el) return "";
+  return (el.innerText||"").replace(/\s+/g,' ').trim();
+}
+function sectionDump(id,label){
+  const el=document.getElementById(id); if(!el) return "";
+  const head=el.querySelector('h1,h2,h3,h4');
+  const txt=(el.innerText||"").replace(/\s+/g,' ').trim();
+  return `[SECTION ${label||('#'+id)}] ${head?head.innerText+' — ':''}${txt}`.slice(0,4000);
+}
+function harvestSiteContext(){
+  const parts=[];
+  parts.push(`[TITLE] ${document.title||''}`);
+  parts.push(`[BRAND] ${textOf('header .brand')}`);
+  parts.push(sectionDump('platform','Platform'));
+  parts.push(sectionDump('analytics','Analytics'));
+  parts.push(sectionDump('therapeutic-areas','Therapeutic Areas & Personas'));
+  parts.push(sectionDump('why-it-matters','Why EI'));
+  parts.push(sectionDump('ethics','Ethics/Privacy/Governance'));
+  parts.push(sectionDump('contact','Contact'));
+  const w=document.getElementById('reflectiv-widget');
+  if(w){
+    parts.push('[COACH UI] Modes: Product Knowledge, Sales Simulation, Role Play, Emotional Assessment.');
+    parts.push('[COACH UI] Sales Simulation shows Focus/Strategy; Role Play supports "Evaluate this exchange".');
+  }
+  return parts.filter(Boolean).join('\n').slice(0,24000);
+}
+
+/* ------------ Remote call with persona + DOM context ------------ */
+async function askRemote(q){
+  const body={
+    role:'alora',
+    site:'reflectivai',
+    persona:(window.ALORA_PERSONA&&window.ALORA_PERSONA.system)||'',
+    site_context:harvestSiteContext(),
+    message:q
+  };
+  const doFetch=async(timeoutMs)=>{
+    const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort('timeout'),timeoutMs);
+    try{
+      const r=await fetch((window.ALORA_ENDPOINT||''),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body),
+        signal:ctl.signal
+      });
+      clearTimeout(t);
+      if(!r.ok){ if(r.status>=500) throw new Error('server'); return null; }
+      const j=await r.json().catch(()=>null);
+      return j&&j.reply||null;
+    }catch(e){ clearTimeout(t); throw e; }
+  };
+  try{ return await doFetch(45000); }
+  catch(e){ try{ await new Promise(res=>setTimeout(res,600)); return await doFetch(45000); } catch(_){ return null; } }
+}
+
+/* ------------ Minimal local routing fallback (no hard copy) ------------ */
+function localRoute(q){
+  const s = String(q || '').toLowerCase();
+
+  // Basic greeting
+  if (/^(hi|hello|hey)\b/.test(s))
+    return {
+      text: "Hi, I’m Alora. Ask about the platform, Emotional Intelligence, simulations, analytics, or how the Coach works.",
+      chips: CHIPS_BASE
     };
 
-    const CHIPS_BASE=[['Open Coach','open-coach'],['Request Demo','request-demo'],['See Personas','see-personas'],['Why EI','see-ei']];
+  // Pricing inquiries
+  if (/\b(pricing|price|cost)\b/.test(s))
+    return {
+      text: "Pricing details are shared during a brief demo with our partnerships team.",
+      chips: [['Request Demo','request-demo']]
+    };
 
-    function renderChips(pairs){
-      let wrap=aloraBody.querySelector('.alora-suggest');
-      if(!wrap){wrap=document.createElement('div');wrap.className='alora-suggest';aloraBody.appendChild(wrap)}
-      wrap.innerHTML='';
-      (pairs||[]).forEach(([label,cmd])=>{
-        const b=document.createElement('button');
-        b.type='button'; b.className='alora-chip'; b.textContent=label;
-        b.onclick=()=>ACTIONS[cmd]?.();
-        wrap.appendChild(b);
-      });
-    }
+  // Analytics or metrics
+  if (/\b(analytics|dashboard|metrics|report|insight|data)\b/.test(s))
+    return {
+      text: "ReflectivAI’s analytics include Accuracy Index, Readiness Velocity, Empathy Index, Compliance Guardrails, and Confidence Delta—turning behavioral data into performance insight.",
+      action: 'see-analytics',
+      chips: [['See Analytics','see-analytics'],['Request Demo','request-demo']]
+    };
 
-    function textOf(sel){
-      const el=document.querySelector(sel); if(!el) return "";
-      return (el.innerText||"").replace(/\s+/g,' ').trim();
-    }
-    function sectionDump(id,label){
-      const el=document.getElementById(id); if(!el) return "";
-      const head=el.querySelector('h1,h2,h3,h4');
-      const txt=(el.innerText||"").replace(/\s+/g,' ').trim();
-      return `[SECTION ${label||('#'+id)}] ${head?head.innerText+' — ':''}${txt}`.slice(0,4000);
-    }
-    function harvestSiteContext(){
-      const parts=[];
-      parts.push(`[TITLE] ${document.title||''}`);
-      parts.push(`[BRAND] ${textOf('header .brand')}`);
-      parts.push(sectionDump('platform','Platform'));
-      parts.push(sectionDump('analytics','Analytics'));
-      parts.push(sectionDump('therapeutic-areas','Therapeutic Areas & Personas'));
-      parts.push(sectionDump('why-it-matters','Why EI'));
-      parts.push(sectionDump('ethics','Ethics/Privacy/Governance'));
-      parts.push(sectionDump('contact','Contact'));
-      const w=document.getElementById('reflectiv-widget');
-      if(w){
-        parts.push('[COACH UI] Modes: Product Knowledge, Sales Simulation, Role Play, Emotional Assessment.');
-        parts.push('[COACH UI] Sales Simulation shows Focus/Strategy; Role Play supports "Evaluate this exchange".');
-      }
-      return parts.filter(Boolean).join('\n').slice(0,24000);
-    }
+  // Emotional Intelligence or EI
+  if (/\b(emotional intelligence|ei|empathy|tone|listening|self-awareness)\b/.test(s))
+    return {
+      text: "ReflectivAI’s EI framework measures empathy, listening, tone, and clarity—coaching reps to build trust and confidence with HCPs. Explore Why EI to learn more.",
+      action: 'see-ei',
+      chips: [['Why EI','see-ei'],['Open Coach','open-coach']]
+    };
 
-    async function askRemote(q){
-      const body={
-        role:'alora',
-        site:'reflectivai',
-        persona:(window.ALORA_PERSONA&&window.ALORA_PERSONA.system)||'',
-        site_context:harvestSiteContext(),
-        message:q
-      };
-      const doFetch=async(timeoutMs)=>{
-        const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort('timeout'),timeoutMs);
-        try{
-          const r=await fetch((window.ALORA_ENDPOINT||window.COACH_ENDPOINT||''),{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify(body),
-            signal:ctl.signal
-          });
-          clearTimeout(t);
-          if(!r.ok){ if(r.status>=500) throw new Error('server'); return null; }
-          const j=await r.json().catch(()=>null);
-          return j&&j.reply||null;
-        }catch(e){ clearTimeout(t); throw e; }
-      };
-      try{ return await doFetch(45000); }
-      catch(e){ try{ await new Promise(res=>setTimeout(res,600)); return await doFetch(45000); } catch(_){ return null; } }
-    }
+  // Platform or features
+  if (/\b(platform|modules?|features?|tools?)\b/.test(s))
+    return {
+      text: "The ReflectivAI platform blends Product Knowledge, Sales Simulation, Role Play, and Relationship Intelligence modules—all designed for life-sciences compliance and coaching.",
+      action: 'see-platform',
+      chips: [['See Platform','see-platform'],['Open Coach','open-coach']]
+    };
 
-    function localRoute(q){
-      const s = String(q || '').toLowerCase();
-      if (/^(hi|hello|hey)\b/.test(s))
-        return { text: "Hi, I’m Alora. Ask about the platform, Emotional Intelligence, simulations, analytics, or how the Coach works.", chips: CHIPS_BASE };
-      if (/\b(pricing|price|cost)\b/.test(s))
-        return { text: "Pricing details are shared during a brief demo with our partnerships team.", chips: [['Request Demo','request-demo']] };
-      if (/\b(analytics|dashboard|metrics|report|insight|data)\b/.test(s))
-        return { text: "ReflectivAI’s analytics include Accuracy Index, Readiness Velocity, Empathy Index, Compliance Guardrails, and Confidence Delta—turning behavioral data into performance insight.", action: 'see-analytics', chips: [['See Analytics','see-analytics'],['Request Demo','request-demo']] };
-      if (/\b(emotional intelligence|ei|empathy|tone|listening|self-awareness)\b/.test(s))
-        return { text: "ReflectivAI’s EI framework measures empathy, listening, tone, and clarity—coaching reps to build trust and confidence with HCPs. Explore Why EI to learn more.", action: 'see-ei', chips: [['Why EI','see-ei'],['Open Coach','open-coach']] };
-      if (/\b(platform|modules?|features?|tools?)\b/.test(s))
-        return { text: "The ReflectivAI platform blends Product Knowledge, Sales Simulation, Role Play, and Relationship Intelligence modules—all designed for life-sciences compliance and coaching.", action: 'see-platform', chips: [['See Platform','see-platform'],['Open Coach','open-coach']] };
-      if (/\b(personas?|hcp|roleplay|scenarios?)\b/.test(s))
-        return { text: "You can practice with realistic HCP personas by specialty—Oncologists, NPs, PAs, and more—across disease states like Oncology, Cardiology, and Vaccines.", action: 'see-personas', chips: [['See Personas','see-personas'],['Try Simulation','open-coach']] };
-      if (/\b(coach|simulation|simulator|practice|training)\b/.test(s))
-        return { text: "Opening the AI Coach. Choose Product Knowledge, Sales Simulation, or Role Play to start interactive training.", action: 'open-coach', chips: CHIPS_BASE };
-      return null;
-    }
+  // Personas or scenarios
+  if (/\b(personas?|hcp|roleplay|scenarios?)\b/.test(s))
+    return {
+      text: "You can practice with realistic HCP personas by specialty—Oncologists, NPs, PAs, and more—across disease states like Oncology, Cardiology, and Vaccines.",
+      action: 'see-personas',
+      chips: [['See Personas','see-personas'],['Try Simulation','open-coach']]
+    };
 
-    function aloraOpen(){
-      alora.classList.add('open'); alora.setAttribute('aria-hidden','false');
-      if(!aloraBody.dataset.greeted){
-        bot("Hi, I’m Alora. I can explain features, EI, simulations, analytics, and usage. Ask a question.");
-        renderChips([['Open Coach','open-coach'],['See Platform','see-platform'],['Why EI','see-ei'],['Request Demo','request-demo']]);
-        aloraBody.dataset.greeted='1';
-      }
-    }
-    function aloraHide(){alora.classList.remove('open');alora.setAttribute('aria-hidden','true')}
-    aloraFab.addEventListener('click',aloraOpen);
-    aloraClose.addEventListener('click',aloraHide);
+  // Coach or simulation
+  if (/\b(coach|simulation|simulator|practice|training)\b/.test(s))
+    return {
+      text: "Opening the AI Coach. Choose Product Knowledge, Sales Simulation, or Role Play to start interactive training.",
+      action: 'open-coach',
+      chips: CHIPS_BASE
+    };
 
-    aloraForm.addEventListener('submit',async e=>{
-      e.preventDefault();
-      const q=(aloraInput.value||'').trim(); if(!q) return;
-      aloraInput.value=''; user(q); typing(true);
-      let resp=await askRemote(q).catch(()=>null);
-      typing(false);
-      if(resp){ bot(resp); renderChips(CHIPS_BASE); return; }
-      const local=localRoute(q);
-      if(local){ if(local.action) ACTIONS[local.action]?.(); bot(local.text); renderChips(local.chips||CHIPS_BASE); return; }
-      bot("I could not reach the backend. You can still open the Coach, explore the Platform, or request a demo.");
-      renderChips(CHIPS_BASE);
-    });
+  return null;
+}
 
-    if('scrollRestoration' in history){history.scrollRestoration='manual'}
-    window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo(0,0)})
+/* ------------ Open/close ------------ */
+function aloraOpen(){
+  alora.classList.add('open'); alora.setAttribute('aria-hidden','false');
+  if(!aloraBody.dataset.greeted){
+    bot("Hi, I’m Alora. I can explain features, EI, simulations, analytics, and usage. Ask a question.");
+    renderChips([['Open Coach','open-coach'],['See Platform','see-platform'],['Why EI','see-ei'],['Request Demo','request-demo']]);
+    aloraBody.dataset.greeted='1';
+  }
+}
+function aloraHide(){alora.classList.remove('open');alora.setAttribute('aria-hidden','true')}
+aloraFab.addEventListener('click',aloraOpen);
+aloraClose.addEventListener('click',aloraHide);
+
+/* ------------ Submit: remote-first, retry, deterministic fallback ------------ */
+aloraForm.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const q=(aloraInput.value||'').trim(); if(!q) return;
+  aloraInput.value=''; user(q); typing(true);
+
+  let resp=await askRemote(q).catch(()=>null);
+  typing(false);
+
+  if(resp){ bot(resp); renderChips(CHIPS_BASE); return; }
+
+  const local=localRoute(q);
+  if(local){ if(local.action) ACTIONS[local.action]?.(); bot(local.text); renderChips(local.chips||CHIPS_BASE); return; }
+
+  bot("I could not reach the backend. You can still open the Coach, explore the Platform, or request a demo.");
+  renderChips(CHIPS_BASE);
+});
+
+/* Avoid white banner on bfcache restore */
+if('scrollRestoration' in history){history.scrollRestoration='manual'}
+window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo(0,0)})
 
   });
 })();
@@ -649,43 +653,6 @@
   btn.addEventListener('click',()=>links.classList.toggle('open'));
 })();
 </script>
-
-<script>
-(function(){
-  function show(msg){
-    const root=document.getElementById('reflectiv-widget');
-    if(!root) return;
-    const box=document.createElement('pre');
-    box.style.cssText='white-space:pre-wrap;background:#fff5f5;border:1px solid #fecaca;color:#7f1d1d;padding:12px;border-radius:8px;margin:12px;font:12px/1.35 ui-monospace,Menlo,Consolas,monospace';
-    box.textContent='Widget error: '+msg;
-    root.appendChild(box);
-  }
-  window.addEventListener('error',e=>show(e.message||'script error'));
-  window.addEventListener('unhandledrejection',e=>show((e.reason&&e.reason.message)||String(e.reason)||'promise rejection'));
-
-  const btn=document.getElementById('openCoach');
-  btn&&btn.addEventListener('click',()=>{
-    setTimeout(()=>{
-      const tag=document.getElementById('reflectiv-widget-script');
-      const root=document.getElementById('reflectiv-widget');
-      if(!tag) show('widget.js tag missing. Check script include path.');
-      else if(!root) show('mount #reflectiv-widget not found.');
-      else if(root.childElementCount===0) show('No UI mounted. Check COACH_ENDPOINT, CORS, and console.');
-    },1200);
-  });
-
-  (function logBoot(){
-    const tag=document.getElementById('reflectiv-widget-script');
-    console.log('[coach] tag:',!!tag,' endpoint:',window.COACH_ENDPOINT||'(missing)');
-  })();
-})();
-</script>
-
-<!-- ===== Widget loader: ROOT-LEVEL PATH + autoboot ===== -->
-<script id="reflectiv-widget-script"
-        src="/widget.js?v=20251028-1659"
-        data-autoboot="true"
-        defer></script>
-
+  
 </body>
 </html>
