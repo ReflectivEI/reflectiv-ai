@@ -1,3 +1,5 @@
+Here’s the full drop-in widget.js with the mode-aware fallbacks and token/length tweaks applied.
+
 /* widget.js
  * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r9
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
@@ -11,6 +13,7 @@
  * 6) Scenario cascade (Disease → HCP) with resilient loaders + de-dupe
  * 7) Rep-only evaluation command (“Evaluate Rep”) with side-panel injection
  * 8) EI quick panel (persona/feature → empathy/stress + hints)
+ * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
  */
 (function () {
   // ---------- safe bootstrapping ----------
@@ -123,6 +126,21 @@
     s = String(s || "");
     if (s.length <= max) return s;
     return s.slice(0, max).replace(/\s+\S*$/, "").trim() + "…";
+  }
+
+  // mode-aware fallback lines
+  function fallbackText(mode){
+    if(mode === "sales-simulation"){
+      return "Keep it concise. Acknowledge the HCP’s context, give one actionable tip, then end with a single discovery question.";
+    }
+    if(mode === "product-knowledge"){
+      return "Brief overview: indication, one efficacy point, one safety consideration. Cite label or guideline.";
+    }
+    if(mode === "role-play"){
+      return "In my clinic, we review histories, behaviors, and adherence to guide decisions.";
+    }
+    // emotional-assessment
+    return "Reflect on tone. Note one thing that worked and one to improve, then ask yourself one next question.";
   }
 
   // sentence helpers
@@ -623,7 +641,7 @@ ${
 }
 
 # Style
-- 4–8 sentences and one closing question.
+- 4–6 sentences and one closing question. No lists longer than 3 bullets.
 - Only appropriate, publicly known, label-aligned facts.
 - No pricing advice or PHI. No off-label.
 - Include a clearly labeled "Suggested Phrasing:" section as part of the chat response.
@@ -1204,7 +1222,8 @@ ${COMMON}`
             model: (cfg?.model) || "llama-3.1-8b-instant",
             temperature: 0.2,
             stream: !!cfg?.stream,
-            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || 1400,
+            // lower tokens for Sales Simulation to reduce verbosity and repeats
+            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 900 : 1400),
             messages
           }),
           signal: controller.signal
@@ -1438,7 +1457,7 @@ ${detail}`;
         }
 
         let raw = await callModel(messages);
-        if (!raw) raw = "From my perspective, we review patient histories and adherence to guide decisions.";
+        if (!raw) raw = fallbackText(currentMode); // mode-aware fallback
 
         const { coach, clean } = extractCoach(raw);
         let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
@@ -1450,7 +1469,7 @@ ${detail}`;
 
         // anti-echo: if assistant equals user prompt
         if (norm(replyText) === norm(userText)) {
-          replyText = "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.";
+          replyText = fallbackText(currentMode); // mode-aware anti-echo
         }
 
         // prevent duplicate/cycling assistant replies (ring buffer)
@@ -1461,7 +1480,9 @@ ${detail}`;
             "I rely on history and follow-up patterns to guide decisions.",
             "We focus on adherence and recent exposures when assessing candidacy."
           ];
-          replyText = alts[Math.floor(Math.random()*alts.length)];
+          replyText = currentMode === "role-play"
+            ? alts[Math.floor(Math.random()*alts.length)]
+            : fallbackText(currentMode);
           candidate = norm(replyText);
         }
         lastAssistantNorm = candidate;
