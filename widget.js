@@ -1,12 +1,16 @@
 /* widget.js
- * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3)
+ * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r9
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
- * PROACTIVE SAFEGUARDS:
- * - duplicate-cycle guard (ring buffer)        - double-send lock
- * - Enter throttling                           - stricter HCP-only sanitizer & leak detection
- * - fixes malformed “walk me through …”        - conversation trimming
- * - empty-reply fallback                       - time-outed model calls
- * - length clamps                              - anti-echo of the user’s text
+ *
+ * FIXED ROOT CAUSES:
+ * 1) HCP-only enforcement in RP (multi-pass rewrite + imperative/pronoun repair + final strip)
+ * 2) Robust <coach>{...}</coach> parsing with brace-matching (truncation tolerant)
+ * 3) Mode drift guardrails + speaker chips + per-mode prefaces
+ * 4) Duplicate/cycling response lock (ring buffer) + anti-echo + clamps
+ * 5) Network/timeout hardening (3 tries, 45s timeout, safe fallbacks)
+ * 6) Scenario cascade (Disease → HCP) with resilient loaders + de-dupe
+ * 7) Rep-only evaluation command (“Evaluate Rep”) with side-panel injection
+ * 8) EI quick panel (persona/feature → empathy/stress + hints)
  */
 (function () {
   // ---------- safe bootstrapping ----------
@@ -445,7 +449,6 @@
     if (sig.tooLong) overall -= 6;
     overall = Math.max(0, Math.min(100, Math.round(overall)));
 
-    // --- present-tense feedback text for yellow panel
     const worked = [
       sig.empathy ? "Acknowledge HCP context" : null,
       sig.discovery ? "Close with a clear discovery question" : null,
@@ -484,36 +487,13 @@
     const text = String(message || "").toLowerCase();
     let score = 0;
     switch (personaKey) {
-      case "difficult":
-        score = 1;
-        break;
-      case "busy":
-        score = 2;
-        break;
-      case "engaged":
-        score = 4;
-        break;
-      case "indifferent":
-        score = 3;
-        break;
-      default:
-        score = 3;
+      case "difficult": score = 1; break;
+      case "busy": score = 2; break;
+      case "engaged": score = 4; break;
+      case "indifferent": score = 3; break;
+      default: score = 3;
     }
-    const empathyKeywords = [
-      "understand",
-      "appreciate",
-      "concern",
-      "feel",
-      "sorry",
-      "hear",
-      "sounds like",
-      "empathize",
-      "thanks",
-      "acknowledge"
-    ];
-    empathyKeywords.forEach((kw) => {
-      if (text.includes(kw)) score++;
-    });
+    ["understand","appreciate","concern","feel","sorry","hear","sounds like","empathize","thanks","acknowledge"].forEach((kw)=>{ if(text.includes(kw)) score++; });
     return Math.min(5, score);
   }
 
@@ -522,116 +502,54 @@
     const text = String(message || "").toLowerCase();
     let score = 0;
     switch (personaKey) {
-      case "difficult":
-        score = 4;
-        break;
-      case "busy":
-        score = 5;
-        break;
-      case "engaged":
-        score = 2;
-        break;
-      case "indifferent":
-        score = 3;
-        break;
-      default:
-        score = 3;
+      case "difficult": score = 4; break;
+      case "busy": score = 5; break;
+      case "engaged": score = 2; break;
+      case "indifferent": score = 3; break;
+      default: score = 3;
     }
-    const stressWords = ["stress", "busy", "overwhelmed", "frustrated", "tired", "pressure", "deadline"];
-    stressWords.forEach((kw) => {
-      if (text.includes(kw)) score++;
-    });
+    ["stress","busy","overwhelmed","frustrated","tired","pressure","deadline"].forEach((kw)=>{ if(text.includes(kw)) score++; });
     return Math.min(5, score);
   }
 
   // ---------- EI feedback text ----------
   function generateDynamicFeedback(personaKey, featureKey) {
     if (!personaKey || !featureKey) return "";
-    let feedback = "";
-
     if (featureKey === "empathy") {
-      switch (personaKey) {
-        case "difficult":
-          feedback = "Acknowledge frustration and keep voice calm. Use short validating phrases before you propose next steps.";
-          break;
-        case "busy":
-          feedback = "Empathize in one line, then get to the point. Lead with the outcome and time saved.";
-          break;
-        case "engaged":
-          feedback = "Reinforce collaboration. Thank them for input and ask one specific next question.";
-          break;
-        case "indifferent":
-          feedback = "Validate neutrality, then pivot to patient impact and one meaningful benefit.";
-          break;
-        default:
-          feedback = "Match tone to the HCP and show you understand their context before offering guidance.";
-      }
-    } else if (featureKey === "stress") {
-      switch (personaKey) {
-        case "difficult":
-          feedback = "Stress likely high. Keep it brief and reassuring. Remove jargon.";
-          break;
-        case "busy":
-          feedback = "Time pressure high. Bottom line first. Offer one low-effort next step.";
-          break;
-        case "engaged":
-          feedback = "Moderate stress. Provide clear info and invite collaboration.";
-          break;
-        case "indifferent":
-          feedback = "Average stress. Build rapport through patient-centered framing.";
-          break;
-        default:
-          feedback = "Adjust tone to stress level. Reduce cognitive load and give clear choices.";
-      }
-    } else if (featureKey === "listening") {
-      switch (personaKey) {
-        case "difficult":
-          feedback = "Reflect back their words. Confirm you got it right, then ask a short clarifier.";
-          break;
-        case "busy":
-          feedback = "Summarize their point in one sentence. Ask one yes or no clarifier.";
-          break;
-        case "engaged":
-          feedback = "Affirm insights and build on them. Use clarifying questions to deepen trust.";
-          break;
-        case "indifferent":
-          feedback = "Use light affirmations to draw them in. Ask a simple patient-impact question.";
-          break;
-        default:
-          feedback = "Use reflective and clarifying questions. Keep it concise.";
-      }
-    } else if (featureKey === "validation") {
-      switch (personaKey) {
-        case "difficult":
-          feedback = "Validate frustration first. Reframe around shared goals and patient outcomes.";
-          break;
-        case "busy":
-          feedback = "Validate time constraints. Reframe to efficiency and workflow fit.";
-          break;
-        case "engaged":
-          feedback = "Validate expertise. Reframe to partnership and quick experimentation.";
-          break;
-        case "indifferent":
-          feedback = "Validate neutrality. Reframe to meaningful benefits for a typical patient.";
-          break;
-        default:
-          feedback = "Validate perspective and reframe to collaboration and patient value.";
-      }
-    } else {
-      feedback = "Select a valid EI feature for targeted guidance.";
+      if (personaKey === "difficult") return "Acknowledge frustration and keep voice calm. Use short validating phrases before you propose next steps.";
+      if (personaKey === "busy") return "Empathize in one line, then get to the point. Lead with the outcome and time saved.";
+      if (personaKey === "engaged") return "Reinforce collaboration. Thank them for input and ask one specific next question.";
+      if (personaKey === "indifferent") return "Validate neutrality, then pivot to patient impact and one meaningful benefit.";
+      return "Match tone to the HCP and show you understand their context before offering guidance.";
     }
-
-    return feedback;
+    if (featureKey === "stress") {
+      if (personaKey === "difficult") return "Stress likely high. Keep it brief and reassuring. Remove jargon.";
+      if (personaKey === "busy") return "Time pressure high. Bottom line first. Offer one low-effort next step.";
+      if (personaKey === "engaged") return "Moderate stress. Provide clear info and invite collaboration.";
+      if (personaKey === "indifferent") return "Average stress. Build rapport through patient-centered framing.";
+      return "Adjust tone to stress level. Reduce cognitive load and give clear choices.";
+    }
+    if (featureKey === "listening") {
+      if (personaKey === "difficult") return "Reflect back their words. Confirm you got it right, then ask a short clarifier.";
+      if (personaKey === "busy") return "Summarize their point in one sentence. Ask one yes or no clarifier.";
+      if (personaKey === "engaged") return "Affirm insights and build on them. Use clarifying questions to deepen trust.";
+      if (personaKey === "indifferent") return "Use light affirmations to draw them in. Ask a simple patient-impact question.";
+      return "Use reflective and clarifying questions. Keep it concise.";
+    }
+    if (featureKey === "validation") {
+      if (personaKey === "difficult") return "Validate frustration first. Reframe around shared goals and patient outcomes.";
+      if (personaKey === "busy") return "Validate time constraints. Reframe to efficiency and workflow fit.";
+      if (personaKey === "engaged") return "Validate expertise. Reframe to partnership and quick experimentation.";
+      if (personaKey === "indifferent") return "Validate neutrality. Reframe to meaningful benefits for a typical patient.";
+      return "Validate perspective and reframe to collaboration and patient value.";
+    }
+    return "Select a valid EI feature for targeted guidance.";
   }
 
   // ---------- EI feedback render ----------
   function generateFeedback() {
     if (!feedbackDisplayElem) return;
-
-    if (currentMode !== "emotional-assessment") {
-      feedbackDisplayElem.innerHTML = "";
-      return;
-    }
+    if (currentMode !== "emotional-assessment") { feedbackDisplayElem.innerHTML = ""; return; }
 
     const personaKey = personaSelectElem && personaSelectElem.value;
     const featureKey = eiFeatureSelectElem && eiFeatureSelectElem.value;
