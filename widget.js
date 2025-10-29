@@ -1,13 +1,12 @@
 /* widget.js
- * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r8
+ * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + Rep-only eval patch r5
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
- * KEY FIXES (r8):
- * - Cut-off guard: higher max_output_tokens + mid-sentence detector + auto-continue (2 passes)
- * - RP bullets lock: disable list parsing in RP; strip hyphen lines; normalize to sentences
- * - Coach Feedback move: full feedback posted into chat as "Coach" message; yellow panel minimized
- * - RP leak guard tightened: multi-pass rewrite, imperative-block removal, pronoun repair
- * - Mode-toggle safety: per-mode renderer respects list policy and speaker chips
- * - Length discipline: per-section caps and rails; soft clamp + ellipsis only for coach text
+ * PROACTIVE SAFEGUARDS:
+ * - duplicate-cycle guard (ring buffer)        - double-send lock
+ * - Enter throttling                           - stricter HCP-only sanitizer & leak detection
+ * - fixes malformed “walk me through …”        - conversation trimming
+ * - empty-reply fallback                       - time-outed model calls
+ * - length clamps                              - anti-echo of the user’s text
  */
 (function () {
   // ---------- safe bootstrapping ----------
@@ -46,36 +45,6 @@
   }
 
   // ---------- config/state ----------
-
-  // ---- network config for ReflectivAI ----
-  const ENDPOINT = "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat"; // Cloudflare Worker v2 (wired to Azure)
-  const SITE_TAG = "reflectivai"; // lets Worker route traffic to Azure backend
-
-  async function sendToCoach(messages, { model = "gpt-4o-mini", temperature = 0.4, stream = false } = {}) {
-    try {
-      const r = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          site: SITE_TAG,
-          model,
-          temperature,
-          stream,
-          messages
-        })
-      });
-      if (!r.ok) {
-        const t = await r.text().catch(() => "");
-        throw new Error(`Coach API ${r.status}: ${t || "error"}`);
-      }
-      return await r.json();
-    } catch (err) {
-      console.error("sendToCoach error:", err);
-      return { role: "assistant", content: "The AI coach is temporarily unavailable. Please try again." };
-    }
-  }
-
-  // ---- learning context options ----
   const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play"];
   const LC_TO_INTERNAL = {
     "Emotional Intelligence": "emotional-assessment",
@@ -84,7 +53,6 @@
     "Role Play": "role-play"
   };
 
-  // ---- persistent state ----
   let cfg = null;
   let systemPrompt = "";
   let eiHeuristics = "";
@@ -137,18 +105,6 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
 
-  function clampLen(s, max) {
-    s = String(s || "");
-    if (s.length <= max) return s;
-    return s.slice(0, max).replace(/\s+\S*$/, "").trim() + "…";
-  }
-
-  function splitSentences(text) {
-    const t = String(text || "");
-    return t.replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
-  }
-
-  // ---------- base sanitizer ----------
   function sanitizeLLM(raw) {
     let s = String(raw || "");
     s = s.replace(/```[\s\S]*?```/g, "");
@@ -157,6 +113,18 @@
     s = s.replace(/^\s*(hi|hello|hey)[^\n]*\n+/i, "");
     s = s.replace(/\n{3,}/g, "\n\n").trim();
     return s;
+  }
+
+  function clampLen(s, max) {
+    s = String(s || "");
+    if (s.length <= max) return s;
+    return s.slice(0, max).replace(/\s+\S*$/, "").trim() + "…";
+  }
+
+  // sentence helpers
+  function splitSentences(text) {
+    const t = String(text || "");
+    return t.replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
   }
 
   // --- shared leak patterns
@@ -168,7 +136,7 @@
   const OFFER_OR_TRAINING_WORD_RE =
     /\b(offer|provide|train|training|educate|education|materials?|resources?|handouts?|brochures?|one-?pagers?|scripts?)\b/i;
 
-  // ---------- Role-play sanitizer (stricter) ----------
+  // ---------- Role-play sanitizer ----------
   function sanitizeRolePlayOnly(text) {
     let s = String(text || "");
 
@@ -178,16 +146,16 @@
 
     s = s.replace(/<coach>[\s\S]*?<\/coach>/gi, "");
     s = s.replace(
-      /(?:^|\n)\s*(?:\*\*)?\s*(?:Sales\s*Guidance|Challenge|(?:My|Rep)\s*Approach|Impact|Recommendations?)\s*(?:\*\*)?\s*:\s*[\s\S]*?(?=\n\s*\n|$)/gmi,
+      /(?:^|\n)\s*(?:\*\*)?\s*(?:Sales\s*Guidance|Challenge|(?:My|Rep)\s*Approach|Impact)\s*(?:\*\*)?\s*:\s*[\s\S]*?(?=\n\s*\n|$)/gmi,
       ""
     );
 
     // strip speaker/meta
-    s = s.replace(/^(?:Assistant|Coach|System|Rep|User|Sales Rep|HCP)\s*:\s*/gmi, "");
+    s = s.replace(/^(?:Assistant|Coach|System|Rep|User|Sales Rep)\s*:\s*/gmi, "");
     s = s.replace(/^\s*["“']?\s*(hi|hello|hey)\b.*$/gmi, "");
 
-    // remove bullets entirely for RP
-    s = s.replace(/^\s*[-*•]\s+/gm, "");
+    // markdown cleanup
+    s = s.replace(/^\s*[-*]\s+/gm, "");
     s = s.replace(/^\s*#{1,6}\s+.*$/gm, "");
     s = s.replace(/^\s*>\s?/gm, "");
 
@@ -367,39 +335,23 @@
     return String(text).replace(/\bMy\s*Approach\b/gi, "Rep Approach");
   }
 
-  // Markdown to HTML, with per-mode options
-  function md(text, opts) {
+  function md(text) {
     if (!text) return "";
-    const o = Object.assign({ allowLists: true }, opts || {});
     let s = esc(String(text)).replace(/\r\n?/g, "\n");
-
-    // Bold
     s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-
-    // Lists only if allowed
-    if (o.allowLists) {
-      s = s.replace(
-        /^(?:[-*•]\s+).+(?:\n(?:[-*•]\s+).+)*/gm,
-        (blk) => {
-          const items = blk
-            .split("\n")
-            .map((l) => l.replace(/^(?:[-*•]\s+)(.+)$/, "<li>$1</li>"))
-            .join("");
-          return `<ul>${items}</ul>`;
-        }
-      );
-    } else {
-      // flatten hyphen lines into sentences
-      s = s.replace(/^\s*[-*•]\s+/gm, "");
-    }
-
-    // Paragraphs
+    s = s.replace(
+      /^(?:-\s+|\*\s+).+(?:\n(?:-\s+|\*\s+).+)*/gm,
+      (blk) => {
+        const items = blk
+          .split("\n")
+          .map((l) => l.replace(/^(?:-\s+|\*\s+)(.+)$/, "<li>$1</li>"))
+          .join("");
+        return `<ul>${items}</ul>`;
+      }
+    );
     return s
       .split(/\n{2,}/)
-      .map((p) => {
-        if (o.allowLists && p.startsWith("<ul>")) return p;
-        return `<p>${p.replace(/\n/g, "<br>")}</p>`;
-      })
+      .map((p) => (p.startsWith("<ul>") ? p : `<p>${p.replace(/\n/g, "<br>")}</p>`))
       .join("\n");
   }
 
@@ -410,7 +362,7 @@
     return e;
   }
 
-  // --- robust extractor for <coach>{...}</coach>
+  // --- robust extractor: tolerates missing </coach> and truncation
   function extractCoach(raw) {
     const s = String(raw || "");
     const openIdx = s.indexOf("<coach>");
@@ -437,6 +389,7 @@
     }
     if (end === -1) return { coach: null, clean: sanitizeLLM(head) };
 
+    // parse JSON inside <coach>…</coach>
     const jsonTxt = block.slice(braceStart, end + 1);
     let coach = {};
     try {
@@ -492,6 +445,7 @@
     if (sig.tooLong) overall -= 6;
     overall = Math.max(0, Math.min(100, Math.round(overall)));
 
+    // --- present-tense feedback text for yellow panel
     const worked = [
       sig.empathy ? "Acknowledge HCP context" : null,
       sig.discovery ? "Close with a clear discovery question" : null,
@@ -531,18 +485,35 @@
     let score = 0;
     switch (personaKey) {
       case "difficult":
-        score = 1; break;
+        score = 1;
+        break;
       case "busy":
-        score = 2; break;
+        score = 2;
+        break;
       case "engaged":
-        score = 4; break;
+        score = 4;
+        break;
       case "indifferent":
-        score = 3; break;
+        score = 3;
+        break;
       default:
         score = 3;
     }
-    const empathyKeywords = ["understand","appreciate","concern","feel","sorry","hear","sounds like","empathize","thanks","acknowledge"];
-    empathyKeywords.forEach((kw) => { if (text.includes(kw)) score++; });
+    const empathyKeywords = [
+      "understand",
+      "appreciate",
+      "concern",
+      "feel",
+      "sorry",
+      "hear",
+      "sounds like",
+      "empathize",
+      "thanks",
+      "acknowledge"
+    ];
+    empathyKeywords.forEach((kw) => {
+      if (text.includes(kw)) score++;
+    });
     return Math.min(5, score);
   }
 
@@ -552,18 +523,24 @@
     let score = 0;
     switch (personaKey) {
       case "difficult":
-        score = 4; break;
+        score = 4;
+        break;
       case "busy":
-        score = 5; break;
+        score = 5;
+        break;
       case "engaged":
-        score = 2; break;
+        score = 2;
+        break;
       case "indifferent":
-        score = 3; break;
+        score = 3;
+        break;
       default:
         score = 3;
     }
-    const stressWords = ["stress","busy","overwhelmed","frustrated","tired","pressure","deadline"];
-    stressWords.forEach((kw) => { if (text.includes(kw)) score++; });
+    const stressWords = ["stress", "busy", "overwhelmed", "frustrated", "tired", "pressure", "deadline"];
+    stressWords.forEach((kw) => {
+      if (text.includes(kw)) score++;
+    });
     return Math.min(5, score);
   }
 
@@ -574,39 +551,76 @@
 
     if (featureKey === "empathy") {
       switch (personaKey) {
-        case "difficult": feedback = "Acknowledge frustration first. Keep voice calm. Validate before next steps."; break;
-        case "busy":      feedback = "One-line empathy. Bottom line first. Offer one low-effort next step."; break;
-        case "engaged":   feedback = "Reinforce collaboration. Thank them. Ask one specific next question."; break;
-        case "indifferent": feedback = "Validate neutrality. Pivot to patient impact with one clear benefit."; break;
-        default:          feedback = "Match tone to context and show you understand before guidance.";
+        case "difficult":
+          feedback = "Acknowledge frustration and keep voice calm. Use short validating phrases before you propose next steps.";
+          break;
+        case "busy":
+          feedback = "Empathize in one line, then get to the point. Lead with the outcome and time saved.";
+          break;
+        case "engaged":
+          feedback = "Reinforce collaboration. Thank them for input and ask one specific next question.";
+          break;
+        case "indifferent":
+          feedback = "Validate neutrality, then pivot to patient impact and one meaningful benefit.";
+          break;
+        default:
+          feedback = "Match tone to the HCP and show you understand their context before offering guidance.";
       }
     } else if (featureKey === "stress") {
       switch (personaKey) {
-        case "difficult": feedback = "Likely high stress. Be brief and reassuring. Remove jargon."; break;
-        case "busy":      feedback = "Time pressure high. Lead with outcome and time saved."; break;
-        case "engaged":   feedback = "Moderate. Provide clarity and invite collaboration."; break;
-        case "indifferent": feedback = "Average. Use patient-centered framing to engage."; break;
-        default:          feedback = "Reduce cognitive load. Give clear choices.";
+        case "difficult":
+          feedback = "Stress likely high. Keep it brief and reassuring. Remove jargon.";
+          break;
+        case "busy":
+          feedback = "Time pressure high. Bottom line first. Offer one low-effort next step.";
+          break;
+        case "engaged":
+          feedback = "Moderate stress. Provide clear info and invite collaboration.";
+          break;
+        case "indifferent":
+          feedback = "Average stress. Build rapport through patient-centered framing.";
+          break;
+        default:
+          feedback = "Adjust tone to stress level. Reduce cognitive load and give clear choices.";
       }
     } else if (featureKey === "listening") {
       switch (personaKey) {
-        case "difficult": feedback = "Reflect back their words. Confirm, then one clarifier."; break;
-        case "busy":      feedback = "Summarize in one sentence. Yes/no clarifier."; break;
-        case "engaged":   feedback = "Affirm insights and build on them. Clarify to deepen trust."; break;
-        case "indifferent": feedback = "Light affirmations. Ask a simple patient-impact question."; break;
-        default:          feedback = "Use reflective and clarifying questions. Keep it concise.";
+        case "difficult":
+          feedback = "Reflect back their words. Confirm you got it right, then ask a short clarifier.";
+          break;
+        case "busy":
+          feedback = "Summarize their point in one sentence. Ask one yes or no clarifier.";
+          break;
+        case "engaged":
+          feedback = "Affirm insights and build on them. Use clarifying questions to deepen trust.";
+          break;
+        case "indifferent":
+          feedback = "Use light affirmations to draw them in. Ask a simple patient-impact question.";
+          break;
+        default:
+          feedback = "Use reflective and clarifying questions. Keep it concise.";
       }
     } else if (featureKey === "validation") {
       switch (personaKey) {
-        case "difficult": feedback = "Validate frustration. Reframe to shared goals and outcomes."; break;
-        case "busy":      feedback = "Validate time constraints. Reframe to workflow fit."; break;
-        case "engaged":   feedback = "Validate expertise. Reframe to experimentation and partnership."; break;
-        case "indifferent": feedback = "Validate neutrality. Reframe to meaningful benefits."; break;
-        default:          feedback = "Validate perspective. Reframe to collaboration and value.";
+        case "difficult":
+          feedback = "Validate frustration first. Reframe around shared goals and patient outcomes.";
+          break;
+        case "busy":
+          feedback = "Validate time constraints. Reframe to efficiency and workflow fit.";
+          break;
+        case "engaged":
+          feedback = "Validate expertise. Reframe to partnership and quick experimentation.";
+          break;
+        case "indifferent":
+          feedback = "Validate neutrality. Reframe to meaningful benefits for a typical patient.";
+          break;
+        default:
+          feedback = "Validate perspective and reframe to collaboration and patient value.";
       }
     } else {
       feedback = "Select a valid EI feature for targeted guidance.";
     }
+
     return feedback;
   }
 
@@ -691,17 +705,17 @@ ${
 }
 
 # Style
-- 4–6 sentences max, then one closing question.
+- 4–8 sentences and one closing question.
 - Only appropriate, publicly known, label-aligned facts.
 - No pricing advice or PHI. No off-label.
-- Keep each section under 90 words.
+- Include a clearly labeled "Suggested Phrasing:" section as part of the chat response.
 
 ${COMMON}`
       ).trim();
     }
 
     if (mode === "product-knowledge") {
-      return `Return a concise educational overview with reputable citations. Structure: key takeaways; mechanism/indications; safety/contraindications; efficacy; access notes; references. Keep each section under 80 words.`.trim();
+      return `Return a concise educational overview with reputable citations. Structure: key takeaways; mechanism/indications; safety/contraindications; efficacy; access notes; references.`.trim();
     }
 
     if (mode === "role-play") {
@@ -717,19 +731,20 @@ Hard bans:
 - Do NOT ask the rep about the rep’s process, approach, or clinic metrics.
 - Do NOT interview the rep with sales-discovery prompts.
 - Do NOT make offers like "I can provide/offer/arrange training, resources, handouts, or scripts," and do NOT propose to educate the rep or their staff.
+- Do NOT propose support, resources, training, education, materials, webinars, or handouts for the rep or their staff.
 
 Allowable questions from HCP:
 - Clarify therapy, safety, logistics, coverage, workflow impact.
 - Questions must reflect HCP’s POV (“my clinic”, “my patients”, “our team”).
 
-Output only the HCP utterance. 2–5 sentences.`
+Output only the HCP utterance.`
       ).trim();
     }
 
     // emotional-assessment
     return (
       `Provide brief self-reflection tips tied to HCP communication.
-- 3–5 sentences, then one reflective question. Each sentence under 28 words.
+- 3–5 sentences, then one reflective question.
 
 ${COMMON}`
     ).trim();
@@ -760,14 +775,21 @@ ${COMMON}`
 #reflectiv-widget .chat-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #e1e6ef;background:#fff}
 #reflectiv-widget .chat-input textarea{flex:1;resize:none;min-height:44px;max-height:120px;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;outline:none}
 #reflectiv-widget .chat-input .btn{min-width:86px;border:0;border-radius:999px;background:#2f3a4f;color:#fff;font-weight:600}
-#reflectiv-widget .coach-section{margin-top:0;padding:10px 12px;border-top:1px solid #e1e6ef;background:#fff}
-#reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
+#reflectiv-widget .coach-section{margin-top:0;padding:12px 14px;border:1px solid #e1e6ef;border-radius:12px;background:#fffbe8}
+#reflectiv-widget .coach-section .coach-body{line-height:1.45}
+#reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;margin-bottom:4px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
 #reflectiv-widget .scenario-meta .meta-card{padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:10px}
 #reflectiv-widget .hidden{display:none!important}
 #reflectiv-widget .speaker{display:inline-block;margin:0 0 6px 2px;padding:2px 8px;font-size:11px;font-weight:700;border-radius:999px;border:1px solid #cfd6df}
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
 #reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
+#reflectiv-widget .coach-panel{background:#fff;border:1px solid #e1e6ef;border-radius:10px;padding:10px 12px;margin-top:8px}
+#reflectiv-widget .coach-panel h4{margin:0 0 6px 0;font-size:14px}
+#reflectiv-widget .coach-panel h5{margin:10px 0 4px 0;font-size:13px}
+#reflectiv-widget .coach-panel .coach-subs{margin:6px 0}
+#reflectiv-widget .coach-panel details{margin-top:8px}
+#reflectiv-widget .muted{color:#6b7280}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
       `;
@@ -954,17 +976,16 @@ ${COMMON}`
     inp.appendChild(send);
     shell.appendChild(inp);
 
-    // Yellow panel minimized per spec
     const coach = el("div", "coach-section");
-    coach.innerHTML = `<div class="coach-body muted" style="font-size:12px;color:#6b7484;">Coach panel minimized. Full feedback appears in chat.</div>`;
+    coach.innerHTML = `<h3>Coach Feedback</h3><div class="coach-body muted">Awaiting the first assistant reply…</div>`;
     shell.appendChild(coach);
 
     feedbackDisplayElem = el("div", "ei-feedback");
     feedbackDisplayElem.id = "feedback-display";
-    feedbackDisplayElem.style.marginTop = "6px";
-    feedbackDisplayElem.style.paddingTop = "6px";
-    feedbackDisplayElem.style.borderTop = "1px dashed #e1e6ef";
-    feedbackDisplayElem.style.fontSize = "13px";
+    feedbackDisplayElem.style.marginTop = "8px";
+    feedbackDisplayElem.style.padding = "8px";
+    feedbackDisplayElem.style.borderTop = "1px solid #e1e6ef";
+    feedbackDisplayElem.style.fontSize = "14px";
     coach.appendChild(feedbackDisplayElem);
 
     function getDiseaseStates() {
@@ -1045,26 +1066,22 @@ ${COMMON}`
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
-        // Speaker chips: Role Play = HCP/Rep. Sales Simulation = Sales Coach/Rep. Coach message = Coach.
-        if (m._speaker === "coach") {
-          const chip = el("div", "speaker coach", "Coach");
-          c.appendChild(chip);
-        } else if (currentMode === "role-play") {
+        // Speaker chips: Role Play = HCP/Rep. Sales Simulation = Sales Coach/Rep.
+        if (currentMode === "role-play") {
           const chipText =
             m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "HCP" : "Rep";
           const chipCls = m._speaker === "hcp" || m.role === "assistant" ? "speaker hcp" : "speaker rep";
           const chip = el("div", chipCls, chipText);
           c.appendChild(chip);
         } else if (currentMode === "sales-simulation") {
-          const isCoach = m._speaker === "coach" || m.role === "assistant";
+          const isCoach = m.role === "assistant";
           const chip = el("div", isCoach ? "speaker coach" : "speaker rep", isCoach ? "Sales Coach" : "Rep");
           c.appendChild(chip);
         }
 
         const body = el("div");
         const normalized = normalizeGuidanceLabels(m.content);
-        const allowLists = !(currentMode === "role-play" && (m.role === "assistant" || m._speaker === "hcp"));
-        body.innerHTML = md(normalized, { allowLists });
+        body.innerHTML = md(normalized);
         c.appendChild(body);
 
         row.appendChild(c);
@@ -1083,23 +1100,58 @@ ${COMMON}`
 
     function renderCoach() {
       const body = coach.querySelector(".coach-body");
-      if (!coachOn) {
+      if (!coachOn || currentMode === "product-knowledge") {
         coach.style.display = "none";
         return;
       }
       coach.style.display = "";
 
-      // Panel is minimized by design. Show only a tiny summary if last coach exists.
-      const last = conversation.slice().reverse().find((m) => m._speaker === "coach");
-      if (!last) {
-        body.innerHTML = `<span class="muted" style="font-size:12px;color:#6b7484;">Coach panel minimized. Full feedback appears in chat.</span>`;
+      // Role Play: hide until final eval
+      if (currentMode === "role-play") {
+        const last = conversation[conversation.length - 1];
+        if (!last || !last._finalEval) {
+          const extra = repOnlyPanelHTML
+            ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>`
+            : "";
+          body.innerHTML = `<span class="muted">Final evaluation will appear after you request it by typing “Evaluate this exchange”.</span>${extra}`;
+          return;
+        }
+      }
+
+      const last = conversation[conversation.length - 1];
+      if (!(last && last.role === "assistant" && last._coach)) {
+        body.innerHTML = `<span class="muted">Awaiting the first assistant reply…</span>${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
         return;
       }
-      const fb = last._coach || {};
+      const fb = last._coach;
       const scores = fb.scores || fb.subscores || {};
+
+      // Sales Simulation yellow panel spec:
+      if (currentMode === "sales-simulation") {
+        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+        body.innerHTML = `
+          <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
+          <ul class="coach-list">
+            <li><strong>Focus:</strong> ${workedStr}</li>
+            <li><strong>Strategy:</strong> ${improveStr}</li>
+          </ul>
+          ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+        return;
+      }
+
+      // Emotional-assessment and Role Play final eval keep score view
+      const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
+      const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
       body.innerHTML = `
+        <div class="coach-score">Score: <strong>${fb.overall ?? fb.score ?? "—"}</strong>/100</div>
         <div class="coach-subs">${orderedPills(scores)}</div>
-        <div style="font-size:12px;color:#6b7484;margin-top:6px;">Summary only. See chat for full feedback.</div>`;
+        <ul class="coach-list">
+          <li><strong>What worked:</strong> ${esc(workedStr)}</li>
+          <li><strong>What to improve:</strong> ${esc(improveStr)}</li>
+          <li><strong>Suggested phrasing:</strong> ${esc(fb.phrasing || "—")}</li>
+        </ul>
+        ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
     }
 
     function applyModeVisibility() {
@@ -1107,8 +1159,8 @@ ${COMMON}`
       currentMode = LC_TO_INTERNAL[lc];
       const pk = currentMode === "product-knowledge";
 
-      coachLabel.classList.toggle("hidden", false); // keep toggle visible
-      coachSel.classList.toggle("hidden", false);
+      coachLabel.classList.toggle("hidden", pk);
+      coachSel.classList.toggle("hidden", pk);
 
       if (currentMode === "sales-simulation") {
         diseaseLabel.classList.remove("hidden");
@@ -1145,8 +1197,9 @@ ${COMMON}`
         eiFeatureSelectElem.classList.add("hidden");
         repOnlyPanelHTML = "";
         feedbackDisplayElem.innerHTML = `
-          <div class="coach-note" style="font-size:12px;color:#6b7484">
-            <strong>Role Play:</strong> Chat with the HCP. Type <em>"Evaluate this exchange"</em> for a full assessment, or <em>"Evaluate Rep"</em> for Rep-only.
+          <div class="coach-note">
+            <strong>Role Play Mode:</strong> You chat with an HCP persona selected by Disease + HCP.
+            Type <em>"Evaluate this exchange"</em> for a full assessment, or <em>"Evaluate Rep"</em> for a Rep-only review.
           </div>`;
         populateDiseases();
         if (diseaseSelect.value) populateHcpForDisease(diseaseSelect.value);
@@ -1218,76 +1271,57 @@ ${COMMON}`
     applyModeVisibility();
   }
 
-  // ---------- callModel (retries, timeout, backoff, auto-continue) ----------
+  // ---------- callModel (hardened with retries, timeout, and backoff) ----------
   function rid() {
     return Math.random().toString(36).slice(2);
   }
 
-  function seemsTruncated(text) {
-    if (!text) return true;
-    const t = String(text).trim();
-    if (!t) return true;
-    // ends without terminal punctuation or cut by clamp ellipsis
-    const noPeriod = !/[.!?]["’”)]?\s*$/.test(t);
-    const hasEllipsis = /…$/.test(t);
-    const longButNoStop = t.length > 800 && noPeriod;
-    return hasEllipsis || longButNoStop;
-  }
-
-  async function rawCall(url, payload, signal) {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Req-Id": rid() },
-      body: JSON.stringify(payload),
-      signal
-    });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const data = await r.json().catch(() => ({}));
-    return data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
-  }
-
   async function callModel(messages) {
     const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
-    const payload = {
-      model: (cfg?.model) || "llama-3.1-8b-instant",
-      temperature: 0.2,
-      stream: false,
-      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || 2200, // bumped up
-      messages
-    };
 
-    // attempt with retries
     const attempt = async (n, delayMs) => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort("timeout"), 50000); // 50s
+      const timeout = setTimeout(() => controller.abort("timeout"), 45000); // up to 45s
       try {
-        return await rawCall(url, payload, controller.signal);
+        const r = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Req-Id": rid()
+          },
+          body: JSON.stringify({
+            model: (cfg?.model) || "llama-3.1-8b-instant",
+            temperature: 0.2,
+            stream: !!cfg?.stream,
+            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || 1400,
+            messages
+          }),
+          signal: controller.signal
+        });
+
+        if (!r.ok) throw new Error("HTTP " + r.status);
+
+        const data = await r.json().catch(() => ({}));
+        return (
+          data?.content ||
+          data?.reply ||
+          data?.choices?.[0]?.message?.content ||
+          ""
+        );
       } catch (e) {
+        // retry only on backend/network errors
         if (n > 0 && /HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(String(e))) {
           await new Promise((res) => setTimeout(res, delayMs));
           return attempt(n - 1, delayMs * 2);
         }
         console.warn("Model call failed:", e);
-        return "";
+        return ""; // fallback empty
       } finally {
         clearTimeout(timeout);
       }
     };
 
-    let text = await attempt(2, 400);
-    // auto-continue if truncated
-    let hops = 0;
-    while (seemsTruncated(text) && hops < 2) {
-      const contMsgs = [
-        ...messages,
-        { role: "user", content: "Continue your previous response. Complete the last sentence. Keep it concise." }
-      ];
-      payload.messages = contMsgs;
-      const more = await attempt(1, 400);
-      if (more) text = (text + "\n" + more).trim();
-      hops++;
-    }
-    return text;
+    return attempt(2, 400); // up to 3 total tries
   }
 
   // ---------- final-eval helper ----------
@@ -1310,20 +1344,12 @@ ${COMMON}`
     const raw = await callModel(evalMsgs);
     const { coach, clean } = extractCoach(raw);
     const finalCoach = coach || scoreReply("", clean);
-
-    // push final eval as coach message into chat
-    conversation.push({
-      role: "assistant",
-      content: renderCoachAsChat(finalCoach),
-      _coach: finalCoach,
-      _finalEval: true,
-      _speaker: "coach"
-    });
+    conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
   }
 
-  /* ---------- Rep-only evaluation helpers ---------- */
+  /* ---------- Rep-only evaluation helpers (robust, JSON-first, graceful fallback) ---------- */
   function repTurns(history, max = 12) {
-    const repLike = ["rep", "user"];
+    const repLike = ["rep", "user"]; // Rep messages stored as _speaker:'rep' or role:'user'
     const seq = (history || []).filter(
       (m) => repLike.includes(String(m._speaker || "").toLowerCase()) || repLike.includes(String(m.role || "").toLowerCase())
     );
@@ -1331,6 +1357,52 @@ ${COMMON}`
       role: (role || _speaker || "user"),
       content: String(content || "")
     }));
+  }
+
+  function extractFirstJson(txt) {
+    const s = String(txt || "");
+    // try fenced
+    const fence = s.match(/```json\s*([\s\S]*?)```/i);
+    if (fence && fence[1]) return fence[1];
+    // try first {...} block
+    const start = s.indexOf("{");
+    if (start === -1) return "";
+    let depth = 0;
+    for (let i = start; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) return s.slice(start, i + 1);
+      }
+    }
+    return "";
+  }
+
+  function summarizeRepText(repSeq) {
+    const txt = repSeq.map(t => t.content).join(" ").slice(0, 1600);
+    const sr = scoreReply("", txt);
+    const strengths = []
+      .concat(sr.worked || [])
+      .filter(Boolean);
+    const improvements = []
+      .concat(sr.improve || [])
+      .filter(Boolean);
+    const actionable = [sr.phrasing].filter(Boolean);
+    return {
+      scores: {
+        accuracy: sr.scores.accuracy,
+        compliance: sr.scores.compliance,
+        discovery: sr.scores.discovery,
+        clarity: sr.scores.clarity,
+        objectionHandling: sr.scores.objection_handling,
+        empathy: sr.scores.empathy
+      },
+      summary: "Rep-only snapshot based on recent utterances.",
+      strengths,
+      improvements,
+      actionable
+    };
   }
 
   async function evaluateRepOnly({ history, personaLabel, goal }) {
@@ -1343,7 +1415,8 @@ ${COMMON}`
       `Persona: ${personaLabel || "unspecified persona"}.`,
       `Scenario Goal: ${goal || "unspecified goal"}.`,
       "Rubric: Accuracy, Compliance, Discovery, Clarity, Objection Handling, Empathy.",
-      "Return JSON with keys: scores{accuracy,compliance,discovery,clarity,objectionHandling,empathy}, summary, strengths[], improvements[], actionable[]. Scores 1–5 integers."
+      "Return ONLY compact JSON. No prose outside JSON.",
+      `Format: {"scores":{"accuracy":1-5,"compliance":1-5,"discovery":1-5,"clarity":1-5,"objectionHandling":1-5,"empathy":1-5},"summary":"...", "strengths":["..."], "improvements":["..."], "actionable":["..."]}`
     ].join(" ");
 
     const user = {
@@ -1359,48 +1432,46 @@ ${COMMON}`
     try {
       raw = await callModel([{ role: "system", content: sys }, user]);
     } catch (e) {
-      return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
+      const d = summarizeRepText(transcript);
+      return { html: renderRepOnlyPanel(d, "Rep-only Evaluation") };
     }
 
     let data = null;
+    // strict JSON parse
     try { data = JSON.parse(raw); } catch (_) {}
-
-    if (!data || !data.scores) {
-      const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
-      return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>${esc(safe)}</p></div>` };
+    if (!data) {
+      const body = extractFirstJson(raw);
+      if (body) {
+        try { data = JSON.parse(body); } catch (_) {}
+      }
     }
+    if (!data || !data.scores) {
+      // fallback: use local deterministic summary, but preserve any narrative as "details"
+      const det = summarizeRepText(transcript);
+      const narrative = sanitizeLLM(raw || "");
+      return { html: renderRepOnlyPanel(det, "Rep-only Evaluation", narrative) };
+    }
+    return { html: renderRepOnlyPanel(data, "Rep-only Evaluation") };
+  }
 
+  function renderRepOnlyPanel(data, title, narrativeText) {
     const s = data.scores || {};
+    const pill = (k, v) => `<span class="pill">${k}: ${v ?? "—"}</span>`;
     const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-    const html = `
+    const details = narrativeText ? `<details><summary>Model notes</summary>${md(normalizeGuidanceLabels(narrativeText))}</details>` : "";
+    return `
       <div class="coach-panel">
-        <h4>Rep-only Evaluation</h4>
+        <h4>${esc(title)}</h4>
         <div class="coach-subs">
-          <span class="pill">Accuracy: ${s.accuracy ?? "—"}</span>
-          <span class="pill">Compliance: ${s.compliance ?? "—"}</span>
-          <span class="pill">Discovery: ${s.discovery ?? "—"}</span>
-          <span class="pill">Clarity: ${s.clarity ?? "—"}</span>
-          <span class="pill">Objection Handling: ${s.objectionHandling ?? "—"}</span>
-          <span class="pill">Empathy: ${s.empathy ?? "—"}</span>
+          ${pill("Accuracy", s.accuracy)} ${pill("Compliance", s.compliance)} ${pill("Discovery", s.discovery)}
+          ${pill("Clarity", s.clarity)} ${pill("Objection Handling", s.objectionHandling)} ${pill("Empathy", s.empathy)}
         </div>
         ${data.summary ? `<p>${esc(data.summary)}</p>` : ""}
         <h5>Strengths</h5>${list(data.strengths)}
         <h5>Improvements</h5>${list(data.improvements)}
         <h5>Actionable Feedback</h5>${list(data.actionable)}
+        ${details}
       </div>`;
-    return { html };
-  }
-
-  function renderCoachAsChat(coach) {
-    if (!coach) return "Coach feedback unavailable.";
-    const s = coach.scores || coach.subscores || {};
-    const pp = (k) => (k in s ? `${k}: ${s[k]}` : null);
-    const pills = ["accuracy","compliance","discovery","clarity","objection_handling","empathy"].map(pp).filter(Boolean).join(" | ");
-    const worked = Array.isArray(coach.worked) && coach.worked.length ? `What worked: ${coach.worked.join("; ")}.` : "";
-    const improve = Array.isArray(coach.improve) && coach.improve.length ? `Improve: ${coach.improve.join("; ")}.` : (coach.feedback || "");
-    const phr = coach.phrasing ? `Suggested phrasing: ${coach.phrasing}` : "";
-    const head = typeof coach.overall === "number" ? `Score ${coach.overall}/100.` : "";
-    return [head, pills ? `Scores — ${pills}.` : "", worked, improve, phr].filter(Boolean).join("\n");
   }
 
   // ---------- send ----------
@@ -1413,12 +1484,13 @@ ${COMMON}`
   let isSending = false;
 
   function trimConversationIfNeeded() {
+    // keep last 30 turns to avoid runaway context
     if (conversation.length <= 30) return;
     conversation = conversation.slice(-30);
   }
 
   async function sendMessage(userText) {
-    if (isSending) return; // double-send lock
+    if (isSending) return;            // double-send lock
     isSending = true;
 
     const shellEl = mount.querySelector(".reflectiv-chat");
@@ -1446,87 +1518,163 @@ ${COMMON}`
         return;
       }
 
-      // push user turn
+      // Rep-only evaluation trigger (broadened)
+      const repEvalRe = /\b(evaluate\s*(the\s*)?rep\b|rep-?only\s*(eval(uation)?)?\b|rep\s*eval(uation)?\b|evaluate\s*rep\s*only\b)/i;
+      if (repEvalRe.test(userText)) {
+        const sc = scenariosById.get(currentScenarioId);
+        const persona = sc?.hcpRole || sc?.label || "";
+        const goal = sc?.goal || "";
+        const res = await evaluateRepOnly({ history: conversation, personaLabel: persona, goal });
+        repOnlyPanelHTML = res?.html || "<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable.</p></div>";
+        renderCoach();
+        return;
+      }
+
+      // normal turn
       conversation.push({
         role: "user",
         content: userText,
-        _speaker: currentMode === "role-play" ? "rep" : undefined,
-        ts: Date.now()
+        _speaker: currentMode === "role-play" ? "rep" : "user"
       });
-      trimConversationIfNeeded();
-      renderMessages();
-
-      // build context (system preface + last 12 turns)
-      const sys = { role: "system", content: buildPreface(currentMode, scenariosById.get(currentScenarioId)) };
-      const msgs = [sys, ...conversation.slice(-12)];
-
-      // call backend (Worker → Azure for ReflectivAI)
-      const temperature = currentMode === "role-play" ? 0.5 : 0.4;
-      const resp1 = await sendToCoach(msgs, { model: "gpt-4o-mini", temperature, stream: false });
-
-      // --- get raw reply from Worker and apply cut-off guard (auto-continue up to 2 passes)
-      let raw = resp1?.content || resp1?.reply || "";
-      if (seemsTruncated(raw)) {
-        const contMsgs1 = [...msgs, { role: "user", content: "Continue your previous response. Complete the last sentence. Keep it concise." }];
-        const resp2 = await sendToCoach(contMsgs1, { model: "gpt-4o-mini", temperature, stream: false });
-        const more1 = resp2?.content || resp2?.reply || "";
-        if (more1) raw = (raw + "\n" + more1).trim();
-
-        if (seemsTruncated(raw)) {
-          const contMsgs2 = [...msgs, { role: "user", content: "Continue. Finish any unfinished bullets or sentences in 2–3 lines max." }];
-          const resp3 = await sendToCoach(contMsgs2, { model: "gpt-4o-mini", temperature, stream: false });
-          const more2 = resp3?.content || resp3?.reply || "";
-          if (more2) raw = (raw + "\n" + more2).trim();
-        }
-      }
-
-      // extract any <coach>{...}</coach> block and the clean assistant text
-      const { coach, clean } = extractCoach(raw);
-
-      // role mapping + RP hardening
-      let assistantSpeaker = currentMode === "role-play" ? "hcp" : "coach";
-      let replyText = clean || "The AI coach is temporarily unavailable. Please try again.";
-
-      if (currentMode === "role-play") {
-        const sc = scenariosById.get(currentScenarioId);
-        // enforce strict HCP-only POV and strip any guidance leakage
-        replyText = await enforceHcpOnly(replyText, sc, msgs, callModel);
-        replyText = sanitizeRolePlayOnly(replyText);
-      }
-
-      // append assistant turn
-      conversation.push({
-        role: "assistant",
-        content: replyText,
-        _speaker: assistantSpeaker,
-        ts: Date.now()
-      });
-
-      // if we received coach JSON, render as a separate "Coach" chat message and store subscores
-      if (coach) {
-        conversation.push({
-          role: "assistant",
-          content: renderCoachAsChat(coach),
-          _speaker: "coach",
-          _coach: coach,
-          ts: Date.now()
-        });
-      }
-
       trimConversationIfNeeded();
       renderMessages();
       renderCoach();
-    } catch (e) {
-      conversation.push({
-        role: "assistant",
-        content: "Sorry, an error occurred. Try again.",
-        _speaker: "coach",
-        ts: Date.now()
-      });
-      renderMessages();
+
+      if (currentMode === "emotional-assessment") generateFeedback();
+
+      const sc = scenariosById.get(currentScenarioId);
+      const messages = [];
+
+      // 1) Core runtime rules (system.md) + EI layer
+      if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+      if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
+        messages.push({ role: "system", content: eiHeuristics });
+      }
+
+      // 2) Mode/scenario preface
+      if (currentMode === "role-play") {
+        const personaLine = currentPersonaHint();
+        const detail = sc
+          ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${sc.hcpRole || "—"}. ${
+              sc.background ? `Background: ${sc.background}. ` : ""
+            }${sc.goal ? `Today’s Goal: ${sc.goal}.` : ""}`
+          : "";
+        const roleplayRails = buildPreface("role-play", sc) + `
+
+Context:
+${personaLine}
+${detail}`;
+        messages.push({ role: "system", content: roleplayRails });
+      } else {
+        messages.push({ role: "system", content: buildPreface(currentMode, sc) });
+      }
+
+      // 3) User turn
+      messages.push({ role: "user", content: userText });
+
+      try {
+        if (currentMode !== "role-play") {
+          const sysExtras =
+            typeof EIContext !== "undefined" && EIContext?.getSystemExtras
+              ? await EIContext.getSystemExtras().catch(() => null)
+              : null;
+          if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
+        }
+
+        let raw = await callModel(messages);
+        if (!raw) raw = "From my perspective, we review patient histories and adherence to guide decisions.";
+
+        const { coach, clean } = extractCoach(raw);
+        let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
+
+        // enforce HCP-only in RP
+        if (currentMode === "role-play") {
+          replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+        }
+
+        // anti-echo: if assistant equals user prompt
+        if (norm(replyText) === norm(userText)) {
+          replyText = "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.";
+        }
+
+        // prevent duplicate/cycling assistant replies (ring buffer)
+        let candidate = norm(replyText);
+        if (candidate && (candidate === lastAssistantNorm || isRecent(candidate))) {
+          const alts = [
+            "In my clinic, we review history, behaviors, and adherence to understand risk.",
+            "I rely on history and follow-up patterns to guide decisions.",
+            "We focus on adherence and recent exposures when assessing candidacy."
+          ];
+          replyText = alts[Math.floor(Math.random()*alts.length)];
+          candidate = norm(replyText);
+        }
+        lastAssistantNorm = candidate;
+        pushRecent(candidate);
+
+        // allow longer Sales Coach responses
+        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2200 : 1400);
+
+        const computed = scoreReply(userText, replyText, currentMode);
+
+        const finalCoach = (() => {
+          if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
+            const scores = coach.scores || coach.subscores;
+            const overall =
+              typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
+            return {
+              overall: overall ?? computed.overall,
+              scores,
+              feedback: coach.feedback || computed.feedback,
+              worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
+              improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
+              phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
+              context: coach.context || { rep_question: userText, hcp_reply: replyText },
+              score: overall ?? computed.overall,
+              subscores: scores
+            };
+          }
+          return computed;
+        })();
+
+        conversation.push({
+          role: "assistant",
+          content: replyText,
+          _coach: finalCoach,
+          _speaker: currentMode === "role-play" ? "hcp" : "assistant"
+        });
+        trimConversationIfNeeded();
+        renderMessages();
+        renderCoach();
+
+        if (currentMode === "emotional-assessment") generateFeedback();
+
+        if (cfg && cfg.analyticsEndpoint) {
+          fetch(cfg.analyticsEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ts: Date.now(),
+              schema: cfg.schemaVersion || "coach-v2",
+              mode: currentMode,
+              scenarioId: currentScenarioId,
+              turn: conversation.length,
+              context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
+              overall: finalCoach.overall,
+              scores: finalCoach.scores
+            })
+          }).catch(() => {});
+        }
+      } catch (e) {
+        conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
+        trimConversationIfNeeded();
+        renderMessages();
+      }
     } finally {
-      if (sendBtn) sendBtn.disabled = false;
-      if (ta) ta.disabled = false;
+      const shellEl2 = mount.querySelector(".reflectiv-chat");
+      const sendBtn2 = shellEl2?._sendBtn;
+      const ta2 = shellEl2?._ta;
+      if (sendBtn2) sendBtn2.disabled = false;
+      if (ta2) { ta2.disabled = false; ta2.focus(); }
       isSending = false;
     }
   }
