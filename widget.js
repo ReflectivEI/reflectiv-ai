@@ -1,4 +1,3 @@
-Here’s the full drop-in widget.js with the mode-aware fallbacks and token/length tweaks applied.
 
 /* widget.js
  * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r9
