@@ -1246,7 +1246,7 @@ ${COMMON}`
             temperature: (currentMode === "role-play" ? 0.35 : 0.2),
             top_p: 0.9,
             stream: !!cfg?.stream,
-            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 600 : 1200),
+            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
             messages
           }),
           signal: controller.signal
@@ -1489,15 +1489,33 @@ ${detail}`;
         if (!raw) raw = fallbackText(currentMode);
 
         const { coach, clean } = extractCoach(raw);
-        let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
+let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
 
-        if (currentMode === "role-play") {
-          replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
-        }
+// Mid-sentence cut-off guard + one-pass auto-continue
+const cutOff = (t) => {
+  const s = String(t || "").trim();
+  return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+};
+if (cutOff(replyText)) {
+  const contMsgs = [
+    ...messages,
+    { role: "assistant", content: replyText },
+    { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
+  ];
+  try {
+    let contRaw = await callModel(contMsgs);
+    let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+    if (contClean) replyText = (replyText + " " + contClean).trim();
+  } catch (_) { /* no-op */ }
+}
 
-        if (norm(replyText) === norm(userText)) {
-          replyText = fallbackText(currentMode);
-        }
+if (currentMode === "role-play") {
+  replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+}
+
+if (norm(replyText) === norm(userText)) {
+  replyText = fallbackText(currentMode);
+}
 
         // PATCH B: semantic duplicate handling with vary pass
         let candidate = norm(replyText);
