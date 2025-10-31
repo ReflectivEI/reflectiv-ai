@@ -299,8 +299,9 @@
   }
 
   async function enforceHcpOnly(replyText, sc, messages, callModelFn) {
-    let out = sanitizeRolePlayOnly(replyText);
-    if (!isGuidanceLeak(out)) return out;
+    let out = String(replyText || "").trim();
+    if (!isGuidanceLeak(out)) return sanitizeLLM(out);   // no RP rewrite unless leak
+    out = sanitizeRolePlayOnly(out);
 
     // Pass 1: rewrite under stricter rails
     const rewriteMsgs = [
