@@ -197,7 +197,7 @@ function extractCoach(raw) {
   return { coach, clean: sanitizeLLM((head + " " + after).trim()) };
 }
 
-async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2 } = {}) {
+async function providerChat(env, messages, { maxTokens = 1400, temperature = 0.2 } = {}) {
   const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
   const finalMax = cap > 0 ? Math.min(maxTokens, cap) : maxTokens;
 
@@ -340,7 +340,7 @@ Use only the Facts IDs provided when making claims.`.trim();
   for (let i = 0; i < 3; i++) {
     try {
       raw = await providerChat(env, messages, {
-        maxTokens: mode === "sales-simulation" ? 700 : 500,
+        maxTokens: mode === "sales-simulation" ? 1200 : 900,
         temperature: 0.2
       });
       if (raw) break;
@@ -366,7 +366,7 @@ Use only the Facts IDs provided when making claims.`.trim();
       { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
     ];
     try {
-      const contRaw = await providerChat(env, contMsgs, { maxTokens: 180, temperature: 0.2 });
+      const contRaw = await providerChat(env, contMsgs, { maxTokens: 360, temperature: 0.2 });
       const contClean = sanitizeLLM(contRaw || "");
       if (contClean) reply = (reply + " " + contClean).trim();
     } catch (_) {}
