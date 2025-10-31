@@ -1,21 +1,23 @@
-name = "reflectivai-worker"
+name = "my-chat-agent-v2"
 main = "worker.js"
-compatibility_date = "2025-10-30"
-node_compat = true
+compatibility_date = "2024-11-12"
+workers_dev = true
 
-# Optional: add a route if you use a custom domain (after first deploy)
-# routes = [{ pattern = "api.reflectivai.com/*", zone_name = "reflectivai.com" }]
+# If you want a custom domain/route later, add:
+# routes = [
+#   { pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "" }
+# ]
 
 [vars]
-PROVIDER_URL   = "https://api.groq.com/openai/v1/chat/completions"
+# Basic provider defaults (override in the dashboard if needed)
+PROVIDER = "groq"
+PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
 PROVIDER_MODEL = "llama-3.1-70b-versatile"
-STRICT_FSM     = "true"
-REQUIRE_FACTS  = "true"
+MAX_OUTPUT_TOKENS = "1200"
+CORS_ORIGINS = "https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com"
 
-# Optional KV (add later if/when you want persistent loop-guards or novelty caches)
-# [[kv_namespaces]]
-# binding = "SESS"
-# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-# [[kv_namespaces]]
-# binding = "CACHE"
-# id = "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+[[kv_namespaces]]
+binding = "SESS"
+id = "dev-sess-kv"
+# preview_id can repeat id for dev
+preview_id = "dev-sess-kv"
