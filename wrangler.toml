@@ -9,12 +9,11 @@ workers_dev = true
 # ]
 
 [vars]
-# Basic provider defaults (override in the dashboard if needed)
 PROVIDER = "groq"
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
 PROVIDER_MODEL = "llama-3.1-70b-versatile"
 MAX_OUTPUT_TOKENS = "1200"
-CORS_ORIGINS = "https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com"
+CORS_ORIGINS = "https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com"
 
 [[kv_namespaces]]
 binding = "SESS"
