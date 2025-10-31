@@ -1,32 +1,40 @@
 /**
- * Cloudflare Worker — ReflectivAI Gateway (r10)
- * Endpoints: POST /facts, POST /plan, POST /chat
+ * Cloudflare Worker — ReflectivAI Gateway (r10.1)
+ * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
- * KV namespaces (optional but recommended):
- *  - SESS  : per-session state (last replies, FSM state)
- *  - CACHE : novelty cache (n-gram hashes)
+ * KV namespaces (optional):
+ *  - SESS : per-session state (last replies, FSM state)
  *
  * Required VARS:
- *  - PROVIDER_URL   e.g., "https://api.groq.com/openai/v1/chat/completions"
- *  - PROVIDER_MODEL e.g., "llama-3.1-70b-versatile"
- *  - PROVIDER_KEY   bearer key for provider
- *  - STRICT_FSM     "true" to enforce state clamps
- *  - REQUIRE_FACTS  "true" to require at least one fact in plan
+ *  - PROVIDER_URL    e.g., "https://api.groq.com/openai/v1/chat/completions"
+ *  - PROVIDER_MODEL  e.g., "llama-3.1-70b-versatile"
+ *  - PROVIDER_KEY    bearer key for provider
+ *  - CORS_ORIGINS    comma-separated allowlist, e.g. "https://a.com,https://b.com"
+ *  - REQUIRE_FACTS   "true" to require at least one fact in plan
+ *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  */
 
 export default {
   async fetch(req, env, ctx) {
     try {
       const url = new URL(req.url);
-      if (req.method === "OPTIONS") return ok({}, cors(env, req));
 
-      if (url.pathname === "/facts" && req.method === "POST")
-        return postFacts(req, env);
-      if (url.pathname === "/plan" && req.method === "POST")
-        return postPlan(req, env);
-      if (url.pathname === "/chat" && req.method === "POST")
-        return postChat(req, env);
+      // CORS preflight
+      if (req.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: cors(env, req) });
+      }
+
+      if (url.pathname === "/health" && req.method === "GET") {
+        return new Response("ok", { status: 200, headers: cors(env, req) });
+      }
+      if (url.pathname === "/version" && req.method === "GET") {
+        return json({ version: "r10.1" }, 200, env, req);
+      }
+
+      if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
+      if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
+      if (url.pathname === "/chat"  && req.method === "POST") return postChat(req, env);
 
       return json({ error: "not_found" }, 404, env, req);
     } catch (e) {
@@ -37,9 +45,8 @@ export default {
 
 /* ------------------------- Inlined Knowledge & Rules ------------------------ */
 
-// Minimal curated facts for demo. Add more lines or swap to KV.
+// Minimal curated facts for demo. Add more or move to KV.
 const FACTS_DB = [
-  // HIV PrEP / Descovy examples
   {
     id: "HIV-PREP-ELIG-001",
     ta: "HIV",
@@ -66,17 +73,11 @@ const FACTS_DB = [
 // Finite State Machines per mode
 const FSM = {
   "sales-simulation": {
-    states: {
-      START: { capSentences: 5, next: "COACH" },
-      COACH: { capSentences: 6, next: "COACH" }
-    },
+    states: { START: { capSentences: 5, next: "COACH" }, COACH: { capSentences: 6, next: "COACH" } },
     start: "START"
   },
   "role-play": {
-    states: {
-      START: { capSentences: 4, next: "HCP" },
-      HCP: { capSentences: 4, next: "HCP" }
-    },
+    states: { START: { capSentences: 4, next: "HCP" }, HCP: { capSentences: 4, next: "HCP" } },
     start: "START"
   }
 };
@@ -125,8 +126,6 @@ function cors(env, req) {
     .map(s => s.trim())
     .filter(Boolean);
 
-  // If no allowlist is configured, default to reflect the request’s Origin
-  // If allowlist exists, only allow exact matches
   const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
   const allowOrigin = isAllowed ? (reqOrigin || "*") : "null";
 
@@ -135,6 +134,7 @@ function cors(env, req) {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
     "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Max-Age": "86400",
     Vary: "Origin"
   };
 }
@@ -158,10 +158,12 @@ async function readJson(req) {
   if (!txt) return {};
   try { return JSON.parse(txt); } catch { return {}; }
 }
+
 function capSentences(text, n) {
   const parts = String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
   return parts.slice(0, n).join(" ").trim();
 }
+
 function sanitizeLLM(s) {
   return String(s || "")
     .replace(/```[\s\S]*?```/g, "")
@@ -170,6 +172,7 @@ function sanitizeLLM(s) {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
 function extractCoach(raw) {
   const s = String(raw || "");
   const open = s.indexOf("<coach>");
@@ -195,6 +198,9 @@ function extractCoach(raw) {
 }
 
 async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2 } = {}) {
+  const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
+  const finalMax = cap > 0 ? Math.min(maxTokens, cap) : maxTokens;
+
   const r = await fetch(env.PROVIDER_URL, {
     method: "POST",
     headers: {
@@ -204,7 +210,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2 
     body: JSON.stringify({
       model: env.PROVIDER_MODEL,
       temperature,
-      max_output_tokens: maxTokens,
+      max_output_tokens: finalMax,
       messages
     })
   });
@@ -214,7 +220,6 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2 
 }
 
 function deterministicScore({ reply, usedFactIds = [] }) {
-  // Weight facts presence and length discipline.
   const len = (reply || "").split(/\s+/).filter(Boolean).length;
   const base = Math.max(40, Math.min(92, 100 - Math.abs(len - 110) * 0.35));
   const factBonus = Math.min(8, usedFactIds.length * 3);
@@ -222,7 +227,7 @@ function deterministicScore({ reply, usedFactIds = [] }) {
 }
 
 async function seqGet(env, session) {
-  if (!env.SESS) return null;
+  if (!env.SESS) return { lastNorm: "", fsm: {} };
   const k = `state:${session}`;
   const v = await env.SESS.get(k, "json");
   return v || { lastNorm: "", fsm: {} };
@@ -248,7 +253,7 @@ async function postFacts(req, env) {
 async function postPlan(req, env) {
   const body = await readJson(req);
   const { mode = "sales-simulation", disease = "", persona = "", goal = "", topic = "" } = body || {};
-  // gather facts
+
   const factsRes = FACTS_DB.filter(f => {
     const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
     const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
@@ -264,7 +269,7 @@ async function postPlan(req, env) {
     facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
     fsm: FSM[mode] || FSM["sales-simulation"]
   };
-  // simple schema check
+
   const valid = Array.isArray(plan.facts) && plan.facts.length > 0 && typeof plan.mode === "string";
   if (!valid) return json({ error: "invalid_plan" }, 422, env, req);
 
@@ -276,12 +281,12 @@ async function postChat(req, env) {
   const body = await readJson(req);
   const {
     mode = "sales-simulation",
-    user, // current user message
-    history = [], // [{role, content}]
+    user,
+    history = [],
     disease = "",
     persona = "",
     goal = "",
-    plan, // optional full plan from /plan
+    plan,
     planId
   } = body || {};
 
@@ -349,6 +354,24 @@ Use only the Facts IDs provided when making claims.`.trim();
   const { coach, clean } = extractCoach(raw);
   let reply = clean;
 
+  // Mid-sentence cut-off guard + one-pass auto-continue
+  const cutOff = (t) => {
+    const s = String(t || "").trim();
+    return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+  };
+  if (cutOff(reply)) {
+    const contMsgs = [
+      ...messages,
+      { role: "assistant", content: reply },
+      { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
+    ];
+    try {
+      const contRaw = await providerChat(env, contMsgs, { maxTokens: 180, temperature: 0.2 });
+      const contClean = sanitizeLLM(contRaw || "");
+      if (contClean) reply = (reply + " " + contClean).trim();
+    } catch (_) {}
+  }
+
   // FSM clamps
   const fsm = FSM[mode] || FSM["sales-simulation"];
   const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
@@ -358,11 +381,10 @@ Use only the Facts IDs provided when making claims.`.trim();
   const state = await seqGet(env, session);
   const candNorm = norm(reply);
   if (state && candNorm && (candNorm === state.lastNorm)) {
-    // deterministic non-redundant fallback
     if (mode === "role-play") {
       reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
     } else {
-      reply = "Anchor to eligibility, 1 safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
+      reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
     }
   }
   state.lastNorm = norm(reply);
