@@ -1,13 +1,12 @@
-
 /* widget.js
- * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r9
+ * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r10
  * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
  *
  * FIXED ROOT CAUSES:
- * 1) HCP-only enforcement in RP (multi-pass rewrite + imperative/pronoun repair + final strip)
+ * 1) HCP-only enforcement in RP (multi-pass rewrite + imperative/pronoun repair + final strip) – only triggers on leak
  * 2) Robust <coach>{...}</coach> parsing with brace-matching (truncation tolerant)
  * 3) Mode drift guardrails + speaker chips + per-mode prefaces
- * 4) Duplicate/cycling response lock (ring buffer) + anti-echo + clamps
+ * 4) Duplicate/cycling response lock with semantic similarity + anti-echo + clamps
  * 5) Network/timeout hardening (3 tries, 45s timeout, safe fallbacks)
  * 6) Scenario cascade (Disease → HCP) with resilient loaders + de-dupe
  * 7) Rep-only evaluation command (“Evaluate Rep”) with side-panel injection
@@ -127,6 +126,29 @@
     return s.slice(0, max).replace(/\s+\S*$/, "").trim() + "…";
   }
 
+  // --- Worker base normalizer + tiny JSON fetch helper ---
+  // Ensures add-on calls like jfetch("/plan") hit the base (…/plan), even when config points to …/chat
+  function getWorkerBase() {
+    const raw =
+      (window.COACH_ENDPOINT || window.WORKER_URL || (cfg && (cfg.apiBase || cfg.workerUrl)) || "").trim();
+    if (!raw) return "";
+    // Strip trailing /chat (with or without slash), then trailing slashes
+    return raw.replace(/\/chat\/?$/i, "").replace(/\/+$/g, "");
+  }
+
+  async function jfetch(path, payload) {
+    const base = getWorkerBase();
+    if (!base) throw new Error("worker_base_missing");
+    const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload || {})
+    });
+    if (!r.ok) throw new Error(`${path}_http_${r.status}`);
+    return r.json();
+  }
+
   // mode-aware fallback lines
   function fallbackText(mode){
     if(mode === "sales-simulation"){
@@ -223,7 +245,7 @@
         // rewrite first-person offers or training talk
         if (FIRST_PERSON_OFFER_RE.test(sent) || (/(?:^|\b)(?:i|we)\b/i.test(sent) && OFFER_OR_TRAINING_WORD_RE.test(sent))) {
           sent =
-            "In my clinic, I rely on our internal processes and current guidelines; my focus is on patient selection and follow-up.";
+            "In my practice, I rely on our internal processes and current guidelines. My focus is on patient selection and follow-up.";
         }
 
         // repair malformed pronouns from rewrites
@@ -290,7 +312,7 @@
         : "";
     return [
       `Rewrite strictly as the HCP.`,
-      `First-person. 2–5 sentences. No advice to the rep. No “you/your” guidance.`,
+      `First-person. 2–4 sentences. No advice to the rep. No “you/your” guidance.`,
       `No lists, no headings, no rubric, no JSON, no "<coach>".`,
       `Do not make offers like "I can provide/offer/arrange training, resources, handouts, or scripts," and do not propose to educate the rep or their staff.`,
       `Describe your own clinical approach. If you ask a question, it must be about your clinic/patients.`,
@@ -299,8 +321,10 @@
   }
 
   async function enforceHcpOnly(replyText, sc, messages, callModelFn) {
-    let out = sanitizeRolePlayOnly(replyText);
-    if (!isGuidanceLeak(out)) return out;
+    // PATCH A: only rewrite if a leak is detected
+    let out = String(replyText || "").trim();
+    if (!isGuidanceLeak(out)) return sanitizeLLM(out);
+    out = sanitizeRolePlayOnly(out);
 
     // Pass 1: rewrite under stricter rails
     const rewriteMsgs = [
@@ -321,7 +345,7 @@
       if (!isGuidanceLeak(out)) return out;
     } catch (_) {}
 
-    // Pass 3: last-ditch strip
+    // Pass 3: last-ditch strip + diversified variants (PATCH D)
     out = out.replace(
       new RegExp(
         String.raw`(?:^|\s)(?:I|We)\s+(?:can\s+)?(?:provide|offer|arrange|conduct|deliver|send|share|supply|set up|schedule|organize|host|walk (?:you|your team) through|train|educate)\b[^.!?]*[.!?]\s*`,
@@ -341,9 +365,9 @@
 
     if (!out) {
       const variants = [
-        "From my perspective, we review patient histories and behaviors to understand risk patterns.",
-        "In my clinic, we evaluate adherence and lifestyle to assess patient risk.",
-        "I typically consider history, behavior, and adherence when identifying high-risk patients."
+        "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
+        "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
+        "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
       ];
       out = variants[Math.floor(Math.random() * variants.length)];
     }
@@ -383,6 +407,64 @@
     return e;
   }
 
+  // ---------- Legacy Coach Renderer (RESTORED UI) ----------
+  const USE_LEGACY_COACH_UI = true;
+
+  function renderLegacyCoachCard(coachObj) {
+    const challenge =
+      coachObj.challenge || coachObj.feedback || "Focus on label-aligned guidance and one clear question.";
+    const repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
+      ? coachObj.worked
+      : ["Acknowledge context", "Cite one fact", "End with a discovery question"];
+    const impact = Array.isArray(coachObj.improve) && coachObj.improve.length
+      ? coachObj.improve
+      : ["Drive a next step", "One idea per sentence", "Avoid off-label statements"];
+    const phrasing =
+      coachObj.phrasing || "Would confirming eGFR today help you identify one patient to start this month?";
+
+    const card = document.createElement("div");
+    card.className = "coach-card legacy";
+    card.innerHTML = `
+      <div class="coach-head">
+        <span class="coach-badge">Sales Coach</span>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Challenge:</div>
+        <div class="coach-body">${esc(challenge)}</div>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Rep Approach:</div>
+        <ul class="coach-list">
+          ${repApproach.map(i => `<li>${esc(i)}</li>`).join("")}
+        </ul>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Impact:</div>
+        <ul class="coach-list">
+          ${impact.map(i => `<li>${esc(i)}</li>`).join("")}
+        </ul>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Suggested Phrasing:</div>
+        <div class="coach-quote">“${esc(phrasing)}”</div>
+      </div>
+    `;
+    return card;
+  }
+
+  // Call this when you want to inject a coach card into the thread container
+  function renderCoachMessage(container, coachObj) {
+    if (USE_LEGACY_COACH_UI) {
+      container.appendChild(renderLegacyCoachCard(coachObj || {}));
+      return;
+    }
+    // keep your newer renderer here if you want it as a fallback
+  }
+
   // --- robust extractor: tolerates missing </coach> and truncation
   function extractCoach(raw) {
     const s = String(raw || "");
@@ -410,7 +492,6 @@
     }
     if (end === -1) return { coach: null, clean: sanitizeLLM(head) };
 
-    // parse JSON inside <coach>…</coach>
     const jsonTxt = block.slice(braceStart, end + 1);
     let coach = {};
     try {
@@ -440,7 +521,7 @@
         /(renal|egfr|creatinine|bmd|resistance|ddi|interaction|efficacy|safety|adherence|formulary|access|prior auth|prep|tdf|taf|bictegravir|cabotegravir|rilpivirine|descovy|biktarvy|cabenuva)/i.test(
           t
         ),
-      tooLong: words > 220,           // widened for Sales Simulation
+      tooLong: words > 220,
       idealLen: inRange(words, 45, 160)
     };
 
@@ -640,7 +721,7 @@ ${
 }
 
 # Style
-- 4–6 sentences and one closing question. No lists longer than 3 bullets.
+- 3–4 sentences and one closing question. No lists longer than 2 bullets.
 - Only appropriate, publicly known, label-aligned facts.
 - No pricing advice or PHI. No off-label.
 - Include a clearly labeled "Suggested Phrasing:" section as part of the chat response.
@@ -1209,7 +1290,7 @@ ${COMMON}`
 
     const attempt = async (n, delayMs) => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort("timeout"), 45000); // up to 45s
+      const timeout = setTimeout(() => controller.abort("timeout"), 45000);
       try {
         const r = await fetch(url, {
           method: "POST",
@@ -1219,10 +1300,11 @@ ${COMMON}`
           },
           body: JSON.stringify({
             model: (cfg?.model) || "llama-3.1-8b-instant",
-            temperature: 0.2,
+            // PATCH C: more variability in RP only
+            temperature: (currentMode === "role-play" ? 0.35 : 0.2),
+            top_p: 0.9,
             stream: !!cfg?.stream,
-            // lower tokens for Sales Simulation to reduce verbosity and repeats
-            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 900 : 1400),
+            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
             messages
           }),
           signal: controller.signal
@@ -1238,19 +1320,18 @@ ${COMMON}`
           ""
         );
       } catch (e) {
-        // retry only on backend/network errors
         if (n > 0 && /HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(String(e))) {
           await new Promise((res) => setTimeout(res, delayMs));
           return attempt(n - 1, delayMs * 2);
         }
         console.warn("Model call failed:", e);
-        return ""; // fallback empty
+        return "";
       } finally {
         clearTimeout(timeout);
       }
     };
 
-    return attempt(2, 400); // up to 3 total tries
+    return attempt(2, 400);
   }
 
   // ---------- final-eval helper ----------
@@ -1278,7 +1359,7 @@ ${COMMON}`
 
   /* ---------- Rep-only evaluation helpers ---------- */
   function repTurns(history, max = 12) {
-    const repLike = ["rep", "user"]; // Rep messages stored as _speaker:'rep' or role:'user'
+    const repLike = ["rep", "user"];
     const seq = (history || []).filter(
       (m) => repLike.includes(String(m._speaker || "").toLowerCase()) || repLike.includes(String(m.role || "").toLowerCase())
     );
@@ -1320,7 +1401,6 @@ ${COMMON}`
     let data = null;
     try { data = JSON.parse(raw); } catch (_) {}
 
-    // Fallback to simple text if JSON not returned
     if (!data || !data.scores) {
       const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>${esc(safe)}</p></div>` };
@@ -1349,21 +1429,37 @@ ${COMMON}`
 
   // ---------- send ----------
   function norm(txt){return String(txt||"").toLowerCase().replace(/\s+/g," ").trim();}
+
+  // PATCH B: semantic duplicate detection (4-gram Jaccard)
+  function jaccard4gram(a,b){
+    const grams = s => {
+      const t = String(s||"").toLowerCase().replace(/\s+/g," ").trim();
+      if (t.length < 4) return new Set([t]);
+      const g = new Set();
+      for (let i=0;i<=t.length-4;i++) g.add(t.slice(i,i+4));
+      return g;
+    };
+    const A = grams(a), B = grams(b);
+    let inter=0; for (const x of A) if (B.has(x)) inter++;
+    const union = A.size + B.size - inter;
+    return union ? inter/union : 0;
+  }
+
   let lastAssistantNorm = "";
   let recentAssistantNorms = [];
-  function pushRecent(n){ recentAssistantNorms.push(n); if(recentAssistantNorms.length>3) recentAssistantNorms.shift(); }
+  function pushRecent(n){ recentAssistantNorms.push(n); if(recentAssistantNorms.length>6) recentAssistantNorms.shift(); }
   function isRecent(n){ return recentAssistantNorms.includes(n); }
+  function isTooSimilar(n){ return recentAssistantNorms.some(p => jaccard4gram(p,n) >= 0.88); }
 
   let isSending = false;
 
   function trimConversationIfNeeded() {
-    // keep last 30 turns to avoid runaway context
     if (conversation.length <= 30) return;
     conversation = conversation.slice(-30);
   }
 
   async function sendMessage(userText) {
-    if (isSending) return;            // double-send lock
+    if (isSending) return;
     isSending = true;
 
     const shellEl = mount.querySelector(".reflectiv-chat");
@@ -1375,12 +1471,10 @@ ${COMMON}`
     if (ta) ta.disabled = true;
 
     try {
-      // normalize input
       userText = clampLen((userText || "").trim(), 1600);
       if (!userText) return;
       lastUserMessage = userText;
 
-      // intercept evaluation intents
       const evalRe =
         /\b(evaluate|assessment|assess|grade|score)\b.*\b(conversation|exchange|dialog|dialogue|chat)\b|\bfinal (eval|evaluation|assessment)\b/i;
       if (evalRe.test(userText)) {
@@ -1391,7 +1485,6 @@ ${COMMON}`
         return;
       }
 
-      // Rep-only evaluation trigger
       const repEvalRe = /^\s*(evaluate\s+rep|rep\s+only\s+eval(?:uation)?|evaluate\s+the\s+rep)\s*$/i;
       if (repEvalRe.test(userText)) {
         const sc = scenariosById.get(currentScenarioId);
@@ -1399,12 +1492,10 @@ ${COMMON}`
         const goal = sc?.goal || "";
         const res = await evaluateRepOnly({ history: conversation, personaLabel: persona, goal });
         repOnlyPanelHTML = res?.html || "<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable.</p></div>";
-        // show note, but do not add a new assistant message
         renderCoach();
         return;
       }
 
-      // normal turn
       conversation.push({
         role: "user",
         content: userText,
@@ -1419,13 +1510,11 @@ ${COMMON}`
       const sc = scenariosById.get(currentScenarioId);
       const messages = [];
 
-      // 1) Core runtime rules (system.md) + EI layer
       if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
       if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
         messages.push({ role: "system", content: eiHeuristics });
       }
 
-      // 2) Mode/scenario preface
       if (currentMode === "role-play") {
         const personaLine = currentPersonaHint();
         const detail = sc
@@ -1443,7 +1532,6 @@ ${detail}`;
         messages.push({ role: "system", content: buildPreface(currentMode, sc) });
       }
 
-      // 3) User turn
       messages.push({ role: "user", content: userText });
 
       try {
@@ -1456,39 +1544,62 @@ ${detail}`;
         }
 
         let raw = await callModel(messages);
-        if (!raw) raw = fallbackText(currentMode); // mode-aware fallback
+        if (!raw) raw = fallbackText(currentMode);
 
         const { coach, clean } = extractCoach(raw);
-        let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
+let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
 
-        // enforce HCP-only in RP
-        if (currentMode === "role-play") {
-          replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
-        }
+// Mid-sentence cut-off guard + one-pass auto-continue
+const cutOff = (t) => {
+  const s = String(t || "").trim();
+  return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+};
+if (cutOff(replyText)) {
+  const contMsgs = [
+    ...messages,
+    { role: "assistant", content: replyText },
+    { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
+  ];
+  try {
+    let contRaw = await callModel(contMsgs);
+    let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+    if (contClean) replyText = (replyText + " " + contClean).trim();
+  } catch (_) { /* no-op */ }
+}
 
-        // anti-echo: if assistant equals user prompt
-        if (norm(replyText) === norm(userText)) {
-          replyText = fallbackText(currentMode); // mode-aware anti-echo
-        }
+if (currentMode === "role-play") {
+  replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+}
 
-        // prevent duplicate/cycling assistant replies (ring buffer)
+if (norm(replyText) === norm(userText)) {
+  replyText = fallbackText(currentMode);
+}
+
+        // PATCH B: semantic duplicate handling with vary pass
         let candidate = norm(replyText);
-        if (candidate && (candidate === lastAssistantNorm || isRecent(candidate))) {
-          const alts = [
-            "In my clinic, we review history, behaviors, and adherence to understand risk.",
-            "I rely on history and follow-up patterns to guide decisions.",
-            "We focus on adherence and recent exposures when assessing candidacy."
+        if (candidate && (candidate === lastAssistantNorm || isRecent(candidate) || isTooSimilar(candidate))) {
+          const varyMsgs = [
+            ...messages.slice(0,-1),
+            { role:"system", content:"Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
+            messages[messages.length-1]
           ];
-          replyText = currentMode === "role-play"
-            ? alts[Math.floor(Math.random()*alts.length)]
-            : fallbackText(currentMode);
+          let varied = await callModel(varyMsgs);
+          varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
+          if (!varied || isTooSimilar(norm(varied))) {
+            const alts = [
+              "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
+              "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
+              "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
+            ];
+            varied = alts.find(a => !isTooSimilar(norm(a))) || alts[0];
+          }
+          replyText = varied;
           candidate = norm(replyText);
         }
         lastAssistantNorm = candidate;
         pushRecent(candidate);
 
-        // allow longer Sales Coach responses
-        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2200 : 1400);
+        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 1200 : 1400);
 
         const computed = scoreReply(userText, replyText, currentMode);
 
@@ -1609,7 +1720,6 @@ ${detail}`;
       cfg = { defaultMode: "sales-simulation" };
     }
 
-    // Ensure endpoint is set even without config.json
     if (!cfg.apiBase && !cfg.workerUrl) {
       cfg.apiBase = (window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
     }
@@ -1621,7 +1731,6 @@ ${detail}`;
       systemPrompt = "";
     }
 
-    // EI foundation (about-ei.md)
     try {
       eiHeuristics = await fetchLocal("./assets/chat/about-ei.md");
     } catch (e) {
