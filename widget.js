@@ -126,6 +126,29 @@
     return s.slice(0, max).replace(/\s+\S*$/, "").trim() + "…";
   }
 
+  // --- Worker base normalizer + tiny JSON fetch helper ---
+  // Ensures add-on calls like jfetch("/plan") hit the base (…/plan), even when config points to …/chat
+  function getWorkerBase() {
+    const raw =
+      (window.COACH_ENDPOINT || window.WORKER_URL || (cfg && (cfg.apiBase || cfg.workerUrl)) || "").trim();
+    if (!raw) return "";
+    // Strip trailing /chat (with or without slash), then trailing slashes
+    return raw.replace(/\/chat\/?$/i, "").replace(/\/+$/g, "");
+  }
+
+  async function jfetch(path, payload) {
+    const base = getWorkerBase();
+    if (!base) throw new Error("worker_base_missing");
+    const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload || {})
+    });
+    if (!r.ok) throw new Error(`${path}_http_${r.status}`);
+    return r.json();
+  }
+
   // mode-aware fallback lines
   function fallbackText(mode){
     if(mode === "sales-simulation"){
