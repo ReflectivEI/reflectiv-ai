@@ -407,6 +407,64 @@
     return e;
   }
 
+  // ---------- Legacy Coach Renderer (RESTORED UI) ----------
+  const USE_LEGACY_COACH_UI = true;
+
+  function renderLegacyCoachCard(coachObj) {
+    const challenge =
+      coachObj.challenge || coachObj.feedback || "Focus on label-aligned guidance and one clear question.";
+    const repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
+      ? coachObj.worked
+      : ["Acknowledge context", "Cite one fact", "End with a discovery question"];
+    const impact = Array.isArray(coachObj.improve) && coachObj.improve.length
+      ? coachObj.improve
+      : ["Drive a next step", "One idea per sentence", "Avoid off-label statements"];
+    const phrasing =
+      coachObj.phrasing || "Would confirming eGFR today help you identify one patient to start this month?";
+
+    const card = document.createElement("div");
+    card.className = "coach-card legacy";
+    card.innerHTML = `
+      <div class="coach-head">
+        <span class="coach-badge">Sales Coach</span>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Challenge:</div>
+        <div class="coach-body">${esc(challenge)}</div>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Rep Approach:</div>
+        <ul class="coach-list">
+          ${repApproach.map(i => `<li>${esc(i)}</li>`).join("")}
+        </ul>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Impact:</div>
+        <ul class="coach-list">
+          ${impact.map(i => `<li>${esc(i)}</li>`).join("")}
+        </ul>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Suggested Phrasing:</div>
+        <div class="coach-quote">“${esc(phrasing)}”</div>
+      </div>
+    `;
+    return card;
+  }
+
+  // Call this when you want to inject a coach card into the thread container
+  function renderCoachMessage(container, coachObj) {
+    if (USE_LEGACY_COACH_UI) {
+      container.appendChild(renderLegacyCoachCard(coachObj || {}));
+      return;
+    }
+    // keep your newer renderer here if you want it as a fallback
+  }
+
   // --- robust extractor: tolerates missing </coach> and truncation
   function extractCoach(raw) {
     const s = String(raw || "");
