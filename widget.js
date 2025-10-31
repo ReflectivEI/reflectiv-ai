@@ -1222,7 +1222,7 @@ ${COMMON}`
             temperature: 0.2,
             stream: !!cfg?.stream,
             // lower tokens for Sales Simulation to reduce verbosity and repeats
-            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 900 : 1400),
+            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 600 : 1200),
             messages
           }),
           signal: controller.signal
@@ -1488,7 +1488,7 @@ ${detail}`;
         pushRecent(candidate);
 
         // allow longer Sales Coach responses
-        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 2200 : 1400);
+        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 1200 : 1400);
 
         const computed = scoreReply(userText, replyText, currentMode);
 
