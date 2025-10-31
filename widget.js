@@ -223,7 +223,7 @@
         // rewrite first-person offers or training talk
         if (FIRST_PERSON_OFFER_RE.test(sent) || (/(?:^|\b)(?:i|we)\b/i.test(sent) && OFFER_OR_TRAINING_WORD_RE.test(sent))) {
           sent =
-            "In my clinic, I rely on our internal processes and current guidelines; my focus is on patient selection and follow-up.";
+            "In my practice, I rely on our internal processes and current guidelines. My focus is on patient selection and follow-up.";
         }
 
         // repair malformed pronouns from rewrites
@@ -290,7 +290,7 @@
         : "";
     return [
       `Rewrite strictly as the HCP.`,
-      `First-person. 2–5 sentences. No advice to the rep. No “you/your” guidance.`,
+      `First-person. 2–4 sentences. No advice to the rep. No “you/your” guidance.`,
       `No lists, no headings, no rubric, no JSON, no "<coach>".`,
       `Do not make offers like "I can provide/offer/arrange training, resources, handouts, or scripts," and do not propose to educate the rep or their staff.`,
       `Describe your own clinical approach. If you ask a question, it must be about your clinic/patients.`,
@@ -341,8 +341,8 @@
 
     if (!out) {
       const variants = [
-        "From my perspective, we review patient histories and behaviors to understand risk patterns.",
-        "In my clinic, we evaluate adherence and lifestyle to assess patient risk.",
+        "From my perspective, I review patient histories and behaviors first so I can understand risk patterns.",
+        "In my practice, we evaluate adherence and lifestyle to assess patient risk.",
         "I typically consider history, behavior, and adherence when identifying high-risk patients."
       ];
       out = variants[Math.floor(Math.random() * variants.length)];
@@ -640,7 +640,7 @@ ${
 }
 
 # Style
-- 4–6 sentences and one closing question. No lists longer than 3 bullets.
+- 3–4 sentences and one closing question. No lists longer than 2 bullets.
 - Only appropriate, publicly known, label-aligned facts.
 - No pricing advice or PHI. No off-label.
 - Include a clearly labeled "Suggested Phrasing:" section as part of the chat response.
