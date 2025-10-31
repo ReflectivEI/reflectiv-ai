@@ -119,21 +119,40 @@ const COACH_SCHEMA = {
 /* ------------------------------ Helpers ------------------------------------ */
 
 function cors(env, req) {
-  const origin = req.headers.get("Origin") || "*";
+  const reqOrigin = req.headers.get("Origin") || "";
+  const allowed = String(env.CORS_ORIGINS || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // If no allowlist is configured, default to reflect the request’s Origin
+  // If allowlist exists, only allow exact matches
+  const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
+  const allowOrigin = isAllowed ? (reqOrigin || "*") : "null";
+
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
     "Access-Control-Allow-Credentials": "true",
     Vary: "Origin"
   };
 }
+
 function ok(body, headers = {}) {
-  return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json", ...headers } });
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json", ...headers }
+  });
 }
+
 function json(body, status, env, req) {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...cors(env, req) } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", ...cors(env, req) }
+  });
 }
+
 async function readJson(req) {
   const txt = await req.text();
   if (!txt) return {};
