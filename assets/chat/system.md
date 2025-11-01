@@ -1,8 +1,3 @@
-Confirmed.
-Below is your final expanded and production-ready system.md (drop-in replacement).
-It integrates your screenshots’ layout, truncation logic, deterministic reasoning, and evaluation format under "Evaluate Rep" and "Evaluate Conversation" triggers.
-
-⸻
 
 ReflectivAI — System Instructions (Production v2025.3)
 
