@@ -1,5 +1,5 @@
 {
-  "version": "2025-10-31",
+  "version": "2025-11-01",
   "schemaVersion": "coach-v2",
   "model": "llama-3.1-70b-versatile",
   "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
@@ -21,6 +21,47 @@
 
   "scenariosUrl": "assets/chat/data/scenarios.merged.json",
 
+  "scenarioFilter": {
+    "requireModeTag": false,
+    "fallbackOnEmpty": true,
+    "keys": {
+      "therapeuticArea": ["therapeuticArea", "ta", "area"],
+      "hcpProfile": ["hcpProfile", "hcp", "profile"],
+      "mode": ["mode"]
+    }
+  },
+
+  "taxonomy": {
+    "therapeuticAreas": [
+      "HIV",
+      "Oncology",
+      "Vaccines",
+      "COVID-19",
+      "Cardiovascular"
+    ],
+    "hcpProfiles": [
+      "Internal Medicine MD",
+      "Nurse Practitioner",
+      "Physician Assistant",
+      "Medical Oncologist",
+      "Oncology NP",
+      "Oncology PA (GU)",
+      "Infectious Disease Specialist",
+      "Family Medicine NP",
+      "Pulmonologist",
+      "Pulmonary NP",
+      "Pulmonary PA",
+      "Cardiologist",
+      "Cardiology NP",
+      "Cardiology PA"
+    ]
+  },
+
+  "limits": {
+    "coachPanelHardMinChars": 280,
+    "coachPanelHardMaxChars": 1200
+  },
+
   "features": {
     "reflexion": {
       "enabled": true,
@@ -37,13 +78,32 @@
     },
     "reflectiveIndex": {
       "enabled": true,
-      "dimensions": ["SelfAwareness", "SelfRegulation", "Empathy", "Clarity", "Compliance", "Discovery"],
+      "dimensions": [
+        "SelfAwareness",
+        "SelfRegulation",
+        "Empathy",
+        "Clarity",
+        "Compliance",
+        "Discovery"
+      ],
       "alpha": 0.25,
-      "seed": { "SelfAwareness": 0.50, "SelfRegulation": 0.50, "Empathy": 0.50, "Clarity": 0.50, "Compliance": 0.60, "Discovery": 0.50 }
+      "seed": {
+        "SelfAwareness": 0.5,
+        "SelfRegulation": 0.5,
+        "Empathy": 0.5,
+        "Clarity": 0.5,
+        "Compliance": 0.6,
+        "Discovery": 0.5
+      }
     },
     "affectiveAnalytics": {
       "enabled": true,
-      "markers": ["acknowledgment_rate", "inclusive_phrasing", "pause_ratio", "question_to_statement_ratio"]
+      "markers": [
+        "acknowledgment_rate",
+        "inclusive_phrasing",
+        "pause_ratio",
+        "question_to_statement_ratio"
+      ]
     }
   }
 }
