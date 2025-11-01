@@ -19,7 +19,7 @@ export function createModule({ bus, store, register }){
     input.value = '';
     appendMessage('user', msg);
     const {mode} = store.get();
-    const {signal, abort} = register.abortable();
+    const {signal} = register.abortable();
     try{
       const data = await chat({mode, messages:[{role:'user',content:msg}], signal});
       appendMessage('assistant', data.reply);

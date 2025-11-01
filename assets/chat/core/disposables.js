@@ -1,7 +1,7 @@
 export function createDisposer() {
   const bag = new Set();
   return {
-    add(fn){ if(typeof fn==='function') bag.add(fn); return fn; },
+    add(fn){ if(typeof fn==='function') bag.add(fn); return fn; }, // Returns fn for chaining
     wrap(target,type,listener,opts){ target.addEventListener(type,listener,opts); return this.add(()=>target.removeEventListener(type,listener,opts)); },
     interval(ms,fn){ const id=setInterval(fn,ms); return this.add(()=>clearInterval(id)); },
     timeout(ms,fn){ const id=setTimeout(fn,ms); return this.add(()=>clearTimeout(id)); },

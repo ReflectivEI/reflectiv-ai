@@ -148,6 +148,8 @@ export function createModule({ bus, store, register }) {
 }
 ```
 
+**Note on DOM Selectors**: All mode modules use the same DOM selectors (`#coach-modal`, `[data-coach-input]`, etc.). This is intentional and safe because only ONE mode is active at a time. The switcher ensures full teardown before switching modes, preventing any conflicts.
+
 #### Available Modes
 
 1. **`rolePlay.js`** - Role-play interaction mode
