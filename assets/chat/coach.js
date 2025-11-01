@@ -1,18 +1,23 @@
 /* ReflectivAI Coach — self-contained UI + logic (no external deps). */
 (() => {
-  // ---------- small utils ----------
-  const qs = (sel, el = document) => el.querySelector(sel);
+  // ---------- tiny DOM/utils ----------
+  const qs  = (sel, el = document) => el.querySelector(sel);
   const qsa = (sel, el = document) => [...el.querySelectorAll(sel)];
   const h = (tag, attrs = {}, children = []) => {
     const n = document.createElement(tag);
-    Object.entries(attrs).forEach(([k, v]) => {
+    for (const [k, v] of Object.entries(attrs || {})) {
       if (k === "class") n.className = v;
       else if (k === "html") n.innerHTML = v;
-      else n.setAttribute(k, v);
-    });
-    children.forEach(c => n.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
+      else if (v != null) n.setAttribute(k, v);
+    }
+    (children || []).forEach(c =>
+      n.appendChild(typeof c === "string" ? document.createTextNode(c) : c)
+    );
     return n;
   };
+  // alias so existing calls to `el(...)` remain valid
+  const el = h;
+
   const fetchJSON = async (url) => {
     const r = await fetch(url, { credentials: "omit", cache: "no-store" });
     if (!r.ok) throw new Error(`fetch ${url} -> ${r.status}`);
@@ -21,30 +26,31 @@
 
   // ---------- data sources (site-relative, avoids CORS surprises) ----------
   const DATA = {
-    config:      "/assets/chat/config.json",
-    personas:    "/assets/chat/persona.json",
-    scenarios:   "/assets/chat/data/scenarios.merged.json",
-    system:      "/assets/chat/system.md"
+    config:    "/assets/chat/config.json",
+    personas:  "/assets/chat/persona.json",
+    scenarios: "/assets/chat/data/scenarios.merged.json",
+    system:    "/assets/chat/system.md"
   };
 
   // ---------- constants ----------
   const MODES = [
     { key: "emotional-intelligence", label: "Emotional Intelligence" },
     { key: "product-knowledge",      label: "Product Knowledge" },
-    { key: "role-play",              label: "Role Play w/ AI Agent" }
+    { key: "sales-simulation",       label: "Sales Simulation" },
+    { key: "role-play",              label: "Role Play" }
   ];
   const EI_PROFILES = [
-    { key: "difficult",  label: "Difficult HCP" },
-    { key: "busy",       label: "Busy HCP" },
-    { key: "engaged",    label: "Highly Engaged HCP" },
-    { key: "indifferent",label: "Indifferent HCP" }
+    { key: "difficult",   label: "Difficult HCP" },
+    { key: "busy",        label: "Busy HCP" },
+    { key: "engaged",     label: "Highly Engaged HCP" },
+    { key: "indifferent", label: "Indifferent HCP" }
   ];
   const EI_FEATURES = [
-    { key: "empathy",    label: "Empathy" },
-    { key: "objection",  label: "Objection Handling" },
-    { key: "clarity",    label: "Clarity & Confidence" },
-    { key: "accuracy",   label: "Accuracy & Compliance" },
-    { key: "discovery",  label: "Discovery" }
+    { key: "empathy",   label: "Empathy" },
+    { key: "objection", label: "Objection Handling" },
+    { key: "clarity",   label: "Clarity & Confidence" },
+    { key: "accuracy",  label: "Accuracy & Compliance" },
+    { key: "discovery", label: "Discovery" }
   ];
 
   // ---------- state ----------
@@ -62,226 +68,281 @@
         fetchJSON(DATA.personas),
         fetchJSON(DATA.scenarios)
       ]);
-      state.cfg = cfg; state.personas = personas.personas || []; state.scenarios = scenarios.scenarios || [];
+      state.cfg = cfg;
+      state.personas  = personas?.personas  || [];
+      state.scenarios = scenarios?.scenarios || [];
     } catch (e) {
       console.warn("[Coach] data fetch failed, using stub", e);
-      state.cfg = { ui: { showCoach: true }, brand: { accent: "#22f3a4" } };
+      state.cfg = { ui: { showCoach: true }, brand: { accent: "#2f3a4f" } };
       state.personas = [];
       state.scenarios = [];
     }
   }
 
-  // ---------- UI ----------
-  // ---------- UI ----------
-function buildShell(rootEl) {
-  // modal root with a11y
-  const root = rootEl ?? el('div', {
-    id: 'coach-modal',
-    role: 'dialog',
-    'aria-modal': 'true',
-    'aria-labelledby': 'coach-title'
-  });
+  // ---------- small UI helpers ----------
+  function option(v, label) { return h("option", { value: v }, [label]); }
 
-  // header bar
-  const header = el('div', { class: 'coach-header' }, [
-    el('div', {
-      id: 'coach-title',
-      class: 'coach-title',
-      role: 'heading',
-      'aria-level': '2'
-    }, 'Reflectiv Coach'),
-    el('button', {
-      class: 'coach-close',
-      type: 'button',
-      'aria-label': 'Close coach'
-    }, 'Close')
-  ]);
-  header.querySelector('.coach-close')?.addEventListener('click', () => {
-    const modal = root.closest('.modal') || root;
-    modal.classList.remove('open');
-    modal.setAttribute('aria-hidden', 'true');
-  });
+  function select(name, options) {
+    const sel = h("select", { name, class: "input" });
+    (options || []).forEach(o => sel.appendChild(option(o.value, o.label)));
+    return sel;
+  }
 
-  // top guidance headers used by onModeChange()
-  const guidance = el('div', { class: 'coach-guidance' }, [
-    el('div', { id: 'hdr1', class: 'coach-h1', 'aria-live': 'polite' }, ''),
-    el('div', { id: 'hdr2', class: 'coach-h2', 'aria-live': 'polite' }, '')
-  ]);
+  function field(labelText, inputNode) {
+    return h("div", { class: "field" }, [
+      h("label", {}, [labelText]),
+      inputNode
+    ]);
+  }
 
-  // controls: primary mode select + dynamic fields host
-  const controls = el('div', { class: 'coach-controls' }, [
-    // primary mode selector
-    (function () {
-      const sel = el('select', { name: 'mode', class: 'input' }, [
-        el('option', { value: '' }, 'Select Mode'),
-        el('option', { value: 'emotional-intelligence' }, 'Emotional Intelligence'),
-        el('option', { value: 'product-knowledge' }, 'Product Knowledge'),
-        el('option', { value: 'sales-simulation' }, 'Sales Simulation'),
-        el('option', { value: 'role-play' }, 'Role Play')
-      ]);
-      return el('div', { class: 'field' }, [
-        el('label', {}, 'Learning Center'),
-        sel
-      ]);
-    })(),
-    // host for secondary fields populated by onModeChange()
-    el('div', { id: 'modeFields', class: 'mode-fields' }, [])
-  ]);
+  // ---------- UI shell ----------
+  function buildShell(rootEl) {
+    // modal root with a11y
+    const root = rootEl ?? el("div", {
+      id: "coach-modal",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": "coach-title"
+    });
 
-  // score pills (simple placeholders updated by updateScores)
-  const scores = el('div', { class: 'scores' }, [
-    el('div', { class: 'score' }, [ el('div', { class: 'score-name' }, 'Confidence'), el('div', { 'data-score': 'confidence', class: 'score-val' }, '_') ]),
-    el('div', { class: 'score' }, [ el('div', { class: 'score-name' }, 'Compliance'), el('div', { 'data-score': 'compliance', class: 'score-val' }, '_') ]),
-    el('div', { class: 'score' }, [ el('div', { class: 'score-name' }, 'Readiness'),  el('div', { 'data-score': 'readiness',  class: 'score-val' }, '_') ])
-  ]);
+    // header bar
+    const header = el("div", { class: "coach-header" }, [
+      el("div", {
+        id: "coach-title",
+        class: "coach-title",
+        role: "heading",
+        "aria-level": "2"
+      }, "ReflectivAI Coach"),
+      el("button", {
+        class: "coach-close",
+        type: "button",
+        "aria-label": "Close coach"
+      }, "Close")
+    ]);
+    header.querySelector(".coach-close")?.addEventListener("click", () => {
+      const modal = root.closest(".modal") || root;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    });
 
-  // chat area
-  const body = el('div', { class: 'coach-body' }, [
-    el('div', { id: 'chat', class: 'chat' }, []),
-    el('form', { id: 'chatForm', class: 'chat-form' }, [
-      el('input', {
-        id: 'chatInput',
-        name: 'chatInput',
-        type: 'text',
-        placeholder: 'Type your message…',
-        'aria-label': 'Message'
-      }),
-      el('button', { class: 'coach-send', type: 'submit' }, 'Send')
-    ])
-  ]);
+    // top guidance headers used by onModeChange()
+    const guidance = el("div", { class: "coach-guidance" }, [
+      el("div", { id: "hdr1", class: "coach-h1", "aria-live": "polite" }, ""),
+      el("div", { id: "hdr2", class: "coach-h2", "aria-live": "polite" }, "")
+    ]);
 
-  // assemble
-  root.innerHTML = '';
-  root.appendChild(header);
-  root.appendChild(guidance);
-  root.appendChild(controls);
-  root.appendChild(scores);
-  root.appendChild(body);
+    // controls: primary mode select + dynamic fields host
+    const controls = el("div", { class: "coach-controls" }, [
+      (() => {
+        const sel = el("select", { name: "mode", class: "input" }, [
+          option("", "Select Mode"),
+          ...MODES.map(m => option(m.key, m.label))
+        ]);
+        return el("div", { class: "field" }, [
+          el("label", {}, ["Learning Center"]),
+          sel
+        ]);
+      })(),
+      el("div", { id: "modeFields", class: "mode-fields" }, [])
+    ]);
 
-  // wire events
-  qs('select[name="mode"]', root)?.addEventListener('change', onModeChange);
-  qs('#chatForm', root)?.addEventListener('submit', onSend);
+    // score pills (placeholders updated by updateScores)
+    const scores = el("div", { class: "scores" }, [
+      el("div", { class: "score" }, [
+        el("div", { class: "score-name" }, "Confidence"),
+        el("div", { "data-score": "confidence", class: "score-val" }, "_")
+      ]),
+      el("div", { class: "score" }, [
+        el("div", { class: "score-name" }, "Compliance"),
+        el("div", { "data-score": "compliance", class: "score-val" }, "_")
+      ]),
+      el("div", { class: "score" }, [
+        el("div", { class: "score-name" }, "Readiness"),
+        el("div", { "data-score": "readiness", class: "score-val" }, "_")
+      ])
+    ]);
 
-  // Esc to close
-  root.addEventListener('keydown', (e) => { if (e.key === 'Escape') root.remove(); });
+    // chat area
+    const body = el("div", { class: "coach-body" }, [
+      el("div", { id: "chat", class: "chat" }, []),
+      el("form", { id: "chatForm", class: "chat-form" }, [
+        el("input", {
+          id: "chatInput",
+          name: "chatInput",
+          type: "text",
+          placeholder: "Type your message…",
+          "aria-label": "Message"
+        }),
+        el("button", { class: "coach-send", type: "submit" }, "Send")
+      ])
+    ]);
 
-  return root;
-}
+    // assemble
+    root.innerHTML = "";
+    root.appendChild(header);
+    root.appendChild(guidance);
+    root.appendChild(controls);
+    root.appendChild(scores);
+    root.appendChild(body);
+
+    // wire events
+    qs('select[name="mode"]', root)?.addEventListener("change", onModeChange);
+    qs("#chatForm", root)?.addEventListener("submit", onSend);
+
+    // Esc to close
+    root.addEventListener("keydown", (e) => { if (e.key === "Escape") root.remove(); });
+
+    return root;
+  }
+
   // ---------- interactions ----------
   function onModeChange(e) {
     state.mode = e.target.value || null;
+
     // fresh session per mode
     state.sessionId = `${Date.now()}`;
     qs("#chat").innerHTML = "";
+
     // populate dependent fields
     const host = qs("#modeFields");
     host.innerHTML = "";
+
     if (state.mode === "emotional-intelligence") {
-      host.appendChild(field("EI Profile", select("eiProfile", [ {value:"",label:"Select EI Profile"}, ...EI_PROFILES.map(x=>({value:x.key,label:x.label})) ])));
-      host.appendChild(field("EI Feature", select("eiFeature", [ {value:"",label:"Select EI Feature"}, ...EI_FEATURES.map(x=>({value:x.key,label:x.label})) ])));
+      host.appendChild(field("EI Profile", select("eiProfile", [
+        { value: "", label: "Select EI Profile" },
+        ...EI_PROFILES.map(x => ({ value: x.key, label: x.label }))
+      ])));
+      host.appendChild(field("EI Feature", select("eiFeature", [
+        { value: "", label: "Select EI Feature" },
+        ...EI_FEATURES.map(x => ({ value: x.key, label: x.label }))
+      ])));
       host.appendChild(toggleScoring(true)); // ON by default, can be toggled off
-      qs('select[name="eiProfile"]').addEventListener("change", (ev)=> state.eiProfile = ev.target.value || null);
-      qs('select[name="eiFeature"]').addEventListener("change", (ev)=> state.eiFeature = ev.target.value || null);
-      preloadHeaders("HCP Background: Time-pressured; direct; workflow sensitive.", "Key Takeaways: Lead with relevance; 1 question on barriers.");
-    } else if (state.mode === "product-knowledge") {
+      qs('select[name="eiProfile"]').addEventListener("change",
+        (ev) => { state.eiProfile = ev.target.value || null; });
+      qs('select[name="eiFeature"]').addEventListener("change",
+        (ev) => { state.eiFeature = ev.target.value || null; });
+      preloadHeaders(
+        "HCP Background: Time-pressured; direct; workflow sensitive.",
+        "Key Takeaways: Lead with relevance; ask one barrier question."
+      );
+
+    } else if (state.mode === "product-knowledge" || state.mode === "sales-simulation") {
       host.appendChild(field("Disease State", select("disease", [
-        {value:"",label:"Select Disease"},
-        {value:"oncology",label:"Oncology"},
-        {value:"vaccines",label:"Vaccines"},
-        {value:"hiv",label:"HIV"},
-        {value:"pulmonology",label:"Pulmonology"},
-        {value:"hepb",label:"Hepatitis B"},
-        {value:"cardiology",label:"Cardiology"}
+        { value: "",           label: "Select Disease" },
+        { value: "oncology",   label: "Oncology" },
+        { value: "vaccines",   label: "Vaccines" },
+        { value: "hiv",        label: "HIV" },
+        { value: "pulmonology",label: "Pulmonology" },
+        { value: "hepb",       label: "Hepatitis B" },
+        { value: "cardiology", label: "Cardiology" }
       ])));
       host.appendChild(field("HCP Profile", select("hcp", [
-        {value:"",label:"Select HCP"},
-        {value:"im",label:"Internal Medicine MD"},
-        {value:"np",label:"Nurse Practitioner (NP)"},
-        {value:"pa",label:"Physician Assistant (PA)"},
-        {value:"id",label:"Infectious Disease Specialist"},
-        {value:"onc",label:"Oncologist"},
-        {value:"pulm",label:"Pulmonologist"},
-        {value:"card",label:"Cardiologist"}
+        { value: "",    label: "Select HCP" },
+        { value: "im",  label: "Internal Medicine MD" },
+        { value: "np",  label: "Nurse Practitioner (NP)" },
+        { value: "pa",  label: "Physician Assistant (PA)" },
+        { value: "id",  label: "Infectious Disease Specialist" },
+        { value: "onc", label: "Oncologist" },
+        { value: "pulm",label: "Pulmonologist" },
+        { value: "card",label: "Cardiologist" }
       ])));
       host.appendChild(toggleScoring(false)); // OFF by default
-      qs('select[name="disease"]').addEventListener("change", (ev)=> state.disease = ev.target.value || null);
-      qs('select[name="hcp"]').addEventListener("change", (ev)=> state.hcp = ev.target.value || null);
-      preloadHeaders("HCP Background: Evidence-focused; prior-auth burden; limited time.", "Key Takeaways: Lead with guideline tie; include 1 targeted question.");
+      qs('select[name="disease"]').addEventListener("change",
+        (ev) => { state.disease = ev.target.value || null; });
+      qs('select[name="hcp"]').addEventListener("change",
+        (ev) => { state.hcp = ev.target.value || null; });
+      preloadHeaders(
+        "HCP Background: Evidence-focused; prior-auth burden; limited time.",
+        "Key Takeaways: Tie to guidance; ask one targeted needs question."
+      );
+
     } else if (state.mode === "role-play") {
-      // same selects as PK
+      // Reuse PK controls, then force scoring ON
       onModeChange({ target: { value: "product-knowledge" } });
       state.mode = "role-play";
       toggleScoring(true, true); // ensure ON
-      preloadHeaders("HCP Background: Practical, time-constrained.", "Today’s Goal: Practice concise value, ask 1 needs question.");
+      preloadHeaders(
+        "HCP Background: Practical, time-constrained.",
+        "Today’s Goal: Practice concise value; ask one discovery question."
+      );
     }
   }
 
   function toggleScoring(defaultOn, forceOn) {
     const w = h("div", { class: "toggle" }, []);
     const id = `score_${Math.random().toString(36).slice(2)}`;
-    const cb = h("input", { type: "checkbox", id, checked: defaultOn ? "" : null });
+    const cb = h("input", { type: "checkbox", id });
     cb.checked = !!defaultOn;
     cb.addEventListener("change", () => { state.scoring = cb.checked; });
     if (forceOn) { cb.checked = true; cb.disabled = true; state.scoring = true; }
     w.appendChild(cb);
-    w.appendChild(h("label", { for: id }, [ "Scoring" ]));
+    w.appendChild(h("label", { for: id }, ["Scoring"]));
     return w;
   }
 
   function preloadHeaders(line1, line2) {
-    qs("#hdr1").textContent = line1 || "";
-    qs("#hdr2").textContent = line2 || "";
+    const a = qs("#hdr1"), b = qs("#hdr2");
+    if (a) a.textContent = line1 || "";
+    if (b) b.textContent = line2 || "";
   }
 
   async function onSend(ev) {
     ev.preventDefault();
-    const inp = qs("#chatInput"); const msg = (inp.value || "").trim();
+    const inp = qs("#chatInput");
+    const msg = (inp?.value || "").trim();
     if (!msg) return;
     inp.value = "";
     push("user", msg);
-    // silent init ping per selection change is already implied by sessionId flip
-    const reply = await askCoach(msg);
-    push("bot", reply);
-    if (state.scoring) updateScores(); // simple demo change
+
+    try {
+      const reply = await askCoach(msg);
+      push("bot", reply);
+      if (state.scoring) updateScores();
+    } catch {
+      push("bot", "Temporary issue contacting the coach service.");
+    }
   }
 
   function push(who, text) {
-    const row = h("div", { class: `msg ${who}` }, [ text ]);
-    qs("#chat").appendChild(row);
-    qs("#chat").scrollTop = qs("#chat").scrollHeight;
+    const row = h("div", { class: `msg ${who}` }, [text]);
+    const chat = qs("#chat");
+    chat.appendChild(row);
+    chat.scrollTop = chat.scrollHeight;
   }
 
   async function askCoach(text) {
-    // worker endpoint or local stub
-    try {
-      const r = await fetch((window.COACH_ENDPOINT||"/coach"), {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: state.mode, eiProfile: state.eiProfile, eiFeature: state.eiFeature,
-          disease: state.disease, hcp: state.hcp, message: text, sessionId: state.sessionId
-        })
-      });
-      if (r.ok) {
-        const j = await r.json();
-        return j.reply || "OK.";
-      }
-    } catch (_) {}
+    const url = window.COACH_ENDPOINT || "/coach";
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: state.mode,
+        eiProfile: state.eiProfile,
+        eiFeature: state.eiFeature,
+        disease: state.disease,
+        hcp: state.hcp,
+        message: text,
+        sessionId: state.sessionId
+      })
+    });
+    if (r.ok) {
+      const j = await r.json().catch(() => null);
+      return j?.reply || "OK.";
+    }
     // local stub
     return "Stub reply: I parsed your intent and will tailor guidance once the worker responds.";
   }
 
   function updateScores() {
-    const bump = () => 60 + Math.floor(Math.random()*35); // 60–94
-    qsa("[data-score]").forEach(n => n.textContent = bump());
+    const bump = () => 60 + Math.floor(Math.random() * 35); // 60–94
+    qsa("[data-score]").forEach(n => { n.textContent = bump(); });
   }
 
   // ---------- public API ----------
   async function mount(root) {
-    // fresh session every time mount is called
-    state.sessionId = `${Date.now()}`;
-    await loadData();       // tolerant boot
-    buildShell(root);       // render
-    // initial headers
+    state.sessionId = `${Date.now()}`;   // fresh session per mount
+    await loadData();
+    buildShell(root);
     preloadHeaders("", "");
   }
 
