@@ -1,36 +1,64 @@
 {
-  "version": "2025-10-14",
+  "version": "2025-10-31",
   "schemaVersion": "coach-v2",
   "model": "llama-3.1-8b-instant",
 
-  "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
-  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+  // IMPORTANT: point to the base Worker URL (NO trailing /chat)
+  "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
+  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
+
   "stream": false,
 
   "modes": [
     "emotional-assessment",
     "product-knowledge",
-    "sales-simulation",
-    "role-play"
+    "sales-simulation"
+    // add "role-play" here if you want RP visible in the UI
   ],
   "defaultMode": "sales-simulation",
 
+  // OK to keep your analytics path; widget just POSTs to this URL
   "analyticsEndpoint": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
 
   "brand": { "accent": "#2f3a4f", "radius": "14px" },
 
-  "scenariosUrl": "assets/chat/data/scenarios.merged.json",
-
   "ui": { "showCoach": true, "showMeta": true, "allowModeSwitch": true },
 
-  "eiProfiles": [
-    { "key": "difficult",   "label": "Difficult HCP",            "description": "Resistant, emotional, argumentative" },
-    { "key": "engaged",     "label": "Highly Engaged HCP",       "description": "Collaborative, attentive, empathetic" },
-    { "key": "indifferent", "label": "Nice but Doesn’t Prescribe","description": "Pleasant, disengaged, no prescriptions" }
-  ],
+  // Scenarios path is fine
+  "scenariosUrl": "assets/chat/data/scenarios.merged.json",
 
+  // Ensure dropdowns never go empty even if scenarios don't load/have no mode tags
+  "scenarioFilter": { "requireModeTag": false, "fallbackOnEmpty": true },
+
+  // **Taxonomy fallback** (used when scenarios are missing/unavailable)
+  "taxonomy": {
+    "therapeuticAreas": ["HIV", "Oncology", "Vaccines", "COVID-19", "Cardiovascular"],
+    "hcpProfiles": [
+      "Internal Medicine MD",
+      "Nurse Practitioner",
+      "Physician Assistant",
+      "Medical Oncologist",
+      "Oncology NP",
+      "Oncology PA (GU)",
+      "Infectious Disease Specialist",
+      "Family Medicine NP",
+      "Pulmonologist",
+      "Pulmonary NP",
+      "Pulmonary PA",
+      "Cardiologist",
+      "Cardiology NP",
+      "Cardiology PA"
+    ]
+  },
+
+  // Your personas and EI features are great; keeping as-is
+  "personas": [
+    { "key": "difficult", "label": "Difficult HCP", "description": "Resistant, emotional, argumentative" },
+    { "key": "engaged", "label": "Highly Engaged HCP", "description": "Collaborative, attentive, empathetic" },
+    { "key": "indifferent", "label": "Nice but Doesn’t Prescribe", "description": "Pleasant, but disengaged, no prescriptions" }
+  ],
   "eiFeatures": [
     { "key": "empathy", "label": "Empathy Rating" },
-    { "key": "stress",  "label": "Stress Level Indicator" }
+    { "key": "stress", "label": "Stress Level Indicator" }
   ]
 }
