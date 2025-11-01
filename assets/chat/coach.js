@@ -72,62 +72,101 @@
   }
 
   // ---------- UI ----------
-  function buildShell(root) {
-    root.innerHTML = "";
-    const wrap = h("div", { class: "rfx-coach-wrap" }, [
-      h("div", { class: "coach-header" }, [
-        h("div", { class: "title" }, [ "ReflectivAI Coach" ]),
-        h("button", { class: "close-btn", type: "button" }, [ "Close" ])
-      ]),
-      h("div", { class: "coach-body" }, [
-        // left controls
-        h("div", { class: "coach-controls" }, [
-          field("Learning Center Mode", select("mode", [ { value: "", label: "Select Mode" }, ...MODES.map(m=>({value:m.key,label:m.label})) ])),
-          h("div", { id: "modeFields" })
-        ]),
-        // chat
-        h("div", { class: "coach-chat" }, [
-          h("div", { class: "chat-header" }, [
-            h("div", { class: "hline", id: "hdr1" }, []),
-            h("div", { class: "hline", id: "hdr2" }, [])
-          ]),
-          h("div", { class: "chat-stream", id: "chat" }),
-          h("form", { class: "chat-form", id: "chatForm" }, [
-            h("input", { class: "chat-input", id: "chatInput", placeholder: "Type your message…" }),
-            h("button", { class: "btn", type: "submit" }, [ "Send" ])
-          ])
-        ]),
-        // scores right column
-        h("div", { class: "coach-scores", id: "scoresCol" }, [
-          scoreItem("Empathy", "—"),
-          scoreItem("Accuracy", "—"),
-          scoreItem("Confidence", "—"),
-          scoreItem("Compliance", "—"),
-          scoreItem("Readiness", "—")
-        ])
-      ])
-    ]);
-    root.appendChild(wrap);
-    // close
-    qs(".close-btn", wrap).addEventListener("click", () => {
-      // find outer modal and close
-      const modal = root.closest(".modal");
-      if (modal) modal.classList.remove("open");
-    });
-    // wire selects
-    qs('select[name="mode"]', wrap).addEventListener("change", onModeChange);
-    qs("#chatForm", wrap).addEventListener("submit", onSend);
-  }
+  // ---------- UI ----------
+function buildShell(rootEl) {
+  // modal root with a11y
+  const root = rootEl ?? el('div', {
+    id: 'coach-modal',
+    role: 'dialog',
+    'aria-modal': 'true',
+    'aria-labelledby': 'coach-title'
+  });
 
-  const field = (label, input) => h("div", { class: "field" }, [ h("label", {}, [ label ]), input ]);
-  function select(name, options) {
-    const sel = h("select", { name, class: "input" });
-    options.forEach(o => sel.appendChild(h("option", { value: o.value }, [ o.label ])));
-    return sel;
-  }
-  const scoreItem = (name, val) =>
-    h("div", { class: "score" }, [ h("div", { class: "score-name" }, [ name ]), h("div", { class: "score-val", "data-score": name.toLowerCase() }, [ val ]) ]);
+  // header bar
+  const header = el('div', { class: 'coach-header' }, [
+    el('div', {
+      id: 'coach-title',
+      class: 'coach-title',
+      role: 'heading',
+      'aria-level': '2'
+    }, 'Reflectiv Coach'),
+    el('button', {
+      class: 'coach-close',
+      type: 'button',
+      'aria-label': 'Close coach'
+    }, 'Close')
+  ]);
+  header.querySelector('.coach-close')?.addEventListener('click', () => {
+    const modal = root.closest('.modal') || root;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  });
 
+  // top guidance headers used by onModeChange()
+  const guidance = el('div', { class: 'coach-guidance' }, [
+    el('div', { id: 'hdr1', class: 'coach-h1', 'aria-live': 'polite' }, ''),
+    el('div', { id: 'hdr2', class: 'coach-h2', 'aria-live': 'polite' }, '')
+  ]);
+
+  // controls: primary mode select + dynamic fields host
+  const controls = el('div', { class: 'coach-controls' }, [
+    // primary mode selector
+    (function () {
+      const sel = el('select', { name: 'mode', class: 'input' }, [
+        el('option', { value: '' }, 'Select Mode'),
+        el('option', { value: 'emotional-intelligence' }, 'Emotional Intelligence'),
+        el('option', { value: 'product-knowledge' }, 'Product Knowledge'),
+        el('option', { value: 'sales-simulation' }, 'Sales Simulation'),
+        el('option', { value: 'role-play' }, 'Role Play')
+      ]);
+      return el('div', { class: 'field' }, [
+        el('label', {}, 'Learning Center'),
+        sel
+      ]);
+    })(),
+    // host for secondary fields populated by onModeChange()
+    el('div', { id: 'modeFields', class: 'mode-fields' }, [])
+  ]);
+
+  // score pills (simple placeholders updated by updateScores)
+  const scores = el('div', { class: 'scores' }, [
+    el('div', { class: 'score' }, [ el('div', { class: 'score-name' }, 'Confidence'), el('div', { 'data-score': 'confidence', class: 'score-val' }, '_') ]),
+    el('div', { class: 'score' }, [ el('div', { class: 'score-name' }, 'Compliance'), el('div', { 'data-score': 'compliance', class: 'score-val' }, '_') ]),
+    el('div', { class: 'score' }, [ el('div', { class: 'score-name' }, 'Readiness'),  el('div', { 'data-score': 'readiness',  class: 'score-val' }, '_') ])
+  ]);
+
+  // chat area
+  const body = el('div', { class: 'coach-body' }, [
+    el('div', { id: 'chat', class: 'chat' }, []),
+    el('form', { id: 'chatForm', class: 'chat-form' }, [
+      el('input', {
+        id: 'chatInput',
+        name: 'chatInput',
+        type: 'text',
+        placeholder: 'Type your message…',
+        'aria-label': 'Message'
+      }),
+      el('button', { class: 'coach-send', type: 'submit' }, 'Send')
+    ])
+  ]);
+
+  // assemble
+  root.innerHTML = '';
+  root.appendChild(header);
+  root.appendChild(guidance);
+  root.appendChild(controls);
+  root.appendChild(scores);
+  root.appendChild(body);
+
+  // wire events
+  qs('select[name="mode"]', root)?.addEventListener('change', onModeChange);
+  qs('#chatForm', root)?.addEventListener('submit', onSend);
+
+  // Esc to close
+  root.addEventListener('keydown', (e) => { if (e.key === 'Escape') root.remove(); });
+
+  return root;
+}
   // ---------- interactions ----------
   function onModeChange(e) {
     state.mode = e.target.value || null;
