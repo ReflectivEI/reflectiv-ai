@@ -476,9 +476,18 @@
     document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)}));
     document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));});
 
-    /* ---------- Coach trigger ---------- */
-    document.getElementById('openCoach')?.addEventListener('click',e=>{e.preventDefault();openModal('#coachModal')});
-
+   /* ---------- Coach trigger (open + mount) ---------- */
+document.getElementById('openCoach')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  openModal('#coachModal');
+  // Mount into the host inside the modal
+  const host = document.getElementById('reflectiv-widget');
+  if (host) {
+    // coach.js now supports null host too, but be explicit for clarity
+    window.ReflectivCoach?.mount(host);
+  }
+});
+    
     /* ---------- Pill modal wiring ---------- */
     (function(){
       const scope=document.getElementById('therapeutic-areas');
