@@ -99,12 +99,12 @@
     }
   </style>
 
-  <!-- Site CSS (keep external if you want broader styles) -->
+  <!-- Optional global site styles -->
   <link rel="stylesheet" href="styles.css?v=20251021B">
 
   <!-- Endpoints (normalize: provide base and per-feature endpoints) -->
   <script>
-    // Base Worker (no trailing /chat). Widget now strips /chat if present.
+    // Base Worker (no trailing /chat). Expose endpoints for Coach + Alora.
     (function(){
       const BASE = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
       window.WORKER_URL = BASE;
@@ -360,7 +360,7 @@
         <p class="text-gray-600 text-sm">Pre-deployment bias testing with monitoring and remediation steps.</p>
       </div>
       <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
-        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center>
+        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
           <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6 text-accent-teal mr-2' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><line x1='12' y1='1' x2='12' y2='23'></line><path d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'></path></svg>
           Transparency & Explainability
         </h4>
@@ -476,18 +476,17 @@
     document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)}));
     document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));});
 
-   /* ---------- Coach trigger (open + mount) ---------- */
-document.getElementById('openCoach')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  openModal('#coachModal');
-  // Mount into the host inside the modal
-  const host = document.getElementById('reflectiv-widget');
-  if (host) {
-    // coach.js now supports null host too, but be explicit for clarity
-    window.ReflectivCoach?.mount(host);
-  }
-});
-    
+    /* ---------- Coach trigger (open + mount) ---------- */
+    document.getElementById('openCoach')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal('#coachModal');
+      // Mount into the host inside the modal
+      const host = document.getElementById('reflectiv-widget');
+      if (host) {
+        window.ReflectivCoach?.mount(host);
+      }
+    });
+
     /* ---------- Pill modal wiring ---------- */
     (function(){
       const scope=document.getElementById('therapeutic-areas');
@@ -523,7 +522,11 @@ document.getElementById('openCoach')?.addEventListener('click', (e) => {
     }
 
     const ACTIONS={
-      'open-coach':()=>openModal('#coachModal'),
+      'open-coach':()=>{
+        openModal('#coachModal');
+        const host = document.getElementById('reflectiv-widget');
+        if (host) window.ReflectivCoach?.mount(host);
+      },
       'request-demo':()=>scrollToId('contact'),
       'see-platform':()=>scrollToId('platform'),
       'see-analytics':()=>scrollToId('analytics'),
@@ -686,6 +689,20 @@ document.getElementById('openCoach')?.addEventListener('click', (e) => {
       bot("I could not reach the backend. You can still open the Coach, explore the Platform, or request a demo.");
       renderChips(CHIPS_BASE);
     });
+
+    /* ------------ Safety net: auto-mount when coach modal opens ------------ */
+    const coachModal = document.getElementById('coachModal');
+    let coachMounted = false;
+    const maybeMount = () => {
+      if (coachMounted) return;
+      if (coachModal && coachModal.classList.contains('open')) {
+        const host = document.getElementById('reflectiv-widget');
+        if (host && window.ReflectivCoach?.mount) { window.ReflectivCoach.mount(host); coachMounted = true; }
+      }
+    };
+    if (coachModal) {
+      new MutationObserver(maybeMount).observe(coachModal, { attributes:true, attributeFilter:['class'] });
+    }
 
     /* Avoid white banner on bfcache restore */
     if('scrollRestoration' in history){history.scrollRestoration='manual'}
