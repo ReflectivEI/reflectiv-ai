@@ -136,18 +136,134 @@
     return raw.replace(/\/chat\/?$/i, "").replace(/\/+$/g, "");
   }
 
-  async function jfetch(path, payload) {
-    const base = getWorkerBase();
-    if (!base) throw new Error("worker_base_missing");
-    const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload || {})
-    });
-    if (!r.ok) throw new Error(`${path}_http_${r.status}`);
-    return r.json();
+  // POST JSON with /chat ↔ /agent smart adaptation, provider_sig, and seq handling.
+async function jfetch(path, payload = {}) {
+  const base = getWorkerBase();
+  if (!base) throw new Error("worker_base_missing");
+
+  // normalize path
+  const p = path.startsWith("/") ? path : `/${path}`;
+
+  // provider signature (optional)
+  const provider_sig =
+    payload.provider_sig ||
+    (window.PROVIDER_SIG || (window.CONFIG && (window.CONFIG.providerSig || (window.CONFIG.brand && window.CONFIG.brand.sig)))) ||
+    "";
+
+  // timeout + retries
+  const TIMEOUT_MS = 20000;
+  const MAX_RETRY = 2;
+
+  // session + seq only for /agent
+  function getSessionSeq() {
+    const sidKey = "reflectiv.session_id";
+    const seqKey = "reflectiv.seq";
+    let sid = localStorage.getItem(sidKey);
+    if (!sid) {
+      sid = (crypto.randomUUID && crypto.randomUUID()) || ("sid-" + Math.random().toString(36).slice(2));
+      localStorage.setItem(sidKey, sid);
+    }
+    const prev = parseInt(localStorage.getItem(seqKey) || "-1", 10);
+    const seq = Number.isFinite(prev) ? prev + 1 : 0;
+    localStorage.setItem(seqKey, String(seq));
+    return { session_id: sid, seq };
   }
+
+  function withTimeout(fetchPromise, ms) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort("timeout"), ms);
+    return fetchPromise(ctrl.signal).finally(() => clearTimeout(t));
+  }
+
+  async function tryOnce(signal) {
+    let url = base;
+    let body;
+
+    // If base already points to /chat, always POST to it and adapt payload.
+    const usingChat = /\/chat\/?$/.test(base);
+
+    if (usingChat) {
+      // Adapt to /chat adapter contract.
+      // Expect either payload.messages or payload.user.
+      const mode = payload.mode || (window.CONFIG && window.CONFIG.defaultMode) || "sales-simulation";
+      const uiCtx = (payload.ui_context ||
+                    (payload.context && payload.context.ui_context) ||
+                    {});
+      const formatHints = (payload.format_hints || {});
+      const sysBlob = JSON.stringify({ ui_context: uiCtx, format_hints: formatHints });
+
+      // Build messages if caller passed plain user text.
+      const messages = Array.isArray(payload.messages) && payload.messages.length
+        ? payload.messages
+        : [
+            { role: "system", content: sysBlob },
+            { role: "user", content: String(payload.user || payload.input || "") }
+          ];
+
+      body = {
+        mode,
+        stream: payload.stream === true, // adapter supports streaming; default false
+        messages,
+        provider_sig
+      };
+      // Ignore caller path; chat endpoint is the base.
+      url = base.replace(/\/+$/, "");
+    } else {
+      // Strict /agent contract; preserve path and add required fields if missing.
+      url = `${base.replace(/\/+$/, "")}${p}`;
+      if (p === "/agent") {
+        const { session_id, seq } = (payload.session_id && Number.isInteger(payload.seq))
+          ? { session_id: payload.session_id, seq: payload.seq }
+          : getSessionSeq();
+
+        body = {
+          session_id,
+          thread_id: payload.thread_id || "web-ui",
+          seq,
+          mode: payload.mode || "sales-simulation",
+          mode_version: payload.mode_version || ((payload.mode === "role-play") ? "rp-v2" : "v1"),
+          input: String(payload.user || payload.input || ""),
+          messages: Array.isArray(payload.messages) ? payload.messages : undefined,
+          labelText: payload.labelText || "",
+          policyText: payload.policyText || "",
+          stream: !!payload.stream,
+          provider_sig
+        };
+      } else {
+        // Generic JSON POST for other endpoints (/evaluate, /coach-metrics, etc.)
+        body = { ...payload, provider_sig };
+      }
+    }
+
+    const headers = { "content-type": "application/json" };
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const snippet = text.slice(0, 500);
+      const err = new Error(`http_${res.status}:${snippet}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }
+
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRY; attempt++) {
+    try {
+      return await withTimeout((signal) => tryOnce(signal), TIMEOUT_MS);
+    } catch (e) {
+      lastErr = e;
+      const s = e && e.status;
+      if (s === 429 || (s >= 500 && s < 600)) {
+        const backoff = 250 * Math.pow(2, attempt); // 250ms, 500ms
+        await new Promise(r => setTimeout(r, backoff));
+        continue;
+      }
+      break;
+    }
+  }
+  throw lastErr || new Error("request_failed");
+}
 
   // mode-aware fallback lines
   function fallbackText(mode){
