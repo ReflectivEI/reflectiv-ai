@@ -102,9 +102,6 @@
   <!-- Site CSS (keep external if you want broader styles) -->
   <link rel="stylesheet" href="styles.css?v=20251021B">
 
-  <!-- Coach styles (keep if you rely on widget.css visuals) -->
-  <link rel="stylesheet" href="widget.css?v=20251021-4">
-
   <!-- Endpoints (normalize: provide base and per-feature endpoints) -->
   <script>
     // Base Worker (no trailing /chat). Widget now strips /chat if present.
@@ -123,11 +120,10 @@
     };
   </script>
 
-  <!-- Coach script: context helpers first, then widget -->
-  <!-- Coach scripts (modular build) -->
-  <script src="assets/chat/ei-context.js?v=ui2"></script>
-  <script type="module" src="assets/chat/coach.js?v=ui2"></script>
-  <link rel="stylesheet" href="assets/chat/widget.css?v=ui2">
+  <!-- ReflectivAI Coach assets (order matters: CSS → context → coach) -->
+  <link rel="stylesheet" href="assets/chat/widget.css?v=ui3">
+  <script src="assets/chat/ei-context.js?v=ui3"></script>
+  <script src="assets/chat/coach.js?v=ui3"></script>
 
   <!-- Ensure Alora sits on top -->
   <style>#aloraFab{z-index:10001;pointer-events:auto}.alora{z-index:10001}</style>
