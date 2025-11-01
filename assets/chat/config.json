@@ -1,9 +1,10 @@
 {
-  "version": "2025-11-01",
+  "version": "2025-10-14",
   "schemaVersion": "coach-v2",
-  "model": "llama-3.1-70b-versatile",
-  "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
-  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
+  "model": "llama-3.1-8b-instant",
+
+  "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
   "stream": false,
 
   "modes": [
@@ -14,96 +15,22 @@
   ],
   "defaultMode": "sales-simulation",
 
-  "analyticsEndpoint": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/evaluate",
+  "analyticsEndpoint": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
 
   "brand": { "accent": "#2f3a4f", "radius": "14px" },
-  "ui": { "showCoach": true, "showMeta": true, "allowModeSwitch": true },
 
   "scenariosUrl": "assets/chat/data/scenarios.merged.json",
 
-  "scenarioFilter": {
-    "requireModeTag": false,
-    "fallbackOnEmpty": true,
-    "keys": {
-      "therapeuticArea": ["therapeuticArea", "ta", "area"],
-      "hcpProfile": ["hcpProfile", "hcp", "profile"],
-      "mode": ["mode"]
-    }
-  },
+  "ui": { "showCoach": true, "showMeta": true, "allowModeSwitch": true },
 
-  "taxonomy": {
-    "therapeuticAreas": [
-      "HIV",
-      "Oncology",
-      "Vaccines",
-      "COVID-19",
-      "Cardiovascular"
-    ],
-    "hcpProfiles": [
-      "Internal Medicine MD",
-      "Nurse Practitioner",
-      "Physician Assistant",
-      "Medical Oncologist",
-      "Oncology NP",
-      "Oncology PA (GU)",
-      "Infectious Disease Specialist",
-      "Family Medicine NP",
-      "Pulmonologist",
-      "Pulmonary NP",
-      "Pulmonary PA",
-      "Cardiologist",
-      "Cardiology NP",
-      "Cardiology PA"
-    ]
-  },
+  "eiProfiles": [
+    { "key": "difficult",   "label": "Difficult HCP",            "description": "Resistant, emotional, argumentative" },
+    { "key": "engaged",     "label": "Highly Engaged HCP",       "description": "Collaborative, attentive, empathetic" },
+    { "key": "indifferent", "label": "Nice but Doesn’t Prescribe","description": "Pleasant, disengaged, no prescriptions" }
+  ],
 
-  "limits": {
-    "coachPanelHardMinChars": 280,
-    "coachPanelHardMaxChars": 1200
-  },
-
-  "features": {
-    "reflexion": {
-      "enabled": true,
-      "passes": 2,
-      "primary_weight": 0.4,
-      "secondary_weight": 0.35,
-      "tertiary_weight": 0.25,
-      "max_output_tokens": 650
-    },
-    "socratic": {
-      "enabled": true,
-      "pause_every_messages": 3,
-      "question_bank_file": "assets/chat/about-ei.md"
-    },
-    "reflectiveIndex": {
-      "enabled": true,
-      "dimensions": [
-        "SelfAwareness",
-        "SelfRegulation",
-        "Empathy",
-        "Clarity",
-        "Compliance",
-        "Discovery"
-      ],
-      "alpha": 0.25,
-      "seed": {
-        "SelfAwareness": 0.5,
-        "SelfRegulation": 0.5,
-        "Empathy": 0.5,
-        "Clarity": 0.5,
-        "Compliance": 0.6,
-        "Discovery": 0.5
-      }
-    },
-    "affectiveAnalytics": {
-      "enabled": true,
-      "markers": [
-        "acknowledgment_rate",
-        "inclusive_phrasing",
-        "pause_ratio",
-        "question_to_statement_ratio"
-      ]
-    }
-  }
+  "eiFeatures": [
+    { "key": "empathy", "label": "Empathy Rating" },
+    { "key": "stress",  "label": "Stress Level Indicator" }
+  ]
 }
