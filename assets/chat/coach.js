@@ -15,7 +15,7 @@
     );
     return n;
   };
-  // alias so existing calls to `el(...)` remain valid
+  // alias so any existing calls to `el(...)` remain valid
   const el = h;
 
   const fetchJSON = async (url) => {
@@ -69,7 +69,7 @@
         fetchJSON(DATA.scenarios)
       ]);
       state.cfg = cfg;
-      state.personas  = personas?.personas  || [];
+      state.personas  = personas?.personas   || [];
       state.scenarios = scenarios?.scenarios || [];
     } catch (e) {
       console.warn("[Coach] data fetch failed, using stub", e);
@@ -201,10 +201,12 @@
 
     // fresh session per mode
     state.sessionId = `${Date.now()}`;
-    qs("#chat").innerHTML = "";
+    const chat = qs("#chat"); if (chat) chat.innerHTML = "";
 
     // populate dependent fields
     const host = qs("#modeFields");
+    if (!host) return;
+
     host.innerHTML = "";
 
     if (state.mode === "emotional-intelligence") {
@@ -217,9 +219,9 @@
         ...EI_FEATURES.map(x => ({ value: x.key, label: x.label }))
       ])));
       host.appendChild(toggleScoring(true)); // ON by default, can be toggled off
-      qs('select[name="eiProfile"]').addEventListener("change",
+      qs('select[name="eiProfile"]')?.addEventListener("change",
         (ev) => { state.eiProfile = ev.target.value || null; });
-      qs('select[name="eiFeature"]').addEventListener("change",
+      qs('select[name="eiFeature"]')?.addEventListener("change",
         (ev) => { state.eiFeature = ev.target.value || null; });
       preloadHeaders(
         "HCP Background: Time-pressured; direct; workflow sensitive.",
@@ -247,9 +249,9 @@
         { value: "card",label: "Cardiologist" }
       ])));
       host.appendChild(toggleScoring(false)); // OFF by default
-      qs('select[name="disease"]').addEventListener("change",
+      qs('select[name="disease"]')?.addEventListener("change",
         (ev) => { state.disease = ev.target.value || null; });
-      qs('select[name="hcp"]').addEventListener("change",
+      qs('select[name="hcp"]')?.addEventListener("change",
         (ev) => { state.hcp = ev.target.value || null; });
       preloadHeaders(
         "HCP Background: Evidence-focused; prior-auth burden; limited time.",
@@ -306,6 +308,7 @@
   function push(who, text) {
     const row = h("div", { class: `msg ${who}` }, [text]);
     const chat = qs("#chat");
+    if (!chat) return;
     chat.appendChild(row);
     chat.scrollTop = chat.scrollHeight;
   }
@@ -342,9 +345,60 @@
   async function mount(root) {
     state.sessionId = `${Date.now()}`;   // fresh session per mount
     await loadData();
-    buildShell(root);
-    preloadHeaders("", "");
+
+    // 1) Find or create a host to attach into
+    let host = root
+      || document.querySelector('#coach-modal .content')
+      || document.querySelector('.coach-modal .content')
+      || document.querySelector('.modal .content')
+      || document.querySelector('.coach-modal-host')
+      || document.querySelector('#coach-container');
+
+    // If no obvious host exists, create a minimal overlay on the body
+    if (!host) {
+      const overlay = h('div', {
+        id: 'coach-modal',
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-labelledby': 'coach-title',
+        class: 'rfx-coach-overlay'
+      });
+      document.body.appendChild(overlay);
+      host = overlay;
+    }
+
+    // 2) Build the UI inside the host
+    buildShell(host);
+
+    // 3) Seed guidance
+    preloadHeaders('', '');
+
+    // 4) Return the host in case caller wants a handle
+    return host;
   }
+
+  // Auto-mount when user clicks a "Try a Simulation" style trigger
+  (function autoMount() {
+    const isTrigger = (el) =>
+      el?.matches?.('[data-open-coach], [data-coach], a, button') &&
+      /simulation|try a simulation/i.test(el.textContent || '');
+
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest && e.target.closest('*');
+      if (!t) return;
+      if (!isTrigger(t)) return;
+
+      // prevent hash jumps on anchors
+      if (t.tagName === 'A' && t.getAttribute('href')?.includes('#')) e.preventDefault();
+
+      const existing =
+        document.querySelector('#coach-modal .content') ||
+        document.querySelector('.coach-modal .content') ||
+        document.querySelector('.modal .content');
+
+      window.ReflectivCoach.mount(existing);
+    }, { capture: true });
+  })();
 
   window.ReflectivCoach = { mount };
 })();
