@@ -1,12 +1,10 @@
 {
-  "version": "2025-11-01",
+  "version": "2025-10-31",
   "schemaVersion": "coach-v2",
   "model": "llama-3.1-8b-instant",
-
   "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
   "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
   "stream": false,
-
   "modes": [
     "emotional-assessment",
     "product-knowledge",
@@ -14,19 +12,29 @@
     "role-play"
   ],
   "defaultMode": "sales-simulation",
-
   "analyticsEndpoint": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
-
-  "brand": { "accent": "#2f3a4f", "radius": "14px" },
-
-  "ui": { "showCoach": true, "showMeta": true, "allowModeSwitch": true },
-
-  "scenariosUrl": "assets/chat/data/scenarios.merged.json?v=2025-11-01",
-
-  "scenarioFilter": { "requireModeTag": false, "fallbackOnEmpty": true },
-
+  "brand": {
+    "accent": "#2f3a4f",
+    "radius": "14px"
+  },
+  "ui": {
+    "showCoach": true,
+    "showMeta": true,
+    "allowModeSwitch": true
+  },
+  "scenariosUrl": "assets/chat/data/scenarios.merged.json",
+  "scenarioFilter": {
+    "requireModeTag": false,
+    "fallbackOnEmpty": true
+  },
   "taxonomy": {
-    "therapeuticAreas": ["HIV", "Oncology", "Vaccines", "COVID-19", "Cardiovascular"],
+    "therapeuticAreas": [
+      "HIV",
+      "Oncology",
+      "Vaccines",
+      "COVID-19",
+      "Cardiovascular"
+    ],
     "hcpProfiles": [
       "Internal Medicine MD",
       "Nurse Practitioner",
@@ -44,14 +52,31 @@
       "Cardiology PA"
     ]
   },
-
   "personas": [
-    { "key": "difficult",   "label": "Difficult HCP",              "description": "Resistant, emotional, argumentative" },
-    { "key": "engaged",     "label": "Highly Engaged HCP",         "description": "Collaborative, attentive, empathetic" },
-    { "key": "indifferent", "label": "Nice but Doesn’t Prescribe", "description": "Pleasant, disengaged, no prescriptions" }
+    {
+      "key": "difficult",
+      "label": "Difficult HCP",
+      "description": "Resistant, emotional, argumentative"
+    },
+    {
+      "key": "engaged",
+      "label": "Highly Engaged HCP",
+      "description": "Collaborative, attentive, empathetic"
+    },
+    {
+      "key": "indifferent",
+      "label": "Nice but Doesn\u2019t Prescribe",
+      "description": "Pleasant, disengaged, no prescriptions"
+    }
   ],
   "eiFeatures": [
-    { "key": "empathy", "label": "Empathy Rating" },
-    { "key": "stress",  "label": "Stress Level Indicator" }
+    {
+      "key": "empathy",
+      "label": "Empathy Rating"
+    },
+    {
+      "key": "stress",
+      "label": "Stress Level Indicator"
+    }
   ]
 }
