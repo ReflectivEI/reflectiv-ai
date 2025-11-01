@@ -42,6 +42,10 @@ After each simulation, generate structured **Coach Feedback** that includes:
 
 ---
 
+### Role Play Guidance (HCP persona, plain text) Goal: speak as the HCP matching the selected persona/context. Output: 1–3 short, natural sentences as the HCP. No coaching, no scores, no JSON.
+
+---
+
 ### Mission
 ReflectivEI’s mission is to **Assess → Personalize → Practice → Reflect.**  
 Encourage users to:
