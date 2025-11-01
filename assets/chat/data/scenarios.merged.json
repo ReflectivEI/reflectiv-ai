@@ -1,5 +1,4 @@
 {
-  "version": "2025-10-31",
   "scenarios": [
     {
       "id": "hiv_im_decile3_prep_lowshare",
@@ -9,8 +8,7 @@
       "summary": "Decile 3 IM prescriber underutilizes PrEP despite steady STI testing in young MSM; inconsistent quarterly labs and follow-ups.",
       "objection": "Clinic believes few true PrEP candidates; renal safety and monitoring workload concerns.",
       "goal": "Create urgency around PrEP gaps; commit to proactive Descovy prescribing where appropriate and standardize quarterly follow-ups.",
-      "approach": "Quantify risk pool from STI volume, review renal safety data, and propose nurse-led PrEP/lab cadence.",
-      "mode": "sales-simulation"
+      "approach": "Quantify risk pool from STI volume, review renal safety data, and propose nurse-led PrEP/lab cadence."
     },
     {
       "id": "hiv_np_decile10_highshare_access",
@@ -20,19 +18,17 @@
       "summary": "Decile 10 NP with strong share; prior-auth workload and workflow friction limit breadth of appropriate prescribing.",
       "objection": "Prior-auth burden and limited staffing.",
       "goal": "Broaden appropriate Descovy use via predictable PA batching and support roles; revisit generic TDF users with unrestricted coverage.",
-      "approach": "Implement twice-weekly PA batching with pharmacy partner and benefits checks.",
-      "mode": "sales-simulation"
+      "approach": "Implement twice-weekly PA batching with pharmacy partner and benefits checks."
     },
     {
       "id": "hiv_pa_decile9_treat_switch_slowdown",
       "therapeuticArea": "HIV",
       "hcpProfile": "Physician Assistant",
       "title": "Slowing Biktarvy switches in stable patients",
-      "summary": "Top HIV clinic; prior switch velocity fell to 1\u20132 in 13 weeks; perception that most patients are optimized.",
+      "summary": "Top HIV clinic; prior switch velocity fell to 1–2 in 13 weeks; perception that most patients are optimized.",
       "objection": "Reluctance to switch stable patients.",
       "goal": "Reinforce durability and convenience; define clear switch criteria and run quarterly optimization review.",
-      "approach": "Create candidate list by labs/adherence flags; schedule switch day with counseling script.",
-      "mode": "sales-simulation"
+      "approach": "Create candidate list by labs/adherence flags; schedule switch day with counseling script."
     },
     {
       "id": "hiv_np_decile5_cab_growth",
@@ -42,9 +38,9 @@
       "summary": "CAB share growing; NP often honors requests without systematic adherence/resistance evaluation.",
       "objection": "Patient demand driving selection; uncertainty about resistance and monitoring.",
       "goal": "Align on candidacy and monitoring criteria; protect long-term regimen durability.",
-      "approach": "Adopt checklist for eligibility, resistance history, and missed-dose plan; schedule injection calendar.",
-      "mode": "sales-simulation"
+      "approach": "Adopt checklist for eligibility, resistance history, and missed-dose plan; schedule injection calendar."
     },
+
     {
       "id": "hiv_im_decile4_prep_apretude_gap",
       "therapeuticArea": "HIV",
@@ -53,8 +49,7 @@
       "summary": "PrEP mix skewed to orals; PA backlog; missing standing lab protocol; misconceptions about long-acting adherence.",
       "objection": "Belief that long-acting requires near-perfect adherence; operational friction.",
       "goal": "Offer Apretude to adherence-challenged candidates and convert high-risk TDF/FTC users with renal risk to Descovy where access allows.",
-      "approach": "Nurse-led lab/injection calendar and PA batching; education on initiation and follow-up cadence.",
-      "mode": "sales-simulation"
+      "approach": "Nurse-led lab/injection calendar and PA batching; education on initiation and follow-up cadence."
     },
     {
       "id": "hiv_np_decile9_prep_ops_cap",
@@ -64,8 +59,7 @@
       "summary": "FQHC with high demand; PA burden caps TAF/Apretude; ad-hoc pharmacy engagement.",
       "objection": "Throughput and PA workload.",
       "goal": "Batch PAs with pharmacy tech support; monthly Apretude start day; default naive high-risk starts appropriately.",
-      "approach": "Standing process for benefits checks and clinic event template.",
-      "mode": "sales-simulation"
+      "approach": "Standing process for benefits checks and clinic event template."
     },
     {
       "id": "hiv_pa_decile7_treat_switch_day",
@@ -75,9 +69,9 @@
       "summary": "Hospital-affiliated ID clinic; few recent switches; CAB/RPV interest among adherent younger patients.",
       "objection": "Perception of optimization; uncertainty on candidacy.",
       "goal": "Define CAB/RPV candidacy and counseling; track suppression and missed-dose events.",
-      "approach": "Quarterly optimization clinic with resistance review and tracking.",
-      "mode": "sales-simulation"
+      "approach": "Quarterly optimization clinic with resistance review and tracking."
     },
+
     {
       "id": "onc_md_decile10_io_adc_pathways",
       "therapeuticArea": "Oncology",
@@ -85,9 +79,8 @@
       "title": "IO-backbone heavy; ADC toxicity bandwidth",
       "summary": "Solid-tumor center evaluating ADCs; P&T scrutinizes cost/response and chair time; toxicity bandwidth is constraint.",
       "objection": "Toxicity management resources and pathway integration.",
-      "goal": "Define biomarker-driven subset with \u0394OS/\u0394PFS and operational fit; add to order sets/tumor board.",
-      "approach": "Present subset data and AE mitigation plan; align with NCCN category of evidence.",
-      "mode": "product-knowledge"
+      "goal": "Define biomarker-driven subset with ΔOS/ΔPFS and operational fit; add to order sets/tumor board.",
+      "approach": "Present subset data and AE mitigation plan; align with NCCN category of evidence."
     },
     {
       "id": "onc_np_decile6_pathway_ops",
@@ -97,20 +90,19 @@
       "summary": "Community infusion site; conservative IO use; AE clinics short-staffed; education packets inconsistent.",
       "objection": "Staffing and pathway paperwork burden.",
       "goal": "Standardize NP-led education and toxicity call-tree; add AE one-pager to pathway handouts.",
-      "approach": "Template kits and standing nurse protocols.",
-      "mode": "sales-simulation"
+      "approach": "Template kits and standing nurse protocols."
     },
     {
       "id": "onc_pa_decile7_gu_oral_onc_tminus7",
       "therapeuticArea": "Oncology",
       "hcpProfile": "Oncology PA (GU)",
       "title": "Oral oncolytic onboarding at T-7",
-      "summary": "GU team struggles with hub forms and day-25\u201330 refill gaps.",
+      "summary": "GU team struggles with hub forms and day-25–30 refill gaps.",
       "objection": "Fragmented onboarding and late hub enrollment.",
       "goal": "Adopt T-7 onboarding with early hub, benefits check, and day-10 toxicity tele-visit.",
-      "approach": "Checklist-driven onboarding and refill safeguards.",
-      "mode": "sales-simulation"
+      "approach": "Checklist-driven onboarding and refill safeguards."
     },
+
     {
       "id": "vac_id_decile8_adult_flu_playbook",
       "therapeuticArea": "Vaccines",
@@ -119,8 +111,7 @@
       "summary": "ID group with LTC/high-risk adults; late clinic launches; weak reminder-recall; coverage fell in 65+.",
       "objection": "Scheduling and outreach gaps; denials in 65+ formulations.",
       "goal": "Pre-book age-appropriate mix; schedule early clinics; SMS reminders; standing orders in LTC.",
-      "approach": "Calendarized clinic days and EHR prompts for 65+ high-dose/adjuvanted selection.",
-      "mode": "sales-simulation"
+      "approach": "Calendarized clinic days and EHR prompts for 65+ high-dose/adjuvanted selection."
     },
     {
       "id": "vac_np_decile5_primary_care_capture",
@@ -130,8 +121,7 @@
       "summary": "Adequate storage; VIS misses due to staff rotation; ad-hoc Saturday clinics.",
       "objection": "Workflow inconsistency and documentation misses.",
       "goal": "Standing orders, huddle checklists, and fixed weekend clinics.",
-      "approach": "EHR prompts and standardized VIS documentation.",
-      "mode": "sales-simulation"
+      "approach": "EHR prompts and standardized VIS documentation."
     },
     {
       "id": "vac_pa_decile6_oh_campus_outreach",
@@ -141,9 +131,9 @@
       "summary": "High uptake in HCWs, low in students; inventory turns slow due to late campus events.",
       "objection": "Late campus scheduling and inventory drag.",
       "goal": "Campus pop-ups tied to orientation/midterms; redistribute excess to employer sites by week 6.",
-      "approach": "Pre-registration and inventory rebalancing playbook.",
-      "mode": "sales-simulation"
+      "approach": "Pre-registration and inventory rebalancing playbook."
     },
+
     {
       "id": "covid_pulm_md_decile9_antiviral_ddi_path",
       "therapeuticArea": "COVID-19",
@@ -152,19 +142,17 @@
       "summary": "High-risk COPD/ILD population; Paxlovid first line; 3-day IV remdesivir limited by capacity; DDI triage slows prescribing.",
       "objection": "DDI complexity and infusion capacity.",
       "goal": "Rapid DDI triage and standing infusion slot; 48-hour initiation KPI.",
-      "approach": "Protocol for DDI screen and partner infusion scheduling.",
-      "mode": "product-knowledge"
+      "approach": "Protocol for DDI screen and partner infusion scheduling."
     },
     {
       "id": "covid_pulm_np_decile6_postcovid_adherence",
       "therapeuticArea": "COVID-19",
       "hcpProfile": "Pulmonary NP",
       "title": "Post-COVID clinic adherence issues",
-      "summary": "Eligible patients present day 4\u20135; callbacks delay start; variable education on rebound.",
+      "summary": "Eligible patients present day 4–5; callbacks delay start; variable education on rebound.",
       "objection": "Delayed initiation and inconsistent counseling.",
       "goal": "Same-day eRx template; patient one-pager; route day-2 positives to NP tele-start.",
-      "approach": "Standardized education and expedited routing.",
-      "mode": "sales-simulation"
+      "approach": "Standardized education and expedited routing."
     },
     {
       "id": "covid_pulm_pa_decile5_hospital_at_home",
@@ -173,10 +161,10 @@
       "title": "Hospital-at-home linkage for antivirals",
       "summary": "Discharges qualify for outpatient therapy but lack transport for IV remdesivir; home-infusion underused.",
       "objection": "Access to infusion after discharge.",
-      "goal": "Default home-infusion referral for remdesivir day 1\u20133 when Paxlovid contraindicated; track 7-day readmissions.",
-      "approach": "Discharge checklist and vendor referral workflow.",
-      "mode": "sales-simulation"
+      "goal": "Default home-infusion referral for remdesivir day 1–3 when Paxlovid contraindicated; track 7-day readmissions.",
+      "approach": "Discharge checklist and vendor referral workflow."
     },
+
     {
       "id": "cv_card_md_decile10_hf_gdmt_uptake",
       "therapeuticArea": "Cardiovascular",
@@ -185,8 +173,7 @@
       "summary": "Entresto uptake 62% of eligible HFrEF; SGLT2 at 38%; fellows handle PAs; day-30 refill gaps.",
       "objection": "Copays, PA friction, and handoffs to PCP.",
       "goal": "Discharge GDMT checklist; pharmacy tech enrollment for copay help; +10pp SGLT2 in 90 days and halve 30-day gaps.",
-      "approach": "Start SGLT2 before discharge when eligible; convert ACE/ARB to ARNI within 48\u201372h per protocol.",
-      "mode": "sales-simulation"
+      "approach": "Start SGLT2 before discharge when eligible; convert ACE/ARB to ARNI within 48–72h per protocol."
     },
     {
       "id": "cv_np_decile6_ckd_sglt2_calendar",
@@ -196,8 +183,7 @@
       "summary": "SGLT2 underused in CKD stage 3 due to misconceptions; no titration calendar.",
       "objection": "CKD safety misconceptions and calendar gaps.",
       "goal": "Implement titration calendar and CKD-safe counseling; track eGFR and UACR at baseline and 12 weeks.",
-      "approach": "Standardize initiation with sick-day rules and follow-up labs.",
-      "mode": "sales-simulation"
+      "approach": "Standardize initiation with sick-day rules and follow-up labs."
     },
     {
       "id": "cv_pa_decile7_postmi_transitions",
@@ -206,27 +192,8 @@
       "title": "Post-MI and HF transitions program",
       "summary": "SGLT2 initiation often deferred to PCP; ARNI starts delayed pending echo; readmissions above benchmark.",
       "objection": "Deferrals and delayed titration.",
-      "goal": "Start SGLT2 prior to discharge and convert to ARNI within 48\u201372h; pharmacy follow-up day 7.",
-      "approach": "Transition checklist with accountable owners.",
-      "mode": "sales-simulation"
-    },
-    {
-      "id": "onc_access_time_pressure",
-      "mode": "role-play",
-      "title": "Oncology | Time-Pressed HCP",
-      "therapeuticArea": "Oncology",
-      "hcpProfile": "Medical Oncologist",
-      "summary": "HCP is behind schedule and skeptical about value. You get 60 seconds.",
-      "goal": "Gain permission for a later detail; acknowledge time pressure; confirm one interest area."
-    },
-    {
-      "id": "prep_adherence_objection",
-      "mode": "sales-simulation",
-      "title": "HIV PrEP | Adherence concern",
-      "therapeuticArea": "HIV",
-      "hcpProfile": "Internal Medicine MD",
-      "summary": "HCP questions adherence support for certain populations.",
-      "goal": "Acknowledge concern; offer label-consistent support; gain agreement on next step."
+      "goal": "Start SGLT2 prior to discharge and convert to ARNI within 48–72h; pharmacy follow-up day 7.",
+      "approach": "Transition checklist with accountable owners."
     }
   ]
 }
