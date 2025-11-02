@@ -80,6 +80,9 @@
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
 
+  // ---------- EI Panel Constants ----------
+  const EI_GUIDE_URL = "/docs/about-ei.html#scoring";
+
   // ---------- Performance telemetry ----------
   let debugMode = false;
   let telemetryFooter = null;
@@ -557,6 +560,71 @@
     // keep your newer renderer here if you want it as a fallback
   }
 
+  // ---------- EI Panel Renderer ----------
+  
+  function renderEiPanel(msg) {
+    // Dev-only shim: use sample EI data if missing (remove in production)
+    let ei;
+    if (!msg._coach || !msg._coach.ei) {
+      // Use local fallback object instead of mutating input
+      ei = {
+        scores: { empathy: 4, stress_management: 3, active_listening: 4, validation: 3 },
+        rationales: {
+          empathy: "Acknowledged HCP concerns effectively",
+          stress_management: "Could better recognize time pressure signals",
+          active_listening: "Reflected back key points appropriately",
+          validation: "Moderate validation of HCP perspective"
+        },
+        tips: [
+          "Lead with empathy when addressing busy HCPs",
+          "Use active listening phrases to build rapport",
+          "Validate concerns before proposing solutions"
+        ],
+        rubric_version: "v1.0-dev"
+      };
+    } else {
+      ei = msg._coach.ei;
+    }
+    
+    const scores = ei.scores || {};
+    const rationales = ei.rationales || {};
+    const tips = ei.tips || [];
+    
+    // Helper to classify score
+    const scoreClass = (val) => {
+      if (val >= 4) return "good";
+      if (val >= 3) return "ok";
+      return "bad";
+    };
+    
+    // Render score pills
+    const scorePills = Object.entries(scores)
+      .map(([key, value]) => {
+        const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        const cls = scoreClass(value);
+        const rationale = rationales[key] ? esc(rationales[key]) : "";
+        return `<span class="ei-pill ${cls}" title="${rationale}">${esc(label)}: ${value}/5</span>`;
+      })
+      .join("");
+    
+    // Render tips
+    const tipsHtml = tips.length
+      ? `<div class="ei-tips"><strong>Next Actions:</strong><ul>${tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`
+      : "";
+    
+    // Render metadata
+    const metaHtml = `<div class="ei-meta">EI Rubric: <a href="${EI_GUIDE_URL}" target="_blank" rel="noopener">View Scoring Guide</a> (${esc(ei.rubric_version || "v1.0")})</div>`;
+    
+    return `
+      <div class="ei-wrap">
+        <div class="ei-h">Emotional Intelligence Summary</div>
+        <div class="ei-row">${scorePills}</div>
+        ${tipsHtml}
+        ${metaHtml}
+      </div>
+    `;
+  }
+
   // --- Parse labeled text format (e.g., "Challenge: ...\nRep Approach: ...")
   function parseLabeledText(text) {
     const s = String(text || "").trim();
@@ -975,6 +1043,18 @@ ${COMMON}`
 #reflectiv-widget .streaming .content{background:#f0f7ff;border-color:#b3d9ff}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
+#reflectiv-widget .ei-wrap{padding:0}
+#reflectiv-widget .ei-h{font-size:15px;font-weight:700;margin:0 0 10px 0;color:#2f3a4f}
+#reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+#reflectiv-widget .ei-pill{display:inline-block;padding:4px 10px;font-size:13px;font-weight:600;border-radius:12px;border:1px solid}
+#reflectiv-widget .ei-pill.good{background:#d4edda;color:#155724;border-color:#c3e6cb}
+#reflectiv-widget .ei-pill.ok{background:#fff3cd;color:#856404;border-color:#ffeaa7}
+#reflectiv-widget .ei-pill.bad{background:#f8d7da;color:#721c24;border-color:#f5c6cb}
+#reflectiv-widget .ei-tips{margin:12px 0;padding:10px;background:#f7f9fc;border-radius:8px;border:1px solid #e1e6ef}
+#reflectiv-widget .ei-tips ul{margin:6px 0 0 0;padding-left:20px;font-size:13px;line-height:1.6}
+#reflectiv-widget .ei-meta{margin:12px 0 0 0;padding:8px 0 0 0;border-top:1px solid #e1e6ef;font-size:12px;color:#666}
+#reflectiv-widget .ei-meta a{color:#2563eb;text-decoration:none}
+#reflectiv-widget .ei-meta a:hover{text-decoration:underline}
       `;
       document.head.appendChild(style);
     }
@@ -1335,19 +1415,8 @@ ${COMMON}`
 
       // Sales Simulation yellow panel spec:
       if (currentMode === "sales-simulation") {
-        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        const phrasingStr = fb.phrasing || "—";
-        body.innerHTML = `
-          <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
-          <ul class="coach-list">
-            <li><strong>Focus:</strong> ${workedStr}</li>
-            <li><strong>Strategy:</strong> ${improveStr}</li>
-            <li><strong>Suggested Phrasing:</strong>
-              <div class="mono">${esc(phrasingStr)}</div>
-            </li>
-          </ul>
-          ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+        body.innerHTML = renderEiPanel(last) + 
+          (repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : "");
         return;
       }
 
