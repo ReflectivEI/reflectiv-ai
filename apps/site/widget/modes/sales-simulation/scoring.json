@@ -1,0 +1,34 @@
+{
+  "accuracy": {
+    "weight": 0.25,
+    "criteria": [
+      "Uses evidence-based information",
+      "Cites appropriate sources",
+      "Avoids off-label claims"
+    ]
+  },
+  "empathy": {
+    "weight": 0.25,
+    "criteria": [
+      "Acknowledges HCP concerns",
+      "Shows active listening",
+      "Demonstrates understanding"
+    ]
+  },
+  "strategy": {
+    "weight": 0.25,
+    "criteria": [
+      "Clear value proposition",
+      "Addresses objections proactively",
+      "Moves conversation forward"
+    ]
+  },
+  "compliance": {
+    "weight": 0.25,
+    "criteria": [
+      "Stays within approved messaging",
+      "Respects professional boundaries",
+      "Avoids promotional language"
+    ]
+  }
+}
