@@ -84,6 +84,7 @@
   let debugMode = false;
   let telemetryFooter = null;
   let currentTelemetry = null;
+  const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
 
   function isDebugMode() {
     return /[?&]debug=1/.test(window.location.search);
@@ -996,7 +997,22 @@ ${COMMON}`
     // Add debug footer if ?debug=1
     if (isDebugMode()) {
       telemetryFooter = el("div", "telemetry-footer");
-      telemetryFooter.style.cssText = "position:absolute;bottom:64px;left:16px;right:16px;font-size:12px;font-family:monospace;opacity:0.7;color:#2f3a4f;padding:4px 8px;background:rgba(255,255,255,0.9);border-top:1px solid #e1e6ef;pointer-events:none;z-index:100;";
+      // Style for minimal, unobtrusive debug footer
+      Object.assign(telemetryFooter.style, {
+        position: "absolute",
+        bottom: "64px",
+        left: "16px",
+        right: "16px",
+        fontSize: "12px",
+        fontFamily: "monospace",
+        opacity: "0.7",
+        color: "#2f3a4f",
+        padding: "4px 8px",
+        background: "rgba(255,255,255,0.9)",
+        borderTop: "1px solid #e1e6ef",
+        pointerEvents: "none",
+        zIndex: "100"
+      });
       telemetryFooter.textContent = "TTFB/FirstChunk/Done: –.– / –.– / –.– • retries:0 • —";
       shell.style.position = "relative";
       shell.appendChild(telemetryFooter);
@@ -1668,7 +1684,7 @@ ${COMMON}`
           }
           
           // Approximate bytes received
-          currentTelemetry.bytes_rx = new TextEncoder().encode(content).length;
+          currentTelemetry.bytes_rx = textEncoder.encode(content).length;
         }, currentTelemetry, () => {
           // onFirstByte callback
           updateDebugFooter();
@@ -1731,16 +1747,14 @@ ${COMMON}`
 
         if (r.ok) {
           const bodyText = await r.text();
-          currentTelemetry.bytes_rx = new TextEncoder().encode(bodyText).length;
+          currentTelemetry.bytes_rx = textEncoder.encode(bodyText).length;
           currentTelemetry.httpStatus = r.status.toString();
           
           const data = JSON.parse(bodyText);
           
-          // Extract tokens if available
+          // Extract tokens if available (prefer completion_tokens for accuracy)
           if (data.usage?.completion_tokens) {
             currentTelemetry.tokens_rx = data.usage.completion_tokens;
-          } else if (data.usage?.total_tokens) {
-            currentTelemetry.tokens_rx = data.usage.total_tokens;
           }
           
           const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
