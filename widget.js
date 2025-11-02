@@ -465,6 +465,61 @@
     // keep your newer renderer here if you want it as a fallback
   }
 
+  // --- Parse labeled text format (e.g., "Challenge: ...\nRep Approach: ...")
+  function parseLabeledText(text) {
+    const s = String(text || "").trim();
+    if (!s) return null;
+
+    const parsed = {};
+    
+    // Try to extract Challenge
+    const challengeMatch = s.match(/(?:^|\n)\s*Challenge\s*:\s*(.+?)(?=\n\s*(?:Rep Approach|Impact|Suggested Phrasing):|$)/is);
+    if (challengeMatch) parsed.challenge = challengeMatch[1].trim();
+    
+    // Try to extract Rep Approach (as array of items)
+    const repApproachMatch = s.match(/(?:^|\n)\s*Rep Approach\s*:\s*(.+?)(?=\n\s*(?:Impact|Suggested Phrasing):|$)/is);
+    if (repApproachMatch) {
+      const items = repApproachMatch[1].split(/\n\s*[-•*]\s*/).map(x => x.trim()).filter(Boolean);
+      parsed.rep_approach = items.length > 0 ? items : [repApproachMatch[1].trim()];
+    }
+    
+    // Try to extract Impact (as array of items)
+    const impactMatch = s.match(/(?:^|\n)\s*Impact\s*:\s*(.+?)(?=\n\s*Suggested Phrasing:|$)/is);
+    if (impactMatch) {
+      const items = impactMatch[1].split(/\n\s*[-•*]\s*/).map(x => x.trim()).filter(Boolean);
+      parsed.impact = items.length > 0 ? items : [impactMatch[1].trim()];
+    }
+    
+    // Try to extract Suggested Phrasing
+    const phrasingMatch = s.match(/(?:^|\n)\s*Suggested Phrasing\s*:\s*(.+?)$/is);
+    if (phrasingMatch) parsed.suggested_phrasing = phrasingMatch[1].trim().replace(/^["']|["']$/g, '');
+    
+    return Object.keys(parsed).length > 0 ? parsed : null;
+  }
+
+  // --- Normalize coach data from different formats
+  function normalizeCoachData(coach) {
+    if (!coach) return null;
+    
+    const normalized = { ...coach };
+    
+    // Map alternative field names to standard names
+    if (coach.challenge && !coach.feedback) {
+      normalized.feedback = coach.challenge;
+    }
+    if (coach.rep_approach && !coach.worked) {
+      normalized.worked = Array.isArray(coach.rep_approach) ? coach.rep_approach : [coach.rep_approach];
+    }
+    if (coach.impact && !coach.improve) {
+      normalized.improve = Array.isArray(coach.impact) ? coach.impact : [coach.impact];
+    }
+    if (coach.suggested_phrasing && !coach.phrasing) {
+      normalized.phrasing = coach.suggested_phrasing;
+    }
+    
+    return normalized;
+  }
+
   // --- robust extractor: tolerates missing </coach> and truncation
   function extractCoach(raw) {
     const s = String(raw || "");
@@ -478,7 +533,14 @@
     let block = closeIdx >= 0 ? tail.slice(0, closeIdx) : tail;
 
     const braceStart = block.indexOf("{");
-    if (braceStart === -1) return { coach: null, clean: sanitizeLLM(head) };
+    if (braceStart === -1) {
+      // Try parsing as labeled text
+      const labeled = parseLabeledText(block);
+      if (labeled) {
+        return { coach: normalizeCoachData(labeled), clean: sanitizeLLM(head) };
+      }
+      return { coach: null, clean: sanitizeLLM(head) };
+    }
 
     let depth = 0, end = -1;
     for (let i = braceStart; i < block.length; i++) {
@@ -496,8 +558,14 @@
     let coach = {};
     try {
       coach = JSON.parse(jsonTxt);
+      coach = normalizeCoachData(coach);
     } catch (e) {
       console.warn("Coach JSON parse error", e);
+      // Try parsing as labeled text as fallback
+      const labeled = parseLabeledText(block);
+      if (labeled) {
+        coach = normalizeCoachData(labeled);
+      }
     }
     const after = closeIdx >= 0 ? tail.slice(closeIdx + "</coach>".length) : "";
     const clean = sanitizeLLM((head + " " + after).trim());
@@ -799,6 +867,7 @@ ${COMMON}`
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
 #reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
+#reflectiv-widget .mono{font-family:monospace;padding:6px 8px;margin-top:4px;background:#f5f5f5;border-radius:6px;font-size:13px}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
       `;
@@ -1139,11 +1208,15 @@ ${COMMON}`
       if (currentMode === "sales-simulation") {
         const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
         const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+        const phrasingStr = fb.phrasing || "—";
         body.innerHTML = `
           <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
           <ul class="coach-list">
             <li><strong>Focus:</strong> ${workedStr}</li>
             <li><strong>Strategy:</strong> ${improveStr}</li>
+            <li><strong>Suggested Phrasing:</strong>
+              <div class="mono">${esc(phrasingStr)}</div>
+            </li>
           </ul>
           ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
         return;
@@ -1546,7 +1619,37 @@ ${detail}`;
         let raw = await callModel(messages);
         if (!raw) raw = fallbackText(currentMode);
 
-        const { coach, clean } = extractCoach(raw);
+        let { coach, clean } = extractCoach(raw);
+        
+        // Re-ask once if suggested_phrasing is missing in sales-simulation mode
+        if (currentMode === "sales-simulation" && coach && (!coach.phrasing || !coach.phrasing.trim())) {
+          const correctiveHint = `
+IMPORTANT: The response must include a "Suggested Phrasing" field in the <coach> JSON block.
+The suggested_phrasing should be a concrete, actionable question or statement the rep can use with the HCP.
+Example: "Given your criteria, which patients would be the best fit to start, and what would help you try one this month?"
+Please provide your response again with all required fields including suggested_phrasing.`;
+          
+          const retryMessages = [
+            ...messages,
+            { role: "assistant", content: raw },
+            { role: "system", content: correctiveHint }
+          ];
+          
+          try {
+            const retryRaw = await callModel(retryMessages);
+            if (retryRaw) {
+              const retryResult = extractCoach(retryRaw);
+              // Use the retry result if it has phrasing, otherwise keep original
+              if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
+                coach = retryResult.coach;
+                clean = retryResult.clean;
+              }
+            }
+          } catch (retryErr) {
+            console.warn("Retry for missing phrasing failed:", retryErr);
+          }
+        }
+        
 let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
 
 // Mid-sentence cut-off guard + one-pass auto-continue
