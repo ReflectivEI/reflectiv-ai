@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
- * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version
+ * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version, GET /debug/ei
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
  * KV namespaces (optional):
@@ -13,6 +13,7 @@
  *  - CORS_ORIGINS    comma-separated allowlist, e.g. "https://a.com,https://b.com"
  *  - REQUIRE_FACTS   "true" to require at least one fact in plan
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
+ *  - EMIT_EI / emitEi  "true" to enable EI (Emotional Intelligence) data in responses
  */
 
 export default {
