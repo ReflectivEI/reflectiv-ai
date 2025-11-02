@@ -42,7 +42,7 @@ export async function providerChat(
       throw new Error(`provider_http_${r.status}`);
     }
     
-    const j = await r.json().catch(() => ({}));
+    const j: any = await r.json().catch(() => ({}));
     const content = j?.choices?.[0]?.message?.content || j?.content || "";
     
     success = true;

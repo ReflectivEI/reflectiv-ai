@@ -171,7 +171,7 @@ Use only the Facts IDs provided when making claims.`.trim();
     if (mode === "role-play") {
       reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
     } else {
-      reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: "For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?"";
+      reply = 'Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: "For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?"';
     }
   }
   state.lastNorm = norm(reply);

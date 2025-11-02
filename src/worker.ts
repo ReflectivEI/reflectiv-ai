@@ -51,7 +51,7 @@ export default {
       }
 
       return json({ error: "not_found" }, 404, env, req);
-    } catch (e) {
+    } catch (e: any) {
       return json({ 
         error: "server_error", 
         detail: String(e?.message || e) 
