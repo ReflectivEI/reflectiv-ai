@@ -179,7 +179,7 @@
     const mk = (k,label) => {
       const v = Number(S[k] ?? 0);
       const cls = v>=4 ? "good" : v===3 ? "ok" : "bad";
-      const val = v ? String(v) : "–";
+      const val = (v || v === 0) ? String(v) : "–";
       const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
       return `<span class="ei-pill ${cls}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
     };
@@ -1015,7 +1015,7 @@ ${COMMON}`
 #reflectiv-widget .ei-wrap{padding:10px 12px}
 #reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
 #reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-#reflectiv-widget .ei-pill{font:700 11px/1; padding:6px 8px; border-radius:999px; border:1px solid #d9d9d9; background:#fff}
+#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; border:1px solid #d9d9d9; background:#fff}
 #reflectiv-widget .ei-pill .k{opacity:.65; margin-right:6px; font-weight:600}
 #reflectiv-widget .ei-pill.good{background:#e8f6ee;border-color:#bfe7cf}
 #reflectiv-widget .ei-pill.ok{background:#fff7e6;border-color:#ffe1a3}
