@@ -1224,6 +1224,9 @@ ${COMMON}`
           const impact = fb.improve && fb.improve.length ? fb.improve : (fb.impact && Array.isArray(fb.impact) ? fb.impact : []);
           const suggestedPhrasing = fb.suggested_phrasing || fb.phrasing || "";
           
+          // Check if any section has content
+          const hasAnySectionContent = challenge || repApproach.length > 0 || impact.length > 0;
+          
           let cardHTML = "";
           
           if (challenge) {
@@ -1238,13 +1241,15 @@ ${COMMON}`
             cardHTML += `<div class="coach-sec"><strong>Impact:</strong><ul>${impact.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
           }
           
-          if (suggestedPhrasing || challenge || repApproach.length > 0 || impact.length > 0) {
+          // Always show Suggested Phrasing if any other section has content (per spec: do NOT omit the header)
+          if (hasAnySectionContent) {
             cardHTML += `<div class="coach-sec"><strong>Suggested Phrasing:</strong><div class="mono">${esc(suggestedPhrasing)}</div></div>`;
           }
           
           if (cardHTML) {
             body.innerHTML = cardHTML;
           } else {
+            // No structured content available, fall back to plain message
             const normalized = normalizeGuidanceLabels(m.content);
             body.innerHTML = md(normalized);
           }
