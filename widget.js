@@ -81,7 +81,7 @@
   let repOnlyPanelHTML = "";
 
   // ---------- EI dev shim ----------
-  const DEBUG_EI_SHIM = false;
+  const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
 
   // ---------- Performance telemetry ----------
   let debugMode = false;
