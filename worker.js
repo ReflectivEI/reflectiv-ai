@@ -226,14 +226,18 @@ function deterministicScore({ reply, usedFactIds = [] }) {
   return Math.round(base + factBonus);
 }
 
+// EI scoring patterns (module-level constants)
+const EMPATHY_PATTERNS = /(i understand|appreciate|given your|thanks for|i hear|it sounds like|you mentioned)/i;
+const ACTIONABLE_PATTERNS = /(would you|could you|can you|consider|try|help|start|begin)/i;
+
 // New deterministic EI scoring with 5 dimensions
 function computeEIScores({ reply, usedFactIds = [] }) {
   const text = String(reply || "").toLowerCase();
-  const hasQuestion = /[?]\s*$/.test(reply);
-  const wordCount = reply.split(/\s+/).filter(Boolean).length;
+  const hasQuestion = /\?\s*$/.test(reply);
+  const wordCount = (reply.match(/\S+/g) || []).length;
   const hasCitation = usedFactIds.length > 0;
-  const hasEmpathySignals = /(i understand|appreciate|given your|thanks for|i hear|it sounds like|you mentioned)/i.test(reply);
-  const hasActionable = /(would you|could you|can you|consider|try|help|start|begin)/i.test(reply);
+  const hasEmpathySignals = EMPATHY_PATTERNS.test(reply);
+  const hasActionable = ACTIONABLE_PATTERNS.test(reply);
   
   // Confidence: based on factual citations and assertiveness
   const confidence = Math.min(5, Math.max(1, 
@@ -448,24 +452,20 @@ Use only the Facts IDs provided when making claims.`.trim();
       accuracy: eiScores.persistence
     };
     
+    // Build coach object with conditional EI scores
     coachObj = {
       overall,
-      scores: legacyScores,
-      scores_v2: eiScores,  // Retain v2 for diagnostics
       worked: ["Tied guidance to facts"],
       improve: ["End with one specific discovery question"],
       phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
       feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
       context: { rep_question: String(user || ""), hcp_reply: reply }
     };
-  }
-  
-  // Apply EI filtering based on emitEi flag and mode
-  if (!emitEi || mode !== "sales-simulation") {
-    // Remove EI data if flag is not set or mode is not sales-simulation
-    if (coachObj) {
-      delete coachObj.scores;
-      delete coachObj.scores_v2;
+    
+    // Only include EI scores when emitEi flag is true and mode is sales-simulation
+    if (emitEi && mode === "sales-simulation") {
+      coachObj.scores = legacyScores;
+      coachObj.scores_v2 = eiScores;  // Retain v2 for diagnostics
     }
   }
 
