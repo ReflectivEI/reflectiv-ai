@@ -1740,8 +1740,16 @@ ${COMMON}`
   }
 
   async function callModel(messages) {
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    let url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
     const useStreaming = cfg?.stream === true;
+    
+    // Wire emitEi for sales-simulation mode
+    const shouldEmitEi = currentMode === 'sales-simulation';
+    if (shouldEmitEi) {
+      // Append emitEi=true query param
+      const hasQueryParams = url.includes('?');
+      url = url + (hasQueryParams ? '&' : '?') + 'emitEi=true';
+    }
     
     // Initialize telemetry
     initTelemetry();
@@ -1838,12 +1846,19 @@ ${COMMON}`
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
       
       try {
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Req-Id": rid()
+        };
+        
+        // Add X-Emit-EI header for sales-simulation mode
+        if (shouldEmitEi) {
+          headers["X-Emit-EI"] = "true";
+        }
+        
         const r = await fetch(url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Req-Id": rid()
-          },
+          headers: headers,
           body: JSON.stringify(payload),
           signal: controller.signal
         });
