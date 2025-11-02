@@ -305,33 +305,3 @@
   max-height: none !important;   /* remove cap */
   overflow-y: auto !important;   /* ensure scrolling */
 }
-
-/* =========================================================
-   NAVY HEADER OVERRIDES — PLACEHOLDER: end of file
-   ========================================================= */
-
-/* Primary coach header in new modal */
-.coach-header{
-  background: var(--navy) !important;
-  border-bottom: 1px solid rgba(255,255,255,.18) !important;
-}
-.coach-title{ color:#fff !important; }
-.coach-close{
-  background: transparent !important;
-  color:#fff !important;
-  border-color: rgba(255,255,255,.32) !important;
-}
-.coach-close:hover{ background: rgba(255,255,255,.10) !important; }
-
-/* Legacy alias header (if #coachModal markup is used) */
-#coachModal .modal-head{
-  background: var(--navy) !important;
-  border-bottom-color: rgba(255,255,255,.18) !important;
-}
-#coachModal .modal-title{ color:#fff !important; }
-#coachModal .modal-close{
-  background: transparent !important;
-  color:#fff !important;
-  border-color: rgba(255,255,255,.32) !important;
-}
-#coachModal .modal-close:hover{ background: rgba(255,255,255,.10) !important; }
