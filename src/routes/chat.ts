@@ -6,7 +6,7 @@ import type { Env, ChatRequest, ChatResponse, CoachPayload, Plan } from '../type
 import { json, readJson, capSentences, extractCoach, sanitizeLLM, norm, validateCoach, cors } from '../helpers';
 import { fromRequest } from '../config';
 import { FSM } from '../data';
-import { FALLBACK_RESPONSES } from '../constants';
+import { FALLBACK_RESPONSES, SSE_CONFIG } from '../constants';
 import { providerChat, deterministicScore } from '../provider';
 import { seqGet, seqPut } from '../session';
 import { analyzeReply, computeEI } from '../ei/eiRules';
@@ -249,8 +249,8 @@ async function handleSSEChat(
 
       // Send partial update (could be used for streaming tokens)
       await writer.write(encoder.encode(`event: coach.partial\ndata: ${JSON.stringify({ 
-        reply: result.reply.slice(0, 100) + "...",
-        progress: 50 
+        reply: result.reply.slice(0, SSE_CONFIG.PREVIEW_LENGTH) + "...",
+        progress: SSE_CONFIG.PROGRESS_PERCENT
       })}\n\n`));
 
       // Send final result

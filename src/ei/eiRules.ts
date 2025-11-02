@@ -4,7 +4,8 @@
  */
 
 import type { EIPayload, EIScores } from '../types';
-import { EI_PATTERNS } from '../constants';
+import { EI_PATTERNS, EI_WEIGHTS } from '../constants';
+import { clamp } from '../utils/common';
 
 interface EIContext {
   reply: string;
@@ -31,11 +32,11 @@ export function computeEI(context: EIContext): EIPayload {
   
   // Overall EI score is weighted average
   const overall = Math.round(
-    (scores.confidence * 0.25 +
-     scores.active_listening * 0.25 +
-     scores.rapport * 0.20 +
-     scores.adaptability * 0.15 +
-     scores.persistence * 0.15) * 20 // Scale 0-5 to 0-100
+    (scores.confidence * EI_WEIGHTS.confidence +
+     scores.active_listening * EI_WEIGHTS.active_listening +
+     scores.rapport * EI_WEIGHTS.rapport +
+     scores.adaptability * EI_WEIGHTS.adaptability +
+     scores.persistence * EI_WEIGHTS.persistence) * 20 // Scale 0-5 to 0-100
   );
   
   const insights = generateInsights(scores, reply);
@@ -217,13 +218,6 @@ function generateRecommendations(scores: EIScores, reply: string): string[] {
   }
   
   return recommendations;
-}
-
-/**
- * Clamp a value between min and max
- */
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 /**

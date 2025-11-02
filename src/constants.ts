@@ -24,8 +24,8 @@ export const EI_PATTERNS = {
 
 // PHI/PII redaction patterns
 export const PHI_PATTERNS = {
-  // More comprehensive email pattern
-  EMAIL: /\b[A-Za-z0-9]([A-Za-z0-9._%+-]{0,63})@[A-Za-z0-9]([A-Za-z0-9.-]{0,253})\.[A-Za-z]{2,}\b/g,
+  // Email pattern - simplified for redaction purposes
+  EMAIL: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
   PHONE_DASH: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g,
   PHONE_PAREN: /\b\(\d{3}\)\s*\d{3}[-.]?\d{4}\b/g,
   SSN: /\b\d{3}-\d{2}-\d{4}\b/g,
@@ -39,4 +39,19 @@ export const REDACTED_VALUES = {
   PHONE: '[PHONE]',
   SSN: '[SSN]',
   DATE: '[DATE]'
+};
+
+// EI dimension weights for overall score calculation
+export const EI_WEIGHTS = {
+  confidence: 0.25,
+  active_listening: 0.25,
+  rapport: 0.20,
+  adaptability: 0.15,
+  persistence: 0.15
+};
+
+// SSE streaming configuration
+export const SSE_CONFIG = {
+  PREVIEW_LENGTH: 100,  // Characters to show in partial update
+  PROGRESS_PERCENT: 50  // Progress indicator for partial update
 };
