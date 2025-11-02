@@ -80,6 +80,9 @@
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
 
+  // ---------- EI dev shim ----------
+  const DEBUG_EI_SHIM = false;
+
   // ---------- Performance telemetry ----------
   let debugMode = false;
   let telemetryFooter = null;
@@ -162,6 +165,39 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+
+  // === EI summary renderer for yellow panel ===
+  function renderEiPanel(msg){
+    const ei = msg && msg._coach && msg._coach.ei;
+    if (!ei || !ei.scores) return "";
+
+    const S = ei.scores || {};
+    const R = ei.rationales || {};
+    const tips = Array.isArray(ei.tips) ? ei.tips.slice(0,3) : [];
+    const rubver = ei.rubric_version || "v1";
+
+    const mk = (k,label) => {
+      const v = Number(S[k] ?? 0);
+      const cls = v>=4 ? "good" : v===3 ? "ok" : "bad";
+      const val = (v || v === 0) ? String(v) : "–";
+      const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
+      return `<span class="ei-pill ${cls}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
+    };
+
+    return `
+  <div class="ei-wrap">
+    <div class="ei-h">Emotional Intelligence Summary</div>
+    <div class="ei-row">
+      ${mk("empathy","Empathy")}
+      ${mk("discovery","Discovery")}
+      ${mk("compliance","Compliance")}
+      ${mk("clarity","Clarity")}
+      ${mk("accuracy","Accuracy")}
+    </div>
+    ${tips.length ? `<ul class="ei-tips">${tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+    <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
+  </div>`;
+  }
 
   function sanitizeLLM(raw) {
     let s = String(raw || "");
@@ -975,6 +1011,19 @@ ${COMMON}`
 #reflectiv-widget .streaming .content{background:#f0f7ff;border-color:#b3d9ff}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
+/* === EI summary in yellow panel === */
+#reflectiv-widget .ei-wrap{padding:10px 12px}
+#reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
+#reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; border:1px solid #d9d9d9; background:#fff}
+#reflectiv-widget .ei-pill .k{opacity:.65; margin-right:6px; font-weight:600}
+#reflectiv-widget .ei-pill.good{background:#e8f6ee;border-color:#bfe7cf}
+#reflectiv-widget .ei-pill.ok{background:#fff7e6;border-color:#ffe1a3}
+#reflectiv-widget .ei-pill.bad{background:#fdeaea;border-color:#f5c2c2}
+#reflectiv-widget .ei-tips{margin:8px 0 0; padding-left:16px}
+#reflectiv-widget .ei-tips li{margin:2px 0}
+#reflectiv-widget .ei-meta{margin-top:8px; font:500 11px/1.3 Inter,system-ui; opacity:.8}
+#reflectiv-widget .ei-meta a{text-decoration:underline}
       `;
       document.head.appendChild(style);
     }
@@ -1335,10 +1384,34 @@ ${COMMON}`
 
       // Sales Simulation yellow panel spec:
       if (currentMode === "sales-simulation") {
-        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        const phrasingStr = fb.phrasing || "—";
-        body.innerHTML = `
+        // Optional dev shim (guarded)
+        if (DEBUG_EI_SHIM && last && last._coach && !last._coach.ei) {
+          last._coach.ei = {
+            scores:{ empathy:4, discovery:3, compliance:5, clarity:4, accuracy:4 },
+            rationales:{
+              empathy:"Validated HCP constraints and reframed",
+              discovery:"Asked one focused question",
+              compliance:"On-label; AE capture ready",
+              clarity:"Concise, one idea per sentence",
+              accuracy:"Claims match label"
+            },
+            tips:[
+              "Open with HCP context then one ask",
+              "Anchor claims to label/guideline",
+              "Close with one specific next step"
+            ],
+            rubric_version:"v1.2"
+          };
+        }
+
+        const eiHTML = renderEiPanel(last);
+        
+        // Fallback to old yellow panel HTML if no EI data
+        const oldYellowHTML = (() => {
+          const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+          const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+          const phrasingStr = fb.phrasing || "—";
+          return `
           <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
           <ul class="coach-list">
             <li><strong>Focus:</strong> ${workedStr}</li>
@@ -1348,6 +1421,9 @@ ${COMMON}`
             </li>
           </ul>
           ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+        })();
+
+        body.innerHTML = eiHTML || oldYellowHTML;
         return;
       }
 
