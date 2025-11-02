@@ -261,13 +261,13 @@ async function getDebugEi(req, env) {
   const url = new URL(req.url);
   const queryFlag = url.searchParams.get("emitEi");
   const headerFlag = req.headers.get("x-emit-ei");
-  const envFlagEmitEi = env.EMIT_EI || "";
-  const envFlagemitEi = env.emitEi || "";
+  const envFlagUpperCase = env.EMIT_EI || "";
+  const envFlagLowerCase = env.emitEi || "";
 
   const result = {
     queryFlag: queryFlag === "1" || queryFlag === "true",
     headerFlag: headerFlag === "1" || headerFlag === "true",
-    envFlag: envFlagEmitEi === "true" || envFlagemitEi === "true",
+    envFlag: envFlagUpperCase === "true" || envFlagLowerCase === "true",
     modeAllowed: ["sales-simulation"],
     time: new Date().toISOString()
   };
@@ -464,7 +464,9 @@ Use only the Facts IDs provided when making claims.`.trim();
 
   return json(responseData, 200, env, req);
   } catch (err) {
-    return json({ error: "bad_request", message: err.message || "invalid" }, 400, env, req);
+    // Sanitize error message to avoid leaking sensitive information
+    const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
+    return json({ error: "bad_request", message: safeMessage }, 400, env, req);
   }
 }
 
