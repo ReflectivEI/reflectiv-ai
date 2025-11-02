@@ -1,0 +1,36 @@
+{
+  "mode": "sales-simulation",
+  "displayName": "Sales Simulation",
+  "description": "Practice sales conversations with AI-powered HCP personas",
+  "sections": [
+    {
+      "key": "challenge",
+      "title": "Challenge",
+      "required": true,
+      "order": 1
+    },
+    {
+      "key": "rep_approach",
+      "title": "Rep Approach",
+      "required": true,
+      "order": 2
+    },
+    {
+      "key": "impact",
+      "title": "Impact",
+      "required": true,
+      "order": 3
+    },
+    {
+      "key": "suggested_phrasing",
+      "title": "Suggested Phrasing",
+      "required": true,
+      "order": 4
+    }
+  ],
+  "styles": {
+    "primary": "#0c2740",
+    "accent": "#20bfa9",
+    "headerBg": "#f7f9fc"
+  }
+}
