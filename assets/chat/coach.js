@@ -288,58 +288,6 @@
     if (b) b.textContent = line2 || "";
   }
 
-  // ====== PATCH: cutoff detection + auto-continue for Coach Feedback ======
-  const CONTINUE_PASSES = 2;
-
-  function isCoachFeedbackIncomplete(text) {
-    if (!text) return false;
-    const hasHeader = /(^|\n)Coach Feedback/i.test(text);
-    if (!hasHeader) return false;
-
-    const have = {
-      tone: /(^|\n)\s*Tone\b/i.test(text),
-      worked: /(^|\n)\s*What Worked\b/i.test(text),
-      improve: /(^|\n)\s*What To Improve\b/i.test(text),
-      phrasing: /(^|\n)\s*Stronger Phrasing\b/i.test(text),
-    };
-    const allFour = have.tone && have.worked && have.improve && have.phrasing;
-
-    const tail = text.trim().slice(-160);
-    const looksCut =
-      /[-–•]\s*[A-Za-z0-9]+$/.test(tail) ||             // dangling bullet
-      !/[.!?]"?'?\)?\]$/.test(text.trim());             // no closing punctuation
-    return !allFour || looksCut;
-  }
-
-  function stripDuplicateCFHeader(tail) {
-    if (!tail) return "";
-    // If the tail reprints headers, drop them to avoid repetition
-    return tail
-      .replace(/^[\s\S]*?Coach Feedback\s*/i, "")
-      .replace(/^\s*(Tone|What Worked|What To Improve|Stronger Phrasing)\s*:\s*/i, "$1: ");
-  }
-
-  async function askCoachAutoContinue(userMsg) {
-    // 1) First turn
-    let first = await askCoach(userMsg);
-
-    // Only attempt in Sales Simulation
-    if (state.mode !== "sales-simulation") return first;
-
-    // 2) Continue passes if Coach Feedback looks truncated
-    let out = first;
-    for (let pass = 0; pass < CONTINUE_PASSES && isCoachFeedbackIncomplete(out); pass++) {
-      const continueMsg =
-        "Continue the previous answer exactly from the next bullet inside Coach Feedback. " +
-        "Do not restate earlier sections. Finish only the remaining bullets in Coach Feedback. " +
-        "Keep formatting identical.";
-      const tail = await askCoach(continueMsg);
-      out = (out + "\n" + stripDuplicateCFHeader(tail)).trim();
-    }
-    return out;
-  }
-
-  // ---------- interactions ----------
   async function onSend(ev) {
     ev.preventDefault();
     const inp = qs("#chatInput");
@@ -349,8 +297,7 @@
     push("user", msg);
 
     try {
-      // PATCH APPLIED HERE: use auto-continue wrapper
-      const reply = await askCoachAutoContinue(msg);
+      const reply = await askCoach(msg);
       push("bot", reply);
       if (state.scoring) updateScores();
     } catch {
