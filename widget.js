@@ -905,6 +905,11 @@ ${COMMON}`
 #reflectiv-widget .chat-input textarea{flex:1;resize:none;min-height:44px;max-height:120px;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;outline:none}
 #reflectiv-widget .chat-input .btn{min-width:86px;border:0;border-radius:999px;background:#2f3a4f;color:#fff;font-weight:600}
 #reflectiv-widget .coach-section{margin-top:0;padding:12px 14px;border:1px solid #e1e6ef;border-radius:12px;background:#fffbe8}
+#reflectiv-widget .coach-sec{margin:8px 0;padding:8px 0;line-height:1.5}
+#reflectiv-widget .coach-sec strong{display:block;margin-bottom:4px;color:#0f1522;font-weight:700}
+#reflectiv-widget .coach-sec ul{margin:4px 0;padding-left:20px;list-style:disc}
+#reflectiv-widget .coach-sec li{margin:2px 0}
+#reflectiv-widget .coach-sec .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:0.92em;margin-top:4px}
 #reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
 #reflectiv-widget .scenario-meta .meta-card{padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:10px}
 #reflectiv-widget .hidden{display:none!important}
@@ -1210,8 +1215,44 @@ ${COMMON}`
         }
 
         const body = el("div");
-        const normalized = normalizeGuidanceLabels(m.content);
-        body.innerHTML = md(normalized);
+        
+        // Sales Simulation: render structured card with Challenge/Rep Approach/Impact/Suggested Phrasing
+        if (currentMode === "sales-simulation" && m.role === "assistant" && m._coach) {
+          const fb = m._coach;
+          const challenge = fb.challenge || fb.feedback || "";
+          const repApproach = fb.worked && fb.worked.length ? fb.worked : (fb.rep_approach && Array.isArray(fb.rep_approach) ? fb.rep_approach : []);
+          const impact = fb.improve && fb.improve.length ? fb.improve : (fb.impact && Array.isArray(fb.impact) ? fb.impact : []);
+          const suggestedPhrasing = fb.suggested_phrasing || fb.phrasing || "";
+          
+          let cardHTML = "";
+          
+          if (challenge) {
+            cardHTML += `<div class="coach-sec"><strong>Challenge:</strong><div>${esc(challenge)}</div></div>`;
+          }
+          
+          if (repApproach.length > 0) {
+            cardHTML += `<div class="coach-sec"><strong>Rep Approach:</strong><ul>${repApproach.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
+          }
+          
+          if (impact.length > 0) {
+            cardHTML += `<div class="coach-sec"><strong>Impact:</strong><ul>${impact.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
+          }
+          
+          if (suggestedPhrasing || challenge || repApproach.length > 0 || impact.length > 0) {
+            cardHTML += `<div class="coach-sec"><strong>Suggested Phrasing:</strong><div class="mono">${esc(suggestedPhrasing)}</div></div>`;
+          }
+          
+          if (cardHTML) {
+            body.innerHTML = cardHTML;
+          } else {
+            const normalized = normalizeGuidanceLabels(m.content);
+            body.innerHTML = md(normalized);
+          }
+        } else {
+          const normalized = normalizeGuidanceLabels(m.content);
+          body.innerHTML = md(normalized);
+        }
+        
         c.appendChild(body);
 
         row.appendChild(c);
