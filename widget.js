@@ -1362,20 +1362,50 @@ ${COMMON}`
       let pendingUpdate = false;
       let updateScheduled = false;
       
+      // Validate payload size to prevent URL length issues
+      const payloadStr = JSON.stringify(payload);
+      if (payloadStr.length > 8000) {
+        reject(new Error("payload_too_large_for_sse"));
+        return;
+      }
+      
       // Create EventSource URL with payload as query params
       const sseUrl = new URL(url);
       sseUrl.searchParams.set("stream", "true");
-      sseUrl.searchParams.set("data", btoa(JSON.stringify(payload)));
+      sseUrl.searchParams.set("data", btoa(payloadStr));
       
       const eventSource = new EventSource(sseUrl.toString());
       const startTime = Date.now();
       let lastTokenTime = Date.now();
       
-      // 8s auto-fail timeout
+      // 8s total timeout from start (not reset per message)
       const failTimeout = setTimeout(() => {
-        eventSource.close();
-        reject(new Error("stream_timeout_8s"));
+        cleanup();
+        if (accumulated) {
+          resolve(accumulated);
+        } else {
+          reject(new Error("stream_timeout_8s"));
+        }
       }, 8000);
+      
+      // Heartbeat check - if no data for 8s, fail
+      const heartbeat = setInterval(() => {
+        if (Date.now() - lastTokenTime > 8000) {
+          cleanup();
+          if (accumulated) {
+            resolve(accumulated);
+          } else {
+            reject(new Error("sse_heartbeat_timeout"));
+          }
+        }
+      }, 1000);
+      
+      // Cleanup function to clear all timers and close connection
+      const cleanup = () => {
+        clearTimeout(failTimeout);
+        clearInterval(heartbeat);
+        eventSource.close();
+      };
       
       // Batched DOM update using requestAnimationFrame
       const scheduleDOMUpdate = () => {
@@ -1392,7 +1422,6 @@ ${COMMON}`
       };
       
       eventSource.onmessage = (event) => {
-        clearTimeout(failTimeout);
         lastTokenTime = Date.now();
         
         try {
@@ -1406,8 +1435,7 @@ ${COMMON}`
           }
           
           if (data.done) {
-            eventSource.close();
-            clearTimeout(failTimeout);
+            cleanup();
             // Final update
             if (pendingUpdate) {
               onToken(accumulated);
@@ -1420,8 +1448,7 @@ ${COMMON}`
       };
       
       eventSource.onerror = (err) => {
-        eventSource.close();
-        clearTimeout(failTimeout);
+        cleanup();
         
         if (accumulated) {
           resolve(accumulated);
@@ -1429,21 +1456,6 @@ ${COMMON}`
           reject(new Error("sse_connection_failed"));
         }
       };
-      
-      // Heartbeat check - if no data for 8s, fail
-      const heartbeat = setInterval(() => {
-        if (Date.now() - lastTokenTime > 8000) {
-          clearInterval(heartbeat);
-          clearTimeout(failTimeout);
-          eventSource.close();
-          
-          if (accumulated) {
-            resolve(accumulated);
-          } else {
-            reject(new Error("sse_heartbeat_timeout"));
-          }
-        }
-      }, 1000);
     });
   }
 
@@ -1555,8 +1567,9 @@ ${COMMON}`
         removeTypingIndicator(typingIndicator);
         console.warn("Model call failed:", e);
         
-        // Show retry UI after 8s of failures
-        if (Date.now() - (window._lastCallModelAttempt || 0) > 8000) {
+        // Show retry UI if we've exhausted all retries and taken >= 8s total
+        const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
+        if (totalElapsed >= 8000) {
           showRetryUI();
         }
         
