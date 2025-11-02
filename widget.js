@@ -799,6 +799,14 @@ ${COMMON}`
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
 #reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
+#reflectiv-widget .typing-indicator{display:flex;align-items:center;gap:6px;padding:10px 12px;color:#666;font-size:13px}
+#reflectiv-widget .typing-indicator .dots{display:flex;gap:4px}
+#reflectiv-widget .typing-indicator .dot{width:6px;height:6px;border-radius:50%;background:#999;animation:typingBounce 1.4s infinite ease-in-out}
+#reflectiv-widget .typing-indicator .dot:nth-child(1){animation-delay:-0.32s}
+#reflectiv-widget .typing-indicator .dot:nth-child(2){animation-delay:-0.16s}
+@keyframes typingBounce{0%,80%,100%{opacity:0.3;transform:scale(0.8)}40%{opacity:1;transform:scale(1)}}
+#reflectiv-widget .retry-button{margin:8px 0;padding:8px 16px;border:1px solid #2f3a4f;border-radius:8px;background:#fff;color:#2f3a4f;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s}
+#reflectiv-widget .retry-button:hover{background:#2f3a4f;color:#fff}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
       `;
@@ -1285,13 +1293,43 @@ ${COMMON}`
     return Math.random().toString(36).slice(2);
   }
 
-  async function callModel(messages) {
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+  // Backoff delays with ±10% jitter: [300, 800, 1500] ms
+  function getBackoffDelay(attemptIndex) {
+    const base = [300, 800, 1500][attemptIndex] || 1500;
+    const jitter = base * 0.1 * (Math.random() * 2 - 1); // ±10%
+    return Math.round(base + jitter);
+  }
 
-    const attempt = async (n, delayMs) => {
+  async function callModel(messages, options = {}) {
+    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    const { onFirstChunk, abortSignal } = options;
+
+    const attempt = async (attemptNum) => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort("timeout"), 45000);
+      const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
+      
+      // Chain external abort signal if provided
+      if (abortSignal) {
+        abortSignal.addEventListener('abort', () => controller.abort('external_abort'));
+      }
+
       try {
+        // Check if streaming is enabled and supported
+        const useStreaming = !!cfg?.stream;
+        
+        if (useStreaming) {
+          // Try EventSource streaming first
+          try {
+            const result = await streamWithEventSource(url, messages, controller.signal, onFirstChunk);
+            clearTimeout(timeout);
+            return result;
+          } catch (streamErr) {
+            // Fallback to regular fetch
+            console.warn("EventSource failed, falling back to fetch:", streamErr);
+          }
+        }
+
+        // Regular fetch (non-streaming or fallback)
         const r = await fetch(url, {
           method: "POST",
           headers: {
@@ -1300,10 +1338,9 @@ ${COMMON}`
           },
           body: JSON.stringify({
             model: (cfg?.model) || "llama-3.1-8b-instant",
-            // PATCH C: more variability in RP only
             temperature: (currentMode === "role-play" ? 0.35 : 0.2),
             top_p: 0.9,
-            stream: !!cfg?.stream,
+            stream: false, // Disable streaming for fetch fallback
             max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
             messages
           }),
@@ -1311,6 +1348,8 @@ ${COMMON}`
         });
 
         if (!r.ok) throw new Error("HTTP " + r.status);
+
+        if (onFirstChunk) onFirstChunk(); // Signal first response received
 
         const data = await r.json().catch(() => ({}));
         return (
@@ -1320,9 +1359,12 @@ ${COMMON}`
           ""
         );
       } catch (e) {
-        if (n > 0 && /HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(String(e))) {
-          await new Promise((res) => setTimeout(res, delayMs));
-          return attempt(n - 1, delayMs * 2);
+        const errorStr = String(e);
+        // Retry on HTTP 429, 5xx, timeout, or network errors
+        if (attemptNum < 2 && /HTTP 429|HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(errorStr)) {
+          const delay = getBackoffDelay(2 - attemptNum); // Map to backoff index
+          await new Promise((res) => setTimeout(res, delay));
+          return attempt(attemptNum + 1);
         }
         console.warn("Model call failed:", e);
         return "";
@@ -1331,7 +1373,69 @@ ${COMMON}`
       }
     };
 
-    return attempt(2, 400);
+    return attempt(0);
+  }
+
+  // EventSource streaming with requestAnimationFrame batching
+  async function streamWithEventSource(url, messages, signal, onFirstChunk) {
+    return new Promise((resolve, reject) => {
+      let accumulated = "";
+      let hasReceivedFirst = false;
+      let rafScheduled = false;
+      let pendingChunk = "";
+
+      const eventSource = new EventSource(url + "?stream=true", {
+        withCredentials: false
+      });
+
+      // Abort handling
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          eventSource.close();
+          reject(new Error('aborted'));
+        });
+      }
+
+      // Batch updates with requestAnimationFrame
+      const flushChunk = () => {
+        if (pendingChunk) {
+          accumulated += pendingChunk;
+          pendingChunk = "";
+        }
+        rafScheduled = false;
+      };
+
+      eventSource.onmessage = (event) => {
+        if (!hasReceivedFirst) {
+          hasReceivedFirst = true;
+          if (onFirstChunk) onFirstChunk();
+        }
+
+        const chunk = event.data;
+        pendingChunk += chunk;
+
+        if (!rafScheduled) {
+          rafScheduled = true;
+          requestAnimationFrame(flushChunk);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        eventSource.close();
+        flushChunk(); // Flush any pending chunks
+        if (!hasReceivedFirst) {
+          reject(err);
+        } else {
+          resolve(accumulated);
+        }
+      };
+
+      eventSource.addEventListener('done', () => {
+        eventSource.close();
+        flushChunk();
+        resolve(accumulated);
+      });
+    });
   }
 
   // ---------- final-eval helper ----------
@@ -1534,6 +1638,67 @@ ${detail}`;
 
       messages.push({ role: "user", content: userText });
 
+      // Show typing indicator after 150ms and set up fast-fail UI
+      let typingIndicator = null;
+      let fastFailTimer = null;
+      let firstChunkReceived = false;
+      const abortController = new AbortController();
+
+      const showTypingIndicator = () => {
+        const msgsEl = shellEl.querySelector(".chat-messages");
+        if (!msgsEl) return;
+        
+        typingIndicator = document.createElement("div");
+        typingIndicator.className = "typing-indicator";
+        typingIndicator.innerHTML = `
+          <span>Thinking</span>
+          <div class="dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        `;
+        msgsEl.appendChild(typingIndicator);
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      };
+
+      const hideTypingIndicator = () => {
+        if (typingIndicator) {
+          typingIndicator.remove();
+          typingIndicator = null;
+        }
+      };
+
+      const showRetryButton = () => {
+        hideTypingIndicator();
+        const msgsEl = shellEl.querySelector(".chat-messages");
+        if (!msgsEl) return;
+        
+        const retryBtn = document.createElement("button");
+        retryBtn.className = "retry-button";
+        retryBtn.textContent = "Retry";
+        retryBtn.onclick = () => {
+          retryBtn.remove();
+          // Remove the last user message and resend
+          conversation.pop();
+          renderMessages();
+          sendMessage(userText);
+        };
+        msgsEl.appendChild(retryBtn);
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      };
+
+      // Show typing indicator after 150ms
+      const typingTimer = setTimeout(showTypingIndicator, 150);
+
+      // Set up fast-fail timer (8 seconds)
+      fastFailTimer = setTimeout(() => {
+        if (!firstChunkReceived) {
+          abortController.abort();
+          showRetryButton();
+        }
+      }, 8000);
+
       try {
         if (currentMode !== "role-play") {
           const sysExtras =
@@ -1543,7 +1708,18 @@ ${detail}`;
           if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
         }
 
-        let raw = await callModel(messages);
+        const onFirstChunk = () => {
+          firstChunkReceived = true;
+          clearTimeout(typingTimer);
+          clearTimeout(fastFailTimer);
+          hideTypingIndicator();
+        };
+
+        let raw = await callModel(messages, { onFirstChunk, abortSignal: abortController.signal });
+        clearTimeout(typingTimer);
+        clearTimeout(fastFailTimer);
+        hideTypingIndicator();
+        
         if (!raw) raw = fallbackText(currentMode);
 
         const { coach, clean } = extractCoach(raw);
@@ -1652,11 +1828,17 @@ if (norm(replyText) === norm(userText)) {
           }).catch(() => {});
         }
       } catch (e) {
+        clearTimeout(typingTimer);
+        clearTimeout(fastFailTimer);
+        hideTypingIndicator();
         conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
         trimConversationIfNeeded();
         renderMessages();
       }
     } finally {
+      clearTimeout(typingTimer);
+      clearTimeout(fastFailTimer);
+      hideTypingIndicator();
       const shellEl2 = mount.querySelector(".reflectiv-chat");
       const sendBtn2 = shellEl2?._sendBtn;
       const ta2 = shellEl2?._ta;
