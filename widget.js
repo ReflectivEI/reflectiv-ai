@@ -151,9 +151,21 @@
   ];
 
   // ---------- utils ----------
+  const STUB_MODE = new URLSearchParams(location.search).has('stub');
+  const IS_GITHUB_IO = /github\.io/i.test(location.hostname);
+  
   async function fetchLocal(path) {
     const r = await fetch(path, { cache: "no-store" });
-    if (!r.ok) throw new Error(`Failed to load ${path} (${r.status})`);
+    
+    // 404 handling with stub mode guard
+    if (!r.ok) {
+      if (r.status === 404 && IS_GITHUB_IO && STUB_MODE) {
+        console.warn(`[stub mode] ${path} returned 404, returning empty stub`);
+        return path.endsWith('.json') ? {} : '';
+      }
+      throw new Error(`Failed to load ${path} (${r.status})`);
+    }
+    
     const ct = r.headers.get("content-type") || "";
     return ct.includes("application/json") ? r.json() : r.text();
   }
@@ -1280,8 +1292,33 @@ ${COMMON}`
     }
 
     function populateDiseases() {
+      if (scenariosLoadError) {
+        // Show error and disable dropdown
+        setSelectOptions(diseaseSelect, [{ value: "", label: "⚠ Failed to load scenarios" }], true);
+        diseaseSelect.disabled = true;
+        hcpSelect.disabled = true;
+        setSelectOptions(hcpSelect, [{ value: "", label: "—" }], true);
+        
+        // Show inline error message in meta area if available
+        const metaEl = mount.querySelector(".scenario-meta");
+        if (metaEl) {
+          metaEl.innerHTML = `<div style="padding:10px 12px;background:#fdeaea;border:1px solid #f5c2c2;border-radius:10px;color:#991b1b;">
+            <strong>⚠ Data Loading Error:</strong> Could not load scenarios. Please check your connection or contact support.
+          </div>`;
+        }
+        return;
+      }
+      
       const ds = getDiseaseStates();
       setSelectOptions(diseaseSelect, ds, true);
+      
+      // Enable if we have scenarios
+      if (scenarios.length > 0) {
+        diseaseSelect.disabled = false;
+      } else {
+        diseaseSelect.disabled = true;
+        setSelectOptions(diseaseSelect, [{ value: "", label: "No scenarios available" }], true);
+      }
     }
 
     function populateHcpForDisease(ds) {
@@ -2301,8 +2338,11 @@ if (norm(replyText) === norm(userText)) {
   }
 
   // ---------- scenarios loader ----------
+  let scenariosLoadError = null;
+  
   async function loadScenarios() {
     try {
+      scenariosLoadError = null;
       if (cfg && cfg.scenariosUrl) {
         const payload = await fetchLocal(cfg.scenariosUrl);
         const arr = Array.isArray(payload) ? payload : payload.scenarios || [];
@@ -2328,6 +2368,7 @@ if (norm(replyText) === norm(userText)) {
       }
     } catch (e) {
       console.error("scenarios load failed:", e);
+      scenariosLoadError = e.message || String(e);
       scenarios = [];
     }
 
