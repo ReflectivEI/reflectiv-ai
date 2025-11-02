@@ -32,6 +32,10 @@ export default {
         return json({ version: "r10.1" }, 200, env, req);
       }
 
+      if (url.pathname === "/debug/ei" && req.method === "GET") {
+        return getDebugEi(req, env);
+      }
+
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
       if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
       if (url.pathname === "/chat"  && req.method === "POST") return postChat(req, env);
@@ -118,6 +122,19 @@ const COACH_SCHEMA = {
 };
 
 /* ------------------------------ Helpers ------------------------------------ */
+
+function getEiFlag(req, env) {
+  const url = new URL(req.url);
+  const queryFlag = url.searchParams.get("emitEi");
+  const headerFlag = req.headers.get("x-emit-ei");
+  const envFlag = env.EMIT_EI || env.emitEi;
+
+  return (
+    queryFlag === "1" || queryFlag === "true" ||
+    headerFlag === "1" || headerFlag === "true" ||
+    envFlag === "true"
+  );
+}
 
 function cors(env, req) {
   const reqOrigin = req.headers.get("Origin") || "";
@@ -238,6 +255,25 @@ async function seqPut(env, session, state) {
 }
 const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
 
+/* ------------------------------ /debug/ei ---------------------------------- */
+async function getDebugEi(req, env) {
+  const url = new URL(req.url);
+  const queryFlag = url.searchParams.get("emitEi");
+  const headerFlag = req.headers.get("x-emit-ei");
+  const envFlagEmitEi = env.EMIT_EI || "";
+  const envFlagemitEi = env.emitEi || "";
+
+  const result = {
+    queryFlag: queryFlag === "1" || queryFlag === "true",
+    headerFlag: headerFlag === "1" || headerFlag === "true",
+    envFlag: envFlagEmitEi === "true" || envFlagemitEi === "true",
+    modeAllowed: ["sales-simulation"],
+    time: new Date().toISOString()
+  };
+
+  return json(result, 200, env, req);
+}
+
 /* ------------------------------ /facts ------------------------------------- */
 async function postFacts(req, env) {
   const { disease, topic, limit = 6 } = await readJson(req);
@@ -278,19 +314,26 @@ async function postPlan(req, env) {
 
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
-  const body = await readJson(req);
-  const {
-    mode = "sales-simulation",
-    user,
-    history = [],
-    disease = "",
-    persona = "",
-    goal = "",
-    plan,
-    planId
-  } = body || {};
+  try {
+    // Validate Content-Type
+    const contentType = req.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return json({ error: "unsupported_media_type", message: "Content-Type must be application/json" }, 415, env, req);
+    }
 
-  const session = body.session || "anon";
+    const body = await readJson(req);
+    const {
+      mode = "sales-simulation",
+      user,
+      history = [],
+      disease = "",
+      persona = "",
+      goal = "",
+      plan,
+      planId
+    } = body || {};
+
+    const session = body.session || "anon";
 
   // Load or build a plan
   let activePlan = plan;
@@ -406,7 +449,22 @@ Use only the Facts IDs provided when making claims.`.trim();
     };
   }
 
-  return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
+  // Build response
+  const responseData = { reply, coach: coachObj, plan: { id: planId || activePlan.planId } };
+
+  // Add EI data if flag is enabled
+  if (getEiFlag(req, env)) {
+    responseData._coach = {
+      ei: {
+        scores: coachObj.scores || {}
+      }
+    };
+  }
+
+  return json(responseData, 200, env, req);
+  } catch (err) {
+    return json({ error: "bad_request", message: err.message || "invalid" }, 400, env, req);
+  }
 }
 
 function cryptoRandomId() {
