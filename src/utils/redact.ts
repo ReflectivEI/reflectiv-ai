@@ -3,6 +3,8 @@
  * Ensures compliance with privacy requirements
  */
 
+import { PHI_PATTERNS, REDACTED_VALUES } from '../constants';
+
 /**
  * Redact potentially sensitive information from text
  * Removes: emails, phone numbers, SSN patterns, dates of birth, names
@@ -12,19 +14,19 @@ export function redactPHI(text: string): string {
   
   let redacted = text;
   
-  // Redact email addresses
-  redacted = redacted.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]');
+  // Redact email addresses (comprehensive pattern)
+  redacted = redacted.replace(PHI_PATTERNS.EMAIL, REDACTED_VALUES.EMAIL);
   
   // Redact phone numbers (various formats)
-  redacted = redacted.replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]');
-  redacted = redacted.replace(/\b\(\d{3}\)\s*\d{3}[-.]?\d{4}\b/g, '[PHONE]');
+  redacted = redacted.replace(PHI_PATTERNS.PHONE_DASH, REDACTED_VALUES.PHONE);
+  redacted = redacted.replace(PHI_PATTERNS.PHONE_PAREN, REDACTED_VALUES.PHONE);
   
   // Redact SSN patterns
-  redacted = redacted.replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]');
+  redacted = redacted.replace(PHI_PATTERNS.SSN, REDACTED_VALUES.SSN);
   
   // Redact date patterns that could be DOB
-  redacted = redacted.replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, '[DATE]');
-  redacted = redacted.replace(/\b\d{4}-\d{2}-\d{2}\b/g, '[DATE]');
+  redacted = redacted.replace(PHI_PATTERNS.DATE_SLASH, REDACTED_VALUES.DATE);
+  redacted = redacted.replace(PHI_PATTERNS.DATE_DASH, REDACTED_VALUES.DATE);
   
   return redacted;
 }
@@ -66,7 +68,7 @@ export function redactForMetrics(content: string): {
   return {
     wordCount: content.split(/\s+/).filter(Boolean).length,
     questionCount: (content.match(/\?/g) || []).length,
-    hasEmail: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(content),
-    hasPhone: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(content)
+    hasEmail: PHI_PATTERNS.EMAIL.test(content),
+    hasPhone: PHI_PATTERNS.PHONE_DASH.test(content) || PHI_PATTERNS.PHONE_PAREN.test(content)
   };
 }

@@ -4,6 +4,7 @@
  */
 
 import type { EIPayload, EIScores } from '../types';
+import { EI_PATTERNS } from '../constants';
 
 interface EIContext {
   reply: string;
@@ -63,13 +64,11 @@ function calculateConfidence(reply: string, factReferences: number, wordCount: n
   }
   
   // Boost for assertive language patterns
-  const assertivePatterns = /\b(recommend|suggest|important|should|will|can help)\b/gi;
-  const assertiveCount = (reply.match(assertivePatterns) || []).length;
+  const assertiveCount = (reply.match(EI_PATTERNS.ASSERTIVE) || []).length;
   score += Math.min(0.5, assertiveCount * 0.15);
   
   // Check for hedging language (reduces confidence)
-  const hedgingPatterns = /\b(maybe|perhaps|might|possibly|could be)\b/gi;
-  const hedgingCount = (reply.match(hedgingPatterns) || []).length;
+  const hedgingCount = (reply.match(EI_PATTERNS.HEDGING) || []).length;
   score -= Math.min(1.0, hedgingCount * 0.3);
   
   return clamp(score, 0, 5);
@@ -91,8 +90,7 @@ function calculateActiveListening(userQuestion: string, reply: string, acknowled
   score += Math.min(1.0, referencedWords.length * 0.2);
   
   // Boost for clarifying questions
-  const clarifyingPatterns = /\b(you mentioned|you asked|you're asking|regarding|about your)\b/gi;
-  const clarifyingCount = (reply.match(clarifyingPatterns) || []).length;
+  const clarifyingCount = (reply.match(EI_PATTERNS.CLARIFYING) || []).length;
   score += Math.min(1.0, clarifyingCount * 0.4);
   
   return clamp(score, 0, 5);
@@ -105,16 +103,14 @@ function calculateRapport(reply: string, acknowledgmentPatterns: number): number
   let score = 2.5; // Base score
   
   // Boost for empathetic language
-  const empatheticPatterns = /\b(understand|appreciate|recognize|consider|help you|support)\b/gi;
-  const empatheticCount = (reply.match(empatheticPatterns) || []).length;
+  const empatheticCount = (reply.match(EI_PATTERNS.EMPATHETIC) || []).length;
   score += Math.min(1.5, empatheticCount * 0.3);
   
   // Boost for acknowledgment
   score += Math.min(1.0, acknowledgmentPatterns * 0.3);
   
   // Check for collaborative language
-  const collaborativePatterns = /\b(we can|together|let's|our goal|work with)\b/gi;
-  const collaborativeCount = (reply.match(collaborativePatterns) || []).length;
+  const collaborativeCount = (reply.match(EI_PATTERNS.COLLABORATIVE) || []).length;
   score += Math.min(0.5, collaborativeCount * 0.25);
   
   return clamp(score, 0, 5);
@@ -132,8 +128,7 @@ function calculateAdaptability(reply: string, questionCount: number): number {
   }
   
   // Check for conditional language (shows adaptability)
-  const conditionalPatterns = /\b(if|depending|based on|considering|given that)\b/gi;
-  const conditionalCount = (reply.match(conditionalPatterns) || []).length;
+  const conditionalCount = (reply.match(EI_PATTERNS.CONDITIONAL) || []).length;
   score += Math.min(1.0, conditionalCount * 0.3);
   
   // Penalize if no questions asked over multiple turns
@@ -154,13 +149,11 @@ function calculatePersistence(reply: string, questionCount: number): number {
   score += Math.min(1.5, questionCount * 0.5);
   
   // Boost for action-oriented language
-  const actionPatterns = /\b(next step|follow up|schedule|plan|start|begin)\b/gi;
-  const actionCount = (reply.match(actionPatterns) || []).length;
+  const actionCount = (reply.match(EI_PATTERNS.ACTION_ORIENTED) || []).length;
   score += Math.min(1.0, actionCount * 0.4);
   
   // Check for specific timeframes (shows commitment)
-  const timeframePatterns = /\b(today|this week|this month|next visit)\b/gi;
-  const timeframeCount = (reply.match(timeframePatterns) || []).length;
+  const timeframeCount = (reply.match(EI_PATTERNS.TIMEFRAME) || []).length;
   score += Math.min(0.5, timeframeCount * 0.3);
   
   return clamp(score, 0, 5);
@@ -241,12 +234,10 @@ export function analyzeReply(reply: string, userQuestion: string): EIContext {
   const questionCount = (reply.match(/\?/g) || []).length;
   
   // Count acknowledgment patterns
-  const ackPatterns = /\b(I understand|I see|thank you|that's|yes,|right,|good question|appreciate)\b/gi;
-  const acknowledgmentPatterns = (reply.match(ackPatterns) || []).length;
+  const acknowledgmentPatterns = (reply.match(EI_PATTERNS.ACKNOWLEDGMENT) || []).length;
   
   // Count fact references (citations or specific data points)
-  const factPatterns = /\b(study|data|research|label|indication|FDA|clinical|trial)\b/gi;
-  const factReferences = (reply.match(factPatterns) || []).length;
+  const factReferences = (reply.match(EI_PATTERNS.FACT_REFERENCE) || []).length;
   
   // Word count
   const wordCount = reply.split(/\s+/).filter(Boolean).length;

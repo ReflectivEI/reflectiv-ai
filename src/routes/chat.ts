@@ -6,6 +6,7 @@ import type { Env, ChatRequest, ChatResponse, CoachPayload, Plan } from '../type
 import { json, readJson, capSentences, extractCoach, sanitizeLLM, norm, validateCoach, cors } from '../helpers';
 import { fromRequest } from '../config';
 import { FSM } from '../data';
+import { FALLBACK_RESPONSES } from '../constants';
 import { providerChat, deterministicScore } from '../provider';
 import { seqGet, seqPut } from '../session';
 import { analyzeReply, computeEI } from '../ei/eiRules';
@@ -169,9 +170,9 @@ Use only the Facts IDs provided when making claims.`.trim();
   const candNorm = norm(reply);
   if (state && candNorm && (candNorm === state.lastNorm)) {
     if (mode === "role-play") {
-      reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
+      reply = FALLBACK_RESPONSES.ROLE_PLAY;
     } else {
-      reply = 'Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: "For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?"';
+      reply = FALLBACK_RESPONSES.SALES_SIMULATION;
     }
   }
   state.lastNorm = norm(reply);
