@@ -1220,12 +1220,28 @@ ${COMMON}`
         if (currentMode === "sales-simulation" && m.role === "assistant" && m._coach) {
           const fb = m._coach;
           const challenge = fb.challenge || fb.feedback || "";
-          const repApproach = fb.worked && fb.worked.length ? fb.worked : (fb.rep_approach && Array.isArray(fb.rep_approach) ? fb.rep_approach : []);
-          const impact = fb.improve && fb.improve.length ? fb.improve : (fb.impact && Array.isArray(fb.impact) ? fb.impact : []);
+          
+          // Extract Rep Approach from either 'worked' or 'rep_approach' field
+          let repApproach = [];
+          if (fb.worked && fb.worked.length) {
+            repApproach = fb.worked;
+          } else if (fb.rep_approach && Array.isArray(fb.rep_approach)) {
+            repApproach = fb.rep_approach;
+          }
+          
+          // Extract Impact from either 'improve' or 'impact' field
+          let impact = [];
+          if (fb.improve && fb.improve.length) {
+            impact = fb.improve;
+          } else if (fb.impact && Array.isArray(fb.impact)) {
+            impact = fb.impact;
+          }
+          
           const suggestedPhrasing = fb.suggested_phrasing || fb.phrasing || "";
           
-          // Check if any section has content
-          const hasAnySectionContent = challenge || repApproach.length > 0 || impact.length > 0;
+          // Check if Challenge, Rep Approach, or Impact have content
+          // (Suggested Phrasing is not included in this check because it should always show when other sections exist)
+          const hasNonPhrasingSectionContent = challenge || repApproach.length > 0 || impact.length > 0;
           
           let cardHTML = "";
           
@@ -1241,8 +1257,11 @@ ${COMMON}`
             cardHTML += `<div class="coach-sec"><strong>Impact:</strong><ul>${impact.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
           }
           
-          // Always show Suggested Phrasing if any other section has content (per spec: do NOT omit the header)
-          if (hasAnySectionContent) {
+          // Always show Suggested Phrasing header when any other section (Challenge/Rep Approach/Impact) has content.
+          // Business logic: The header serves as a prompt for the coach to provide phrasing guidance.
+          // Even if the AI hasn't provided phrasing yet, showing the header reminds users that this guidance exists.
+          // Spec requirement: "do NOT omit the header" - render section with empty string if no phrasing available.
+          if (hasNonPhrasingSectionContent) {
             cardHTML += `<div class="coach-sec"><strong>Suggested Phrasing:</strong><div class="mono">${esc(suggestedPhrasing)}</div></div>`;
           }
           
