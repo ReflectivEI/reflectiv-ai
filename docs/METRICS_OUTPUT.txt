@@ -1,0 +1,29 @@
+=== EI Metrics Test ===
+
+Initial metrics:
+{
+  "ei_emitted_total": 0,
+  "ei_validation_failed_total": 0,
+  "ei_latency_histogram": []
+}
+
+Simulating 3 successful EI emissions...
+Simulating 1 validation failure...
+
+Final metrics:
+{
+  "ei_emitted_total": 3,
+  "ei_validation_failed_total": 1,
+  "ei_latency_histogram": [
+    25,
+    30,
+    28
+  ]
+}
+
+=== Metrics Summary ===
+✓ ei_emitted_total: 3
+✓ ei_validation_failed_total: 1
+✓ Average EI latency: 27.67ms
+✓ Min latency: 25ms
+✓ Max latency: 30ms
