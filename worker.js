@@ -227,13 +227,14 @@ function deterministicScore({ reply, usedFactIds = [] }) {
 }
 
 // EI scoring patterns (module-level constants)
-const EMPATHY_PATTERNS = /(i understand|appreciate|given your|thanks for|i hear|it sounds like|you mentioned)/i;
-const ACTIONABLE_PATTERNS = /(would you|could you|can you|consider|try|help|start|begin)/i;
+const EMPATHY_PATTERNS = /\b(i understand|appreciate|given your|thanks for|i hear|it sounds like|you mentioned)\b/i;
+const ACTIONABLE_PATTERNS = /\b(would you|could you|can you|consider|try|help|start|begin)\b/i;
+const QUESTION_PATTERNS = /\?\s*$|^\s*(what|how|when|where|why|who|which)\b/i;
 
 // New deterministic EI scoring with 5 dimensions
 function computeEIScores({ reply, usedFactIds = [] }) {
   const text = String(reply || "").toLowerCase();
-  const hasQuestion = /\?\s*$/.test(reply);
+  const hasQuestion = QUESTION_PATTERNS.test(reply);
   const wordCount = (reply.match(/\S+/g) || []).length;
   const hasCitation = usedFactIds.length > 0;
   const hasEmpathySignals = EMPATHY_PATTERNS.test(reply);
