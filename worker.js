@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
- * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version, GET /debug/ei
+ * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
  * KV namespaces (optional):
@@ -13,7 +13,6 @@
  *  - CORS_ORIGINS    comma-separated allowlist, e.g. "https://a.com,https://b.com"
  *  - REQUIRE_FACTS   "true" to require at least one fact in plan
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
- *  - EMIT_EI / emitEi  "true" to enable EI (Emotional Intelligence) data in responses
  */
 
 export default {
@@ -31,10 +30,6 @@ export default {
       }
       if (url.pathname === "/version" && req.method === "GET") {
         return json({ version: "r10.1" }, 200, env, req);
-      }
-
-      if (url.pathname === "/debug/ei" && req.method === "GET") {
-        return getDebugEi(req, env);
       }
 
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
@@ -124,19 +119,6 @@ const COACH_SCHEMA = {
 
 /* ------------------------------ Helpers ------------------------------------ */
 
-function getEiFlag(req, env) {
-  const url = new URL(req.url);
-  const queryFlag = url.searchParams.get("emitEi");
-  const headerFlag = req.headers.get("x-emit-ei");
-  const envFlag = env.EMIT_EI || env.emitEi;
-
-  return (
-    queryFlag === "1" || queryFlag === "true" ||
-    headerFlag === "1" || headerFlag === "true" ||
-    envFlag === "true"
-  );
-}
-
 function cors(env, req) {
   const reqOrigin = req.headers.get("Origin") || "";
   const allowed = String(env.CORS_ORIGINS || "")
@@ -150,7 +132,7 @@ function cors(env, req) {
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "content-type,authorization,x-req-id,x-emit-ei",
+    "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin"
@@ -256,25 +238,6 @@ async function seqPut(env, session, state) {
 }
 const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
 
-/* ------------------------------ /debug/ei ---------------------------------- */
-async function getDebugEi(req, env) {
-  const url = new URL(req.url);
-  const queryFlag = url.searchParams.get("emitEi");
-  const headerFlag = req.headers.get("x-emit-ei");
-  const envFlagUpperCase = env.EMIT_EI || "";
-  const envFlagLowerCase = env.emitEi || "";
-
-  const result = {
-    queryFlag: queryFlag === "1" || queryFlag === "true",
-    headerFlag: headerFlag === "1" || headerFlag === "true",
-    envFlag: envFlagUpperCase === "true" || envFlagLowerCase === "true",
-    modeAllowed: ["sales-simulation"],
-    time: new Date().toISOString()
-  };
-
-  return json(result, 200, env, req);
-}
-
 /* ------------------------------ /facts ------------------------------------- */
 async function postFacts(req, env) {
   const { disease, topic, limit = 6 } = await readJson(req);
@@ -315,26 +278,19 @@ async function postPlan(req, env) {
 
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
-  try {
-    // Validate Content-Type
-    const contentType = req.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      return json({ error: "unsupported_media_type", message: "Content-Type must be application/json" }, 415, env, req);
-    }
+  const body = await readJson(req);
+  const {
+    mode = "sales-simulation",
+    user,
+    history = [],
+    disease = "",
+    persona = "",
+    goal = "",
+    plan,
+    planId
+  } = body || {};
 
-    const body = await readJson(req);
-    const {
-      mode = "sales-simulation",
-      user,
-      history = [],
-      disease = "",
-      persona = "",
-      goal = "",
-      plan,
-      planId
-    } = body || {};
-
-    const session = body.session || "anon";
+  const session = body.session || "anon";
 
   // Load or build a plan
   let activePlan = plan;
@@ -450,24 +406,7 @@ Use only the Facts IDs provided when making claims.`.trim();
     };
   }
 
-  // Build response
-  const responseData = { reply, coach: coachObj, plan: { id: planId || activePlan.planId } };
-
-  // Add EI data if flag is enabled
-  if (getEiFlag(req, env)) {
-    responseData._coach = {
-      ei: {
-        scores: coachObj.scores || {}
-      }
-    };
-  }
-
-  return json(responseData, 200, env, req);
-  } catch (err) {
-    // Sanitize error message to avoid leaking sensitive information
-    const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
-    return json({ error: "bad_request", message: safeMessage }, 400, env, req);
-  }
+  return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
 }
 
 function cryptoRandomId() {
