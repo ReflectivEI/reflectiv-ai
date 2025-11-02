@@ -24,11 +24,6 @@
     return r.json();
   };
 
-  // ---------- data sources (site-relative, avoids CORS surprises) ----------
-  const DATA = {
-    config:    "config.json"
-  };
-
   // ---------- constants ----------
   const MODES = [
     { key: "emotional-intelligence", label: "Emotional Intelligence" },
@@ -61,7 +56,7 @@
   async function loadData() {
     try {
       // Load config first
-      const cfg = await fetchJSON(DATA.config);
+      const cfg = await fetchJSON("config.json");
       state.cfg = cfg;
       
       // Load scenarios from config URL
