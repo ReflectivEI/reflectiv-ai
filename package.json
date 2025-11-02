@@ -1,7 +1,7 @@
 {
   "name": "my-chat-agent-v2",
-  "version": "10.1.0",
-  "description": "ReflectivAI Gateway - Cloudflare Worker",
+  "version": "10.2.0",
+  "description": "ReflectivAI Gateway - Cloudflare Worker with EI support",
   "main": "src/worker.ts",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "deploy": "wrangler deploy",
     "type-check": "tsc --noEmit"
   },
-  "keywords": ["cloudflare", "worker", "reflectivai"],
+  "keywords": ["cloudflare", "worker", "reflectivai", "ei"],
   "author": "ReflectivAI",
   "license": "MIT",
   "devDependencies": {

@@ -31,13 +31,13 @@ export function computeEI(context: EIContext): EIPayload {
   };
   
   // Overall EI score is weighted average, scaled from 0-5 to 0-100
-  const overall = Math.round(
-    (scores.confidence * EI_WEIGHTS.confidence +
-     scores.active_listening * EI_WEIGHTS.active_listening +
-     scores.rapport * EI_WEIGHTS.rapport +
-     scores.adaptability * EI_WEIGHTS.adaptability +
-     scores.persistence * EI_WEIGHTS.persistence) * EI_SCALE_FACTOR
-  );
+  // Using Object.entries for cleaner calculation
+  const weightedSum = Object.entries(scores).reduce((sum, [dimension, score]) => {
+    const weight = EI_WEIGHTS[dimension as keyof typeof EI_WEIGHTS];
+    return sum + (score * weight);
+  }, 0);
+  
+  const overall = Math.round(weightedSum * EI_SCALE_FACTOR);
   
   const insights = generateInsights(scores, reply);
   const recommendations = generateRecommendations(scores, reply);
