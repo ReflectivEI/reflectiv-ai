@@ -150,7 +150,7 @@ function cors(env, req) {
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
+    "Access-Control-Allow-Headers": "content-type,authorization,x-req-id,x-emit-ei",
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin"
