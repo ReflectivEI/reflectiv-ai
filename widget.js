@@ -1740,7 +1740,14 @@ ${COMMON}`
   }
 
   async function callModel(messages) {
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    let url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    
+    // Phase C: Append ?emitEi=true for sales-simulation mode to request EI payload from Worker
+    if (currentMode === "sales-simulation") {
+      const separator = url.includes("?") ? "&" : "?";
+      url += separator + "emitEi=true";
+    }
+    
     const useStreaming = cfg?.stream === true;
     
     // Initialize telemetry
