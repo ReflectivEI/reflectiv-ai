@@ -79,6 +79,9 @@
 
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
+  
+  // ---------- Debug overlay for EI verification ----------
+  let lastWorkerResponse = null; // Stores last response data from Worker for debug overlay
 
   // ---------- EI dev shim ----------
   const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
@@ -209,6 +212,59 @@
     ${tips.length ? `<ul class="ei-tips">${tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>` : ""}
     <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
   </div>`;
+  }
+  
+  // === Debug overlay for EI verification (auto-hide after 8s) ===
+  function showEiDebugOverlay(msgWithCoach, workerUrl) {
+    // Remove any existing overlay
+    const existing = document.getElementById('ei-debug-overlay');
+    if (existing) existing.remove();
+    
+    // Extract values
+    const hasEmitEiQuery = /[?&]emitEi=(true|1)/.test(workerUrl || '');
+    const hasEmitEiHeader = currentMode === 'sales-simulation'; // Header is added when mode is sales-simulation
+    const hasCoachEi = !!(msgWithCoach?._coach?.ei);
+    const workerHost = workerUrl ? new URL(workerUrl, window.location.origin).host : 'unknown';
+    
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'ei-debug-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      max-width: 300px;
+      pointer-events: none;
+    `;
+    
+    const statusIcon = (val) => val ? '✅' : '❌';
+    
+    overlay.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 8px;">🔍 EI Debug</div>
+      <div style="margin: 4px 0;">${statusIcon(hasEmitEiQuery)} emitEi query param</div>
+      <div style="margin: 4px 0;">${statusIcon(hasEmitEiHeader)} X-Emit-EI header</div>
+      <div style="margin: 4px 0;">${statusIcon(hasCoachEi)} _coach.ei present</div>
+      <div style="margin: 4px 0; opacity: 0.7;">Host: ${workerHost}</div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+      if (overlay.parentNode) {
+        overlay.style.transition = 'opacity 0.5s';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 500);
+      }
+    }, 8000);
   }
 
   function sanitizeLLM(raw) {
@@ -1740,7 +1796,15 @@ ${COMMON}`
   }
 
   async function callModel(messages) {
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    let url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    
+    // Append ?emitEi=true for sales-simulation mode
+    if (currentMode === 'sales-simulation') {
+      const urlObj = new URL(url, window.location.origin);
+      urlObj.searchParams.set('emitEi', 'true');
+      url = urlObj.toString();
+    }
+    
     const useStreaming = cfg?.stream === true;
     
     // Initialize telemetry
@@ -1838,12 +1902,19 @@ ${COMMON}`
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
       
       try {
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Req-Id": rid()
+        };
+        
+        // Add X-Emit-EI header for sales-simulation mode
+        if (currentMode === 'sales-simulation') {
+          headers["X-Emit-EI"] = "true";
+        }
+        
         const r = await fetch(url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Req-Id": rid()
-          },
+          headers: headers,
           body: JSON.stringify(payload),
           signal: controller.signal
         });
@@ -1864,6 +1935,9 @@ ${COMMON}`
           currentTelemetry.httpStatus = r.status.toString();
           
           const data = JSON.parse(bodyText);
+          
+          // Store full response for debug overlay
+          lastWorkerResponse = data;
           
           // Extract tokens if available (prefer completion_tokens for accuracy)
           if (data.usage?.completion_tokens) {
@@ -2297,6 +2371,24 @@ if (norm(replyText) === norm(userText)) {
           _coach: finalCoach,
           _speaker: currentMode === "role-play" ? "hcp" : "assistant"
         });
+        
+        // Get the last message with _coach for debug overlay
+        const lastMsg = conversation[conversation.length - 1];
+        
+        // Check if Worker returned _coach.ei in the response
+        if (lastWorkerResponse && lastWorkerResponse._coach?.ei) {
+          // Merge Worker's EI data into finalCoach if not already present
+          if (!lastMsg._coach.ei) {
+            lastMsg._coach.ei = lastWorkerResponse._coach.ei;
+          }
+        }
+        
+        // Show debug overlay for sales-simulation mode
+        if (currentMode === 'sales-simulation') {
+          const workerUrl = cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "";
+          showEiDebugOverlay(lastMsg, workerUrl);
+        }
+        
         trimConversationIfNeeded();
         renderMessages();
         renderCoach();
