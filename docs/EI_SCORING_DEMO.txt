@@ -1,0 +1,98 @@
+═══════════════════════════════════════════════════════════
+  EI Scoring Demonstration - Sales Simulation Mode
+═══════════════════════════════════════════════════════════
+
+
+Sample 1: High Compliance (Label Anchors)
+────────────────────────────────────────────────────────────
+Text: "Per FDA label, Descovy is indicated for PrEP. According to CDC guidelines, asses..."
+
+Scores:
+  Empathy:    4/5 ★★★★☆
+  Discovery:  5/5 ★★★★★
+  Compliance: 5/5 ★★★★★
+  Clarity:    4/5 ★★★★☆
+  Accuracy:   3/5 ★★★☆☆
+
+Top Tips (1):
+  1. Balance detail level - not too brief, not too lengthy
+
+Rubric Version: v1.2
+
+Sample 2: High Discovery (Multiple Questions)
+────────────────────────────────────────────────────────────
+Text: "How do you currently screen patients? What barriers do you face? Would you consi..."
+
+Scores:
+  Empathy:    3/5 ★★★☆☆
+  Discovery:  5/5 ★★★★★
+  Compliance: 3/5 ★★★☆☆
+  Clarity:    3/5 ★★★☆☆
+  Accuracy:   3/5 ★★★☆☆
+
+Top Tips (4):
+  1. Use more patient-centered language to show empathy
+  2. Anchor claims to FDA label or guidelines
+  3. Keep sentences concise (15-20 words average)
+  4. Balance detail level - not too brief, not too lengthy
+
+Rubric Version: v1.2
+
+Sample 3: High Empathy (Patient-Centered)
+────────────────────────────────────────────────────────────
+Text: "I understand your concern about patient safety. We care deeply about supporting ..."
+
+Scores:
+  Empathy:    5/5 ★★★★★
+  Discovery:  2/5 ★★☆☆☆
+  Compliance: 3/5 ★★★☆☆
+  Clarity:    4/5 ★★★★☆
+  Accuracy:   3/5 ★★★☆☆
+
+Top Tips (3):
+  1. End with a specific discovery question
+  2. Anchor claims to FDA label or guidelines
+  3. Balance detail level - not too brief, not too lengthy
+
+Rubric Version: v1.2
+
+Sample 4: Balanced Professional
+────────────────────────────────────────────────────────────
+Text: "Per label, assess renal function before starting PrEP. Consider eGFR thresholds...."
+
+Scores:
+  Empathy:    2/5 ★★☆☆☆
+  Discovery:  5/5 ★★★★★
+  Compliance: 4/5 ★★★★☆
+  Clarity:    4/5 ★★★★☆
+  Accuracy:   3/5 ★★★☆☆
+
+Top Tips (2):
+  1. Use more patient-centered language to show empathy
+  2. Balance detail level - not too brief, not too lengthy
+
+Rubric Version: v1.2
+
+Sample 5: Poor Compliance (Prohibited Claims)
+────────────────────────────────────────────────────────────
+Text: "This medication is the best choice and guarantees results. No side effects have ..."
+
+Scores:
+  Empathy:    3/5 ★★★☆☆
+  Discovery:  2/5 ★★☆☆☆
+  Compliance: 1/5 ★☆☆☆☆
+  Clarity:    4/5 ★★★★☆
+  Accuracy:   3/5 ★★★☆☆
+
+Top Tips (4):
+  1. Use more patient-centered language to show empathy
+  2. End with a specific discovery question
+  3. Anchor claims to FDA label or guidelines
+  4. Balance detail level - not too brief, not too lengthy
+
+Rubric Version: v1.2
+
+═══════════════════════════════════════════════════════════
+  Demo Complete - All Scores Clamped to 1-5 Range
+═══════════════════════════════════════════════════════════
+
