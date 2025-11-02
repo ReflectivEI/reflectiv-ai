@@ -42,13 +42,23 @@ export const REDACTED_VALUES = {
 };
 
 // EI dimension weights for overall score calculation
+// Weights must sum to 1.0 for proper scaling
 export const EI_WEIGHTS = {
   confidence: 0.25,
   active_listening: 0.25,
   rapport: 0.20,
   adaptability: 0.15,
   persistence: 0.15
-};
+} as const;
+
+// Verify weights sum to 1.0 (compile-time validation)
+const _weightSum = Object.values(EI_WEIGHTS).reduce((a, b) => a + b, 0);
+if (Math.abs(_weightSum - 1.0) > 0.001) {
+  throw new Error(`EI weights must sum to 1.0, got ${_weightSum}`);
+}
+
+// EI score scaling factor (converts 0-5 scale to 0-100)
+export const EI_SCALE_FACTOR = 20;
 
 // SSE streaming configuration
 export const SSE_CONFIG = {

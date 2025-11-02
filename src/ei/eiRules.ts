@@ -4,7 +4,7 @@
  */
 
 import type { EIPayload, EIScores } from '../types';
-import { EI_PATTERNS, EI_WEIGHTS } from '../constants';
+import { EI_PATTERNS, EI_WEIGHTS, EI_SCALE_FACTOR } from '../constants';
 import { clamp } from '../utils/common';
 
 interface EIContext {
@@ -30,13 +30,13 @@ export function computeEI(context: EIContext): EIPayload {
     persistence: calculatePersistence(reply, questionCount)
   };
   
-  // Overall EI score is weighted average
+  // Overall EI score is weighted average, scaled from 0-5 to 0-100
   const overall = Math.round(
     (scores.confidence * EI_WEIGHTS.confidence +
      scores.active_listening * EI_WEIGHTS.active_listening +
      scores.rapport * EI_WEIGHTS.rapport +
      scores.adaptability * EI_WEIGHTS.adaptability +
-     scores.persistence * EI_WEIGHTS.persistence) * 20 // Scale 0-5 to 0-100
+     scores.persistence * EI_WEIGHTS.persistence) * EI_SCALE_FACTOR
   );
   
   const insights = generateInsights(scores, reply);
