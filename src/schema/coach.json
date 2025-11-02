@@ -1,0 +1,54 @@
+{
+  "type": "object",
+  "properties": {
+    "scores": {
+      "type": "object",
+      "properties": {
+        "empathy": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "discovery": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "compliance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "clarity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "accuracy": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "required": ["empathy", "discovery", "compliance", "clarity", "accuracy"]
+    },
+    "rationales": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "tips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 5
+    },
+    "rubric_version": {
+      "type": "string"
+    }
+  },
+  "required": ["scores", "rubric_version"],
+  "additionalProperties": true
+}
