@@ -2268,11 +2268,7 @@ if (norm(replyText) === norm(userText)) {
   // ---------- init ----------
   async function init() {
     try {
-      try {
-        cfg = await fetchLocal("./assets/chat/config.json");
-      } catch (e) {
-        cfg = await fetchLocal("./config.json");
-      }
+      cfg = await fetchLocal("./config.json");
     } catch (e) {
       console.error("config load failed:", e);
       cfg = { defaultMode: "sales-simulation" };

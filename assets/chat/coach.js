@@ -26,10 +26,7 @@
 
   // ---------- data sources (site-relative, avoids CORS surprises) ----------
   const DATA = {
-    config:    "/assets/chat/config.json",
-    personas:  "/assets/chat/persona.json",
-    scenarios: "/assets/chat/data/scenarios.merged.json",
-    system:    "/assets/chat/system.md"
+    config:    "config.json"
   };
 
   // ---------- constants ----------
@@ -63,14 +60,28 @@
   // ---------- safe boot with stub fallback ----------
   async function loadData() {
     try {
-      const [cfg, personas, scenarios] = await Promise.all([
-        fetchJSON(DATA.config),
-        fetchJSON(DATA.personas),
-        fetchJSON(DATA.scenarios)
-      ]);
+      // Load config first
+      const cfg = await fetchJSON(DATA.config);
       state.cfg = cfg;
-      state.personas  = personas?.personas   || [];
+      
+      // Load scenarios from config URL
+      const scenariosUrl = cfg.scenariosUrl || "assets/chat/data/scenarios.merged.json";
+      const scenarios = await fetchJSON(scenariosUrl);
       state.scenarios = scenarios?.scenarios || [];
+      
+      // Load personas if personaUrl is defined (optional)
+      const personaUrl = cfg.personaUrl;
+      if (personaUrl && personaUrl.trim()) {
+        try {
+          const personas = await fetchJSON(personaUrl);
+          state.personas = personas?.personas || [];
+        } catch (e) {
+          console.warn("[Coach] persona file not found, using defaults");
+          state.personas = [];
+        }
+      } else {
+        state.personas = [];
+      }
     } catch (e) {
       console.warn("[Coach] data fetch failed, using stub", e);
       state.cfg = { ui: { showCoach: true }, brand: { accent: "#2f3a4f" } };

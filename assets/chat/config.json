@@ -20,6 +20,7 @@
   "brand": { "accent": "#2f3a4f", "radius": "14px" },
 
   "scenariosUrl": "assets/chat/data/scenarios.merged.json",
+  "personaUrl": "",
 
   "ui": { "showCoach": true, "showMeta": true, "allowModeSwitch": true },
 
