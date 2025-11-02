@@ -153,3 +153,4 @@ After Worker PR is merged and deployed:
 2. Verify debug overlay shows all ✅ marks
 3. Confirm EI pills render correctly with scores
 4. Monitor for console errors or network failures
+
