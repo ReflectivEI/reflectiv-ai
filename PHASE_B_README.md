@@ -221,19 +221,17 @@ curl -X POST https://worker.dev/chat \
 # Install dependencies
 npm install
 
-# Type check
+# Type check (optional - wrangler does this automatically)
 npm run type-check
 
-# Build
-npm run build
-
-# Local development
+# Local development (wrangler bundles TypeScript on-the-fly)
 npm run dev
 ```
 
 ### Deploy to Cloudflare
 
 ```bash
+# Wrangler handles TypeScript compilation and bundling automatically
 npm run deploy
 ```
 

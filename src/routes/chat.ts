@@ -3,7 +3,7 @@
  */
 
 import type { Env, ChatRequest, ChatResponse, CoachPayload, Plan } from '../types';
-import { json, readJson, capSentences, extractCoach, sanitizeLLM, norm, validateCoach } from '../helpers';
+import { json, readJson, capSentences, extractCoach, sanitizeLLM, norm, validateCoach, cors } from '../helpers';
 import { fromRequest } from '../config';
 import { FSM } from '../data';
 import { providerChat, deterministicScore } from '../provider';
@@ -281,22 +281,4 @@ async function handleSSEChat(
       ...cors(env, req)
     }
   });
-  
-  function cors(env: Env, req: Request): Record<string, string> {
-    const reqOrigin = req.headers.get("Origin") || "";
-    const allowed = String(env.CORS_ORIGINS || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
-    const allowOrigin = isAllowed ? (reqOrigin || "*") : "null";
-
-    return {
-      "Access-Control-Allow-Origin": allowOrigin,
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "content-type,authorization,x-req-id,x-emit-ei",
-      "Access-Control-Allow-Credentials": "true"
-    };
-  }
 }

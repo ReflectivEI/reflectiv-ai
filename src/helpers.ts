@@ -3,7 +3,6 @@
  */
 
 import type { Env } from './types';
-import coachSchema from './schema/coach.json';
 
 export function cors(env: Env, req: Request): Record<string, string> {
   const reqOrigin = req.headers.get("Origin") || "";

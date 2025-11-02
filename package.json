@@ -2,10 +2,9 @@
   "name": "my-chat-agent-v2",
   "version": "10.1.0",
   "description": "ReflectivAI Gateway - Cloudflare Worker",
-  "main": "dist/worker.js",
+  "main": "src/worker.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc && node scripts/bundle.js",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "type-check": "tsc --noEmit"

@@ -284,15 +284,14 @@ All existing endpoints remain unchanged when EI is not enabled:
 # Install dependencies
 npm install
 
-# Verify build
+# Verify TypeScript (Wrangler handles bundling automatically)
 npm run type-check
-npm run build
 ```
 
 ### Local Development
 
 ```bash
-# Start local dev server
+# Start local dev server (Wrangler bundles TypeScript on-the-fly)
 npm run dev
 
 # Test EI endpoint
@@ -307,7 +306,7 @@ curl -X POST http://localhost:8787/chat?emitEi=true \
 # Set secrets (one-time)
 wrangler secret put PROVIDER_KEY
 
-# Deploy to Cloudflare
+# Deploy to Cloudflare (Wrangler handles TypeScript compilation and bundling)
 npm run deploy
 
 # Or with explicit environment
