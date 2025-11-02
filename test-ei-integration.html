@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EI Integration Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+    .pass { background: #e8f6ee; border-color: #bfe7cf; }
+    .fail { background: #fdeaea; border-color: #f5c2c2; }
+  </style>
+</head>
+<body>
+  <h1>EI Integration Tests</h1>
+  <div id="results"></div>
+  
+  <script>
+    const results = [];
+    
+    function test(name, condition) {
+      results.push({ name, pass: condition });
+    }
+    
+    // Test 1: Check if widget.js has the emitEi code
+    fetch('widget.js')
+      .then(r => r.text())
+      .then(code => {
+        test('Widget.js contains emitEi logic', code.includes('emitEi=true'));
+        test('Widget.js checks currentMode === "sales-simulation"', code.includes('currentMode === "sales-simulation"'));
+        test('Widget.js has EI shim guard', code.includes('DEBUG_EI_SHIM'));
+        test('Widget.js has renderEiPanel function', code.includes('function renderEiPanel'));
+        
+        // Test 2: Check if index.html has updated version
+        return fetch('index.html');
+      })
+      .then(r => r.text())
+      .then(html => {
+        test('index.html has cache-busting version', html.includes('widget.js?v=emitEi'));
+        
+        // Test 3: Check assets
+        return Promise.all([
+          fetch('assets/chat/config.json').then(r => ({ name: 'config.json', ok: r.ok })),
+          fetch('assets/chat/persona.json').then(r => ({ name: 'persona.json', ok: r.ok })),
+          fetch('assets/chat/data/scenarios.merged.json').then(r => ({ name: 'scenarios.merged.json', ok: r.ok }))
+        ]);
+      })
+      .then(assets => {
+        assets.forEach(asset => {
+          test(`${asset.name} returns 200`, asset.ok);
+        });
+        
+        // Display results
+        const resultsDiv = document.getElementById('results');
+        results.forEach(r => {
+          const div = document.createElement('div');
+          div.className = `test ${r.pass ? 'pass' : 'fail'}`;
+          div.textContent = `${r.pass ? '✓' : '✗'} ${r.name}`;
+          resultsDiv.appendChild(div);
+        });
+        
+        const summary = document.createElement('div');
+        summary.style.marginTop = '20px';
+        summary.style.fontWeight = 'bold';
+        const passed = results.filter(r => r.pass).length;
+        summary.textContent = `Results: ${passed}/${results.length} tests passed`;
+        summary.style.color = passed === results.length ? 'green' : 'red';
+        resultsDiv.appendChild(summary);
+      })
+      .catch(err => {
+        document.getElementById('results').innerHTML = `<div class="test fail">Error: ${err.message}</div>`;
+      });
+  </script>
+</body>
+</html>
