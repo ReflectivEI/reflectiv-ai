@@ -226,6 +226,43 @@ function deterministicScore({ reply, usedFactIds = [] }) {
   return Math.round(base + factBonus);
 }
 
+// New deterministic EI scoring with 5 dimensions
+function computeEIScores({ reply, usedFactIds = [] }) {
+  const text = String(reply || "").toLowerCase();
+  const hasQuestion = /[?]\s*$/.test(reply);
+  const wordCount = reply.split(/\s+/).filter(Boolean).length;
+  const hasCitation = usedFactIds.length > 0;
+  const hasEmpathySignals = /(i understand|appreciate|given your|thanks for|i hear|it sounds like|you mentioned)/i.test(reply);
+  const hasActionable = /(would you|could you|can you|consider|try|help|start|begin)/i.test(reply);
+  
+  // Confidence: based on factual citations and assertiveness
+  const confidence = Math.min(5, Math.max(1, 
+    3 + (hasCitation ? 1 : 0) + (usedFactIds.length > 1 ? 1 : 0)
+  ));
+  
+  // Active Listening: ends with question or shows engagement
+  const active_listening = Math.min(5, Math.max(1,
+    2 + (hasQuestion ? 2 : 0) + (hasEmpathySignals ? 1 : 0)
+  ));
+  
+  // Rapport: empathy signals and appropriate tone
+  const rapport = Math.min(5, Math.max(1,
+    2 + (hasEmpathySignals ? 2 : 0) + (wordCount > 50 && wordCount < 150 ? 1 : 0)
+  ));
+  
+  // Adaptability: actionable suggestions and flexibility
+  const adaptability = Math.min(5, Math.max(1,
+    3 + (hasActionable ? 1 : 0) + (hasQuestion ? 1 : 0)
+  ));
+  
+  // Persistence: fact usage and follow-through
+  const persistence = Math.min(5, Math.max(1,
+    2 + (hasCitation ? 2 : 0) + (hasActionable ? 1 : 0)
+  ));
+  
+  return { confidence, active_listening, rapport, adaptability, persistence };
+}
+
 async function seqGet(env, session) {
   if (!env.SESS) return { lastNorm: "", fsm: {} };
   const k = `state:${session}`;
@@ -278,6 +315,9 @@ async function postPlan(req, env) {
 
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
+  const url = new URL(req.url);
+  const emitEi = url.searchParams.get("emitEi") === "true";
+  
   const body = await readJson(req);
   const {
     mode = "sales-simulation",
@@ -395,15 +435,38 @@ Use only the Facts IDs provided when making claims.`.trim();
   if (!coachObj || !coachObj.scores) {
     const usedFactIds = (activePlan.facts || []).map(f => f.id);
     const overall = deterministicScore({ reply, usedFactIds });
+    
+    // Compute new EI dimensions
+    const eiScores = computeEIScores({ reply, usedFactIds });
+    
+    // Map new EI dimensions to legacy keys for backward compatibility
+    const legacyScores = {
+      empathy: eiScores.rapport,
+      discovery: eiScores.active_listening,
+      compliance: eiScores.confidence,
+      clarity: eiScores.adaptability,
+      accuracy: eiScores.persistence
+    };
+    
     coachObj = {
       overall,
-      scores: { accuracy: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, clarity: 4, objection_handling: 3, empathy: 3 },
+      scores: legacyScores,
+      scores_v2: eiScores,  // Retain v2 for diagnostics
       worked: ["Tied guidance to facts"],
       improve: ["End with one specific discovery question"],
       phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
       feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
       context: { rep_question: String(user || ""), hcp_reply: reply }
     };
+  }
+  
+  // Apply EI filtering based on emitEi flag and mode
+  if (!emitEi || mode !== "sales-simulation") {
+    // Remove EI data if flag is not set or mode is not sales-simulation
+    if (coachObj) {
+      delete coachObj.scores;
+      delete coachObj.scores_v2;
+    }
   }
 
   return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
