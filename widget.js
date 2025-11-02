@@ -80,6 +80,59 @@
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
 
+  // ---------- Performance telemetry ----------
+  let debugMode = false;
+  let telemetryFooter = null;
+  let currentTelemetry = null;
+  const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
+
+  function isDebugMode() {
+    return /[?&]debug=1/.test(window.location.search);
+  }
+
+  function initTelemetry() {
+    debugMode = isDebugMode();
+    currentTelemetry = {
+      t_open: 0,
+      t_first_byte: 0,
+      t_first_chunk: 0,
+      t_done: 0,
+      retries: 0,
+      httpStatus: "",
+      mode: "",
+      bytes_rx: 0,
+      tokens_rx: 0
+    };
+  }
+
+  function updateDebugFooter() {
+    if (!debugMode || !telemetryFooter || !currentTelemetry) return;
+    
+    const t = currentTelemetry;
+    const ttfb = t.t_first_byte > 0 ? ((t.t_first_byte - t.t_open) / 1000).toFixed(1) : "–.–";
+    const firstChunk = t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "–.–";
+    const done = t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "–.–";
+    
+    telemetryFooter.textContent = `TTFB/FirstChunk/Done: ${ttfb}s / ${firstChunk}s / ${done}s • retries:${t.retries} • ${t.httpStatus || "—"}`;
+  }
+
+  function logTelemetry() {
+    if (!currentTelemetry || currentTelemetry.t_open === 0) return;
+    
+    const t = currentTelemetry;
+    const row = {
+      mode: t.mode,
+      TTFB_s: t.t_first_byte > 0 ? ((t.t_first_byte - t.t_open) / 1000).toFixed(1) : "—",
+      FirstChunk_s: t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "—",
+      Done_s: t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "—",
+      retries: t.retries,
+      status: t.httpStatus || "—",
+      bytes_rx: t.bytes_rx,
+      tokens_rx: t.tokens_rx
+    };
+    console.table([row]);
+  }
+
   // ---------- EI defaults ----------
   const DEFAULT_PERSONAS = [
     { key: "difficult", label: "Difficult HCP" },
@@ -940,6 +993,30 @@ ${COMMON}`
       </div>
     `;
     mount.appendChild(shell);
+    
+    // Add debug footer if ?debug=1
+    if (isDebugMode()) {
+      telemetryFooter = el("div", "telemetry-footer");
+      // Style for minimal, unobtrusive debug footer
+      Object.assign(telemetryFooter.style, {
+        position: "absolute",
+        bottom: "64px",
+        left: "16px",
+        right: "16px",
+        fontSize: "12px",
+        fontFamily: "monospace",
+        opacity: "0.7",
+        color: "#2f3a4f",
+        padding: "4px 8px",
+        background: "rgba(255,255,255,0.9)",
+        borderTop: "1px solid #e1e6ef",
+        pointerEvents: "none",
+        zIndex: "100"
+      });
+      telemetryFooter.textContent = "TTFB/FirstChunk/Done: –.– / –.– / –.– • retries:0 • —";
+      shell.style.position = "relative";
+      shell.appendChild(telemetryFooter);
+    }
 
     // rebuild real UI
     const bar = el("div", "chat-toolbar");
@@ -1434,11 +1511,12 @@ ${COMMON}`
   }
 
   // SSE streaming handler with requestAnimationFrame batching
-  async function streamWithSSE(url, payload, onToken) {
+  async function streamWithSSE(url, payload, onToken, telemetry, onFirstByte) {
     return new Promise((resolve, reject) => {
       let accumulated = "";
       let pendingUpdate = false;
       let updateScheduled = false;
+      let firstByteRecorded = false;
       
       // Validate payload size to prevent URL length issues
       const payloadStr = JSON.stringify(payload);
@@ -1502,6 +1580,17 @@ ${COMMON}`
       eventSource.onmessage = (event) => {
         lastTokenTime = Date.now();
         
+        // Record first byte on first message
+        if (!firstByteRecorded) {
+          firstByteRecorded = true;
+          if (telemetry) {
+            telemetry.t_first_byte = Date.now();
+          }
+          if (onFirstByte) {
+            onFirstByte();
+          }
+        }
+        
         try {
           const data = JSON.parse(event.data);
           const token = data.token || data.content || data.delta || "";
@@ -1541,6 +1630,13 @@ ${COMMON}`
     const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
     const useStreaming = cfg?.stream === true;
     
+    // Initialize telemetry
+    initTelemetry();
+    currentTelemetry.t_open = Date.now();
+    currentTelemetry.mode = currentMode;
+    currentTelemetry.retries = 0;
+    updateDebugFooter();
+    
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
@@ -1557,6 +1653,7 @@ ${COMMON}`
     if (useStreaming) {
       try {
         let streamedContent = "";
+        let firstChunkRecorded = false;
         const shellEl = mount.querySelector(".reflectiv-chat");
         const msgsEl = shellEl?.querySelector(".chat-messages");
         
@@ -1573,11 +1670,30 @@ ${COMMON}`
         
         const result = await streamWithSSE(url, payload, (content) => {
           streamedContent = content;
+          
+          // Record first chunk with actual content
+          if (!firstChunkRecorded && content && content.trim().length > 0) {
+            currentTelemetry.t_first_chunk = Date.now();
+            firstChunkRecorded = true;
+            updateDebugFooter();
+          }
+          
           streamBody.innerHTML = md(sanitizeLLM(content));
           if (msgsEl) {
             msgsEl.scrollTop = msgsEl.scrollHeight;
           }
+          
+          // Approximate bytes received
+          currentTelemetry.bytes_rx = textEncoder.encode(content).length;
+        }, currentTelemetry, () => {
+          // onFirstByte callback
+          updateDebugFooter();
         });
+        
+        // Mark done
+        currentTelemetry.t_done = Date.now();
+        currentTelemetry.httpStatus = "stream";
+        updateDebugFooter();
         
         // Remove streaming element - the actual message will be added by sendMessage
         if (streamRow.parentNode) {
@@ -1587,6 +1703,9 @@ ${COMMON}`
         return result || streamedContent;
       } catch (e) {
         removeTypingIndicator(typingIndicator);
+        currentTelemetry.httpStatus = e.message || "error";
+        currentTelemetry.t_done = Date.now();
+        updateDebugFooter();
         console.warn("SSE streaming failed, falling back to regular fetch:", e);
         // Fall through to regular fetch with retry
       }
@@ -1597,6 +1716,11 @@ ${COMMON}`
     let lastError = null;
     
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
+      if (attempt > 0) {
+        currentTelemetry.retries = attempt;
+        updateDebugFooter();
+      }
+      
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
       
@@ -1612,17 +1736,43 @@ ${COMMON}`
         });
 
         clearTimeout(timeout);
+        
+        // Record first byte (HTTP headers received)
+        if (currentTelemetry.t_first_byte === 0) {
+          currentTelemetry.t_first_byte = Date.now();
+          updateDebugFooter();
+        }
+        
         removeTypingIndicator(typingIndicator);
 
         if (r.ok) {
-          const data = await r.json().catch(() => ({}));
-          return (
-            data?.content ||
-            data?.reply ||
-            data?.choices?.[0]?.message?.content ||
-            ""
-          );
+          const bodyText = await r.text();
+          currentTelemetry.bytes_rx = textEncoder.encode(bodyText).length;
+          currentTelemetry.httpStatus = r.status.toString();
+          
+          const data = JSON.parse(bodyText);
+          
+          // Extract tokens if available (prefer completion_tokens for accuracy)
+          if (data.usage?.completion_tokens) {
+            currentTelemetry.tokens_rx = data.usage.completion_tokens;
+          }
+          
+          const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
+          
+          // Record first chunk (first response data)
+          if (currentTelemetry.t_first_chunk === 0 && content) {
+            currentTelemetry.t_first_chunk = Date.now();
+          }
+          
+          currentTelemetry.t_done = Date.now();
+          updateDebugFooter();
+          
+          return content;
         }
+        
+        // Record status even on error
+        currentTelemetry.httpStatus = r.status.toString();
+        updateDebugFooter();
         
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
@@ -1638,11 +1788,16 @@ ${COMMON}`
         // Retry on timeout or network errors
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
+          currentTelemetry.httpStatus = "timeout";
+          updateDebugFooter();
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
         
         removeTypingIndicator(typingIndicator);
+        currentTelemetry.httpStatus = e.message || "error";
+        currentTelemetry.t_done = Date.now();
+        updateDebugFooter();
         console.warn("Model call failed:", e);
         
         // Show retry UI if we've exhausted all retries and taken >= 8s total
@@ -1656,6 +1811,9 @@ ${COMMON}`
     }
 
     removeTypingIndicator(typingIndicator);
+    currentTelemetry.httpStatus = lastError?.message || "failed";
+    currentTelemetry.t_done = Date.now();
+    updateDebugFooter();
     console.warn("Model call failed after all retries:", lastError);
     showRetryUI();
     return "";
@@ -2029,6 +2187,9 @@ if (norm(replyText) === norm(userText)) {
         trimConversationIfNeeded();
         renderMessages();
         renderCoach();
+        
+        // Log telemetry after assistant reply completes
+        logTelemetry();
 
         if (currentMode === "emotional-assessment") generateFeedback();
 
