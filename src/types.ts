@@ -9,6 +9,7 @@ export interface Env {
   CORS_ORIGINS: string;
   REQUIRE_FACTS?: string;
   MAX_OUTPUT_TOKENS?: string;
+  ENVIRONMENT?: string;
   SESS?: KVNamespace;
 }
 

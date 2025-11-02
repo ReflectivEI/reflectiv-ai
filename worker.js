@@ -42,9 +42,11 @@ export default {
             return json({ error: "not_found" }, 404, env, req);
         }
         catch (e) {
+            // Don't expose internal error details in production
+            const isDev = env.ENVIRONMENT === 'development';
             return json({
                 error: "server_error",
-                detail: String(e?.message || e)
+                detail: isDev ? String(e?.message || e) : "An internal error occurred"
             }, 500, env, req);
         }
     }

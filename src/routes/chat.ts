@@ -262,10 +262,11 @@ async function handleSSEChat(
       await writer.write(encoder.encode(`event: coach.final\ndata: ${JSON.stringify(finalPayload)}\n\n`));
       
       trackChatRequest(mode, config.emitEi, Date.now() - startTime);
-    } catch (error) {
+    } catch (error: any) {
+      // Don't expose internal error details
       await writer.write(encoder.encode(`event: error\ndata: ${JSON.stringify({ 
         error: "processing_failed",
-        detail: String(error) 
+        detail: "An error occurred while processing your request"
       })}\n\n`));
     } finally {
       await writer.close();
