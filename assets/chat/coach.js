@@ -24,12 +24,12 @@
     return r.json();
   };
 
-  // ---------- data sources (site-relative, avoids CORS surprises) ----------
+  // ---------- data sources (relative paths for portability) ----------
   const DATA = {
-    config:    "/assets/chat/config.json",
-    personas:  "/assets/chat/persona.json",
-    scenarios: "/assets/chat/data/scenarios.merged.json",
-    system:    "/assets/chat/system.md"
+    config:    "assets/chat/config.json",
+    personas:  "assets/chat/persona.json",
+    scenarios: "assets/chat/data/scenarios.merged.json",
+    system:    "assets/chat/system.md"
   };
 
   // ---------- constants ----------
