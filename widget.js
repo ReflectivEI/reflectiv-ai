@@ -140,13 +140,52 @@
     const base = getWorkerBase();
     if (!base) throw new Error("worker_base_missing");
     const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload || {})
-    });
-    if (!r.ok) throw new Error(`${path}_http_${r.status}`);
-    return r.json();
+    
+    // Retry logic with exponential backoff for 429/5xx errors
+    const delays = [300, 800, 1500];
+    let lastError = null;
+    
+    for (let attempt = 0; attempt < delays.length + 1; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
+      
+      try {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload || {}),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeout);
+        
+        if (r.ok) {
+          return await r.json();
+        }
+        
+        // Check if we should retry (429 or 5xx errors)
+        if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
+          lastError = new Error(`${path}_http_${r.status}`);
+          await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+          continue;
+        }
+        
+        throw new Error(`${path}_http_${r.status}`);
+      } catch (e) {
+        clearTimeout(timeout);
+        
+        // Retry on timeout or network errors
+        if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
+          lastError = e;
+          await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+          continue;
+        }
+        
+        throw e;
+      }
+    }
+    
+    throw lastError || new Error(`${path}_failed_after_retries`);
   }
 
   // mode-aware fallback lines
@@ -799,6 +838,14 @@ ${COMMON}`
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
 #reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
+#reflectiv-widget .typing-dots{display:inline-flex;gap:4px;align-items:center}
+#reflectiv-widget .typing-dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2f3a4f;animation:typing-bounce 1.4s infinite ease-in-out both}
+#reflectiv-widget .typing-dots span:nth-child(1){animation-delay:-0.32s}
+#reflectiv-widget .typing-dots span:nth-child(2){animation-delay:-0.16s}
+@keyframes typing-bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+#reflectiv-widget .retry-ui .retry-btn{cursor:pointer;transition:background 0.2s}
+#reflectiv-widget .retry-ui .retry-btn:hover{background:#1f2a3f}
+#reflectiv-widget .streaming .content{background:#f0f7ff;border-color:#b3d9ff}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
       `;
@@ -1280,17 +1327,189 @@ ${COMMON}`
     applyModeVisibility();
   }
 
-  // ---------- callModel (hardened with retries, timeout, and backoff) ----------
+  // ---------- callModel (hardened with retries, timeout, SSE streaming, and backoff) ----------
   function rid() {
     return Math.random().toString(36).slice(2);
   }
 
+  // Helper to show typing indicator
+  function showTypingIndicator() {
+    const shellEl = mount.querySelector(".reflectiv-chat");
+    const msgsEl = shellEl?.querySelector(".chat-messages");
+    if (!msgsEl) return null;
+    
+    const typingRow = el("div", "message assistant typing-indicator");
+    const typingContent = el("div", "content");
+    typingContent.innerHTML = '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>';
+    typingRow.appendChild(typingContent);
+    msgsEl.appendChild(typingRow);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    
+    return typingRow;
+  }
+  
+  // Helper to remove typing indicator
+  function removeTypingIndicator(indicator) {
+    if (indicator && indicator.parentNode) {
+      indicator.parentNode.removeChild(indicator);
+    }
+  }
+
+  // SSE streaming handler with requestAnimationFrame batching
+  async function streamWithSSE(url, payload, onToken) {
+    return new Promise((resolve, reject) => {
+      let accumulated = "";
+      let pendingUpdate = false;
+      let updateScheduled = false;
+      
+      // Create EventSource URL with payload as query params
+      const sseUrl = new URL(url);
+      sseUrl.searchParams.set("stream", "true");
+      sseUrl.searchParams.set("data", btoa(JSON.stringify(payload)));
+      
+      const eventSource = new EventSource(sseUrl.toString());
+      const startTime = Date.now();
+      let lastTokenTime = Date.now();
+      
+      // 8s auto-fail timeout
+      const failTimeout = setTimeout(() => {
+        eventSource.close();
+        reject(new Error("stream_timeout_8s"));
+      }, 8000);
+      
+      // Batched DOM update using requestAnimationFrame
+      const scheduleDOMUpdate = () => {
+        if (updateScheduled) return;
+        updateScheduled = true;
+        
+        requestAnimationFrame(() => {
+          if (pendingUpdate && accumulated) {
+            onToken(accumulated);
+            pendingUpdate = false;
+          }
+          updateScheduled = false;
+        });
+      };
+      
+      eventSource.onmessage = (event) => {
+        clearTimeout(failTimeout);
+        lastTokenTime = Date.now();
+        
+        try {
+          const data = JSON.parse(event.data);
+          const token = data.token || data.content || data.delta || "";
+          
+          if (token) {
+            accumulated += token;
+            pendingUpdate = true;
+            scheduleDOMUpdate();
+          }
+          
+          if (data.done) {
+            eventSource.close();
+            clearTimeout(failTimeout);
+            // Final update
+            if (pendingUpdate) {
+              onToken(accumulated);
+            }
+            resolve(accumulated);
+          }
+        } catch (e) {
+          console.warn("SSE parse error:", e);
+        }
+      };
+      
+      eventSource.onerror = (err) => {
+        eventSource.close();
+        clearTimeout(failTimeout);
+        
+        if (accumulated) {
+          resolve(accumulated);
+        } else {
+          reject(new Error("sse_connection_failed"));
+        }
+      };
+      
+      // Heartbeat check - if no data for 8s, fail
+      const heartbeat = setInterval(() => {
+        if (Date.now() - lastTokenTime > 8000) {
+          clearInterval(heartbeat);
+          clearTimeout(failTimeout);
+          eventSource.close();
+          
+          if (accumulated) {
+            resolve(accumulated);
+          } else {
+            reject(new Error("sse_heartbeat_timeout"));
+          }
+        }
+      }, 1000);
+    });
+  }
+
   async function callModel(messages) {
     const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    const useStreaming = cfg?.stream === true;
+    
+    // Show typing indicator within 100ms
+    const typingIndicator = showTypingIndicator();
+    
+    const payload = {
+      model: (cfg?.model) || "llama-3.1-8b-instant",
+      temperature: (currentMode === "role-play" ? 0.35 : 0.2),
+      top_p: 0.9,
+      stream: useStreaming,
+      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
+      messages
+    };
 
-    const attempt = async (n, delayMs) => {
+    // SSE Streaming branch
+    if (useStreaming) {
+      try {
+        let streamedContent = "";
+        const shellEl = mount.querySelector(".reflectiv-chat");
+        const msgsEl = shellEl?.querySelector(".chat-messages");
+        
+        // Create a temporary message element for streaming updates
+        const streamRow = el("div", "message assistant streaming");
+        const streamContent = el("div", "content");
+        const streamBody = el("div");
+        streamContent.appendChild(streamBody);
+        streamRow.appendChild(streamContent);
+        
+        // Remove typing indicator and add stream element
+        removeTypingIndicator(typingIndicator);
+        msgsEl?.appendChild(streamRow);
+        
+        const result = await streamWithSSE(url, payload, (content) => {
+          streamedContent = content;
+          streamBody.innerHTML = md(sanitizeLLM(content));
+          if (msgsEl) {
+            msgsEl.scrollTop = msgsEl.scrollHeight;
+          }
+        });
+        
+        // Remove streaming element - the actual message will be added by sendMessage
+        if (streamRow.parentNode) {
+          streamRow.parentNode.removeChild(streamRow);
+        }
+        
+        return result || streamedContent;
+      } catch (e) {
+        removeTypingIndicator(typingIndicator);
+        console.warn("SSE streaming failed, falling back to regular fetch:", e);
+        // Fall through to regular fetch with retry
+      }
+    }
+
+    // Regular fetch with exponential backoff retries (300ms → 800ms → 1.5s)
+    const delays = [300, 800, 1500];
+    let lastError = null;
+    
+    for (let attempt = 0; attempt < delays.length + 1; attempt++) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort("timeout"), 45000);
+      const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
+      
       try {
         const r = await fetch(url, {
           method: "POST",
@@ -1298,40 +1517,93 @@ ${COMMON}`
             "Content-Type": "application/json",
             "X-Req-Id": rid()
           },
-          body: JSON.stringify({
-            model: (cfg?.model) || "llama-3.1-8b-instant",
-            // PATCH C: more variability in RP only
-            temperature: (currentMode === "role-play" ? 0.35 : 0.2),
-            top_p: 0.9,
-            stream: !!cfg?.stream,
-            max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
-            messages
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal
         });
 
-        if (!r.ok) throw new Error("HTTP " + r.status);
-
-        const data = await r.json().catch(() => ({}));
-        return (
-          data?.content ||
-          data?.reply ||
-          data?.choices?.[0]?.message?.content ||
-          ""
-        );
-      } catch (e) {
-        if (n > 0 && /HTTP 5\d\d|timeout|TypeError|NetworkError/i.test(String(e))) {
-          await new Promise((res) => setTimeout(res, delayMs));
-          return attempt(n - 1, delayMs * 2);
-        }
-        console.warn("Model call failed:", e);
-        return "";
-      } finally {
         clearTimeout(timeout);
-      }
-    };
+        removeTypingIndicator(typingIndicator);
 
-    return attempt(2, 400);
+        if (r.ok) {
+          const data = await r.json().catch(() => ({}));
+          return (
+            data?.content ||
+            data?.reply ||
+            data?.choices?.[0]?.message?.content ||
+            ""
+          );
+        }
+        
+        // Check if we should retry (429 or 5xx errors)
+        if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
+          lastError = new Error("HTTP " + r.status);
+          await new Promise((res) => setTimeout(res, delays[attempt]));
+          continue;
+        }
+        
+        throw new Error("HTTP " + r.status);
+      } catch (e) {
+        clearTimeout(timeout);
+        
+        // Retry on timeout or network errors
+        if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
+          lastError = e;
+          await new Promise((res) => setTimeout(res, delays[attempt]));
+          continue;
+        }
+        
+        removeTypingIndicator(typingIndicator);
+        console.warn("Model call failed:", e);
+        
+        // Show retry UI after 8s of failures
+        if (Date.now() - (window._lastCallModelAttempt || 0) > 8000) {
+          showRetryUI();
+        }
+        
+        return "";
+      }
+    }
+
+    removeTypingIndicator(typingIndicator);
+    console.warn("Model call failed after all retries:", lastError);
+    showRetryUI();
+    return "";
+  }
+  
+  // Show retry button UI
+  function showRetryUI() {
+    const shellEl = mount.querySelector(".reflectiv-chat");
+    const msgsEl = shellEl?.querySelector(".chat-messages");
+    if (!msgsEl) return;
+    
+    // Check if retry UI already exists
+    if (msgsEl.querySelector(".retry-ui")) return;
+    
+    const retryRow = el("div", "message assistant retry-ui");
+    const retryContent = el("div", "content");
+    retryContent.style.background = "#fff3cd";
+    retryContent.style.borderColor = "#ffc107";
+    retryContent.innerHTML = `
+      <p style="margin: 0 0 8px 0;"><strong>⚠️ Request timed out</strong></p>
+      <p style="margin: 0 0 8px 0; font-size: 13px;">The server took too long to respond.</p>
+      <button class="btn retry-btn" style="font-size: 13px; padding: 6px 16px;">Retry</button>
+    `;
+    retryRow.appendChild(retryContent);
+    msgsEl.appendChild(retryRow);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    
+    // Add retry click handler
+    const retryBtn = retryContent.querySelector(".retry-btn");
+    if (retryBtn) {
+      retryBtn.onclick = () => {
+        retryRow.parentNode.removeChild(retryRow);
+        // Re-send last user message
+        const lastUserMsg = conversation.filter(m => m.role === "user").pop();
+        if (lastUserMsg) {
+          sendMessage(lastUserMsg.content);
+        }
+      };
+    }
   }
 
   // ---------- final-eval helper ----------
@@ -1461,6 +1733,9 @@ ${COMMON}`
   async function sendMessage(userText) {
     if (isSending) return;
     isSending = true;
+    
+    // Track timing for auto-fail feature
+    window._lastCallModelAttempt = Date.now();
 
     const shellEl = mount.querySelector(".reflectiv-chat");
     const renderMessages = shellEl._renderMessages;
