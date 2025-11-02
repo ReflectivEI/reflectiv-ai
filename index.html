@@ -8,15 +8,16 @@
   <link rel="icon" href="assets/favicon.ico">
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
-  <!-- Allows Tailwind CDN + Google Fonts + your Worker -->
+  <!-- Allows Tailwind CDN + Google Fonts + Worker origin + EventSource -->
   <meta http-equiv="Content-Security-Policy"
         content="
           default-src 'self';
           img-src 'self' data:;
-          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com;
           font-src  'self' https://fonts.gstatic.com;
           script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
-          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev https://*.workers.dev;
+          worker-src 'self' blob:;
         ">
 
   <!-- Performance: preconnect for Google Fonts -->
@@ -110,6 +111,23 @@
       window.WORKER_URL = BASE;
       window.COACH_ENDPOINT = BASE + '/chat';
       window.ALORA_ENDPOINT = BASE + '/chat';
+      
+      // Preload critical resources on page load
+      if ('fetch' in window) {
+        // Use link preload for better performance
+        const preload = (href) => {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'fetch';
+          link.href = href;
+          link.crossOrigin = 'anonymous';
+          document.head.appendChild(link);
+        };
+        
+        // Preload config and scenarios
+        preload('assets/chat/config.json');
+        preload('assets/chat/data/scenarios.merged.json');
+      }
     })();
   </script>
 
@@ -121,9 +139,19 @@
   </script>
 
   <!-- ReflectivAI Coach assets (order matters: CSS → context → coach) -->
-  <link rel="stylesheet" href="widget.css?v=ui3">
+  <link rel="stylesheet" href="apps/site/assets/css/widget.css?v=ui4">
   <script src="assets/chat/ei-context.js?v=ui3"></script>
   <script src="assets/chat/coach.js?v=ui3"></script>
+  
+  <!-- Feature flag for new modular widget (set to false to use old widget.js) -->
+  <script>
+    window.REFLECTIV_USE_NEW_WIDGET = true; // Set to false to use legacy widget.js
+  </script>
+  
+  <!-- New modular widget (ES6 modules) -->
+  <script type="module" src="apps/site/widget/main.js?v=20251102"></script>
+  
+  <!-- Legacy widget.js fallback -->
   <script defer src="widget.js?v=20251025-1045"></script>
 
 
