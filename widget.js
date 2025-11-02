@@ -80,6 +80,9 @@
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
 
+  // ---------- EI Panel Constants ----------
+  const EI_GUIDE_URL = "/docs/about-ei.html#scoring";
+
   // ---------- Performance telemetry ----------
   let debugMode = false;
   let telemetryFooter = null;
@@ -558,13 +561,13 @@
   }
 
   // ---------- EI Panel Renderer ----------
-  const EI_GUIDE_URL = "/docs/about-ei.html#scoring";
   
   function renderEiPanel(msg) {
-    // Dev-only shim: populate sample EI data if missing (remove in production)
+    // Dev-only shim: use sample EI data if missing (remove in production)
+    let ei;
     if (!msg._coach || !msg._coach.ei) {
-      if (!msg._coach) msg._coach = {};
-      msg._coach.ei = {
+      // Use local fallback object instead of mutating input
+      ei = {
         scores: { empathy: 4, stress_management: 3, active_listening: 4, validation: 3 },
         rationales: {
           empathy: "Acknowledged HCP concerns effectively",
@@ -579,9 +582,10 @@
         ],
         rubric_version: "v1.0-dev"
       };
+    } else {
+      ei = msg._coach.ei;
     }
     
-    const ei = msg._coach.ei;
     const scores = ei.scores || {};
     const rationales = ei.rationales || {};
     const tips = ei.tips || [];
@@ -598,8 +602,8 @@
       .map(([key, value]) => {
         const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
         const cls = scoreClass(value);
-        const rationale = rationales[key] ? ` — ${esc(rationales[key])}` : "";
-        return `<span class="ei-pill ${cls}" title="${esc(rationale)}">${esc(label)}: ${value}/5</span>`;
+        const rationale = rationales[key] ? esc(rationales[key]) : "";
+        return `<span class="ei-pill ${cls}" title="${rationale}">${esc(label)}: ${value}/5</span>`;
       })
       .join("");
     
