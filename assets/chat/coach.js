@@ -10,7 +10,8 @@
       else if (k === "html") n.innerHTML = v;
       else if (v != null) n.setAttribute(k, v);
     }
-    (children || []).forEach(c =>
+    // Handle children flexibly: array, single element, or null
+    [children].flat().filter(Boolean).forEach(c =>
       n.appendChild(typeof c === "string" ? document.createTextNode(c) : c)
     );
     return n;
@@ -24,12 +25,12 @@
     return r.json();
   };
 
-  // ---------- data sources (site-relative, avoids CORS surprises) ----------
+  // ---------- data sources (relative paths for portability) ----------
   const DATA = {
-    config:    "/assets/chat/config.json",
-    personas:  "/assets/chat/persona.json",
-    scenarios: "/assets/chat/data/scenarios.merged.json",
-    system:    "/assets/chat/system.md"
+    config:    "assets/chat/config.json",
+    personas:  "assets/chat/persona.json",
+    scenarios: "assets/chat/data/scenarios.merged.json",
+    system:    "assets/chat/system.md"
   };
 
   // ---------- constants ----------

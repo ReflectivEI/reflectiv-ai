@@ -1819,7 +1819,7 @@ ${COMMON}`
         currentTelemetry.httpStatus = e.message || "error";
         currentTelemetry.t_done = Date.now();
         updateDebugFooter();
-        console.warn("SSE streaming failed, falling back to regular fetch:", e);
+        console.warn("[coach] degrade-to-legacy - SSE streaming failed, falling back to regular fetch:", e);
         // Fall through to regular fetch with retry
       }
     }
@@ -1911,7 +1911,7 @@ ${COMMON}`
         currentTelemetry.httpStatus = e.message || "error";
         currentTelemetry.t_done = Date.now();
         updateDebugFooter();
-        console.warn("Model call failed:", e);
+        console.warn("[coach] degrade-to-legacy - Model call failed:", e);
         
         // Show retry UI if we've exhausted all retries and taken >= 8s total
         const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
@@ -1927,7 +1927,7 @@ ${COMMON}`
     currentTelemetry.httpStatus = lastError?.message || "failed";
     currentTelemetry.t_done = Date.now();
     updateDebugFooter();
-    console.warn("Model call failed after all retries:", lastError);
+    console.warn("[coach] degrade-to-legacy - Model call failed after all retries:", lastError);
     showRetryUI();
     return "";
   }
@@ -2181,7 +2181,10 @@ ${detail}`;
         }
 
         let raw = await callModel(messages);
-        if (!raw) raw = fallbackText(currentMode);
+        if (!raw) {
+          console.warn("[coach] degrade-to-legacy - Using fallback text due to empty response");
+          raw = fallbackText(currentMode);
+        }
 
         let { coach, clean } = extractCoach(raw);
         
@@ -2323,6 +2326,7 @@ if (norm(replyText) === norm(userText)) {
           }).catch(() => {});
         }
       } catch (e) {
+        console.error("[coach] degrade-to-legacy - Error in sendMessage:", e);
         conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
         trimConversationIfNeeded();
         renderMessages();
