@@ -479,14 +479,20 @@
     // Try to extract Rep Approach (as array of items)
     const repApproachMatch = s.match(/(?:^|\n)\s*Rep Approach\s*:\s*(.+?)(?=\n\s*(?:Impact|Suggested Phrasing):|$)/is);
     if (repApproachMatch) {
-      const items = repApproachMatch[1].split(/\n\s*[-•*]\s*/).map(x => x.trim()).filter(Boolean);
+      const items = repApproachMatch[1]
+        .split(/\n/)
+        .map(x => x.trim().replace(/^[-•*]\s*/, ''))
+        .filter(Boolean);
       parsed.rep_approach = items.length > 0 ? items : [repApproachMatch[1].trim()];
     }
     
     // Try to extract Impact (as array of items)
     const impactMatch = s.match(/(?:^|\n)\s*Impact\s*:\s*(.+?)(?=\n\s*Suggested Phrasing:|$)/is);
     if (impactMatch) {
-      const items = impactMatch[1].split(/\n\s*[-•*]\s*/).map(x => x.trim()).filter(Boolean);
+      const items = impactMatch[1]
+        .split(/\n/)
+        .map(x => x.trim().replace(/^[-•*]\s*/, ''))
+        .filter(Boolean);
       parsed.impact = items.length > 0 ? items : [impactMatch[1].trim()];
     }
     
