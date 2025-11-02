@@ -1210,52 +1210,8 @@ ${COMMON}`
         }
 
         const body = el("div");
-        
-        // Sales Simulation: render structured coach feedback in grey card
-        if (currentMode === "sales-simulation" && m.role === "assistant" && m._coach) {
-          const fb = m._coach;
-          const norm = fb; // normalized coach data
-          
-          let html = "";
-          
-          // Challenge section
-          const challenge = (fb.challenge || fb.feedback || "").trim();
-          if (challenge) {
-            html += `<p><strong>Challenge:</strong> ${esc(challenge)}</p>`;
-          }
-          
-          // Rep Approach section
-          const repApproach = fb.worked || fb.rep_approach || [];
-          if (Array.isArray(repApproach) && repApproach.length > 0) {
-            html += `<p><strong>Rep Approach:</strong></p><ul>`;
-            repApproach.forEach(item => {
-              html += `<li>${esc(item)}</li>`;
-            });
-            html += `</ul>`;
-          }
-          
-          // Impact section
-          const impact = fb.improve || fb.impact || [];
-          if (Array.isArray(impact) && impact.length > 0) {
-            html += `<p><strong>Impact:</strong></p><ul>`;
-            impact.forEach(item => {
-              html += `<li>${esc(item)}</li>`;
-            });
-            html += `</ul>`;
-          }
-          
-          // Suggested Phrasing section (NEW)
-          const phr = (norm.suggested_phrasing || fb.phrasing || "").trim();
-          if (phr) {
-            html += `<p><strong>Suggested Phrasing:</strong> "${esc(phr)}"</p>`;
-          }
-          
-          body.innerHTML = html;
-        } else {
-          const normalized = normalizeGuidanceLabels(m.content);
-          body.innerHTML = md(normalized);
-        }
-        
+        const normalized = normalizeGuidanceLabels(m.content);
+        body.innerHTML = md(normalized);
         c.appendChild(body);
 
         row.appendChild(c);
