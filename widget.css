@@ -92,45 +92,114 @@
 /* =================================================================
    SCENARIO / BRIEF / GUIDANCE
    ================================================================= */
-.simulation,.scenario-brief{
-  padding:16px 18px;background:#fff;border-bottom:1px solid var(--line);line-height:1.5;
+.simulation,
+.scenario-brief {
+  padding: 16px 18px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  line-height: 1.5;
 }
-.simulation strong,.scenario-brief strong{display:block;margin-bottom:4px;color:#0b3954;font-weight:800}
 
-.guidance,.brief-card{
-  margin:14px 16px;background:var(--soft);
-  border:1px solid var(--line);border-radius:12px;
-  padding:12px 14px;color:var(--ink);
+/* Bold section headers inside coach cards */
+.simulation strong,
+.scenario-brief strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #0b3954;
+  font-weight: 800;
 }
-.guidance h4,.brief-card h4{margin:0 0 6px;font:800 14px/1.2 "Inter";color:#0b3954}
+
+/* Add bold "Suggested Phrasing:" label before the final quoted paragraph */
+.simulation p:last-of-type::before {
+  content: "Suggested Phrasing: ";
+  font-weight: 800;
+  color: #0b3954;
+}
+
+.guidance,
+.brief-card {
+  margin: 14px 16px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--ink);
+}
+
+.guidance h4,
+.brief-card h4 {
+  margin: 0 0 6px;
+  font: 800 14px/1.2 "Inter";
+  color: #0b3954;
+}
 
 /* Collapsible rubric (if JS injects it) */
-.rubric{margin:10px 16px;border:1px dashed var(--line);border-radius:10px;background:#fcfdff}
-.rubric summary{cursor:pointer;padding:8px 10px;font:700 13px/1.2 "Inter";color:#0b3954}
-.rubric div{padding:8px 10px 10px;font:400 13px/1.5 "Inter";color:var(--ink)}
+.rubric {
+  margin: 10px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: #fcfdff;
+}
+.rubric summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  font: 700 13px/1.2 "Inter";
+  color: #0b3954;
+}
+.rubric div {
+  padding: 8px 10px 10px;
+  font: 400 13px/1.5 "Inter";
+  color: var(--ink);
+}
 
 /* =================================================================
    MESSAGES
    ================================================================= */
-.chat-messages{
-  max-height:48vh;overflow:auto;padding:16px 18px;background:#fff;
+.chat-messages {
+  max-height: 48vh;
+  overflow: auto;
+  padding: 16px 18px;
+  background: #fff;
 }
-.chat-message{margin:0 0 12px;line-height:1.45;color:var(--ink)}
-.chat-message.user{text-align:right;color:#0b3954}
-.chat-message.bot{text-align:left;color:var(--ink)}
+.chat-message {
+  margin: 0 0 12px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.chat-message.user {
+  text-align: right;
+  color: #0b3954;
+}
+.chat-message.bot {
+  text-align: left;
+  color: var(--ink);
+}
 
 /* Inline code and quotes inside messages */
-.chat-message code{
-  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-  font-size:.92em;background:#f6f8fb;border:1px solid var(--line);padding:2px 6px;border-radius:6px;
+.chat-message code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92em;
+  background: #f6f8fb;
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  border-radius: 6px;
 }
-.chat-message blockquote{
-  margin:6px 0;padding:6px 10px;border-left:3px solid var(--line);background:#fbfdff;border-radius:6px;
+.chat-message blockquote {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--line);
+  background: #fbfdff;
+  border-radius: 6px;
 }
 
 /* Bot cards (optional, if JS prints) */
-.msg-card{
-  border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px 12px;box-shadow:var(--shadow-sm);
+.msg-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 /* =================================================================
