@@ -10,9 +10,8 @@
       else if (k === "html") n.innerHTML = v;
       else if (v != null) n.setAttribute(k, v);
     }
-    // Handle children as array, single element, or null
-    const childArray = Array.isArray(children) ? children : (children ? [children] : []);
-    childArray.forEach(c =>
+    // Handle children flexibly: array, single element, or null
+    [children].flat().filter(Boolean).forEach(c =>
       n.appendChild(typeof c === "string" ? document.createTextNode(c) : c)
     );
     return n;
