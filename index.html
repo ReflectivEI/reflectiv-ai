@@ -727,5 +727,25 @@
 })();
 </script>
 
+  <script>
+(function(){
+  const once=(fn)=>{let d=0;return()=>{if(d)return;d=1;fn()}};
+  const revive=once(()=> {
+    if (typeof window.openReflectivCoach === 'function') return window.openReflectivCoach();
+    if (typeof window.ReflectivAI_OpenCoach === 'function') return window.ReflectivAI_OpenCoach();
+    const m=document.getElementById('coachModal');
+    if (m && typeof window.openModal==='function') openModal('#coachModal');
+  });
+  // only intervene if the modal is open and still empty
+  const check=()=> {
+    const box=document.querySelector('#coachModal .modal-box');
+    const host=document.getElementById('reflectiv-widget');
+    const empty = host && host.offsetHeight < 40; // blank shell
+    const open  = box && box.parentElement && box.parentElement.classList.contains('open');
+    if (open && empty) revive();
+  };
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(check,800));
+})();
+</script>
 </body>
 </html>
