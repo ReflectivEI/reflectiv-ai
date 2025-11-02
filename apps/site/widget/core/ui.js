@@ -182,8 +182,18 @@ export function createMessageBubble(content, role = 'assistant', opts = {}) {
     className: 'message-body'
   });
 
+  // Security: Only set innerHTML for pre-sanitized content
+  // For user content, use textContent to prevent XSS
   if (typeof content === 'string') {
-    body.innerHTML = content; // Allow HTML for formatted responses
+    if (opts.allowHTML && opts.sanitized) {
+      // SECURITY NOTE: innerHTML only used when content is explicitly marked as sanitized
+      // This is needed for rendering formatted responses from mode renderers
+      // Mode renderers MUST escape user input before passing content here
+      body.innerHTML = content; // nosemgrep: javascript.lang.security.audit.xss.innerHTML-modified.innerHTML-modified
+    } else {
+      // Safe default: use textContent to prevent XSS
+      body.textContent = content;
+    }
   } else if (content instanceof Node) {
     body.appendChild(content);
   }
@@ -306,13 +316,16 @@ export function debounce(fn, delay) {
 }
 
 /**
- * Request animation frame batch processor
+ * Request animation frame batch processor with automatic cleanup
  */
 const rafBatches = new Map();
+const RAF_BATCH_TTL = 5000; // 5 seconds
 
 export function batchInRAF(key, fn) {
   if (rafBatches.has(key)) {
-    cancelAnimationFrame(rafBatches.get(key));
+    const existing = rafBatches.get(key);
+    cancelAnimationFrame(existing.rafId);
+    clearTimeout(existing.ttl);
   }
 
   const rafId = requestAnimationFrame(() => {
@@ -320,7 +333,15 @@ export function batchInRAF(key, fn) {
     rafBatches.delete(key);
   });
 
-  rafBatches.set(key, rafId);
+  // Set TTL to auto-cleanup if RAF never fires (edge case)
+  const ttl = setTimeout(() => {
+    if (rafBatches.has(key)) {
+      cancelAnimationFrame(rafBatches.get(key).rafId);
+      rafBatches.delete(key);
+    }
+  }, RAF_BATCH_TTL);
+
+  rafBatches.set(key, { rafId, ttl });
 }
 
 /**

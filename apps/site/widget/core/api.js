@@ -5,9 +5,19 @@
 
 import { bus } from './bus.js';
 
+// Configuration constants
 const DEFAULT_TIMEOUT = 10000; // 10s
 const MAX_RETRIES = 3;
-const RETRY_DELAYS = [600, 1200, 2400]; // exponential backoff
+const RETRY_DELAYS = [600, 1200, 2400]; // exponential backoff in ms
+const AUTO_RETRY_DELAY = 500; // ms delay before auto-retry
+
+// Export for configurability
+export const API_CONFIG = {
+  timeout: DEFAULT_TIMEOUT,
+  maxRetries: MAX_RETRIES,
+  retryDelays: RETRY_DELAYS,
+  autoRetryDelay: AUTO_RETRY_DELAY
+};
 
 /**
  * Get worker endpoint base URL from config or global

@@ -38,7 +38,16 @@ export default {
 
       return json({ error: "not_found" }, 404, env, req);
     } catch (e) {
-      return json({ error: "server_error", detail: String(e?.message || e) }, 500, env, req);
+      // Security: Don't expose stack traces or detailed error info in production
+      // Only expose error type/message in development
+      let errorDetail = 'An error occurred';
+      
+      if (env.ENVIRONMENT === 'development' && e instanceof Error) {
+        errorDetail = e.message; // Only message, not stack
+      }
+      
+      console.error('Worker error:', e); // Log full error for debugging
+      return json({ error: "server_error", detail: errorDetail }, 500, env, req);
     }
   }
 };

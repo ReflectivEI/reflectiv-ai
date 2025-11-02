@@ -4,7 +4,7 @@
  * Accepts both structured JSON and labeled text formats
  */
 
-import { createElement, createSection, parseSimpleMarkdown } from '../../core/ui.js';
+import { createElement, createSection } from '../../core/ui.js';
 import { validateSalesSim } from '../../core/guards.js';
 import { bus } from '../../core/bus.js';
 
@@ -98,29 +98,31 @@ function formatSectionContent(content, sectionTitle) {
   if (sectionTitle === 'Suggested Phrasing') {
     // Check if it's a list
     if (text.includes('\n-') || text.includes('\n*') || text.includes('\n•')) {
-      // Already formatted as list
-      text = text
+      // Already formatted as list - sanitize and convert
+      const items = text
         .split('\n')
         .map(line => {
           const trimmed = line.trim();
           if (trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
-            return `<li>${trimmed.slice(1).trim()}</li>`;
+            // Use textContent equivalent for security
+            const content = trimmed.slice(1).trim();
+            return `<li>${escapeHTML(content)}</li>`;
           }
-          return trimmed ? `<p>${trimmed}</p>` : '';
+          return trimmed ? `<p>${escapeHTML(trimmed)}</p>` : '';
         })
         .filter(Boolean)
         .join('');
       
-      if (text.includes('<li>')) {
-        text = `<ul class="phrasing-list">${text}</ul>`;
+      if (items.includes('<li>')) {
+        text = `<ul class="phrasing-list">${items}</ul>`;
       }
     } else {
       // Single phrase or paragraph
-      text = `<p class="phrasing-suggestion">"${text}"</p>`;
+      text = `<p class="phrasing-suggestion">"${escapeHTML(text)}"</p>`;
     }
   } else {
-    // Standard formatting for other sections
-    text = parseSimpleMarkdown(text);
+    // Standard formatting for other sections - parse markdown safely
+    text = parseMarkdownSafe(text);
     
     // Wrap paragraphs
     const paragraphs = text.split('<br><br>').filter(p => p.trim());
@@ -132,6 +134,29 @@ function formatSectionContent(content, sectionTitle) {
   }
 
   return text;
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHTML(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Parse markdown safely with HTML escaping
+ */
+function parseMarkdownSafe(text) {
+  const escaped = escapeHTML(text);
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
 }
 
 /**

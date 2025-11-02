@@ -5,7 +5,7 @@
  */
 
 import { bus } from './core/bus.js';
-import { preloadResources, postJSON, loadResource } from './core/api.js';
+import { preloadResources, postJSON, loadResource, API_CONFIG } from './core/api.js';
 import * as ui from './core/ui.js';
 import { guardedValidate, resetGuards } from './core/guards.js';
 
@@ -285,8 +285,8 @@ async function handleSend() {
         content: validation.hint
       });
       
-      // Auto-retry
-      setTimeout(() => handleSend(), 500);
+      // Auto-retry with configurable delay
+      setTimeout(() => handleSend(), API_CONFIG.autoRetryDelay);
       return;
     }
 
@@ -322,11 +322,9 @@ async function renderResponse(response, container) {
   const renderer = await loadModeRenderer(state.currentMode);
 
   if (!renderer) {
-    // Fallback to simple text rendering
-    const bubble = ui.createMessageBubble(
-      ui.parseSimpleMarkdown(response),
-      'assistant'
-    );
+    // Fallback to simple text rendering - use textContent for safety
+    const textContent = typeof response === 'string' ? response : JSON.stringify(response);
+    const bubble = ui.createMessageBubble(textContent, 'assistant');
     ui.appendMessage(container, bubble);
     return;
   }
@@ -343,8 +341,9 @@ async function renderResponse(response, container) {
       ui.appendMessage(container, responseContainer);
     } catch (error) {
       console.error('Render error:', error);
-      // Fallback
-      responseContainer.innerHTML = ui.parseSimpleMarkdown(response);
+      // Fallback - use textContent for safety
+      const textContent = typeof response === 'string' ? response : JSON.stringify(response);
+      responseContainer.textContent = textContent;
       ui.appendMessage(container, responseContainer);
     }
   });
