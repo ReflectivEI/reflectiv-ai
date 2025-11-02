@@ -497,7 +497,7 @@
     }
     
     // Try to extract Suggested Phrasing
-    const phrasingMatch = s.match(/(?:^|\n)\s*Suggested Phrasing\s*:\s*(.+?)$/is);
+    const phrasingMatch = s.match(/(?:^|\n)\s*Suggested Phrasing\s*:\s*(.+?)(?=\n|$)/is);
     if (phrasingMatch) parsed.suggested_phrasing = phrasingMatch[1].trim().replace(/^["']|["']$/g, '');
     
     return Object.keys(parsed).length > 0 ? parsed : null;
@@ -1630,10 +1630,10 @@ ${detail}`;
         // Re-ask once if suggested_phrasing is missing in sales-simulation mode
         if (currentMode === "sales-simulation" && coach && (!coach.phrasing || !coach.phrasing.trim())) {
           const correctiveHint = `
-IMPORTANT: The response must include a "Suggested Phrasing" field in the <coach> JSON block.
-The suggested_phrasing should be a concrete, actionable question or statement the rep can use with the HCP.
+IMPORTANT: The response must include a "phrasing" field in the <coach> JSON block.
+The phrasing should be a concrete, actionable question or statement the rep can use with the HCP.
 Example: "Given your criteria, which patients would be the best fit to start, and what would help you try one this month?"
-Please provide your response again with all required fields including suggested_phrasing.`;
+Please provide your response again with all required fields including phrasing.`;
           
           const retryMessages = [
             ...messages,
