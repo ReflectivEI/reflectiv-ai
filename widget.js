@@ -483,7 +483,7 @@
         .split(/\n/)
         .map(x => x.trim().replace(/^[-•*]\s*/, ''))
         .filter(Boolean);
-      parsed.rep_approach = items.length > 0 ? items : [repApproachMatch[1].trim()];
+      parsed.rep_approach = items.length > 0 ? items : [repApproachMatch[1].trim().replace(/\n/g, ' ')];
     }
     
     // Try to extract Impact (as array of items)
@@ -493,12 +493,12 @@
         .split(/\n/)
         .map(x => x.trim().replace(/^[-•*]\s*/, ''))
         .filter(Boolean);
-      parsed.impact = items.length > 0 ? items : [impactMatch[1].trim()];
+      parsed.impact = items.length > 0 ? items : [impactMatch[1].trim().replace(/\n/g, ' ')];
     }
     
-    // Try to extract Suggested Phrasing
-    const phrasingMatch = s.match(/(?:^|\n)\s*Suggested Phrasing\s*:\s*(.+?)(?=\n|$)/is);
-    if (phrasingMatch) parsed.suggested_phrasing = phrasingMatch[1].trim().replace(/^["']|["']$/g, '');
+    // Try to extract Suggested Phrasing (may span multiple lines)
+    const phrasingMatch = s.match(/(?:^|\n)\s*Suggested Phrasing\s*:\s*(.+?)(?=\n\s*(?:Challenge|Rep Approach|Impact):|$)/is);
+    if (phrasingMatch) parsed.suggested_phrasing = phrasingMatch[1].trim().replace(/^["']|["']$/g, '').replace(/\n/g, ' ');
     
     return Object.keys(parsed).length > 0 ? parsed : null;
   }
@@ -1627,8 +1627,9 @@ ${detail}`;
 
         let { coach, clean } = extractCoach(raw);
         
-        // Re-ask once if suggested_phrasing is missing in sales-simulation mode
-        if (currentMode === "sales-simulation" && coach && (!coach.phrasing || !coach.phrasing.trim())) {
+        // Re-ask once if phrasing is missing in sales-simulation mode
+        const phrasing = coach?.phrasing;
+        if (currentMode === "sales-simulation" && coach && (!phrasing || !phrasing.trim())) {
           const correctiveHint = `
 IMPORTANT: The response must include a "phrasing" field in the <coach> JSON block.
 The phrasing should be a concrete, actionable question or statement the rep can use with the HCP.
