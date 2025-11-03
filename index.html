@@ -99,12 +99,15 @@
     }
   </style>
 
-  <!-- Optional global site styles -->
+  <!-- Site CSS (keep external if you want broader styles) -->
   <link rel="stylesheet" href="styles.css?v=20251021B">
+
+  <!-- Coach styles (keep if you rely on widget.css visuals) -->
+  <link rel="stylesheet" href="widget.css?v=20251021-4">
 
   <!-- Endpoints (normalize: provide base and per-feature endpoints) -->
   <script>
-    // Base Worker (no trailing /chat). Expose endpoints for Coach + Alora.
+    // Base Worker (no trailing /chat). Widget now strips /chat if present.
     (function(){
       const BASE = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
       window.WORKER_URL = BASE;
@@ -120,12 +123,9 @@
     };
   </script>
 
-  <!-- ReflectivAI Coach assets (order matters: CSS → context → coach) -->
-  <link rel="stylesheet" href="widget.css?v=ui3">
-  <script src="assets/chat/ei-context.js?v=ui3"></script>
-  <script src="assets/chat/coach.js?v=ui3"></script>
-  <script defer src="widget.js?v=rollback1"></script>
-
+  <!-- Coach script: context helpers first, then widget -->
+  <script src="assets/chat/ei-context.js?v=1"></script>
+  <script defer src="widget.js?v=20251025-1045"></script>
 
   <!-- Ensure Alora sits on top -->
   <style>#aloraFab{z-index:10001;pointer-events:auto}.alora{z-index:10001}</style>
@@ -362,7 +362,7 @@
         <p class="text-gray-600 text-sm">Pre-deployment bias testing with monitoring and remediation steps.</p>
       </div>
       <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
-        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center>
           <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6 text-accent-teal mr-2' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><line x1='12' y1='1' x2='12' y2='23'></line><path d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'></path></svg>
           Transparency & Explainability
         </h4>
@@ -478,16 +478,8 @@
     document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)}));
     document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));});
 
-    /* ---------- Coach trigger (open + mount) ---------- */
-    document.getElementById('openCoach')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      openModal('#coachModal');
-      // Mount into the host inside the modal
-      const host = document.getElementById('reflectiv-widget');
-      if (host) {
-        window.ReflectivCoach?.mount(host);
-      }
-    });
+    /* ---------- Coach trigger ---------- */
+    document.getElementById('openCoach')?.addEventListener('click',e=>{e.preventDefault();openModal('#coachModal')});
 
     /* ---------- Pill modal wiring ---------- */
     (function(){
@@ -524,11 +516,7 @@
     }
 
     const ACTIONS={
-      'open-coach':()=>{
-        openModal('#coachModal');
-        const host = document.getElementById('reflectiv-widget');
-        if (host) window.ReflectivCoach?.mount(host);
-      },
+      'open-coach':()=>openModal('#coachModal'),
       'request-demo':()=>scrollToId('contact'),
       'see-platform':()=>scrollToId('platform'),
       'see-analytics':()=>scrollToId('analytics'),
@@ -692,20 +680,6 @@
       renderChips(CHIPS_BASE);
     });
 
-    /* ------------ Safety net: auto-mount when coach modal opens ------------ */
-    const coachModal = document.getElementById('coachModal');
-    let coachMounted = false;
-    const maybeMount = () => {
-      if (coachMounted) return;
-      if (coachModal && coachModal.classList.contains('open')) {
-        const host = document.getElementById('reflectiv-widget');
-        if (host && window.ReflectivCoach?.mount) { window.ReflectivCoach.mount(host); coachMounted = true; }
-      }
-    };
-    if (coachModal) {
-      new MutationObserver(maybeMount).observe(coachModal, { attributes:true, attributeFilter:['class'] });
-    }
-
     /* Avoid white banner on bfcache restore */
     if('scrollRestoration' in history){history.scrollRestoration='manual'}
     window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo(0,0)})
@@ -728,25 +702,5 @@
 })();
 </script>
 
-  <script>
-(function(){
-  const once=(fn)=>{let d=0;return()=>{if(d)return;d=1;fn()}};
-  const revive=once(()=> {
-    if (typeof window.openReflectivCoach === 'function') return window.openReflectivCoach();
-    if (typeof window.ReflectivAI_OpenCoach === 'function') return window.ReflectivAI_OpenCoach();
-    const m=document.getElementById('coachModal');
-    if (m && typeof window.openModal==='function') openModal('#coachModal');
-  });
-  // only intervene if the modal is open and still empty
-  const check=()=> {
-    const box=document.querySelector('#coachModal .modal-box');
-    const host=document.getElementById('reflectiv-widget');
-    const empty = host && host.offsetHeight < 40; // blank shell
-    const open  = box && box.parentElement && box.parentElement.classList.contains('open');
-    if (open && empty) revive();
-  };
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(check,800));
-})();
-</script>
 </body>
 </html>
