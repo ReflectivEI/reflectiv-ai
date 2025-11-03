@@ -80,67 +80,6 @@
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
 
-  // ---------- Health gate state ----------
-  let isHealthy = false;
-  let healthCheckInterval = null;
-  let healthBanner = null;
-
-  // ---------- EI dev shim ----------
-  const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
-
-  // ---------- Performance telemetry ----------
-  let debugMode = false;
-  let telemetryFooter = null;
-  let currentTelemetry = null;
-  const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
-
-  function isDebugMode() {
-    return /[?&]debug=1/.test(window.location.search);
-  }
-
-  function initTelemetry() {
-    debugMode = isDebugMode();
-    currentTelemetry = {
-      t_open: 0,
-      t_first_byte: 0,
-      t_first_chunk: 0,
-      t_done: 0,
-      retries: 0,
-      httpStatus: "",
-      mode: "",
-      bytes_rx: 0,
-      tokens_rx: 0
-    };
-  }
-
-  function updateDebugFooter() {
-    if (!debugMode || !telemetryFooter || !currentTelemetry) return;
-    
-    const t = currentTelemetry;
-    const ttfb = t.t_first_byte > 0 ? ((t.t_first_byte - t.t_open) / 1000).toFixed(1) : "–.–";
-    const firstChunk = t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "–.–";
-    const done = t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "–.–";
-    
-    telemetryFooter.textContent = `TTFB/FirstChunk/Done: ${ttfb}s / ${firstChunk}s / ${done}s • retries:${t.retries} • ${t.httpStatus || "—"}`;
-  }
-
-  function logTelemetry() {
-    if (!currentTelemetry || currentTelemetry.t_open === 0) return;
-    
-    const t = currentTelemetry;
-    const row = {
-      mode: t.mode,
-      TTFB_s: t.t_first_byte > 0 ? ((t.t_first_byte - t.t_open) / 1000).toFixed(1) : "—",
-      FirstChunk_s: t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "—",
-      Done_s: t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "—",
-      retries: t.retries,
-      status: t.httpStatus || "—",
-      bytes_rx: t.bytes_rx,
-      tokens_rx: t.tokens_rx
-    };
-    console.table([row]);
-  }
-
   // ---------- EI defaults ----------
   const DEFAULT_PERSONAS = [
     { key: "difficult", label: "Difficult HCP" },
@@ -156,21 +95,9 @@
   ];
 
   // ---------- utils ----------
-  const STUB_MODE = new URLSearchParams(location.search).has('stub');
-  const IS_GITHUB_IO = /github\.io/i.test(location.hostname);
-  
   async function fetchLocal(path) {
     const r = await fetch(path, { cache: "no-store" });
-    
-    // 404 handling with stub mode guard
-    if (!r.ok) {
-      if (r.status === 404 && IS_GITHUB_IO && STUB_MODE) {
-        console.warn(`[stub mode] ${path} returned 404, returning empty stub`);
-        return path.endsWith('.json') ? {} : '';
-      }
-      throw new Error(`Failed to load ${path} (${r.status})`);
-    }
-    
+    if (!r.ok) throw new Error(`Failed to load ${path} (${r.status})`);
     const ct = r.headers.get("content-type") || "";
     return ct.includes("application/json") ? r.json() : r.text();
   }
@@ -182,161 +109,6 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
-
-  // ---------- Health gate ----------
-  async function checkHealth() {
-    const healthUrl = `${window.WORKER_URL}/health`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
-    
-    try {
-      const response = await fetch(healthUrl, {
-        method: "HEAD",
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
-      
-      if (response.ok) {
-        isHealthy = true;
-        hideHealthBanner();
-        enableSendButton();
-        if (healthCheckInterval) {
-          clearInterval(healthCheckInterval);
-          healthCheckInterval = null;
-        }
-        return true;
-      }
-      
-      isHealthy = false;
-      showHealthBanner();
-      disableSendButton();
-      return false;
-    } catch (e) {
-      clearTimeout(timeout);
-      isHealthy = false;
-      showHealthBanner();
-      disableSendButton();
-      return false;
-    }
-  }
-
-  function showHealthBanner() {
-    if (!mount) return;
-    
-    if (!healthBanner) {
-      healthBanner = document.createElement("div");
-      healthBanner.style.cssText = "background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin:8px 0;color:#856404;font-size:14px;font-weight:600;text-align:center;";
-      healthBanner.textContent = "⚠️ Backend unavailable. Trying again…";
-    }
-    
-    const shell = mount.querySelector(".reflectiv-chat");
-    if (shell && !shell.contains(healthBanner)) {
-      shell.insertBefore(healthBanner, shell.firstChild);
-    }
-  }
-
-  function hideHealthBanner() {
-    if (healthBanner && healthBanner.parentNode) {
-      healthBanner.parentNode.removeChild(healthBanner);
-    }
-  }
-
-  function enableSendButton() {
-    const shell = mount?.querySelector(".reflectiv-chat");
-    const sendBtn = shell?._sendBtn || shell?.querySelector(".chat-input .btn");
-    if (sendBtn) {
-      sendBtn.disabled = false;
-    }
-  }
-
-  function disableSendButton() {
-    const shell = mount?.querySelector(".reflectiv-chat");
-    const sendBtn = shell?._sendBtn || shell?.querySelector(".chat-input .btn");
-    if (sendBtn) {
-      sendBtn.disabled = true;
-    }
-  }
-
-  function startHealthRetry() {
-    if (healthCheckInterval) return;
-    
-    healthCheckInterval = setInterval(async () => {
-      await checkHealth();
-    }, 20000); // 20 seconds
-  }
-
-  // ---------- Toast notifications ----------
-  function showToast(message, type = "error") {
-    const toast = document.createElement("div");
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      max-width: 400px;
-      padding: 14px 18px;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 10000;
-      animation: slideIn 0.3s ease-out;
-      ${type === "error" ? "background:#fee;border:1px solid #f5c2c2;color:#991b1b;" : "background:#e8f6ee;border:1px solid #bfe7cf;color:#0b5a2a;"}
-    `;
-    toast.textContent = message;
-    
-    // Add animation
-    const style = document.createElement("style");
-    style.textContent = `@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
-    if (!document.querySelector('style[data-toast-anim]')) {
-      style.setAttribute('data-toast-anim', 'true');
-      document.head.appendChild(style);
-    }
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.style.transition = "opacity 0.3s ease-out";
-      toast.style.opacity = "0";
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }, 5000);
-  }
-
-  // === EI summary renderer for yellow panel ===
-  function renderEiPanel(msg){
-    const ei = msg && msg._coach && msg._coach.ei;
-    if (!ei || !ei.scores) return "";
-
-    const S = ei.scores || {};
-    const R = ei.rationales || {};
-    const tips = Array.isArray(ei.tips) ? ei.tips.slice(0,3) : [];
-    const rubver = ei.rubric_version || "v1";
-
-    const mk = (k,label) => {
-      const v = Number(S[k] ?? 0);
-      const cls = v>=4 ? "good" : v===3 ? "ok" : "bad";
-      const val = (v || v === 0) ? String(v) : "–";
-      const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
-      return `<span class="ei-pill ${cls}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
-    };
-
-    return `
-  <div class="ei-wrap">
-    <div class="ei-h">Emotional Intelligence Summary</div>
-    <div class="ei-row">
-      ${mk("empathy","Empathy")}
-      ${mk("discovery","Discovery")}
-      ${mk("compliance","Compliance")}
-      ${mk("clarity","Clarity")}
-      ${mk("accuracy","Accuracy")}
-    </div>
-    ${tips.length ? `<ul class="ei-tips">${tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>` : ""}
-    <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
-  </div>`;
-  }
 
   function sanitizeLLM(raw) {
     let s = String(raw || "");
@@ -357,7 +129,11 @@
   // --- Worker base normalizer + tiny JSON fetch helper ---
   // Ensures add-on calls like jfetch("/plan") hit the base (…/plan), even when config points to …/chat
   function getWorkerBase() {
-    return window.WORKER_URL || "";
+    const raw =
+      (window.COACH_ENDPOINT || window.WORKER_URL || (cfg && (cfg.apiBase || cfg.workerUrl)) || "").trim();
+    if (!raw) return "";
+    // Strip trailing /chat (with or without slash), then trailing slashes
+    return raw.replace(/\/chat\/?$/i, "").replace(/\/+$/g, "");
   }
 
   async function jfetch(path, payload) {
@@ -1146,19 +922,6 @@ ${COMMON}`
 #reflectiv-widget .streaming .content{background:#f0f7ff;border-color:#b3d9ff}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
-/* === EI summary in yellow panel === */
-#reflectiv-widget .ei-wrap{padding:10px 12px}
-#reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
-#reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; border:1px solid #d9d9d9; background:#fff}
-#reflectiv-widget .ei-pill .k{opacity:.65; margin-right:6px; font-weight:600}
-#reflectiv-widget .ei-pill.good{background:#e8f6ee;border-color:#bfe7cf}
-#reflectiv-widget .ei-pill.ok{background:#fff7e6;border-color:#ffe1a3}
-#reflectiv-widget .ei-pill.bad{background:#fdeaea;border-color:#f5c2c2}
-#reflectiv-widget .ei-tips{margin:8px 0 0; padding-left:16px}
-#reflectiv-widget .ei-tips li{margin:2px 0}
-#reflectiv-widget .ei-meta{margin-top:8px; font:500 11px/1.3 Inter,system-ui; opacity:.8}
-#reflectiv-widget .ei-meta a{text-decoration:underline}
       `;
       document.head.appendChild(style);
     }
@@ -1177,30 +940,6 @@ ${COMMON}`
       </div>
     `;
     mount.appendChild(shell);
-    
-    // Add debug footer if ?debug=1
-    if (isDebugMode()) {
-      telemetryFooter = el("div", "telemetry-footer");
-      // Style for minimal, unobtrusive debug footer
-      Object.assign(telemetryFooter.style, {
-        position: "absolute",
-        bottom: "64px",
-        left: "16px",
-        right: "16px",
-        fontSize: "12px",
-        fontFamily: "monospace",
-        opacity: "0.7",
-        color: "#2f3a4f",
-        padding: "4px 8px",
-        background: "rgba(255,255,255,0.9)",
-        borderTop: "1px solid #e1e6ef",
-        pointerEvents: "none",
-        zIndex: "100"
-      });
-      telemetryFooter.textContent = "TTFB/FirstChunk/Done: –.– / –.– / –.– • retries:0 • —";
-      shell.style.position = "relative";
-      shell.appendChild(telemetryFooter);
-    }
 
     // rebuild real UI
     const bar = el("div", "chat-toolbar");
@@ -1415,33 +1154,8 @@ ${COMMON}`
     }
 
     function populateDiseases() {
-      if (scenariosLoadError) {
-        // Show error and disable dropdown
-        setSelectOptions(diseaseSelect, [{ value: "", label: "⚠ Failed to load scenarios" }], true);
-        diseaseSelect.disabled = true;
-        hcpSelect.disabled = true;
-        setSelectOptions(hcpSelect, [{ value: "", label: "—" }], true);
-        
-        // Show inline error message in meta area if available
-        const metaEl = mount.querySelector(".scenario-meta");
-        if (metaEl) {
-          metaEl.innerHTML = `<div style="padding:10px 12px;background:#fdeaea;border:1px solid #f5c2c2;border-radius:10px;color:#991b1b;">
-            <strong>⚠ Data Loading Error:</strong> Could not load scenarios. Please check your connection or contact support.
-          </div>`;
-        }
-        return;
-      }
-      
       const ds = getDiseaseStates();
       setSelectOptions(diseaseSelect, ds, true);
-      
-      // Enable if we have scenarios
-      if (scenarios.length > 0) {
-        diseaseSelect.disabled = false;
-      } else {
-        diseaseSelect.disabled = true;
-        setSelectOptions(diseaseSelect, [{ value: "", label: "No scenarios available" }], true);
-      }
     }
 
     function populateHcpForDisease(ds) {
@@ -1544,34 +1258,10 @@ ${COMMON}`
 
       // Sales Simulation yellow panel spec:
       if (currentMode === "sales-simulation") {
-        // Optional dev shim (guarded)
-        if (DEBUG_EI_SHIM && last && last._coach && !last._coach.ei) {
-          last._coach.ei = {
-            scores:{ empathy:4, discovery:3, compliance:5, clarity:4, accuracy:4 },
-            rationales:{
-              empathy:"Validated HCP constraints and reframed",
-              discovery:"Asked one focused question",
-              compliance:"On-label; AE capture ready",
-              clarity:"Concise, one idea per sentence",
-              accuracy:"Claims match label"
-            },
-            tips:[
-              "Open with HCP context then one ask",
-              "Anchor claims to label/guideline",
-              "Close with one specific next step"
-            ],
-            rubric_version:"v1.2"
-          };
-        }
-
-        const eiHTML = renderEiPanel(last);
-        
-        // Fallback to old yellow panel HTML if no EI data
-        const oldYellowHTML = (() => {
-          const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-          const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-          const phrasingStr = fb.phrasing || "—";
-          return `
+        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+        const phrasingStr = fb.phrasing || "—";
+        body.innerHTML = `
           <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
           <ul class="coach-list">
             <li><strong>Focus:</strong> ${workedStr}</li>
@@ -1581,9 +1271,6 @@ ${COMMON}`
             </li>
           </ul>
           ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
-        })();
-
-        body.innerHTML = eiHTML || oldYellowHTML;
         return;
       }
 
@@ -1747,12 +1434,11 @@ ${COMMON}`
   }
 
   // SSE streaming handler with requestAnimationFrame batching
-  async function streamWithSSE(url, payload, onToken, telemetry, onFirstByte) {
+  async function streamWithSSE(url, payload, onToken) {
     return new Promise((resolve, reject) => {
       let accumulated = "";
       let pendingUpdate = false;
       let updateScheduled = false;
-      let firstByteRecorded = false;
       
       // Validate payload size to prevent URL length issues
       const payloadStr = JSON.stringify(payload);
@@ -1816,17 +1502,6 @@ ${COMMON}`
       eventSource.onmessage = (event) => {
         lastTokenTime = Date.now();
         
-        // Record first byte on first message
-        if (!firstByteRecorded) {
-          firstByteRecorded = true;
-          if (telemetry) {
-            telemetry.t_first_byte = Date.now();
-          }
-          if (onFirstByte) {
-            onFirstByte();
-          }
-        }
-        
         try {
           const data = JSON.parse(event.data);
           const token = data.token || data.content || data.delta || "";
@@ -1863,24 +1538,8 @@ ${COMMON}`
   }
 
   async function callModel(messages) {
-    // Use window.WORKER_URL directly and append /chat
-    const baseUrl = window.WORKER_URL || "";
-    if (!baseUrl) {
-      const msg = "Worker URL not configured";
-      console.error("[chat] error=worker_url_missing");
-      showToast("Configuration error. Please contact support.", "error");
-      throw new Error(msg);
-    }
-    
-    const url = `${baseUrl}/chat`;
+    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
     const useStreaming = cfg?.stream === true;
-    
-    // Initialize telemetry
-    initTelemetry();
-    currentTelemetry.t_open = Date.now();
-    currentTelemetry.mode = currentMode;
-    currentTelemetry.retries = 0;
-    updateDebugFooter();
     
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
@@ -1898,7 +1557,6 @@ ${COMMON}`
     if (useStreaming) {
       try {
         let streamedContent = "";
-        let firstChunkRecorded = false;
         const shellEl = mount.querySelector(".reflectiv-chat");
         const msgsEl = shellEl?.querySelector(".chat-messages");
         
@@ -1915,30 +1573,11 @@ ${COMMON}`
         
         const result = await streamWithSSE(url, payload, (content) => {
           streamedContent = content;
-          
-          // Record first chunk with actual content
-          if (!firstChunkRecorded && content && content.trim().length > 0) {
-            currentTelemetry.t_first_chunk = Date.now();
-            firstChunkRecorded = true;
-            updateDebugFooter();
-          }
-          
           streamBody.innerHTML = md(sanitizeLLM(content));
           if (msgsEl) {
             msgsEl.scrollTop = msgsEl.scrollHeight;
           }
-          
-          // Approximate bytes received
-          currentTelemetry.bytes_rx = textEncoder.encode(content).length;
-        }, currentTelemetry, () => {
-          // onFirstByte callback
-          updateDebugFooter();
         });
-        
-        // Mark done
-        currentTelemetry.t_done = Date.now();
-        currentTelemetry.httpStatus = "stream";
-        updateDebugFooter();
         
         // Remove streaming element - the actual message will be added by sendMessage
         if (streamRow.parentNode) {
@@ -1948,10 +1587,7 @@ ${COMMON}`
         return result || streamedContent;
       } catch (e) {
         removeTypingIndicator(typingIndicator);
-        currentTelemetry.httpStatus = e.message || "error";
-        currentTelemetry.t_done = Date.now();
-        updateDebugFooter();
-        console.warn("[coach] degrade-to-legacy - SSE streaming failed, falling back to regular fetch:", e);
+        console.warn("SSE streaming failed, falling back to regular fetch:", e);
         // Fall through to regular fetch with retry
       }
     }
@@ -1961,11 +1597,6 @@ ${COMMON}`
     let lastError = null;
     
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
-      if (attempt > 0) {
-        currentTelemetry.retries = attempt;
-        updateDebugFooter();
-      }
-      
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
       
@@ -1981,53 +1612,17 @@ ${COMMON}`
         });
 
         clearTimeout(timeout);
-        
-        // Record first byte (HTTP headers received)
-        if (currentTelemetry.t_first_byte === 0) {
-          currentTelemetry.t_first_byte = Date.now();
-          updateDebugFooter();
-        }
-        
         removeTypingIndicator(typingIndicator);
 
         if (r.ok) {
-          try {
-            const bodyText = await r.text();
-            currentTelemetry.bytes_rx = textEncoder.encode(bodyText).length;
-            currentTelemetry.httpStatus = r.status.toString();
-            
-            const data = JSON.parse(bodyText);
-            
-            // Extract tokens if available (prefer completion_tokens for accuracy)
-            if (data.usage?.completion_tokens) {
-              currentTelemetry.tokens_rx = data.usage.completion_tokens;
-            }
-            
-            const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
-            
-            // Record first chunk (first response data)
-            if (currentTelemetry.t_first_chunk === 0 && content) {
-              currentTelemetry.t_first_chunk = Date.now();
-            }
-            
-            currentTelemetry.t_done = Date.now();
-            updateDebugFooter();
-            
-            return content;
-          } catch (jsonErr) {
-            // JSON parse error
-            console.error(`[chat] status=${r.status} path=/chat error=json_parse`);
-            showToast(`Request failed (JSON parse error). Please retry.`, "error");
-            throw new Error("JSON parse error");
-          }
+          const data = await r.json().catch(() => ({}));
+          return (
+            data?.content ||
+            data?.reply ||
+            data?.choices?.[0]?.message?.content ||
+            ""
+          );
         }
-        
-        // Record status even on error
-        currentTelemetry.httpStatus = r.status.toString();
-        updateDebugFooter();
-        
-        // Log error with status
-        console.error(`[chat] status=${r.status} path=/chat`);
         
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
@@ -2036,8 +1631,6 @@ ${COMMON}`
           continue;
         }
         
-        // Show toast for non-retryable errors
-        showToast(`Request failed (status ${r.status}). Please retry.`, "error");
         throw new Error("HTTP " + r.status);
       } catch (e) {
         clearTimeout(timeout);
@@ -2045,21 +1638,12 @@ ${COMMON}`
         // Retry on timeout or network errors
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
-          currentTelemetry.httpStatus = "timeout";
-          updateDebugFooter();
-          console.error(`[chat] status=timeout path=/chat retry=${attempt + 1}`);
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
         
         removeTypingIndicator(typingIndicator);
-        currentTelemetry.httpStatus = e.message || "error";
-        currentTelemetry.t_done = Date.now();
-        updateDebugFooter();
-        
-        // Log network error
-        console.error(`[chat] status=network_error path=/chat error=${e.message || "unknown"}`);
-        showToast(`Network error. Please check your connection and retry.`, "error");
+        console.warn("Model call failed:", e);
         
         // Show retry UI if we've exhausted all retries and taken >= 8s total
         const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
@@ -2072,12 +1656,7 @@ ${COMMON}`
     }
 
     removeTypingIndicator(typingIndicator);
-    currentTelemetry.httpStatus = lastError?.message || "failed";
-    currentTelemetry.t_done = Date.now();
-    updateDebugFooter();
-    
-    console.error(`[chat] status=all_retries_failed path=/chat`);
-    showToast(`Request failed after retries. Please try again.`, "error");
+    console.warn("Model call failed after all retries:", lastError);
     showRetryUI();
     return "";
   }
@@ -2244,13 +1823,6 @@ ${COMMON}`
 
   async function sendMessage(userText) {
     if (isSending) return;
-    
-    // Health gate: block sends when unhealthy
-    if (!isHealthy) {
-      showToast("Backend unavailable. Please wait...", "error");
-      return;
-    }
-    
     isSending = true;
     
     // Track timing for auto-fail feature
@@ -2338,10 +1910,7 @@ ${detail}`;
         }
 
         let raw = await callModel(messages);
-        if (!raw) {
-          console.warn("[coach] degrade-to-legacy - Using fallback text due to empty response");
-          raw = fallbackText(currentMode);
-        }
+        if (!raw) raw = fallbackText(currentMode);
 
         let { coach, clean } = extractCoach(raw);
         
@@ -2460,9 +2029,6 @@ if (norm(replyText) === norm(userText)) {
         trimConversationIfNeeded();
         renderMessages();
         renderCoach();
-        
-        // Log telemetry after assistant reply completes
-        logTelemetry();
 
         if (currentMode === "emotional-assessment") generateFeedback();
 
@@ -2483,7 +2049,6 @@ if (norm(replyText) === norm(userText)) {
           }).catch(() => {});
         }
       } catch (e) {
-        console.error("[coach] degrade-to-legacy - Error in sendMessage:", e);
         conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
         trimConversationIfNeeded();
         renderMessages();
@@ -2499,11 +2064,8 @@ if (norm(replyText) === norm(userText)) {
   }
 
   // ---------- scenarios loader ----------
-  let scenariosLoadError = null;
-  
   async function loadScenarios() {
     try {
-      scenariosLoadError = null;
       if (cfg && cfg.scenariosUrl) {
         const payload = await fetchLocal(cfg.scenariosUrl);
         const arr = Array.isArray(payload) ? payload : payload.scenarios || [];
@@ -2529,7 +2091,6 @@ if (norm(replyText) === norm(userText)) {
       }
     } catch (e) {
       console.error("scenarios load failed:", e);
-      scenariosLoadError = e.message || String(e);
       scenarios = [];
     }
 
@@ -2557,7 +2118,7 @@ if (norm(replyText) === norm(userText)) {
     }
 
     if (!cfg.apiBase && !cfg.workerUrl) {
-      cfg.apiBase = window.WORKER_URL || "";
+      cfg.apiBase = (window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
     }
 
     try {
@@ -2576,12 +2137,6 @@ if (norm(replyText) === norm(userText)) {
 
     await loadScenarios();
     buildUI();
-    
-    // Health gate: check on init
-    const healthy = await checkHealth();
-    if (!healthy) {
-      startHealthRetry();
-    }
   }
 
   // ---------- start ----------
