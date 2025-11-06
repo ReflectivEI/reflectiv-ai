@@ -14,6 +14,17 @@
  * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
  */
 (function () {
+  // ---------- debug flag and helpers ----------
+  const DEBUG_WIDGET = true;
+  
+  function logDebug(msg) {
+    if (DEBUG_WIDGET) console.debug("[ReflectivWidget]", msg);
+  }
+  
+  function logError(msg, err) {
+    if (DEBUG_WIDGET) console.error("[ReflectivWidget]", msg, err);
+  }
+
   // ---------- safe bootstrapping ----------
   let mount = null;
 
@@ -31,19 +42,28 @@
       document.querySelector("#coach-widget, [data-coach-mount], .reflectiv-widget");
 
     const tryGet = () => {
+      logDebug("waitForMount: Searching for mount element");
       mount = findMount();
-      if (mount) return cb();
+      if (mount) {
+        logDebug("waitForMount: Mount element found");
+        return cb();
+      }
 
+      logDebug("waitForMount: Mount not found immediately, setting up MutationObserver");
       const obs = new MutationObserver(() => {
         mount = findMount();
         if (mount) {
+          logDebug("waitForMount: Mount element found via MutationObserver");
           obs.disconnect();
           cb();
         }
       });
 
       obs.observe(document.documentElement, { childList: true, subtree: true });
-      setTimeout(() => obs.disconnect(), 15000);
+      setTimeout(() => {
+        logError("waitForMount: 15-second timeout expired, mount element not found");
+        obs.disconnect();
+      }, 15000);
     };
 
     onReady(tryGet);
@@ -881,6 +901,7 @@ ${COMMON}`
 
   // ---------- UI ----------
   function buildUI() {
+    logDebug("buildUI: Starting UI construction");
     mount.innerHTML = "";
     if (!mount.classList.contains("cw")) mount.classList.add("cw");
 
@@ -1403,6 +1424,7 @@ ${COMMON}`
     populateDiseases();
     hydrateEISelects();
     applyModeVisibility();
+    logDebug("buildUI: UI construction complete");
   }
 
   // ---------- callModel (hardened with retries, timeout, SSE streaming, and backoff) ----------
@@ -1597,6 +1619,9 @@ ${COMMON}`
     let lastError = null;
     
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
+      if (attempt > 0) {
+        logDebug(`callModel: Retry attempt ${attempt}/${delays.length}`);
+      }
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
       
@@ -1627,6 +1652,7 @@ ${COMMON}`
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
           lastError = new Error("HTTP " + r.status);
+          logDebug(`callModel: HTTP ${r.status}, will retry after ${delays[attempt]}ms`);
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
@@ -1638,11 +1664,13 @@ ${COMMON}`
         // Retry on timeout or network errors
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
+          logDebug(`callModel: ${e.message || e}, will retry after ${delays[attempt]}ms`);
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
         
         removeTypingIndicator(typingIndicator);
+        logError(`callModel: Failed after ${attempt + 1} attempts`, e);
         console.warn("Model call failed:", e);
         
         // Show retry UI if we've exhausted all retries and taken >= 8s total
@@ -1656,6 +1684,7 @@ ${COMMON}`
     }
 
     removeTypingIndicator(typingIndicator);
+    logError("callModel: Failed after all retries", lastError);
     console.warn("Model call failed after all retries:", lastError);
     showRetryUI();
     return "";
@@ -1822,7 +1851,10 @@ ${COMMON}`
   }
 
   async function sendMessage(userText) {
-    if (isSending) return;
+    if (isSending) {
+      logDebug("sendMessage: Message ignored, already sending");
+      return;
+    }
     isSending = true;
     
     // Track timing for auto-fail feature
@@ -1910,7 +1942,10 @@ ${detail}`;
         }
 
         let raw = await callModel(messages);
-        if (!raw) raw = fallbackText(currentMode);
+        if (!raw) {
+          logDebug(`sendMessage: callModel returned empty response, using fallback for mode: ${currentMode}`);
+          raw = fallbackText(currentMode);
+        }
 
         let { coach, clean } = extractCoach(raw);
         
@@ -2077,6 +2112,7 @@ if (norm(replyText) === norm(userText)) {
           background: s.background || "",
           goal: s.goal || ""
         }));
+        logDebug(`loadScenarios: Loaded ${scenarios.length} scenarios from ${cfg.scenariosUrl}`);
       } else if (Array.isArray(cfg?.scenarios)) {
         scenarios = cfg.scenarios.map((s) => ({
           id: String(s.id),
@@ -2086,12 +2122,19 @@ if (norm(replyText) === norm(userText)) {
           background: s.background || "",
           goal: s.goal || ""
         }));
+        logDebug(`loadScenarios: Loaded ${scenarios.length} scenarios from config.scenarios`);
       } else {
         scenarios = [];
+        logDebug("loadScenarios: No scenarios URL or inline scenarios in config, scenarios array is empty");
       }
     } catch (e) {
+      logError("loadScenarios: Failed to load scenarios", e);
       console.error("scenarios load failed:", e);
       scenarios = [];
+    }
+
+    if (scenarios.length === 0) {
+      logDebug("loadScenarios: WARNING - scenarios array is empty, dropdowns will be unavailable");
     }
 
     scenarios.forEach((s) => {
@@ -2106,37 +2149,48 @@ if (norm(replyText) === norm(userText)) {
 
   // ---------- init ----------
   async function init() {
+    logDebug("init: Starting initialization");
     try {
       try {
         cfg = await fetchLocal("./assets/chat/config.json");
+        logDebug("init: Config loaded from ./assets/chat/config.json");
       } catch (e) {
         cfg = await fetchLocal("./config.json");
+        logDebug("init: Config loaded from ./config.json (fallback)");
       }
     } catch (e) {
+      logError("init: Config load failed, using defaults", e);
       console.error("config load failed:", e);
       cfg = { defaultMode: "sales-simulation" };
     }
 
     if (!cfg.apiBase && !cfg.workerUrl) {
       cfg.apiBase = (window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+      logDebug(`init: API base set from window globals: ${cfg.apiBase}`);
     }
 
     try {
       systemPrompt = await fetchLocal("./assets/chat/system.md");
+      logDebug(`init: system.md loaded (${systemPrompt.length} chars)`);
     } catch (e) {
+      logError("init: system.md load failed", e);
       console.error("system.md load failed:", e);
       systemPrompt = "";
     }
 
     try {
       eiHeuristics = await fetchLocal("./assets/chat/about-ei.md");
+      logDebug(`init: about-ei.md loaded (${eiHeuristics.length} chars)`);
     } catch (e) {
+      logError("init: about-ei.md load failed", e);
       console.warn("about-ei.md load failed:", e);
       eiHeuristics = "";
     }
 
     await loadScenarios();
+    logDebug(`init: Scenarios loaded (${scenarios.length} scenarios)`);
     buildUI();
+    logDebug("init: Initialization complete");
   }
 
   // ---------- start ----------
