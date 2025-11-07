@@ -538,6 +538,8 @@
   const USE_LEGACY_COACH_UI = true;
 
   function renderLegacyCoachCard(coachObj) {
+    logDebug("renderLegacyCoachCard", "Rendering legacy coach card with Suggested Phrasing label");
+    
     const challenge =
       coachObj.challenge || coachObj.feedback || "Focus on label-aligned guidance and one clear question.";
     const repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
@@ -552,13 +554,11 @@
     const card = document.createElement("div");
     card.className = "coach-card legacy";
     card.innerHTML = `
-      <div class="coach-head">
-        <span class="coach-badge">Sales Coach</span>
-      </div>
+      <span class="coach-badge">Sales Coach</span>
 
-      <div class="coach-section">
-        <div class="coach-label">Suggested Phrasing:</div>
-        <div class="coach-phrasing-block">"${esc(phrasing)}"</div>
+      <div class="coach-section coach-phrasing-block">
+        <div class="coach-label"><strong>Suggested Phrasing:</strong></div>
+        <div class="coach-phrasing-text">"${esc(phrasing)}"</div>
       </div>
 
       <div class="coach-section">
@@ -568,16 +568,20 @@
 
       <div class="coach-section">
         <div class="coach-label">Rep Approach:</div>
-        <ul class="coach-list">
-          ${repApproach.map(i => `<li>${esc(i)}</li>`).join("")}
-        </ul>
+        <div class="coach-body">
+          <ul>
+            ${repApproach.map(i => `<li>${esc(i)}</li>`).join("")}
+          </ul>
+        </div>
       </div>
 
       <div class="coach-section">
         <div class="coach-label">Impact:</div>
-        <ul class="coach-list">
-          ${impact.map(i => `<li>${esc(i)}</li>`).join("")}
-        </ul>
+        <div class="coach-body">
+          <ul>
+            ${impact.map(i => `<li>${esc(i)}</li>`).join("")}
+          </ul>
+        </div>
       </div>
     `;
     return card;
@@ -1012,6 +1016,7 @@ ${COMMON}`
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
 #reflectiv-widget .coach-phrasing-block{padding:8px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:6px;margin-top:4px;font-style:italic}
+#reflectiv-widget .coach-phrasing-text{font-style:italic}
 #reflectiv-widget .coach-section.coach-score-good{border-left:3px solid #28a745}
 #reflectiv-widget .coach-section.coach-score-warn{border-left:3px solid #ffc107}
 #reflectiv-widget .coach-section.coach-score-bad{border-left:3px solid #dc3545}
