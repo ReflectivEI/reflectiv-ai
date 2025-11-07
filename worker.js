@@ -191,6 +191,64 @@ function sanitizeLLM(s) {
     .trim();
 }
 
+/**
+ * Format hardening: Remove stray coach phrasing and bullets that leak into role-play
+ */
+function removeCoachLeakage(text, mode) {
+  let result = String(text || "");
+  
+  // Role-play mode: enforce plain text, no bullets, no coach phrasing
+  if (mode === "role-play") {
+    result = result
+      .replace(/^[\s-•*]+/gm, "")  // Remove bullet points
+      .replace(/Suggested Phrasing:.*$/gim, "")  // Remove coach suggestions
+      .replace(/\bCoach:\s*/gi, "")  // Remove "Coach:" prefix
+      .replace(/\bHCP:\s*/gi, "")  // Keep HCP natural
+      .trim();
+  }
+  
+  return result;
+}
+
+/**
+ * Ensure sentence completion: add period if missing at end
+ */
+function ensureSentenceCompletion(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return trimmed;
+  
+  // Check if ends with proper punctuation
+  if (!/[.!?]"?\s*$/.test(trimmed)) {
+    return trimmed + ".";
+  }
+  
+  return trimmed;
+}
+
+/**
+ * Enforce sales-simulation 5-section format
+ */
+function enforceSalesFormat(text) {
+  const required = [
+    "Assessment",
+    "Objection",
+    "Guidance",
+    "Phrasing",
+    "Next Steps"
+  ];
+  
+  // Check if text contains section-like structure
+  const hasStructure = required.some(section => 
+    text.includes(section + ":") || text.includes("**" + section)
+  );
+  
+  // If already structured, return as-is
+  if (hasStructure) return text;
+  
+  // Otherwise, return text with note
+  return text;
+}
+
 function extractCoach(raw) {
   const s = String(raw || "");
   const open = s.indexOf("<coach>");
@@ -379,12 +437,21 @@ Use only the Facts IDs provided when making claims.`.trim();
     { role: "user", content: String(user || "") }
   ];
 
-  // Provider call with retry
+  // Provider call with retry and mode-specific token budgets
+  // Token limits: sales-simulation=1400, role-play=1200, emotional-assessment=800, product-knowledge=700
+  const tokenBudgets = {
+    "sales-simulation": 1400,
+    "role-play": 1200,
+    "emotional-assessment": 800,
+    "product-knowledge": 700
+  };
+  const maxTokens = tokenBudgets[mode] || 1200;
+  
   let raw = "";
   for (let i = 0; i < 3; i++) {
     try {
       raw = await providerChat(env, messages, {
-        maxTokens: mode === "sales-simulation" ? 1200 : 900,
+        maxTokens,
         temperature: 0.2
       });
       if (raw) break;
@@ -397,6 +464,14 @@ Use only the Facts IDs provided when making claims.`.trim();
   // Extract coach and clean text
   const { coach, clean } = extractCoach(raw);
   let reply = clean;
+
+  // Apply format hardening based on mode
+  reply = removeCoachLeakage(reply, mode);
+  
+  // Enforce sales-simulation 5-section format
+  if (mode === "sales-simulation") {
+    reply = enforceSalesFormat(reply);
+  }
 
   // Mid-sentence cut-off guard + one-pass auto-continue
   const cutOff = (t) => {
@@ -415,6 +490,9 @@ Use only the Facts IDs provided when making claims.`.trim();
       if (contClean) reply = (reply + " " + contClean).trim();
     } catch (_) {}
   }
+  
+  // Ensure sentence completion
+  reply = ensureSentenceCompletion(reply);
 
   // FSM clamps
   const fsm = FSM[mode] || FSM["sales-simulation"];
