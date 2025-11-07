@@ -17,11 +17,22 @@
 
   // UI behavior constants (for buildUI)
   const DOM_SETTLING_DELAY_MS = 50; // Delay for DOM to settle before scrolling
+  const THINKING_TIMEOUT_MS = 10000; // 10s delay before showing "still working" message
   const SCORE_CLASSES = {
     GOOD: "coach-score-good",
     WARN: "coach-score-warn",
     BAD: "coach-score-bad",
     ALL: ["coach-score-good", "coach-score-warn", "coach-score-bad"]
+  };
+
+  // Score explanations for clickable pills (Sales Simulation mode)
+  const SCORE_EXPLANATIONS = {
+    accuracy: ["Keeps details medically accurate", "Avoids misleading claims"],
+    empathy: ["Acknowledges HCP perspective", "Uses supportive, non-judgmental language"],
+    clarity: ["Uses simple, concise phrasing", "Avoids jargon where possible"],
+    compliance: ["Aligns with label and guidance", "Avoids off-label or speculative claims"],
+    discovery: ["Asks clear, open-ended questions", "Explores needs before recommending solutions"],
+    objection_handling: ["Addresses concerns directly", "Links responses back to clinical value"]
   };
 
   // ---------- fallback/cutoff constants ----------
@@ -132,6 +143,9 @@
 
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
+  
+  // ---------- Coach active metric (for clickable pills in Sales Simulation) ----------
+  let coachActiveMetric = null;
 
   // ---------- EI defaults ----------
   const DEFAULT_PERSONAS = [
@@ -502,6 +516,22 @@
     if (cls) e.className = cls;
     if (text != null) e.textContent = text;
     return e;
+  }
+
+  // Helper to normalize Role Play HCP text - removes bullet formatting for conversational flow
+  function normalizeRolePlayHcpText(text) {
+    if (!text) return "";
+    // Remove bullet markers from line starts, join lines, clean up spaces
+    return text
+      .replace(/^[\s]*[•\-*]\s+/gm, "")  // Strip bullets
+      .replace(/\n+/g, " ")               // Join lines
+      .replace(/\s+/g, " ")               // Clean multiple spaces
+      .trim();
+  }
+
+  // Helper to check if a message is from HCP (used in Role Play mode)
+  function isHcpMessage(message) {
+    return message._speaker === "hcp" || (message.role === "assistant" && message._speaker !== "rep");
   }
 
   // ---------- Legacy Coach Renderer (RESTORED UI) ----------
@@ -985,6 +1015,14 @@ ${COMMON}`
 #reflectiv-widget .coach-section.coach-score-good{border-left:3px solid #28a745}
 #reflectiv-widget .coach-section.coach-score-warn{border-left:3px solid #ffc107}
 #reflectiv-widget .coach-section.coach-score-bad{border-left:3px solid #dc3545}
+#reflectiv-widget .coach-subs .pill{cursor:pointer;transition:all 0.2s ease}
+#reflectiv-widget .coach-subs .pill:hover{background:#e1e6ef;border-color:#bfc7d4}
+#reflectiv-widget .coach-subs .pill.coach-score-pill-active{background:#2f3a4f;color:#fff;border-color:#2f3a4f;font-weight:600}
+#reflectiv-widget .coach-score-detail{margin-top:12px;padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:8px}
+#reflectiv-widget .coach-score-detail .detail-heading{font-weight:600;margin-bottom:6px;color:#2f3a4f}
+#reflectiv-widget .coach-score-detail ul{margin:4px 0 0 18px;padding:0}
+#reflectiv-widget .coach-score-detail li{margin:3px 0;font-size:13px;color:#4a5568}
+#reflectiv-widget .thinking-status{display:inline-block;margin-left:8px;font-size:12px;color:#666;font-style:italic}
       `;
       document.head.appendChild(style);
     }
@@ -1273,7 +1311,14 @@ ${COMMON}`
         }
 
         const body = el("div");
-        const normalized = normalizeGuidanceLabels(m.content);
+        let contentToRender = m.content;
+        
+        // Role Play mode: normalize HCP messages to remove bullet formatting
+        if (currentMode === "role-play" && isHcpMessage(m)) {
+          contentToRender = normalizeRolePlayHcpText(contentToRender);
+        }
+        
+        const normalized = normalizeGuidanceLabels(contentToRender);
         body.innerHTML = md(normalized);
         c.appendChild(body);
 
@@ -1301,12 +1346,31 @@ ${COMMON}`
       }
     }
 
-    function orderedPills(scores) {
+    function orderedPills(scores, clickable = false) {
       const order = ["accuracy", "empathy", "clarity", "compliance", "discovery", "objection_handling"];
       return order
         .filter((k) => k in (scores || {}))
-        .map((k) => `<span class="pill">${esc(k)}: ${scores[k]}</span>`)
+        .map((k) => {
+          const activeClass = (clickable && coachActiveMetric === k) ? " coach-score-pill-active" : "";
+          const dataAttr = clickable ? ` data-metric="${k}"` : "";
+          return `<span class="pill${activeClass}"${dataAttr}>${esc(k)}: ${scores[k]}</span>`;
+        })
         .join(" ");
+    }
+    
+    function renderScoreExplanation(metric) {
+      if (!metric || !SCORE_EXPLANATIONS[metric]) return "";
+      
+      const explanation = SCORE_EXPLANATIONS[metric];
+      const metricLabel = metric.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+      
+      const bulletPoints = explanation.map(point => `<li>${esc(point)}</li>`).join("");
+      
+      return `
+        <div class="coach-score-detail">
+          <div class="detail-heading">${esc(metricLabel)}</div>
+          <ul>${bulletPoints}</ul>
+        </div>`;
     }
 
     function renderCoach() {
@@ -1362,16 +1426,29 @@ ${COMMON}`
           coach.classList.add(scoreClass);
         }
         
+        const explanationHTML = coachActiveMetric ? renderScoreExplanation(coachActiveMetric) : "";
+        
         body.innerHTML = `
           <div style="margin-bottom:12px">
             <strong>Performance Snapshot:</strong> ${overallScore}/100
           </div>
-          <div class="coach-subs" style="margin-bottom:12px">${orderedPills(scores)}</div>
+          <div class="coach-subs" style="margin-bottom:12px">${orderedPills(scores, true)}${explanationHTML}</div>
           <div style="margin-bottom:8px"><strong>What Worked:</strong></div>
           ${workedStr}
           <div style="margin-bottom:8px"><strong>What to Improve:</strong></div>
           ${improveStr}
           ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+        
+        // Add click handlers to pills
+        const pills = body.querySelectorAll(".pill[data-metric]");
+        pills.forEach(pill => {
+          pill.addEventListener("click", () => {
+            const metric = pill.getAttribute("data-metric");
+            coachActiveMetric = (coachActiveMetric === metric) ? null : metric;
+            renderCoach();
+          });
+        });
+        
         return;
       }
 
@@ -1962,6 +2039,43 @@ ${COMMON}`
   function isTooSimilar(n){ return recentAssistantNorms.some(p => jaccard4gram(p,n) >= 0.88); }
 
   let isSending = false;
+  let thinkingTimeout = null;
+  let abortController = null;
+
+  function showThinkingStatus(sendBtn) {
+    if (!sendBtn) return;
+    
+    // Create status element if it doesn't exist
+    let statusEl = sendBtn.parentElement?.querySelector(".thinking-status");
+    if (!statusEl) {
+      statusEl = document.createElement("span");
+      statusEl.className = "thinking-status";
+      sendBtn.parentElement?.insertBefore(statusEl, sendBtn);
+    }
+    
+    statusEl.textContent = "Thinking…";
+    logDebug("showThinkingStatus", "Thinking status displayed");
+    
+    // After configured timeout, upgrade message
+    thinkingTimeout = setTimeout(() => {
+      if (statusEl && statusEl.parentElement) {
+        statusEl.textContent = "Still working — this might take a moment.";
+        logDebug("showThinkingStatus", "Long-wait message displayed");
+      }
+    }, THINKING_TIMEOUT_MS);
+  }
+  
+  function hideThinkingStatus(sendBtn) {
+    if (thinkingTimeout) {
+      clearTimeout(thinkingTimeout);
+      thinkingTimeout = null;
+    }
+    
+    const statusEl = sendBtn?.parentElement?.querySelector(".thinking-status");
+    if (statusEl) {
+      statusEl.remove();
+    }
+  }
 
   function trimConversationIfNeeded() {
     if (conversation.length <= 30) return;
@@ -2021,6 +2135,9 @@ ${COMMON}`
       renderCoach();
 
       if (currentMode === "emotional-assessment") generateFeedback();
+      
+      // Show thinking status
+      showThinkingStatus(sendBtn);
 
       const sc = scenariosById.get(currentScenarioId);
       const messages = [];
@@ -2262,6 +2379,7 @@ if (norm(replyText) === norm(userText)) {
       const shellEl2 = mount.querySelector(".reflectiv-chat");
       const sendBtn2 = shellEl2?._sendBtn;
       const ta2 = shellEl2?._ta;
+      hideThinkingStatus(sendBtn2);
       if (sendBtn2) sendBtn2.disabled = false;
       if (ta2) { ta2.disabled = false; ta2.focus(); }
       isSending = false;
