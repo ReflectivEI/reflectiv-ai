@@ -133,6 +133,14 @@
   let conversation = [];
   let coachOn = true;
 
+  // ---------- Per-mode history tracking (TASK 6) ----------
+  let modeHistories = {
+    "emotional-assessment": [],
+    "product-knowledge": [],
+    "sales-simulation": [],
+    "role-play": []
+  };
+
   // ---------- EI globals ----------
   let personaSelectElem = null;
   let eiFeatureSelectElem = null;
@@ -1526,8 +1534,21 @@ ${COMMON}`
 
     function applyModeVisibility() {
       const lc = modeSel.value;
+      const previousMode = currentMode;
       currentMode = LC_TO_INTERNAL[lc];
       const pk = currentMode === "product-knowledge";
+
+      // TASK 6: Save current conversation to previous mode's history
+      if (previousMode && modeHistories[previousMode]) {
+        modeHistories[previousMode] = [...conversation];
+      }
+
+      // TASK 6: Load history for new mode
+      if (modeHistories[currentMode]) {
+        conversation = [...modeHistories[currentMode]];
+      } else {
+        conversation = [];
+      }
 
       coachLabel.classList.toggle("hidden", pk);
       coachSel.classList.toggle("hidden", pk);
@@ -1573,9 +1594,6 @@ ${COMMON}`
           </div>`;
         populateDiseases();
         if (diseaseSelect.value) populateHcpForDisease(diseaseSelect.value);
-        renderMessages();
-        renderCoach();
-        renderMeta();
       } else {
         // emotional-assessment
         diseaseLabel.classList.add("hidden");
@@ -1589,19 +1607,12 @@ ${COMMON}`
         feedbackDisplayElem.innerHTML = "";
         repOnlyPanelHTML = "";
         currentScenarioId = null;
-        conversation = [];
-        renderMessages();
-        renderCoach();
-        renderMeta();
       }
 
-      if (currentMode === "product-knowledge" || currentMode === "emotional-assessment") {
-        currentScenarioId = null;
-        conversation = [];
-        renderMessages();
-        renderCoach();
-        renderMeta();
-      }
+      // TASK 6: Always render messages and coach for the new mode
+      renderMessages();
+      renderCoach();
+      renderMeta();
     }
 
     modeSel.addEventListener("change", applyModeVisibility);
