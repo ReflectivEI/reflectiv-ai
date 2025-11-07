@@ -14,6 +14,17 @@
  * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
  */
 (function () {
+  // ---------- fallback/cutoff constants ----------
+  const MIN_REPLY_LENGTH = 40;  // Minimum viable reply length
+  const CUTOFF_TAIL_CHECK = 15;  // Chars to check for partial words
+  
+  // Fallback variants for duplicate/failure scenarios (role-play mode)
+  const ROLEPLAY_FALLBACK_VARIANTS = [
+    "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
+    "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
+    "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
+  ];
+
   // ---------- diagnostic logging ----------
   const DEBUG_WIDGET = true;
 
@@ -404,16 +415,26 @@
     ];
     try {
       const r1 = await callModelFn(rewriteMsgs);
-      out = sanitizeRolePlayOnly(r1);
-      if (!isGuidanceLeak(out)) return out;
+      // Handle structured failure response
+      if (typeof r1 === 'object' && r1.ok === false) {
+        // Skip to next pass on failure
+      } else {
+        out = sanitizeRolePlayOnly(r1);
+        if (!isGuidanceLeak(out)) return out;
+      }
     } catch (_) {}
 
     // Pass 2: fresh completion with corrective rails prepended to original convo
     try {
       const hardened = [{ role: "system", content: correctiveRails(sc) }, ...messages];
       const r2 = await callModelFn(hardened);
-      out = sanitizeRolePlayOnly(r2);
-      if (!isGuidanceLeak(out)) return out;
+      // Handle structured failure response
+      if (typeof r2 === 'object' && r2.ok === false) {
+        // Skip to Pass 3
+      } else {
+        out = sanitizeRolePlayOnly(r2);
+        if (!isGuidanceLeak(out)) return out;
+      }
     } catch (_) {}
 
     // Pass 3: last-ditch strip + diversified variants (PATCH D)
@@ -435,12 +456,7 @@
       .trim();
 
     if (!out) {
-      const variants = [
-        "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-        "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-        "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-      ];
-      out = variants[Math.floor(Math.random() * variants.length)];
+      out = ROLEPLAY_FALLBACK_VARIANTS[Math.floor(Math.random() * ROLEPLAY_FALLBACK_VARIANTS.length)];
     }
     return out;
   }
@@ -1589,6 +1605,12 @@ ${COMMON}`
       max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
       messages
     };
+    
+    // Helper to return structured failure for 5xx errors
+    const returnStructuredFailure = (status, attempts) => {
+      logError("callModel", "Remote unavailable after retries", { status, attempts });
+      return { ok: false, status };
+    };
 
     // SSE Streaming branch
     if (useStreaming) {
@@ -1636,6 +1658,7 @@ ${COMMON}`
     logDebug("callModel", "Using regular fetch with retries");
     const delays = [300, 800, 1500];
     let lastError = null;
+    let lastHttpStatus = 0; // Tracks last HTTP status code, 0 if no response received
     
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
       const controller = new AbortController();
@@ -1662,6 +1685,9 @@ ${COMMON}`
           return content;
         }
         
+        // Track status for final failure reporting
+        lastHttpStatus = r.status;
+        
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
           lastError = new Error("HTTP " + r.status);
@@ -1684,6 +1710,12 @@ ${COMMON}`
         }
         
         removeTypingIndicator(typingIndicator);
+        
+        // Return structured failure info for 5xx errors
+        if (lastHttpStatus >= 500) {
+          return returnStructuredFailure(lastHttpStatus, attempt + 1);
+        }
+        
         logError("callModel", "Model call failed", e);
         console.warn("Model call failed:", e);
         
@@ -1693,15 +1725,21 @@ ${COMMON}`
           showRetryUI();
         }
         
-        return "";
+        return { ok: false, status: lastHttpStatus };
       }
     }
 
     removeTypingIndicator(typingIndicator);
+    
+    // Final failure after all retries
+    if (lastHttpStatus >= 500) {
+      return returnStructuredFailure(lastHttpStatus, delays.length + 1);
+    }
+    
     logError("callModel", "Model call failed after all retries", lastError);
     console.warn("Model call failed after all retries:", lastError);
     showRetryUI();
-    return "";
+    return { ok: false, status: lastHttpStatus };
   }
   
   // Show retry button UI
@@ -1758,9 +1796,17 @@ ${COMMON}`
     ].filter(Boolean);
 
     const raw = await callModel(evalMsgs);
-    const { coach, clean } = extractCoach(raw);
-    const finalCoach = coach || scoreReply("", clean);
-    conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
+    
+    // Handle structured failure response
+    if (typeof raw === 'object' && raw.ok === false) {
+      logError("evaluateConversation", "Evaluation unavailable after remote failure", { status: raw.status });
+      const cleanContent = "Evaluation unavailable at this time. Please try again.";
+      conversation.push({ role: "assistant", content: cleanContent, _finalEval: true });
+    } else {
+      const { coach, clean } = extractCoach(raw);
+      const finalCoach = coach || scoreReply("", clean);
+      conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
+    }
   }
 
   /* ---------- Rep-only evaluation helpers ---------- */
@@ -1800,6 +1846,12 @@ ${COMMON}`
     let raw = "";
     try {
       raw = await callModel([{ role: "system", content: sys }, user]);
+      
+      // Handle structured failure response
+      if (typeof raw === 'object' && raw.ok === false) {
+        logError("evaluateRepOnly", "Evaluation unavailable after remote failure", { status: raw.status });
+        return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
+      }
     } catch (e) {
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
@@ -1955,7 +2007,17 @@ ${detail}`;
         }
 
         let raw = await callModel(messages);
-        if (!raw) raw = fallbackText(currentMode);
+        
+        // Handle structured failure response from callModel
+        if (typeof raw === 'object' && raw.ok === false) {
+          const status = raw.status || 'unknown';
+          logError("sendMessage", "Using local fallback after remote failure", { mode: currentMode, status });
+          raw = fallbackText(currentMode);
+        } else if (!raw || (typeof raw === 'string' && !raw.trim())) {
+          // Handle empty string responses
+          logError("sendMessage", "Empty response, using local fallback", { mode: currentMode });
+          raw = fallbackText(currentMode);
+        }
 
         let { coach, clean } = extractCoach(raw);
         
@@ -1976,7 +2038,10 @@ Please provide your response again with all required fields including phrasing.`
           
           try {
             const retryRaw = await callModel(retryMessages);
-            if (retryRaw) {
+            // Handle structured failure in retry
+            if (typeof retryRaw === 'object' && retryRaw.ok === false) {
+              logError("sendMessage", "Retry for phrasing failed, keeping original", { status: retryRaw.status });
+            } else if (retryRaw) {
               const retryResult = extractCoach(retryRaw);
               // Use the retry result if it has phrasing, otherwise keep original
               if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
@@ -1994,19 +2059,59 @@ let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sani
 // Mid-sentence cut-off guard + one-pass auto-continue
 const cutOff = (t) => {
   const s = String(t || "").trim();
-  return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+  // Very short replies are unlikely to have meaningful cutoffs
+  if (s.length < MIN_REPLY_LENGTH) return false;
+  
+  // Check if ends with proper punctuation (including quotes)
+  if (/[.!?]["']?\s*$/.test(s)) return false;
+  
+  // Check if last ~15 chars form partial word (no space/punctuation)
+  const tail = s.slice(-CUTOFF_TAIL_CHECK);
+  if (tail && !/[\s.!?,;:]/.test(tail)) return true;
+  
+  // If longer than 200 chars and no ending punctuation, likely cutoff
+  return s.length > 200;
 };
+
 if (cutOff(replyText)) {
+  logDebug("sendMessage", "Detected mid-reply cutoff, attempting continuation", { length: replyText.length });
+  
   const contMsgs = [
     ...messages,
     { role: "assistant", content: replyText },
     { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
   ];
+  
   try {
     let contRaw = await callModel(contMsgs);
-    let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
-    if (contClean) replyText = (replyText + " " + contClean).trim();
-  } catch (_) { /* no-op */ }
+    
+    // Handle continuation failure
+    if (typeof contRaw === 'object' && contRaw.ok === false) {
+      logError("sendMessage", "Continuation failed, trimming to last full sentence", { status: contRaw.status });
+      
+      // Trim to last full sentence (handles quotes and punctuation)
+      const sentences = replyText.match(/[^.!?]+[.!?]+["']?\s*/g) || [];
+      if (sentences.length > 0) {
+        replyText = sentences.join('').trim();
+      }
+      
+      // If too short after trim, use fallback
+      if (replyText.length < MIN_REPLY_LENGTH) {
+        logError("sendMessage", "Reply too short after trim, using fallback", { mode: currentMode });
+        replyText = fallbackText(currentMode);
+      }
+    } else {
+      // Successful continuation
+      let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+      if (contClean) {
+        replyText = (replyText + " " + contClean).trim();
+        logDebug("sendMessage", "Continuation successful", { finalLength: replyText.length });
+      }
+    }
+  } catch (e) {
+    logError("sendMessage", "Continuation threw error, keeping original", e);
+    // Keep original replyText on exception
+  }
 }
 
 if (currentMode === "role-play") {
@@ -2026,15 +2131,18 @@ if (norm(replyText) === norm(userText)) {
             messages[messages.length-1]
           ];
           let varied = await callModel(varyMsgs);
-          varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
-          if (!varied || isTooSimilar(norm(varied))) {
-            const alts = [
-              "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-              "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-              "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-            ];
-            varied = alts.find(a => !isTooSimilar(norm(a))) || alts[0];
+          
+          // Handle structured failure in vary pass
+          if (typeof varied === 'object' && varied.ok === false) {
+            logError("sendMessage", "Vary pass failed, using fallback", { status: varied.status });
+            varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
+          } else {
+            varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
+            if (!varied || isTooSimilar(norm(varied))) {
+              varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
+            }
           }
+          
           replyText = varied;
           candidate = norm(replyText);
         }
