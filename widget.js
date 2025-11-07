@@ -2242,7 +2242,12 @@ const cutOff = (t) => {
   return s.length > 200;
 };
 
-if (cutOff(replyText)) {
+// Phase 4C: Bypass cutOff for sales-simulation and role-play modes
+const bypassCutOff = (currentMode === "sales-simulation" || currentMode === "role-play");
+
+if (bypassCutOff) {
+  logDebug("sendMessage", "Bypassing cutOff for " + currentMode, { length: replyText.length });
+} else if (cutOff(replyText)) {
   logDebug("sendMessage", "Detected mid-reply cutoff, attempting continuation", { length: replyText.length });
   
   const contMsgs = [
@@ -2318,7 +2323,12 @@ if (norm(replyText) === norm(userText)) {
         lastAssistantNorm = candidate;
         pushRecent(candidate);
 
-        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 1200 : 1400);
+        // Phase 4C: Skip clampLen for sales-simulation and role-play modes
+        if (currentMode === "sales-simulation" || currentMode === "role-play") {
+          logDebug("sendMessage", "Bypassing clampLen for " + currentMode, { rawLength: replyText.length });
+        } else {
+          replyText = clampLen(replyText, currentMode === "sales-simulation" ? 1200 : 1400);
+        }
 
         const computed = scoreReply(userText, replyText, currentMode);
 
