@@ -26,7 +26,7 @@
   ];
 
   // ---------- diagnostic logging ----------
-  const DEBUG_WIDGET = true;
+  const DEBUG_WIDGET = false;
 
   function logDebug(fnName, message, data) {
     if (!DEBUG_WIDGET) return;
