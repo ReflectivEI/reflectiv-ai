@@ -576,7 +576,7 @@
         let extractedPhrasing = impactText.substring(markerIndex + markerLength).trim();
         
         // Strip leading/trailing quotes (single or double)
-        extractedPhrasing = extractedPhrasing.replace(/^["']|["']$/g, "");
+        extractedPhrasing = extractedPhrasing.replace(/^["']/, "").replace(/["']$/, "");
         
         phrasingFromImpact = extractedPhrasing;
         
