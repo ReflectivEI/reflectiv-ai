@@ -17,6 +17,7 @@
 
   // UI behavior constants (for buildUI)
   const DOM_SETTLING_DELAY_MS = 50; // Delay for DOM to settle before scrolling
+  const THINKING_TIMEOUT_MS = 10000; // 10s delay before showing "still working" message
   const SCORE_CLASSES = {
     GOOD: "coach-score-good",
     WARN: "coach-score-warn",
@@ -520,13 +521,17 @@
   // Helper to normalize Role Play HCP text - removes bullet formatting for conversational flow
   function normalizeRolePlayHcpText(text) {
     if (!text) return "";
-    // Remove bullet markers (•, -, *, "• ", etc.) from line starts
-    let normalized = text.replace(/^[\s]*[•\-*]\s+/gm, "");
-    // Join lines with spaces to create paragraph flow
-    normalized = normalized.replace(/\n+/g, " ").trim();
-    // Clean up multiple spaces
-    normalized = normalized.replace(/\s+/g, " ");
-    return normalized;
+    // Remove bullet markers from line starts, join lines, clean up spaces
+    return text
+      .replace(/^[\s]*[•\-*]\s+/gm, "")  // Strip bullets
+      .replace(/\n+/g, " ")               // Join lines
+      .replace(/\s+/g, " ")               // Clean multiple spaces
+      .trim();
+  }
+
+  // Helper to check if a message is from HCP (used in Role Play mode)
+  function isHcpMessage(message) {
+    return message._speaker === "hcp" || (message.role === "assistant" && message._speaker !== "rep");
   }
 
   // ---------- Legacy Coach Renderer (RESTORED UI) ----------
@@ -1309,11 +1314,8 @@ ${COMMON}`
         let contentToRender = m.content;
         
         // Role Play mode: normalize HCP messages to remove bullet formatting
-        if (currentMode === "role-play") {
-          const isHcpMessage = m._speaker === "hcp" || (m.role === "assistant" && m._speaker !== "rep");
-          if (isHcpMessage) {
-            contentToRender = normalizeRolePlayHcpText(contentToRender);
-          }
+        if (currentMode === "role-play" && isHcpMessage(m)) {
+          contentToRender = normalizeRolePlayHcpText(contentToRender);
         }
         
         const normalized = normalizeGuidanceLabels(contentToRender);
@@ -2054,13 +2056,13 @@ ${COMMON}`
     statusEl.textContent = "Thinking…";
     logDebug("showThinkingStatus", "Thinking status displayed");
     
-    // After 10 seconds, upgrade message
+    // After configured timeout, upgrade message
     thinkingTimeout = setTimeout(() => {
       if (statusEl && statusEl.parentElement) {
-        statusEl.textContent = "Still working — network is a bit slow.";
+        statusEl.textContent = "Still working — this might take a moment.";
         logDebug("showThinkingStatus", "Long-wait message displayed");
       }
-    }, 10000);
+    }, THINKING_TIMEOUT_MS);
   }
   
   function hideThinkingStatus(sendBtn) {
