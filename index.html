@@ -471,15 +471,108 @@
   onReady(()=>{
 
     /* ---------- Generic modal controls ---------- */
-    function openModal(sel){const el=document.querySelector(sel);if(el){el.classList.add('open');el.setAttribute('aria-hidden','false');}}
-    function closeModal(sel){const el=document.querySelector(sel);if(el){el.classList.remove('open');el.setAttribute('aria-hidden','true');}}
+    function openModal(sel){
+      const el=document.querySelector(sel);
+      if(!el) return;
+      el.classList.add('open');
+      el.setAttribute('aria-hidden','false');
+
+      // Reset coach modal position on each open so it recenters
+      if(sel==='#coachModal'){
+        const box=el.querySelector('.modal-box');
+        if(box){
+          box.style.position='';
+          box.style.margin='';
+          box.style.top='';
+          box.style.left='';
+          box.style.transform='';
+        }
+      }
+    }
+    function closeModal(sel){
+      const el=document.querySelector(sel);
+      if(el){
+        el.classList.remove('open');
+        el.setAttribute('aria-hidden','true');
+      }
+    }
     window.openModal = openModal; // expose for About EI link
-    document.querySelectorAll('.modal-close').forEach(b=>b.addEventListener('click',()=>closeModal(b.getAttribute('data-close'))));
-    document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)}));
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));});
+
+    document.querySelectorAll('.modal-close').forEach(b=>
+      b.addEventListener('click',()=>closeModal(b.getAttribute('data-close')))
+    );
+    document.querySelectorAll('.modal').forEach(m=>
+      m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)})
+    );
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape')
+        document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));
+    });
+
+    /* ---------- Coach modal drag (mouse) ---------- */
+    (function(){
+      const coachModal=document.getElementById('coachModal');
+      if(!coachModal) return;
+      const box=coachModal.querySelector('.modal-box');
+      const head=coachModal.querySelector('.modal-head');
+      if(!box || !head) return;
+
+      let dragging=false, offsetX=0, offsetY=0;
+
+      function moveAt(clientX,clientY){
+        const padding=12;
+        const w=box.offsetWidth;
+        const h=box.offsetHeight;
+        let x=clientX-offsetX;
+        let y=clientY-offsetY;
+        const maxX=window.innerWidth-padding-w;
+        const maxY=window.innerHeight-padding-h;
+        if(x<padding) x=padding;
+        if(y<padding) y=padding;
+        if(x>maxX) x=maxX;
+        if(y>maxY) y=maxY;
+        box.style.left=x+'px';
+        box.style.top=y+'px';
+      }
+
+      function onMouseMove(e){
+        if(!dragging) return;
+        moveAt(e.clientX,e.clientY);
+      }
+
+      function onMouseUp(){
+        dragging=false;
+        document.removeEventListener('mousemove',onMouseMove);
+        document.removeEventListener('mouseup',onMouseUp);
+      }
+
+      function onMouseDown(e){
+        if(e.button!==0) return;
+        // Don't start drag from the Close button
+        if(e.target.closest('.modal-close')) return;
+
+        dragging=true;
+        const rect=box.getBoundingClientRect();
+        offsetX=e.clientX-rect.left;
+        offsetY=e.clientY-rect.top;
+
+        box.style.position='absolute';
+        box.style.margin='0';
+        box.style.transform='none';
+
+        moveAt(e.clientX,e.clientY);
+        document.addEventListener('mousemove',onMouseMove);
+        document.addEventListener('mouseup',onMouseUp);
+      }
+
+      head.addEventListener('mousedown',onMouseDown);
+    })();
 
     /* ---------- Coach trigger ---------- */
-    document.getElementById('openCoach')?.addEventListener('click',e=>{e.preventDefault();openModal('#coachModal')});
+    document.getElementById('openCoach')?.addEventListener('click',e=>{
+      e.preventDefault();
+      openModal('#coachModal');
+    });
 
     /* ---------- Pill modal wiring ---------- */
     (function(){
