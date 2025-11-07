@@ -14,6 +14,17 @@
  * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
  */
 (function () {
+  // ---------- fallback/cutoff constants ----------
+  const MIN_REPLY_LENGTH = 40;  // Minimum viable reply length
+  const CUTOFF_TAIL_CHECK = 15;  // Chars to check for partial words
+  
+  // Fallback variants for duplicate/failure scenarios (role-play mode)
+  const ROLEPLAY_FALLBACK_VARIANTS = [
+    "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
+    "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
+    "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
+  ];
+
   // ---------- diagnostic logging ----------
   const DEBUG_WIDGET = true;
 
@@ -445,12 +456,7 @@
       .trim();
 
     if (!out) {
-      const variants = [
-        "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-        "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-        "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-      ];
-      out = variants[Math.floor(Math.random() * variants.length)];
+      out = ROLEPLAY_FALLBACK_VARIANTS[Math.floor(Math.random() * ROLEPLAY_FALLBACK_VARIANTS.length)];
     }
     return out;
   }
@@ -1599,6 +1605,12 @@ ${COMMON}`
       max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
       messages
     };
+    
+    // Helper to return structured failure for 5xx errors
+    const returnStructuredFailure = (status, attempts) => {
+      logError("callModel", "Remote unavailable after retries", { status, attempts });
+      return { ok: false, status };
+    };
 
     // SSE Streaming branch
     if (useStreaming) {
@@ -1646,7 +1658,7 @@ ${COMMON}`
     logDebug("callModel", "Using regular fetch with retries");
     const delays = [300, 800, 1500];
     let lastError = null;
-    let lastStatus = null;
+    let lastStatus = 0; // Default to 0 if no HTTP response received
     
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
       const controller = new AbortController();
@@ -1701,8 +1713,7 @@ ${COMMON}`
         
         // Return structured failure info for 5xx errors
         if (lastStatus && lastStatus >= 500) {
-          logError("callModel", "Remote unavailable after retries", { status: lastStatus, attempts: attempt + 1 });
-          return { ok: false, status: lastStatus };
+          return returnStructuredFailure(lastStatus, attempt + 1);
         }
         
         logError("callModel", "Model call failed", e);
@@ -1722,14 +1733,13 @@ ${COMMON}`
     
     // Final failure after all retries
     if (lastStatus && lastStatus >= 500) {
-      logError("callModel", "Remote unavailable after all retries", { status: lastStatus, attempts: delays.length + 1 });
-      return { ok: false, status: lastStatus };
+      return returnStructuredFailure(lastStatus, delays.length + 1);
     }
     
     logError("callModel", "Model call failed after all retries", lastError);
     console.warn("Model call failed after all retries:", lastError);
     showRetryUI();
-    return { ok: false, status: lastStatus || 0 };
+    return { ok: false, status: lastStatus };
   }
   
   // Show retry button UI
@@ -2054,13 +2064,13 @@ let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sani
 // Mid-sentence cut-off guard + one-pass auto-continue
 const cutOff = (t) => {
   const s = String(t || "").trim();
-  if (s.length < 40) return false; // Too short to have cutoff issues
+  if (s.length < MIN_REPLY_LENGTH) return false; // Too short to have cutoff issues
   
   // Check if ends with proper punctuation
   if (/[.!?]"?\s*$/.test(s)) return false;
   
   // Check if last ~15 chars form partial word (no space/punctuation)
-  const tail = s.slice(-15);
+  const tail = s.slice(-CUTOFF_TAIL_CHECK);
   if (tail && !/[\s.!?,;:]/.test(tail)) return true;
   
   // If longer than 200 chars and no ending punctuation, likely cutoff
@@ -2090,7 +2100,7 @@ if (cutOff(replyText)) {
       }
       
       // If too short after trim, use fallback
-      if (replyText.length < 40) {
+      if (replyText.length < MIN_REPLY_LENGTH) {
         logError("sendMessage", "Reply too short after trim, using fallback", { mode: currentMode });
         replyText = fallbackText(currentMode);
       }
@@ -2129,21 +2139,11 @@ if (norm(replyText) === norm(userText)) {
           // Handle structured failure in vary pass
           if (typeof varied === 'object' && varied.ok === false) {
             logError("sendMessage", "Vary pass failed, using fallback", { status: varied.status });
-            const alts = [
-              "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-              "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-              "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-            ];
-            varied = alts.find(a => !isTooSimilar(norm(a))) || alts[0];
+            varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
           } else {
             varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
             if (!varied || isTooSimilar(norm(varied))) {
-              const alts = [
-                "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-                "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-                "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-              ];
-              varied = alts.find(a => !isTooSimilar(norm(a))) || alts[0];
+              varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
             }
           }
           
