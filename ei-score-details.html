@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c2740">
+  <title>EI Score Breakdown – ReflectivAI</title>
+  <link rel="icon" href="assets/favicon.ico">
+  
+  <!-- Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          img-src 'self' data:;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src  'self' https://fonts.gstatic.com;
+          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
+          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+        ">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+    :root{
+      --navy:#0f2747; --navy-2:#0b3954; --teal:#20bfa9; --ink:#1e2a3a; --soft:#eef4fa;
+      --card:#ffffff; --line:#d9e3ef; --shadow:0 12px 28px rgba(12,39,64,.14);
+    }
+    body{font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:0;}
+    .container{max-width:1200px;margin:0 auto;padding:20px;}
+    .header{background:var(--navy);color:#fff;padding:20px 0;margin-bottom:40px;}
+    .score-pill{display:inline-block;padding:12px 24px;border-radius:24px;margin:8px;font-weight:700;background:#fff;border:2px solid var(--navy);color:var(--navy);}
+    .score-pill.excellent{background:#10b981;color:#fff;border-color:#10b981;}
+    .score-pill.good{background:#3b82f6;color:#fff;border-color:#3b82f6;}
+    .score-pill.fair{background:#f59e0b;color:#fff;border-color:#f59e0b;}
+    .score-pill.needs-work{background:#ef4444;color:#fff;border-color:#ef4444;}
+    .section{background:#fff;border-radius:16px;padding:32px;margin-bottom:24px;box-shadow:var(--shadow);}
+    .domain-card{background:#f8fafc;border-left:4px solid var(--teal);padding:20px;margin:16px 0;border-radius:8px;}
+    .domain-card h3{color:var(--navy);margin:0 0 12px 0;font-size:1.25rem;}
+    .domain-card p{margin:8px 0;line-height:1.6;}
+    .domain-card .score{font-size:2rem;font-weight:800;color:var(--teal);margin:12px 0;}
+    table{width:100%;border-collapse:collapse;margin:20px 0;}
+    th,td{text-align:left;padding:12px;border-bottom:1px solid var(--line);}
+    th{background:var(--soft);font-weight:700;color:var(--navy);}
+    .back-link{display:inline-block;padding:12px 24px;background:var(--navy);color:#fff;border-radius:8px;text-decoration:none;margin-top:20px;}
+    .back-link:hover{background:var(--navy-2);}
+  </style>
+</head>
+<body>
+  
+  <div class="header">
+    <div class="container">
+      <h1 style="margin:0;font-size:2rem;">Emotional Intelligence Score Breakdown</h1>
+      <p style="margin:8px 0 0 0;opacity:0.9;">Understanding Your EI Profile and Growth Opportunities</p>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- Overall Composite Score -->
+    <div class="section">
+      <h2 style="color:var(--navy);margin:0 0 16px 0;">Overall EI Composite Score</h2>
+      <div style="text-align:center;padding:24px;">
+        <div class="score-pill excellent" style="font-size:2.5rem;padding:24px 48px;">
+          <span id="compositeScore">85</span>/100
+        </div>
+        <p style="margin-top:16px;color:#64748b;font-size:1.1rem;">Strong Foundation – Continue Building on Your Strengths</p>
+      </div>
+      <p style="line-height:1.6;color:#475569;">
+        Your composite EI score reflects your overall emotional intelligence across six key domains. 
+        This score is calculated using a combination of AI-driven analysis of your communication patterns, 
+        rubric-based assessments, and deterministic heuristics that evaluate empathy, clarity, compliance, 
+        self-regulation, self-awareness, and social skills.
+      </p>
+    </div>
+
+    <!-- Domain Breakdown -->
+    <div class="section">
+      <h2 style="color:var(--navy);margin:0 0 24px 0;">Domain-by-Domain Analysis</h2>
+      
+      <div class="domain-card">
+        <h3>Empathy</h3>
+        <div class="score"><span id="empathyScore">8</span>/10</div>
+        <p><strong>What it measures:</strong> Your ability to acknowledge others' perspectives, demonstrate emotional attunement, and validate concerns before presenting solutions.</p>
+        <p><strong>Your performance:</strong> You consistently use acknowledgment language and demonstrate perspective-taking. Continue modeling empathic responses in challenging scenarios.</p>
+        <p><strong>Growth opportunity:</strong> Practice deeper emotional attunement by pausing to reflect on what the other person might be feeling before responding.</p>
+      </div>
+
+      <div class="domain-card">
+        <h3>Self-Regulation</h3>
+        <div class="score"><span id="regulationScore">7</span>/10</div>
+        <p><strong>What it measures:</strong> Your capacity to manage stress, maintain composure under pressure, and control emotional responses during challenging interactions.</p>
+        <p><strong>Your performance:</strong> You maintain neutral tone and demonstrate composure in most situations. Work on strategic pausing before responding to objections.</p>
+        <p><strong>Growth opportunity:</strong> When challenged, take a deliberate two-second pause before responding to ensure emotional regulation.</p>
+      </div>
+
+      <div class="domain-card">
+        <h3>Clarity of Communication</h3>
+        <div class="score"><span id="clarityScore">9</span>/10</div>
+        <p><strong>What it measures:</strong> Your ability to deliver messages concisely, avoid jargon, structure information logically, and ask focused questions.</p>
+        <p><strong>Your performance:</strong> Excellent clarity and conciseness. Your messages are well-structured and easy to comprehend.</p>
+        <p><strong>Growth opportunity:</strong> Minor refinements in question framing could further enhance discovery conversations.</p>
+      </div>
+
+      <div class="domain-card">
+        <h3>Compliance / Responsible Decision-Making</h3>
+        <div class="score"><span id="complianceScore">9</span>/10</div>
+        <p><strong>What it measures:</strong> Adherence to label-safe communication, ethical framing, evidence-based claims with proper citations, and regulatory compliance.</p>
+        <p><strong>Your performance:</strong> Strong compliance awareness with consistent use of label-aligned phrasing and proper citations.</p>
+        <p><strong>Growth opportunity:</strong> Continue modeling ethical boundaries, especially in ambiguous situations.</p>
+      </div>
+
+      <div class="domain-card">
+        <h3>Self-Awareness</h3>
+        <div class="score"><span id="awarenessScore">7</span>/10</div>
+        <p><strong>What it measures:</strong> Recognition of your own emotional triggers, communication patterns, and how your personal state affects message delivery.</p>
+        <p><strong>Your performance:</strong> Good awareness of your strengths and areas for growth. Increased use of reflective language would deepen self-awareness.</p>
+        <p><strong>Growth opportunity:</strong> Practice metacognitive reflection by asking yourself, "What emotion am I holding right now?" before high-stakes conversations.</p>
+      </div>
+
+      <div class="domain-card">
+        <h3>Social / Relationship Skills</h3>
+        <div class="score"><span id="socialScore">8</span>/10</div>
+        <p><strong>What it measures:</strong> Building rapport, navigating disagreement constructively, adapting communication style to audience, and using collaborative language.</p>
+        <p><strong>Your performance:</strong> Strong collaborative approach with effective use of partnership language. Continue building on this foundation.</p>
+        <p><strong>Growth opportunity:</strong> Experiment with more adaptive communication styles when facing different personality types.</p>
+      </div>
+    </div>
+
+    <!-- How Scores Are Derived -->
+    <div class="section">
+      <h2 style="color:var(--navy);margin:0 0 16px 0;">How Your Scores Are Calculated</h2>
+      <p style="line-height:1.6;color:#475569;margin-bottom:20px;">
+        ReflectivAI uses a <strong>multi-layered assessment approach</strong> that combines:
+      </p>
+      <ul style="line-height:1.8;color:#475569;">
+        <li><strong>AI-Driven Analysis:</strong> Advanced language models analyze your communication for empathy markers, clarity indicators, compliance signals, and emotional regulation patterns.</li>
+        <li><strong>Rubric-Based Evaluation:</strong> Structured rubrics score specific behaviors against best practices in sales enablement and emotional intelligence.</li>
+        <li><strong>Deterministic Heuristics:</strong> Explainable, rule-based scoring that identifies affective language patterns, acknowledgment phrases, pauses, and tone indicators.</li>
+        <li><strong>Triple-Loop Reflection:</strong> Assessment across task outcome (Loop 1), emotional regulation (Loop 2), and mindset reframing (Loop 3).</li>
+      </ul>
+      <p style="line-height:1.6;color:#475569;margin-top:20px;">
+        All scoring is <strong>transparent and explainable</strong>—no black-box algorithms. Your feedback includes specific rationales tied to observable behaviors.
+      </p>
+    </div>
+
+    <!-- EI Framework Reference -->
+    <div class="section">
+      <h2 style="color:var(--navy);margin:0 0 16px 0;">ReflectivAI EI Framework</h2>
+      <p style="line-height:1.6;color:#475569;margin-bottom:20px;">
+        Your scores are grounded in the <strong>ReflectivAI Emotional Intelligence Framework</strong>, which integrates:
+      </p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>ReflectivAI EI Domain</th>
+            <th>CASEL SEL Competency</th>
+            <th>Practical Application</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Self-Awareness</td>
+            <td>Self-Awareness</td>
+            <td>Recognize stress levels and adjust preparation accordingly</td>
+          </tr>
+          <tr>
+            <td>Self-Regulation</td>
+            <td>Self-Management</td>
+            <td>Pause and reframe when challenged, avoiding defensive responses</td>
+          </tr>
+          <tr>
+            <td>Empathy / Social Awareness</td>
+            <td>Social Awareness</td>
+            <td>Acknowledge time constraints, demonstrating respect for workflow</td>
+          </tr>
+          <tr>
+            <td>Social / Relationship Skills</td>
+            <td>Relationship Skills</td>
+            <td>Use collaborative language to build partnership, not push products</td>
+          </tr>
+          <tr>
+            <td>Compliance / Responsible Decision-Making</td>
+            <td>Responsible Decision-Making</td>
+            <td>Balance empathy with ethical boundaries and label-safe communication</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="line-height:1.6;color:#475569;margin-top:20px;">
+        This mapping ensures ReflectivAI's coaching aligns with established educational frameworks (Goleman, Mayer–Salovey–Caruso, CASEL SEL) and provides a shared language for discussing EI development.
+      </p>
+    </div>
+
+    <!-- Personalized Growth Path -->
+    <div class="section">
+      <h2 style="color:var(--navy);margin:0 0 16px 0;">Your Personalized Growth Path</h2>
+      <p style="line-height:1.6;color:#475569;">
+        Based on your <strong>Reflective Index</strong> (personalized EI profile), ReflectivAI will:
+      </p>
+      <ul style="line-height:1.8;color:#475569;">
+        <li><strong>Adjust scenario difficulty:</strong> You'll face scenarios requiring composure and empathy in domains where you're developing.</li>
+        <li><strong>Vary persona difficulty:</strong> Higher scores unlock more challenging HCP personas (skeptical, time-pressured, emotionally charged).</li>
+        <li><strong>Focus drills strategically:</strong> Receive targeted practice in your weakest domains to accelerate balanced development.</li>
+        <li><strong>Adapt coaching tone:</strong> Socratic questions deepen metacognition; explicit modeling strengthens specific skills.</li>
+      </ul>
+      <p style="line-height:1.6;color:#475569;margin-top:20px;">
+        Your scores update after every simulation using an exponential moving average, giving recent performance more weight while preserving historical context.
+      </p>
+    </div>
+
+    <!-- Call to Action -->
+    <div class="section" style="text-align:center;background:var(--soft);">
+      <h2 style="color:var(--navy);margin:0 0 16px 0;">Continue Your EI Development</h2>
+      <p style="line-height:1.6;color:#475569;margin-bottom:24px;">
+        Ready to practice and grow? Return to the coach to work on specific domains or explore new scenarios.
+      </p>
+      <a href="index.html" class="back-link">← Back to ReflectivAI Coach</a>
+      <a href="about-ei.html" class="back-link" style="background:var(--teal);margin-left:12px;">Learn More About EI Framework</a>
+    </div>
+
+  </div>
+
+  <script>
+    // NOTE: Stub data – replace with real session data when available.
+    // Could read from sessionStorage, URL params, or API call to get actual scores.
+    
+    // For now, display placeholder values set in HTML
+    // In production, this script would:
+    // 1. Check sessionStorage for latest EI scores
+    // 2. Update all score elements dynamically
+    // 3. Adjust domain card styles based on score ranges
+    
+    function updateScoreStyles() {
+      const scoreElements = document.querySelectorAll('.domain-card .score');
+      scoreElements.forEach(el => {
+        const scoreText = el.textContent;
+        const score = parseInt(scoreText);
+        if (score >= 9) el.style.color = '#10b981';
+        else if (score >= 7) el.style.color = '#3b82f6';
+        else if (score >= 5) el.style.color = '#f59e0b';
+        else el.style.color = '#ef4444';
+      });
+    }
+    
+    updateScoreStyles();
+  </script>
+</body>
+</html>
