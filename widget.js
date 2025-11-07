@@ -538,17 +538,60 @@
   const USE_LEGACY_COACH_UI = true;
 
   function renderLegacyCoachCard(coachObj) {
-    logDebug("renderLegacyCoachCard", "Rendering Sales Simulation coach card with Suggested Phrasing block");
+    logDebug("renderLegacyCoachCard", "Rendering Sales Simulation coach card with extracted Suggested Phrasing");
     
     const challenge =
       coachObj.challenge || coachObj.feedback || "Focus on label-aligned guidance and one clear question.";
     const repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
       ? coachObj.worked
       : ["Acknowledge context", "Cite one fact", "End with a discovery question"];
-    const impact = Array.isArray(coachObj.improve) && coachObj.improve.length
+    
+    // Get base phrasing from coachObj
+    const basePhrasing = (coachObj.phrasing || "").trim();
+    
+    // Initialize impact data
+    let impactRaw = Array.isArray(coachObj.improve) && coachObj.improve.length
       ? coachObj.improve
       : ["Drive a next step", "One idea per sentence", "Avoid off-label statements"];
-    const phrasing = (coachObj.phrasing || "").trim();
+    
+    // Extract phrasing from Impact if basePhrasing is empty
+    let phrasing = basePhrasing;
+    let phrasingFromImpact = "";
+    let impact = impactRaw;
+    
+    if (!basePhrasing) {
+      // Normalize impact to a single string for extraction
+      const impactText = Array.isArray(impactRaw) ? impactRaw.join(" ") : String(impactRaw || "");
+      
+      // Look for "Suggested Phrasing:" marker (case-insensitive)
+      const marker = /Suggested Phrasing\s*:\s*/i;
+      const match = impactText.match(marker);
+      
+      if (match) {
+        const markerIndex = match.index;
+        const markerLength = match[0].length;
+        
+        // Split at the first occurrence
+        const impactBody = impactText.substring(0, markerIndex).trim();
+        let extractedPhrasing = impactText.substring(markerIndex + markerLength).trim();
+        
+        // Strip leading/trailing quotes (single or double)
+        extractedPhrasing = extractedPhrasing.replace(/^["']|["']$/g, "");
+        
+        phrasingFromImpact = extractedPhrasing;
+        
+        // Update impact to show only the body (convert back to array with single item)
+        if (impactBody) {
+          impact = [impactBody];
+        } else {
+          // If impactBody is empty, keep original impact
+          impact = impactRaw;
+        }
+      }
+    }
+    
+    // Final phrasing selection
+    phrasing = basePhrasing || phrasingFromImpact || "";
 
     const card = document.createElement("div");
     card.className = "coach-card legacy";
