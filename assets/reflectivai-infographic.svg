@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <!-- Background -->
+  <rect width="800" height="400" fill="#f8fafc"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Inter, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#0f2747">
+    Traditional Training vs ReflectivAI Impact
+  </text>
+  
+  <!-- Left Side - Traditional Training -->
+  <g transform="translate(50, 80)">
+    <rect width="300" height="280" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="150" y="30" font-family="Inter, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#475569">
+      Traditional Training
+    </text>
+    
+    <!-- Icons and text for traditional -->
+    <g transform="translate(20, 60)">
+      <circle cx="15" cy="15" r="8" fill="#94a3b8"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#475569">One-time workshops</text>
+    </g>
+    <g transform="translate(20, 100)">
+      <circle cx="15" cy="15" r="8" fill="#94a3b8"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#475569">Static role-plays</text>
+    </g>
+    <g transform="translate(20, 140)">
+      <circle cx="15" cy="15" r="8" fill="#94a3b8"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#475569">Delayed feedback</text>
+    </g>
+    <g transform="translate(20, 180)">
+      <circle cx="15" cy="15" r="8" fill="#94a3b8"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#475569">Limited EI focus</text>
+    </g>
+    <g transform="translate(20, 220)">
+      <circle cx="15" cy="15" r="8" fill="#94a3b8"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#475569">Difficult to scale</text>
+    </g>
+  </g>
+  
+  <!-- Arrow -->
+  <g transform="translate(380, 220)">
+    <line x1="0" y1="0" x2="40" y2="0" stroke="#20bfa9" stroke-width="3"/>
+    <polygon points="40,0 30,-8 30,8" fill="#20bfa9"/>
+  </g>
+  
+  <!-- Right Side - ReflectivAI Impact -->
+  <g transform="translate(450, 80)">
+    <rect width="300" height="280" rx="12" fill="#e0f2f1" stroke="#20bfa9" stroke-width="3"/>
+    <text x="150" y="30" font-family="Inter, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#0f2747">
+      ReflectivAI Impact
+    </text>
+    
+    <!-- Icons and text for ReflectivAI -->
+    <g transform="translate(20, 60)">
+      <circle cx="15" cy="15" r="8" fill="#20bfa9"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#0f2747" font-weight="600">AI HCP role-play</text>
+    </g>
+    <g transform="translate(20, 100)">
+      <circle cx="15" cy="15" r="8" fill="#20bfa9"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#0f2747" font-weight="600">Instant coach feedback</text>
+    </g>
+    <g transform="translate(20, 140)">
+      <circle cx="15" cy="15" r="8" fill="#20bfa9"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#0f2747" font-weight="600">EI scoring</text>
+    </g>
+    <g transform="translate(20, 180)">
+      <circle cx="15" cy="15" r="8" fill="#20bfa9"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#0f2747" font-weight="600">Compliance protection</text>
+    </g>
+    <g transform="translate(20, 220)">
+      <circle cx="15" cy="15" r="8" fill="#20bfa9"/>
+      <text x="35" y="20" font-family="Inter, sans-serif" font-size="14" fill="#0f2747" font-weight="600">Scalable practice</text>
+    </g>
+  </g>
+</svg>
