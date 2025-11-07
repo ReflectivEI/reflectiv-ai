@@ -495,61 +495,93 @@
       </div>
     </div>
 
-    <!-- Additional platform feature with logo -->
-    <div class="mt-12 bg-gradient-to-r from-blue-50 to-teal-50 p-8 rounded-xl shadow-lg border border-gray-200">
-      <div class="grid md:grid-cols-2 gap-10 items-center">
+        <!-- Additional platform feature with logo -->
+    <div class="mt-12 rounded-2xl shadow-lg border border-transparent bg-gradient-to-r from-[#0f2747] via-[#0b2f5c] to-[#0b3954] p-8 md:p-10">
+      <div class="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-10 items-center">
+        
+        <!-- Left: logo + narrative -->
         <div>
-          <img src="assets/site_image4_logo.jpeg" alt="ReflectivAI platform logo" class="w-32 h-auto mx-auto md:mx-0 mb-4 rounded-lg" />
-          <h3 class="text-2xl font-bold text-gray-900 mb-3">The ReflectivAI Difference</h3>
-          <p class="text-gray-700 mb-4">
-            Our platform doesn’t just teach product knowledge—it transforms how your reps connect with HCPs. By embedding emotional intelligence into every simulation, we help build skills that drive trust, adherence, and long-term relationships.
-          </p>
-          <p class="text-gray-700">
-            With AI-powered coaching that feels human, compliance guardrails that protect your brand, and analytics that illuminate growth opportunities, ReflectivAI delivers training that actually changes behavior.
-          </p>
+          <div class="flex flex-col md:flex-row md:items-start gap-4 mb-4">
+            <div class="flex-shrink-0">
+              <div class="w-20 h-20 rounded-xl bg-white/95 flex items-center justify-center shadow-md">
+                <img
+                  src="assets/site_image4_logo.jpeg"
+                  alt="ReflectivAI logo"
+                  class="w-16 h-16 object-contain"
+                />
+              </div>
+            </div>
+            <div>
+              <h3 class="text-2xl font-bold text-white mb-2">The ReflectivAI Difference</h3>
+              <p class="text-sm md:text-base text-indigo-100 mb-3">
+                Our platform doesn’t just teach product knowledge—it transforms how your reps connect
+                with HCPs. By embedding emotional intelligence into every simulation, we help build
+                skills that drive trust, adherence, and long-term relationships.
+              </p>
+              <p class="text-sm md:text-base text-indigo-100">
+                With AI-powered coaching that feels human, compliance guardrails that protect your
+                brand, and analytics that illuminate growth opportunities, ReflectivAI delivers
+                training that actually changes behavior.
+              </p>
+            </div>
+          </div>
         </div>
 
+        <!-- Right: clean, aligned benefit column -->
         <div>
           <ul class="space-y-4">
-            <li class="flex items-start">
-              <div class="w-10 h-10 accent-teal rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+            <li class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
                 <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
               </div>
-              <div>
-                <h4 class="font-bold text-gray-900">Always Compliant</h4>
-                <p class="text-sm text-gray-600">Label-only content with automated guardrails</p>
+              <div class="pt-0.5">
+                <h4 class="font-semibold text-white">Always Compliant</h4>
+                <p class="text-xs md:text-sm text-indigo-100">
+                  Label-only content with automated guardrails.
+                </p>
               </div>
             </li>
-            <li class="flex items-start">
-              <div class="w-10 h-10 accent-teal rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+
+            <li class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
                 <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
               </div>
-              <div>
-                <h4 class="font-bold text-gray-900">Instantly Scalable</h4>
-                <p class="text-sm text-gray-600">Deploy across your entire field force in days</p>
+              <div class="pt-0.5">
+                <h4 class="font-semibold text-white">Instantly Scalable</h4>
+                <p class="text-xs md:text-sm text-indigo-100">
+                  Deploy across your entire field force in days.
+                </p>
               </div>
             </li>
-            <li class="flex items-start">
-              <div class="w-10 h-10 accent-teal rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+
+            <li class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
                 <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                 </svg>
               </div>
-              <div>
-                <h4 class="font-bold text-gray-900">Measurable Impact</h4>
-                <p class="text-sm text-gray-600">Track EI growth and business outcomes together</p>
+              <div class="pt-0.5">
+                <h4 class="font-semibold text-white">Measurable Impact</h4>
+                <p class="text-xs md:text-sm text-indigo-100">
+                  Track EI growth and business outcomes together.
+                </p>
               </div>
             </li>
           </ul>
         </div>
+
       </div>
     </div>
-  </div>
+
 </section>
+  
 <!-- END: Platform Modules Section -->
 
 <!-- BEGIN: EI Coaching Section -->
