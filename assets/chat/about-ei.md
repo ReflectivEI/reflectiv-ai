@@ -162,11 +162,101 @@ but to **become** emotionally intelligent through measurable, adaptive practice.
 
 ---
 
+## 11. Reflective AI Agent Concepts
+
+ReflectivAI's architecture draws inspiration from cutting-edge reflective AI research:
+
+### Reflection-Based Learning
+- **Reflexion**: Multi-pass reflection loops where the AI critiques and improves its own outputs
+- **Reflective LLaVA**: Vision-language models that self-assess and refine multimodal understanding
+- **Reflective Journaling AIs**: Systems that prompt users to engage in structured self-reflection
+
+### Emotion-Driven Role-Play Adaptation
+- **Dynamic Persona Adjustment**: HCP personas adapt based on empathy markers and tone detected in rep responses
+- **Emotional State Modeling**: Track and respond to emotional cues (stress, frustration, engagement)
+- **Scenario Escalation**: Automatically adjust difficulty based on EI performance metrics
+
+### Personalized EI Growth Profiles
+- **Individual Baselines**: Each user has a unique EI profile tracking growth over time
+- **Competency Gaps**: System identifies specific areas for development (e.g., regulation vs. empathy)
+- **Adaptive Pathways**: Scenario selection and coaching intensity adapt to individual needs
+
+### Socratic Metacoaching Prompts
+Instead of prescriptive advice, the system asks:
+- "What emotion were you trying to manage in that moment?"
+- "How might the HCP have perceived your tone?"
+- "What would you do differently next time, and why?"
+
+These prompts activate metacognition—thinking about thinking—which deepens learning retention.
+
+### EI Analytics and Visualization
+- **Empathy Markers Over Time**: Graph showing frequency of empathetic language
+- **Regulation Moments**: Track instances of pause, composure, and tone reset
+- **EI Composite Trends**: Longitudinal view of overall EI development
+- **Comparative Benchmarks**: Anonymous peer comparisons to contextualize growth
+
+---
+
+## 12. Integration with Social & Emotional Learning (SEL)
+
+ReflectivAI explicitly aligns with CASEL's five core SEL competencies:
+
+| SEL Competency | ReflectivAI Implementation | Measurement |
+|----------------|---------------------------|-------------|
+| **Self-Awareness** | Reflective prompts about tone, intent, and impact | Self-awareness score, reflection depth |
+| **Self-Management** | Regulation scoring, composure feedback | Regulation markers, stress management |
+| **Social Awareness** | Persona-sensitive simulations, empathy tracking | Empathy score, perspective-taking |
+| **Relationship Skills** | Collaborative language, rapport-building | Social skills markers, inquiry quality |
+| **Responsible Decision-Making** | Compliance enforcement, ethical framing | Compliance score, risk flag detection |
+
+This alignment ensures that ReflectivAI doesn't just train sales skills—it develops **whole-person emotional intelligence** applicable far beyond pharma sales.
+
+---
+
+## 13. The ReflectivAI EI DNA
+
+Emotional Intelligence is not bolted onto ReflectivAI—it **is** ReflectivAI.
+
+Every component of the system is designed with EI principles:
+- **Prompts**: Written to elicit reflection and self-awareness
+- **Scoring**: Based on empathy, regulation, and clarity, not just accuracy
+- **Feedback**: Delivered with supportive tone and growth mindset
+- **Scenarios**: Designed to surface emotional challenges, not just clinical ones
+- **Coaching**: Focuses on *how* to communicate, not just *what* to say
+
+The platform embodies a philosophy: **Effective communication in healthcare requires not just knowledge, but emotional attunement.**
+
+By integrating EI at every layer—from heuristic scoring to Socratic prompts to adaptive personas—ReflectivAI creates a learning environment where emotional intelligence development is inevitable, measurable, and transformative.
+
+---
+
+## 14. Secure-by-Design Hosting and Ethical AI
+
+ReflectivAI's architecture follows secure-by-design principles:
+
+- **Separation of Concerns**: Static assets (GitHub Pages) + dynamic compute (Cloudflare Workers)
+- **Secret Management**: API keys and credentials never exposed in client code
+- **Compliance Guardrails**: Off-label detection, absolute claim scanning, citation requirements
+- **Transparent Heuristics**: All EI scoring rules are explainable and auditable
+- **No Black Box**: Every score and feedback element can be traced to specific language patterns
+
+This ensures that the platform is not just effective, but **trustworthy, transparent, and ethically grounded**.
+
+---
+
 ### References
 
 1. Goleman, D. (1998). *Working with Emotional Intelligence.*  
 2. Mayer, J.D., Salovey, P., & Caruso, D.R. (2004). *Emotional Intelligence: Theory, Findings, and Implications.*  
 3. Collaborative for Academic, Social, and Emotional Learning (CASEL). (2023). *SEL Framework.*  
-4. ReflectivAI Internal Heuristic Framework v2.0 (2025).
+4. Shinn, N., et al. (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning.*
+5. Li, H., et al. (2024). *Reflective LLaVA: Self-Reflective Multimodal Reasoning.*
+6. ReflectivAI Internal Heuristic Framework v2.0 (2025).
+
+---
+
+**Document Version**: 2.1  
+**Last Updated**: 2025-11-07  
+**Status**: Production - EI-First Architecture
 
 
