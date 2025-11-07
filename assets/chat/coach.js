@@ -87,6 +87,9 @@
       rationale: "AI-derived rationale will appear here when available"
     }
   };
+  
+  // Constants
+  const SCORE_MULTIPLIER = 20; // Convert 0-5 scale to 0-100
 
   // ---------- state ----------
   const state = {
@@ -494,7 +497,7 @@
         const scoreEl = qs(`[data-score="${domain}"]`);
         if (scoreEl) {
           const score = eiData.scores[domain];
-          scoreEl.textContent = score !== undefined ? Math.round(score * 20) : "--"; // Convert 0-5 to 0-100
+          scoreEl.textContent = score !== undefined ? Math.round(score * SCORE_MULTIPLIER) : "--"; // Convert 0-5 to 0-100
         }
       });
       

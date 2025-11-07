@@ -200,7 +200,7 @@ function removeCoachLeakage(text, mode) {
   // Role-play mode: enforce plain text, no bullets, no coach phrasing
   if (mode === "role-play") {
     result = result
-      .replace(/^[\s-•*]+/gm, "")  // Remove bullet points
+      .replace(/^[\s\-\u2022\u2023\u25E6\*]+/gm, "")  // Remove bullet points (including Unicode)
       .replace(/Suggested Phrasing:.*$/gim, "")  // Remove coach suggestions
       .replace(/\bCoach:\s*/gi, "")  // Remove "Coach:" prefix
       .replace(/\bHCP:\s*/gi, "")  // Keep HCP natural

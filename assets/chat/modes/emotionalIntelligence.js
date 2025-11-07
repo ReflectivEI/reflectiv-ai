@@ -106,5 +106,9 @@ export function createModule({ bus, store, register }){
     // disposer.flush() called by switcher
   }
   
-  return { init, teardown, MODE, history };
+  function getHistory(){
+    return [...history]; // Return copy for encapsulation
+  }
+  
+  return { init, teardown, MODE, getHistory };
 }
