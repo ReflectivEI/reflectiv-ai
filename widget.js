@@ -517,6 +517,11 @@
       </div>
 
       <div class="coach-section">
+        <div class="coach-label">Suggested Phrasing:</div>
+        <div class="coach-phrasing-block">"${esc(phrasing)}"</div>
+      </div>
+
+      <div class="coach-section">
         <div class="coach-label">Challenge:</div>
         <div class="coach-body">${esc(challenge)}</div>
       </div>
@@ -533,11 +538,6 @@
         <ul class="coach-list">
           ${impact.map(i => `<li>${esc(i)}</li>`).join("")}
         </ul>
-      </div>
-
-      <div class="coach-section">
-        <div class="coach-label">Suggested Phrasing:</div>
-        <div class="coach-quote">“${esc(phrasing)}”</div>
       </div>
     `;
     return card;
@@ -971,6 +971,10 @@ ${COMMON}`
 #reflectiv-widget .streaming .content{background:#f0f7ff;border-color:#b3d9ff}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
+#reflectiv-widget .coach-phrasing-block{padding:8px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:6px;margin-top:4px;font-style:italic}
+#reflectiv-widget .coach-section.coach-score-good{border-left:3px solid #28a745}
+#reflectiv-widget .coach-section.coach-score-warn{border-left:3px solid #ffc107}
+#reflectiv-widget .coach-section.coach-score-bad{border-left:3px solid #dc3545}
       `;
       document.head.appendChild(style);
     }
@@ -1266,7 +1270,24 @@ ${COMMON}`
         row.appendChild(c);
         msgsEl.appendChild(row);
       }
-      msgsEl.scrollTop = msgsEl.scrollHeight;
+      // Scroll to show the top of the latest message (especially important for coach cards)
+      if (conversation.length > 0) {
+        const lastMsg = conversation[conversation.length - 1];
+        if (lastMsg.role === "assistant") {
+          // For assistant messages, scroll to show the top of the message
+          setTimeout(() => {
+            const lastMsgEl = msgsEl.lastElementChild;
+            if (lastMsgEl) {
+              lastMsgEl.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }, 50);
+        } else {
+          // For user messages, scroll to bottom as before
+          msgsEl.scrollTop = msgsEl.scrollHeight;
+        }
+      } else {
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      }
     }
 
     function orderedPills(scores) {
@@ -1307,18 +1328,32 @@ ${COMMON}`
 
       // Sales Simulation yellow panel spec:
       if (currentMode === "sales-simulation") {
-        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-        const phrasingStr = fb.phrasing || "—";
+        const overallScore = fb.overall ?? fb.score ?? 0;
+        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
+        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
+        
+        // Determine score-based accent class
+        let scoreClass = "";
+        if (overallScore >= 85) scoreClass = "coach-score-good";
+        else if (overallScore >= 70) scoreClass = "coach-score-warn";
+        else if (overallScore > 0) scoreClass = "coach-score-bad";
+        
+        // Apply score class to coach section (parent element)
+        const coachSection = coach.closest(".coach-section");
+        if (coachSection) {
+          coachSection.classList.remove("coach-score-good", "coach-score-warn", "coach-score-bad");
+          if (scoreClass) coachSection.classList.add(scoreClass);
+        }
+        
         body.innerHTML = `
-          <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
-          <ul class="coach-list">
-            <li><strong>Focus:</strong> ${workedStr}</li>
-            <li><strong>Strategy:</strong> ${improveStr}</li>
-            <li><strong>Suggested Phrasing:</strong>
-              <div class="mono">${esc(phrasingStr)}</div>
-            </li>
-          </ul>
+          <div style="margin-bottom:12px">
+            <strong>Performance Snapshot:</strong> ${overallScore}/100
+          </div>
+          <div class="coach-subs" style="margin-bottom:12px">${orderedPills(scores)}</div>
+          <div style="margin-bottom:8px"><strong>What Worked:</strong></div>
+          ${workedStr}
+          <div style="margin-bottom:8px"><strong>What to Improve:</strong></div>
+          ${improveStr}
           ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
         return;
       }
