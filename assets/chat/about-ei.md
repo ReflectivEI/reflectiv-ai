@@ -21,6 +21,8 @@ tags:
 
 # Emotional Intelligence (EI) Framework and Assessment Protocols
 
+**Reflectiv-AI integrates Emotional Intelligence (EI) into simulation and role-play-based learning by default.**
+
 ReflectivAI embeds Emotional Intelligence not as a concept but as an operational system.  
 Every simulation, prompt, and feedback loop is grounded in structured reflection, evidence-based heuristics, and measurable behavior change.
 
@@ -169,4 +171,115 @@ but to **become** emotionally intelligent through measurable, adaptive practice.
 3. Collaborative for Academic, Social, and Emotional Learning (CASEL). (2023). *SEL Framework.*  
 4. ReflectivAI Internal Heuristic Framework v2.0 (2025).
 
+
+## 11. Personalized EI Growth Profiles & Reflective Index
+
+ReflectivAI tracks individual learning trajectories through a **Personalized EI Growth Profile**. This profile:
+
+- Captures baseline EI assessments across six domains
+- Monitors skill progression over time via exponential moving averages
+- Adapts scenario difficulty to maintain optimal challenge
+- Provides personalized coaching recommendations based on growth patterns
+- Generates trend visualizations showing strengths and development areas
+
+The **Reflective Index** is a composite metric representing overall emotional intelligence maturity, calculated from weighted domain scores and reflective practice frequency.
+
+---
+
+## 12. Reflectiv-AI Paradigms: Reflexion & Reflective LLaVA Integration
+
+ReflectivAI implements advanced AI reasoning paradigms to enhance learning outcomes:
+
+### Reflexion Framework
+Based on the Reflexion architecture (Shinn et al., 2023), ReflectivAI enables agents to:
+- Reflect on task feedback and self-evaluate performance
+- Maintain a reflective memory of prior attempts
+- Iteratively improve responses through verbal reinforcement learning
+- Generate explicit self-critiques and refinement strategies
+
+### Reflective LLaVA (Multimodal Learning)
+Integrating Reflective LLaVA principles enables:
+- Visual analysis of communication scenarios (facial expressions, body language)
+- Multimodal feedback combining text, visual, and emotional cues
+- Enhanced context understanding through vision-language alignment
+- More nuanced empathy scoring based on observed non-verbal signals
+
+These paradigms create a **meta-cognitive loop** where the AI not only coaches learners but also reflects on its own coaching effectiveness, continuously refining its pedagogical approach.
+
+---
+
+## 13. Expanded Socratic Metacoach Prompts (20+ Examples)
+
+When empathy or regulation scores fall below threshold, a metacoach activates with targeted Socratic questions:
+
+**Self-Awareness Prompts:**
+> "Pause. What did you notice about your tone?"  
+> "What emotion were you feeling when you said that?"  
+> "How might the other person have perceived that?"  
+> "What need were you trying to meet in that response?"  
+> "What assumptions are you making about their perspective?"
+
+**Empathy Development Prompts:**
+> "What might they be feeling right now?"  
+> "How would you feel if someone said that to you?"  
+> "What concern are they expressing beneath their words?"  
+> "Can you identify the emotion driving their objection?"  
+> "What would acknowledgment sound like here?"
+
+**Self-Regulation Prompts:**
+> "What triggered that reactive response?"  
+> "How could you rephrase that more neutrally?"  
+> "What would a pause have given you there?"  
+> "How can you slow down this interaction?"  
+> "What composure strategy would help right now?"
+
+**Discovery & Clarity Prompts:**
+> "What question would unlock their real concern?"  
+> "How could you simplify that explanation?"  
+> "What's the one insight they need most?"  
+> "Which detail matters versus which obscures?"  
+> "How can you invite them to share more?"
+
+**Compliance & Ethics Prompts:**
+> "Is that claim label-aligned?"  
+> "How would you cite that statement?"  
+> "What's the ethical frame for this scenario?"  
+> "Are you balancing persuasion with integrity?"  
+> "What regulatory consideration applies here?"
+
+These prompts transform awareness into self-correction, reinforcing deep EI learning through guided reflection rather than didactic instruction.
+
+---
+
+## 14. Enhanced EI ↔ SEL Mapping (6 Domains × 5 Competencies)
+
+**Complete Integration Matrix:**
+
+| SEL Competency | EI Domains Mapped | ReflectivAI Behavior |
+|----------------|-------------------|----------------------|
+| **Self-Awareness** | Self-Awareness, Discovery | Reflection questions, trigger recognition |
+| **Self-Management** | Self-Regulation, Clarity | Pauses and composure scoring, response control |
+| **Social Awareness** | Empathy, Discovery | Persona-sensitive simulation, perspective-taking |
+| **Relationship Skills** | Empathy, Objection Handling, Social Skills | Dialogue and tone mapping, rapport building |
+| **Responsible Decision-Making** | Compliance, Accuracy | Ethical framing, label-aligned guidance |
+
+**EI Domain Breakdown:**
+1. **Empathy** → Social Awareness, Relationship Skills
+2. **Objection Handling** → Relationship Skills, Self-Management
+3. **Clarity & Confidence** → Self-Management, Responsible Decision-Making
+4. **Accuracy & Compliance** → Responsible Decision-Making
+5. **Discovery** → Self-Awareness, Social Awareness
+6. **Self-Regulation** → Self-Management, Self-Awareness
+
+This mapping ensures every simulation exercise develops multiple SEL competencies simultaneously, creating comprehensive emotional intelligence growth.
+
+---
+
+### Updated References
+
+1. Goleman, D. (1998). *Working with Emotional Intelligence.*  
+2. Mayer, J.D., Salovey, P., & Caruso, D.R. (2004). *Emotional Intelligence: Theory, Findings, and Implications.*  
+3. Collaborative for Academic, Social, and Emotional Learning (CASEL). (2023). *SEL Framework.*  
+4. Shinn, N., Cassano, F., Gopinath, A., Narasimhan, K., & Yao, S. (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning.*
+5. ReflectivAI Internal Heuristic Framework v2.0 (2025).
 
