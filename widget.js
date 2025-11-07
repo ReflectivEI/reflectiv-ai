@@ -548,7 +548,7 @@
       if (idx === -1) return { base: text, phrasing: "" };
       const before = text.slice(0, idx).trim();
       const afterRaw = text.slice(idx + label.length).trim();
-      const after = afterRaw.replace(/^[""']+/, "").replace(/[""']+$/, "").trim();
+      const after = afterRaw.replace(/^[""'"]+/, "").replace(/[""'"]+$/, "").trim();
       return {
         base: before || "",
         phrasing: after
