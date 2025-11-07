@@ -535,6 +535,15 @@
   }
 
   // ---------- Legacy Coach Renderer (RESTORED UI) ----------
+  // *** CRITICAL: Sales Simulation Coach Card Format Lock ***
+  // DO NOT CHANGE the structure of this coach card renderer without explicit approval.
+  // This format is used in Sales Simulation mode ONLY and must remain exactly as:
+  //   1. Challenge (text paragraph)
+  //   2. Rep Approach (bulleted list)
+  //   3. Impact (bulleted list)
+  //   4. Suggested Phrasing (optional text)
+  // DO NOT add extra headings, change bullet formatting, or merge with other modes.
+  // Role Play mode uses a SEPARATE renderer and must not display coach cards.
   const USE_LEGACY_COACH_UI = true;
 
   function renderLegacyCoachCard(coachObj) {
@@ -1108,12 +1117,51 @@ ${COMMON}`
     lcLabel.htmlFor = "cw-mode";
     const modeSel = el("select");
     modeSel.id = "cw-mode";
-    LC_OPTIONS.forEach((name) => {
+    
+    // *** Phase B: Grouped mode dropdown for better UX ***
+    // Organize modes into logical groups for busy field reps
+    const salesModesGroup = el("optgroup");
+    salesModesGroup.label = "Sales Modes";
+    
+    const learningModesGroup = el("optgroup");
+    learningModesGroup.label = "Learning Modes";
+    
+    const eiToolsGroup = el("optgroup");
+    eiToolsGroup.label = "EI Tools";
+    
+    // Categorize and add options to their respective groups
+    const modeCategories = {
+      "Sales Modes": ["Sales Simulation", "Role Play"],
+      "Learning Modes": ["Product Knowledge"],
+      "EI Tools": ["Emotional Intelligence"]
+    };
+    
+    // Add options to each group
+    ["Sales Simulation", "Role Play"].forEach((name) => {
       const o = el("option");
       o.value = name;
       o.textContent = name;
-      modeSel.appendChild(o);
+      salesModesGroup.appendChild(o);
     });
+    
+    ["Product Knowledge"].forEach((name) => {
+      const o = el("option");
+      o.value = name;
+      o.textContent = name;
+      learningModesGroup.appendChild(o);
+    });
+    
+    ["Emotional Intelligence"].forEach((name) => {
+      const o = el("option");
+      o.value = name;
+      o.textContent = name;
+      eiToolsGroup.appendChild(o);
+    });
+    
+    modeSel.appendChild(salesModesGroup);
+    modeSel.appendChild(learningModesGroup);
+    modeSel.appendChild(eiToolsGroup);
+    
     const initialLc =
       Object.keys(LC_TO_INTERNAL).find((k) => LC_TO_INTERNAL[k] === (cfg?.defaultMode || "sales-simulation")) ||
       "Sales Simulation";
@@ -1355,7 +1403,10 @@ ${COMMON}`
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
-        // Speaker chips: Role Play = HCP/Rep. Sales Simulation = Sales Coach/Rep.
+        // *** Sales Simulation vs Role Play: Different speaker chip logic ***
+        // Sales Simulation: Shows "Sales Coach" for assistant / "Rep" for user
+        // Role Play: Shows "HCP" for assistant / "Rep" for user
+        // DO NOT merge or change this mode-specific speaker identification
         if (currentMode === "role-play") {
           const chipText =
             m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "HCP" : "Rep";
@@ -1371,7 +1422,9 @@ ${COMMON}`
         const body = el("div");
         let contentToRender = m.content;
         
-        // Role Play mode: normalize HCP messages to remove bullet formatting
+        // *** Role Play mode: Keep HCP messages as plain paragraphs (no bullets) ***
+        // This ensures Role Play conversations feel natural and conversational
+        // DO NOT apply this normalization to Sales Simulation mode
         if (currentMode === "role-play" && isHcpMessage(m)) {
           contentToRender = normalizeRolePlayHcpText(contentToRender);
         }

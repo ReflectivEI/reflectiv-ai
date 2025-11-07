@@ -8,14 +8,14 @@
   <link rel="icon" href="assets/favicon.ico">
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
-  <!-- Allows Tailwind CDN + Google Fonts + your Worker -->
+  <!-- Allows Tailwind CDN + Google Fonts + Plotly CDN + your Worker -->
   <meta http-equiv="Content-Security-Policy"
         content="
           default-src 'self';
           img-src 'self' data:;
           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
           font-src  'self' https://fonts.gstatic.com;
-          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
+          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.plot.ly;
           connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev
         ">
 
@@ -222,12 +222,19 @@
       <li class="dropdown" role="none">
         <a href="#analytics" role="menuitem" aria-haspopup="true" aria-expanded="false">Analytics ▾</a>
         <ul class="dropdown-menu" role="menu" aria-label="Analytics submenu">
+          <li role="none"><a role="menuitem" href="/analytics.html">Analytics Dashboard</a></li>
           <li role="none"><a role="menuitem" href="#metrics">Performance Metrics</a></li>
           <li role="none"><a role="menuitem" href="#dashboards">Dashboards</a></li>
         </ul>
       </li>
       <li role="none"><a role="menuitem" href="#ethics">Ethics</a></li>
-      <li role="none"><a role="menuitem" href="#" onclick="openAboutEI();return false;">About EI</a></li>
+      <li class="dropdown" role="none">
+        <a href="#" role="menuitem" aria-haspopup="true" aria-expanded="false">About EI ▾</a>
+        <ul class="dropdown-menu" role="menu" aria-label="About EI submenu">
+          <li role="none"><a role="menuitem" href="https://www.reflectivai.com/ei-assessment" target="_blank" rel="noopener noreferrer">Take EI Assessment</a></li>
+          <li role="none"><a role="menuitem" href="/docs/about-ei.html#scoring">About EI Rubric</a></li>
+        </ul>
+      </li>
       <li role="none"><a role="menuitem" href="#contact" class="btn-demo">Request Demo</a></li>
     </ul>
 

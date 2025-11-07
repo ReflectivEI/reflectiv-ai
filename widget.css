@@ -88,6 +88,68 @@
   }
 }
 
+/* =================================================================
+   SALES SIMULATION COACH CARD REFINEMENT (Phase B)
+   Enhanced spacing and typography for coach guidance cards
+   ================================================================= */
+
+/* Sales Simulation assistant message card - improved spacing */
+#reflectiv-widget .message.assistant {
+  line-height: 1.5;
+}
+
+#reflectiv-widget .message.assistant p {
+  margin: 0 0 8px;
+}
+
+/* Make coach labels more visually distinct */
+#reflectiv-widget .message.assistant strong,
+#reflectiv-widget .coach-card strong,
+#reflectiv-widget .coach-section strong {
+  display: block;
+  margin-bottom: 4px;
+  margin-top: 8px;
+  font-weight: 700;
+  color: #0b3954;
+  font-size: 14px;
+}
+
+/* Additional spacing between coach card sections */
+#reflectiv-widget .coach-section {
+  margin-bottom: 12px;
+}
+
+#reflectiv-widget .coach-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Ensure coach label stands out with consistent styling */
+#reflectiv-widget .coach-label,
+#reflectiv-widget .coach-section .coach-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: #0b3954;
+  font-size: 14px;
+}
+
+/* Body text in coach sections should have adequate spacing */
+#reflectiv-widget .coach-body {
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* List items in coach feedback */
+#reflectiv-widget .coach-body ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+#reflectiv-widget .coach-body li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
 /* Header */
 .coach-header {
   display: flex;

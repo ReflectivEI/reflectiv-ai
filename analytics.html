@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c2740">
+  <title>Analytics Dashboard – ReflectivAI</title>
+  <link rel="icon" href="assets/favicon.ico">
+
+  <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
+  <!-- Allows Tailwind CDN + Google Fonts + Plotly CDN + your Worker -->
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          img-src 'self' data:;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src  'self' https://fonts.gstatic.com;
+          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.plot.ly;
+          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+        ">
+
+  <!-- Performance: preconnect for Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Plotly for charts -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+  <!-- Type + quick utilities -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+    :root{
+      --navy:#0f2747; --navy-2:#0b3954; --teal:#20bfa9; --ink:#1e2a3a; --soft:#eef4fa;
+      --card:#ffffff; --line:#d9e3ef; --shadow:0 12px 28px rgba(12,39,64,.14);
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f8fafc;color:#0f172a}
+    .primary-dark{background-color:#1E3A8A}
+    .text-primary-dark{color:#1E3A8A}
+    .accent-teal{background-color:#06B6D4}
+    .text-accent-teal{color:#06B6D4}
+    .section-separator{width:80px;height:4px;margin-bottom:24px;border-radius:9999px;background-color:#06B6D4}
+    .sticky-header{transition:all .3s ease-in-out}
+
+    /* Nav styles */
+    .site_header .nav{display:flex;align-items:center;justify-content:space-between;background:#0f2747;color:#fff;padding:12px 16px}
+    .site_header .brand{display:flex;gap:8px;align-items:center;color:#fff;text-decoration:none;font-weight:800}
+    .site_header .nav-links{display:flex;gap:18px;align-items:center}
+    .site_header .nav-links a{color:#fff;text-decoration:none}
+    .site_header .dropdown{position:relative}
+    .site_header .dropdown-menu{display:none;position:absolute;top:100%;left:0;background:#fff;color:#0f2747;border:1px solid #e5e7eb;border-radius:10px;min-width:220px;box-shadow:var(--shadow);padding:8px}
+    .site_header .dropdown:hover .dropdown-menu{display:block}
+    .site_header .dropdown-menu a{display:block;padding:8px 10px;color:#0f2747}
+    .site_header .btn-demo{padding:8px 14px;border:2px solid #20bfa9;border-radius:999px;background:#20bfa9;color:#083344;font-weight:800}
+    .hamburger{display:none;border:0;background:transparent;color:#fff}
+    .hamburger span{display:block;width:22px;height:2px;background:#fff;margin:5px 0}
+    @media (max-width: 900px){
+      .site_header .nav-links{display:none;position:absolute;right:12px;top:56px;flex-direction:column;background:#0f2747;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
+      .site_header .nav-links.open{display:flex}
+      .hamburger{display:block}
+    }
+
+    /* Chart containers */
+    .chart-container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 14px rgba(12,39,64,.10);
+      margin-bottom: 24px;
+    }
+    .chart-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f2747;
+      margin-bottom: 16px;
+    }
+  </style>
+
+  <!-- Referrer policy (minor CS hardening) -->
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+</head>
+
+<body class="bg-slate-50">
+<noscript>
+  <div style="background:#0f2747;color:#fff;padding:10px 16px;text-align:center">
+    JavaScript is required to view ReflectivAI Analytics.
+  </div>
+</noscript>
+
+<!-- Header & Navigation (Navy bg, Teal underline) -->
+<header class="site_header fixed top-0 left-0 w-full z-50">
+  <nav class="nav" aria-label="Primary">
+    <!-- Brand -->
+    <a href="index.html" class="brand" aria-label="ReflectivAI home">
+      <img src="logo-modern.png" alt="" width="36" height="36" />
+      <span>ReflectivAI</span>
+    </a>
+
+    <!-- Links + Dropdowns -->
+    <ul class="nav-links" id="navLinks" role="menubar" aria-label="Main menu">
+      <li class="dropdown" role="none">
+        <a href="index.html#platform" role="menuitem" aria-haspopup="true" aria-expanded="false">Platform ▾</a>
+        <ul class="dropdown-menu" role="menu" aria-label="Platform submenu">
+          <li role="none"><a role="menuitem" href="index.html#simulations">Simulations</a></li>
+          <li role="none"><a role="menuitem" href="index.html#coach">AI Coach</a></li>
+          <li role="none"><a role="menuitem" href="index.html#learning">Learning Center</a></li>
+        </ul>
+      </li>
+      <li class="dropdown" role="none">
+        <a href="analytics.html" role="menuitem" aria-haspopup="true" aria-expanded="false" class="text-accent-teal">Analytics ▾</a>
+        <ul class="dropdown-menu" role="menu" aria-label="Analytics submenu">
+          <li role="none"><a role="menuitem" href="analytics.html">Analytics Dashboard</a></li>
+          <li role="none"><a role="menuitem" href="index.html#metrics">Performance Metrics</a></li>
+          <li role="none"><a role="menuitem" href="index.html#dashboards">Dashboards</a></li>
+        </ul>
+      </li>
+      <li role="none"><a role="menuitem" href="index.html#ethics">Ethics</a></li>
+      <li class="dropdown" role="none">
+        <a href="#" role="menuitem" aria-haspopup="true" aria-expanded="false">About EI ▾</a>
+        <ul class="dropdown-menu" role="menu" aria-label="About EI submenu">
+          <li role="none"><a role="menuitem" href="https://www.reflectivai.com/ei-assessment" target="_blank" rel="noopener noreferrer">Take EI Assessment</a></li>
+          <li role="none"><a role="menuitem" href="docs/about-ei.html#scoring">About EI Rubric</a></li>
+        </ul>
+      </li>
+      <li role="none"><a role="menuitem" href="index.html#contact" class="btn-demo">Request Demo</a></li>
+    </ul>
+
+    <!-- Mobile hamburger -->
+    <button class="hamburger" id="navHamburger" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+</header>
+<!-- spacer so content isn't covered -->
+<div style="height:64px"></div>
+
+<!-- ===== Analytics Dashboard ===== -->
+<section class="py-16 md:py-24 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h1 class="text-4xl font-extrabold text-gray-900 mb-4 text-center md:text-left">
+      Analytics Dashboard
+    </h1>
+    <div class="section-separator mx-auto md:mx-0"></div>
+    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:text-left mx-auto md:mx-0">
+      Explore training performance metrics, EI scores, and scenario completion data. All charts are interactive—hover for details, click legend items to toggle series.
+    </p>
+
+    <!-- Chart 1: Mode Usage -->
+    <div class="chart-container">
+      <h2 class="chart-title">Training Sessions by Mode</h2>
+      <div id="chart-mode-usage" style="width:100%; height:400px;"></div>
+    </div>
+
+    <!-- Chart 2: EI Score Trend -->
+    <div class="chart-container">
+      <h2 class="chart-title">Average EI Score Over Time</h2>
+      <div id="chart-ei-trend" style="width:100%; height:400px;"></div>
+    </div>
+
+    <!-- Chart 3: Scenario Completions -->
+    <div class="chart-container">
+      <h2 class="chart-title">Scenario Completions by Therapeutic Area</h2>
+      <div id="chart-scenario-completions" style="width:100%; height:400px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Footer ===== -->
+<footer class="py-8 bg-gray-800 text-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm">
+    <p>© 2025 ReflectivAI. All rights reserved.</p>
+  </div>
+</footer>
+
+<!-- Analytics Charts Script -->
+<script>
+(function(){
+  'use strict';
+
+  // Sample data for mode usage (bar chart)
+  const modeUsageData = [{
+    x: ['Sales Simulation', 'Role Play', 'Product Knowledge', 'EI Coach', 'Learning Center'],
+    y: [245, 189, 156, 98, 67],
+    type: 'bar',
+    marker: {
+      color: ['#20bfa9', '#06B6D4', '#0f2747', '#8B5CF6', '#F59E0B']
+    },
+    text: [245, 189, 156, 98, 67],
+    textposition: 'auto',
+    hovertemplate: '<b>%{x}</b><br>Sessions: %{y}<extra></extra>'
+  }];
+
+  const modeUsageLayout = {
+    title: '',
+    xaxis: {
+      title: 'Training Mode'
+    },
+    yaxis: {
+      title: 'Number of Sessions'
+    },
+    font: {
+      family: 'Inter, system-ui, sans-serif'
+    },
+    plot_bgcolor: '#f8fafc',
+    paper_bgcolor: '#ffffff',
+    margin: { l: 60, r: 30, t: 30, b: 80 }
+  };
+
+  const config = {
+    responsive: true,
+    displayModeBar: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+  };
+
+  Plotly.newPlot('chart-mode-usage', modeUsageData, modeUsageLayout, config);
+
+  // Sample data for EI score trend over time (line chart)
+  const days = [];
+  const scores = [];
+  const baseDate = new Date('2024-10-01');
+  
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(baseDate);
+    date.setDate(date.getDate() + i);
+    days.push(date.toISOString().split('T')[0]);
+    // Generate realistic-looking EI scores with upward trend and some variation
+    const trend = 72 + (i * 0.5);
+    const variation = (Math.random() - 0.5) * 8;
+    scores.push(Math.min(95, Math.max(65, trend + variation)));
+  }
+
+  const eiTrendData = [{
+    x: days,
+    y: scores,
+    type: 'scatter',
+    mode: 'lines+markers',
+    name: 'Average EI Score',
+    line: {
+      color: '#20bfa9',
+      width: 3
+    },
+    marker: {
+      size: 6,
+      color: '#20bfa9'
+    },
+    hovertemplate: '<b>Date: %{x}</b><br>EI Score: %{y:.1f}/100<extra></extra>'
+  }];
+
+  const eiTrendLayout = {
+    title: '',
+    xaxis: {
+      title: 'Date',
+      type: 'date'
+    },
+    yaxis: {
+      title: 'Average EI Score',
+      range: [60, 100]
+    },
+    font: {
+      family: 'Inter, system-ui, sans-serif'
+    },
+    plot_bgcolor: '#f8fafc',
+    paper_bgcolor: '#ffffff',
+    margin: { l: 60, r: 30, t: 30, b: 80 }
+  };
+
+  Plotly.newPlot('chart-ei-trend', eiTrendData, eiTrendLayout, config);
+
+  // Sample data for scenario completions by therapeutic area (horizontal bar chart)
+  const scenarioData = [{
+    x: [156, 142, 128, 98, 87, 76, 54],
+    y: ['HIV PrEP', 'Oncology', 'Vaccines', 'Cardiology', 'Pulmonology', 'Hepatitis B', 'Custom Scenarios'],
+    type: 'bar',
+    orientation: 'h',
+    marker: {
+      color: '#0f2747',
+      line: {
+        color: '#20bfa9',
+        width: 1
+      }
+    },
+    text: [156, 142, 128, 98, 87, 76, 54],
+    textposition: 'auto',
+    hovertemplate: '<b>%{y}</b><br>Completions: %{x}<extra></extra>'
+  }];
+
+  const scenarioLayout = {
+    title: '',
+    xaxis: {
+      title: 'Number of Completions'
+    },
+    yaxis: {
+      title: 'Therapeutic Area'
+    },
+    font: {
+      family: 'Inter, system-ui, sans-serif'
+    },
+    plot_bgcolor: '#f8fafc',
+    paper_bgcolor: '#ffffff',
+    margin: { l: 150, r: 30, t: 30, b: 60 }
+  };
+
+  Plotly.newPlot('chart-scenario-completions', scenarioData, scenarioLayout, config);
+
+  // Make charts responsive
+  window.addEventListener('resize', function() {
+    Plotly.Plots.resize('chart-mode-usage');
+    Plotly.Plots.resize('chart-ei-trend');
+    Plotly.Plots.resize('chart-scenario-completions');
+  });
+})();
+</script>
+
+<!-- Mobile nav toggle -->
+<script>
+(function(){
+  const btn=document.getElementById('navHamburger');
+  const links=document.getElementById('navLinks');
+  if(!btn||!links)return;
+  btn.addEventListener('click',()=>{
+    const open=links.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+</script>
+
+</body>
+</html>
