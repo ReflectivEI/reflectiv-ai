@@ -14,6 +14,29 @@
  * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
  */
 (function () {
+  // ---------- diagnostic logging ----------
+  const DEBUG_WIDGET = false;
+
+  function logDebug(fnName, message, data) {
+    if (!DEBUG_WIDGET) return;
+    const prefix = "[ReflectivWidget]";
+    if (data !== undefined) {
+      console.log(`${prefix} ${fnName}: ${message}`, data);
+    } else {
+      console.log(`${prefix} ${fnName}: ${message}`);
+    }
+  }
+
+  function logError(fnName, message, error) {
+    if (!DEBUG_WIDGET) return;
+    const prefix = "[ReflectivWidget]";
+    if (error !== undefined) {
+      console.error(`${prefix} ${fnName}: ${message}`, error);
+    } else {
+      console.error(`${prefix} ${fnName}: ${message}`);
+    }
+  }
+
   // ---------- safe bootstrapping ----------
   let mount = null;
 
@@ -26,24 +49,33 @@
   }
 
   function waitForMount(cb) {
+    logDebug("waitForMount", "Starting mount search");
     const findMount = () =>
       document.getElementById("reflectiv-widget") ||
       document.querySelector("#coach-widget, [data-coach-mount], .reflectiv-widget");
 
     const tryGet = () => {
       mount = findMount();
-      if (mount) return cb();
+      if (mount) {
+        logDebug("waitForMount", "Mount element found", { id: mount.id, className: mount.className });
+        return cb();
+      }
 
+      logDebug("waitForMount", "Mount not found, setting up MutationObserver");
       const obs = new MutationObserver(() => {
         mount = findMount();
         if (mount) {
+          logDebug("waitForMount", "Mount element detected via MutationObserver", { id: mount.id, className: mount.className });
           obs.disconnect();
           cb();
         }
       });
 
       obs.observe(document.documentElement, { childList: true, subtree: true });
-      setTimeout(() => obs.disconnect(), 15000);
+      setTimeout(() => {
+        logDebug("waitForMount", "MutationObserver timeout reached (15s)");
+        obs.disconnect();
+      }, 15000);
     };
 
     onReady(tryGet);
@@ -881,6 +913,7 @@ ${COMMON}`
 
   // ---------- UI ----------
   function buildUI() {
+    logDebug("buildUI", "Starting UI construction");
     mount.innerHTML = "";
     if (!mount.classList.contains("cw")) mount.classList.add("cw");
 
@@ -1403,6 +1436,7 @@ ${COMMON}`
     populateDiseases();
     hydrateEISelects();
     applyModeVisibility();
+    logDebug("buildUI", "UI construction complete");
   }
 
   // ---------- callModel (hardened with retries, timeout, SSE streaming, and backoff) ----------
@@ -1538,8 +1572,11 @@ ${COMMON}`
   }
 
   async function callModel(messages) {
+    logDebug("callModel", "Starting model call", { messageCount: messages?.length });
     const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
     const useStreaming = cfg?.stream === true;
+    
+    logDebug("callModel", "Model call configuration", { url: url?.substring(0, 50) + "...", streaming: useStreaming });
     
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
@@ -1555,6 +1592,7 @@ ${COMMON}`
 
     // SSE Streaming branch
     if (useStreaming) {
+      logDebug("callModel", "Using SSE streaming");
       try {
         let streamedContent = "";
         const shellEl = mount.querySelector(".reflectiv-chat");
@@ -1584,8 +1622,10 @@ ${COMMON}`
           streamRow.parentNode.removeChild(streamRow);
         }
         
+        logDebug("callModel", "SSE streaming complete", { contentLength: result?.length });
         return result || streamedContent;
       } catch (e) {
+        logError("callModel", "SSE streaming failed, falling back", e);
         removeTypingIndicator(typingIndicator);
         console.warn("SSE streaming failed, falling back to regular fetch:", e);
         // Fall through to regular fetch with retry
@@ -1593,6 +1633,7 @@ ${COMMON}`
     }
 
     // Regular fetch with exponential backoff retries (300ms → 800ms → 1.5s)
+    logDebug("callModel", "Using regular fetch with retries");
     const delays = [300, 800, 1500];
     let lastError = null;
     
@@ -1616,21 +1657,20 @@ ${COMMON}`
 
         if (r.ok) {
           const data = await r.json().catch(() => ({}));
-          return (
-            data?.content ||
-            data?.reply ||
-            data?.choices?.[0]?.message?.content ||
-            ""
-          );
+          const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
+          logDebug("callModel", "Model call successful", { contentLength: content?.length, attempt: attempt + 1 });
+          return content;
         }
         
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
           lastError = new Error("HTTP " + r.status);
+          logDebug("callModel", `HTTP error ${r.status}, retrying`, { attempt: attempt + 1, delay: delays[attempt] });
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
         
+        logError("callModel", "HTTP error, no retry", { status: r.status, attempt: attempt + 1 });
         throw new Error("HTTP " + r.status);
       } catch (e) {
         clearTimeout(timeout);
@@ -1638,11 +1678,13 @@ ${COMMON}`
         // Retry on timeout or network errors
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
+          logDebug("callModel", "Network/timeout error, retrying", { error: e.message, attempt: attempt + 1, delay: delays[attempt] });
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
         
         removeTypingIndicator(typingIndicator);
+        logError("callModel", "Model call failed", e);
         console.warn("Model call failed:", e);
         
         // Show retry UI if we've exhausted all retries and taken >= 8s total
@@ -1656,6 +1698,7 @@ ${COMMON}`
     }
 
     removeTypingIndicator(typingIndicator);
+    logError("callModel", "Model call failed after all retries", lastError);
     console.warn("Model call failed after all retries:", lastError);
     showRetryUI();
     return "";
@@ -1824,6 +1867,8 @@ ${COMMON}`
   async function sendMessage(userText) {
     if (isSending) return;
     isSending = true;
+    
+    logDebug("sendMessage", "Starting message send", { textLength: userText?.length });
     
     // Track timing for auto-fail feature
     window._lastCallModelAttempt = Date.now();
@@ -2060,13 +2105,16 @@ if (norm(replyText) === norm(userText)) {
       if (sendBtn2) sendBtn2.disabled = false;
       if (ta2) { ta2.disabled = false; ta2.focus(); }
       isSending = false;
+      logDebug("sendMessage", "Message send complete");
     }
   }
 
   // ---------- scenarios loader ----------
   async function loadScenarios() {
+    logDebug("loadScenarios", "Starting scenario load");
     try {
       if (cfg && cfg.scenariosUrl) {
+        logDebug("loadScenarios", "Loading scenarios from URL", { url: cfg.scenariosUrl });
         const payload = await fetchLocal(cfg.scenariosUrl);
         const arr = Array.isArray(payload) ? payload : payload.scenarios || [];
         scenarios = arr.map((s) => ({
@@ -2077,7 +2125,9 @@ if (norm(replyText) === norm(userText)) {
           background: s.background || "",
           goal: s.goal || ""
         }));
+        logDebug("loadScenarios", "Scenarios loaded from URL", { count: scenarios.length });
       } else if (Array.isArray(cfg?.scenarios)) {
+        logDebug("loadScenarios", "Loading scenarios from config");
         scenarios = cfg.scenarios.map((s) => ({
           id: String(s.id),
           label: s.label || String(s.id),
@@ -2086,10 +2136,13 @@ if (norm(replyText) === norm(userText)) {
           background: s.background || "",
           goal: s.goal || ""
         }));
+        logDebug("loadScenarios", "Scenarios loaded from config", { count: scenarios.length });
       } else {
+        logDebug("loadScenarios", "No scenarios configured");
         scenarios = [];
       }
     } catch (e) {
+      logError("loadScenarios", "Scenarios load failed", e);
       console.error("scenarios load failed:", e);
       scenarios = [];
     }
@@ -2102,41 +2155,56 @@ if (norm(replyText) === norm(userText)) {
     for (const s of scenarios) byId.set(s.id, s);
     scenarios = Array.from(byId.values());
     scenariosById = byId;
+    logDebug("loadScenarios", "Scenario load complete", { totalScenarios: scenarios.length });
   }
 
   // ---------- init ----------
   async function init() {
+    logDebug("init", "Starting initialization");
     try {
       try {
+        logDebug("init", "Loading config from ./assets/chat/config.json");
         cfg = await fetchLocal("./assets/chat/config.json");
+        logDebug("init", "Config loaded successfully from assets path");
       } catch (e) {
+        logDebug("init", "Fallback: loading config from ./config.json");
         cfg = await fetchLocal("./config.json");
+        logDebug("init", "Config loaded successfully from root path");
       }
     } catch (e) {
+      logError("init", "Config load failed, using defaults", e);
       console.error("config load failed:", e);
       cfg = { defaultMode: "sales-simulation" };
     }
 
     if (!cfg.apiBase && !cfg.workerUrl) {
       cfg.apiBase = (window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+      logDebug("init", "API base set from window globals", { apiBase: cfg.apiBase });
     }
 
     try {
+      logDebug("init", "Loading system prompt");
       systemPrompt = await fetchLocal("./assets/chat/system.md");
+      logDebug("init", "System prompt loaded", { length: systemPrompt.length });
     } catch (e) {
+      logError("init", "System.md load failed", e);
       console.error("system.md load failed:", e);
       systemPrompt = "";
     }
 
     try {
+      logDebug("init", "Loading EI heuristics");
       eiHeuristics = await fetchLocal("./assets/chat/about-ei.md");
+      logDebug("init", "EI heuristics loaded", { length: eiHeuristics.length });
     } catch (e) {
+      logError("init", "About-ei.md load failed", e);
       console.warn("about-ei.md load failed:", e);
       eiHeuristics = "";
     }
 
     await loadScenarios();
     buildUI();
+    logDebug("init", "Initialization complete");
   }
 
   // ---------- start ----------
