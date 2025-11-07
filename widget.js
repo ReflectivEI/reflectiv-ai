@@ -929,6 +929,15 @@ ${COMMON}`
 
   // ---------- UI ----------
   function buildUI() {
+    // UI behavior constants
+    const DOM_SETTLING_DELAY_MS = 50; // Delay for DOM to settle before scrolling
+    const SCORE_CLASSES = {
+      GOOD: "coach-score-good",
+      WARN: "coach-score-warn",
+      BAD: "coach-score-bad",
+      ALL: ["coach-score-good", "coach-score-warn", "coach-score-bad"]
+    };
+    
     logDebug("buildUI", "Starting UI construction");
     mount.innerHTML = "";
     if (!mount.classList.contains("cw")) mount.classList.add("cw");
@@ -1281,7 +1290,7 @@ ${COMMON}`
             if (lastMsgEl) {
               lastMsgEl.scrollIntoView({ behavior: "smooth", block: "start" });
             }
-          }, 50); // 50ms delay for DOM settling
+          }, DOM_SETTLING_DELAY_MS);
         } else {
           // For user messages, scroll to bottom as before
           msgsEl.scrollTop = msgsEl.scrollHeight;
@@ -1329,18 +1338,19 @@ ${COMMON}`
 
       // Sales Simulation yellow panel spec:
       if (currentMode === "sales-simulation") {
-        const overallScore = fb.overall ?? fb.score ?? 0;
         const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
         const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
         
         // Determine score-based accent class
+        // Priority: overall > score > 0 (fallback)
+        const overallScore = fb.overall ?? fb.score ?? 0;
         let scoreClass = "";
-        if (overallScore >= 85) scoreClass = "coach-score-good";
-        else if (overallScore >= 70) scoreClass = "coach-score-warn";
-        else if (overallScore > 0) scoreClass = "coach-score-bad";
+        if (overallScore >= 85) scoreClass = SCORE_CLASSES.GOOD;
+        else if (overallScore >= 70) scoreClass = SCORE_CLASSES.WARN;
+        else if (overallScore > 0) scoreClass = SCORE_CLASSES.BAD;
         
         // Apply score class to coach section
-        coach.classList.remove("coach-score-good", "coach-score-warn", "coach-score-bad");
+        coach.classList.remove(...SCORE_CLASSES.ALL);
         if (scoreClass) {
           coach.classList.add(scoreClass);
         }
