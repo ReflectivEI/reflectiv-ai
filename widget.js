@@ -2327,7 +2327,8 @@ if (norm(replyText) === norm(userText)) {
         if (currentMode === "sales-simulation" || currentMode === "role-play") {
           logDebug("sendMessage", "Bypassing clampLen for " + currentMode, { rawLength: replyText.length });
         } else {
-          replyText = clampLen(replyText, currentMode === "sales-simulation" ? 1200 : 1400);
+          // For emotional-assessment and product-knowledge modes
+          replyText = clampLen(replyText, 1400);
         }
 
         const computed = scoreReply(userText, replyText, currentMode);
