@@ -93,9 +93,9 @@ test('Role-play format: plain text, no bullets', () => {
   const testText = '- This is a bullet point\n- Another one\nCoach: Some advice';
   const mode = 'role-play';
   
-  // Simulate removeCoachLeakage function
+  // Simulate removeCoachLeakage function (matching actual implementation)
   let cleaned = testText
-    .replace(/^[\s-•*]+/gm, '')
+    .replace(/^[\s\u2022\u2023\u25E6\*-]+/gm, '')
     .replace(/Suggested Phrasing:.*$/gim, '')
     .replace(/\bCoach:\s*/gi, '')
     .replace(/\bHCP:\s*/gi, '')

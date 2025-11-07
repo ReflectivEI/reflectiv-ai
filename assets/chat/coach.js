@@ -89,7 +89,7 @@
   };
   
   // Constants
-  const SCORE_MULTIPLIER = 20; // Convert 0-5 scale to 0-100
+  const SCORE_MULTIPLIER = 20; // Convert worker 0-5 scale to UI 0-100 display scale (5 * 20 = 100)
 
   // ---------- state ----------
   const state = {
