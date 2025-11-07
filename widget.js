@@ -1275,12 +1275,13 @@ ${COMMON}`
         const lastMsg = conversation[conversation.length - 1];
         if (lastMsg.role === "assistant") {
           // For assistant messages, scroll to show the top of the message
+          // Small delay allows DOM to settle after rendering before scrolling
           setTimeout(() => {
             const lastMsgEl = msgsEl.lastElementChild;
             if (lastMsgEl) {
               lastMsgEl.scrollIntoView({ behavior: "smooth", block: "start" });
             }
-          }, 50);
+          }, 50); // 50ms delay for DOM settling
         } else {
           // For user messages, scroll to bottom as before
           msgsEl.scrollTop = msgsEl.scrollHeight;
@@ -1338,11 +1339,10 @@ ${COMMON}`
         else if (overallScore >= 70) scoreClass = "coach-score-warn";
         else if (overallScore > 0) scoreClass = "coach-score-bad";
         
-        // Apply score class to coach section (parent element)
-        const coachSection = coach.closest(".coach-section");
-        if (coachSection) {
-          coachSection.classList.remove("coach-score-good", "coach-score-warn", "coach-score-bad");
-          if (scoreClass) coachSection.classList.add(scoreClass);
+        // Apply score class to coach section
+        coach.classList.remove("coach-score-good", "coach-score-warn", "coach-score-bad");
+        if (scoreClass) {
+          coach.classList.add(scoreClass);
         }
         
         body.innerHTML = `
