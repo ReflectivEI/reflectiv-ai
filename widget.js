@@ -1658,7 +1658,7 @@ ${COMMON}`
     logDebug("callModel", "Using regular fetch with retries");
     const delays = [300, 800, 1500];
     let lastError = null;
-    let lastStatus = 0; // Default to 0 if no HTTP response received
+    let lastHttpStatus = 0; // Tracks last HTTP status code, 0 if no response received
     
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
       const controller = new AbortController();
@@ -1686,7 +1686,7 @@ ${COMMON}`
         }
         
         // Track status for final failure reporting
-        lastStatus = r.status;
+        lastHttpStatus = r.status;
         
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
@@ -1712,8 +1712,8 @@ ${COMMON}`
         removeTypingIndicator(typingIndicator);
         
         // Return structured failure info for 5xx errors
-        if (lastStatus && lastStatus >= 500) {
-          return returnStructuredFailure(lastStatus, attempt + 1);
+        if (lastHttpStatus >= 500) {
+          return returnStructuredFailure(lastHttpStatus, attempt + 1);
         }
         
         logError("callModel", "Model call failed", e);
@@ -1725,21 +1725,21 @@ ${COMMON}`
           showRetryUI();
         }
         
-        return { ok: false, status: lastStatus || 0 };
+        return { ok: false, status: lastHttpStatus };
       }
     }
 
     removeTypingIndicator(typingIndicator);
     
     // Final failure after all retries
-    if (lastStatus && lastStatus >= 500) {
-      return returnStructuredFailure(lastStatus, delays.length + 1);
+    if (lastHttpStatus >= 500) {
+      return returnStructuredFailure(lastHttpStatus, delays.length + 1);
     }
     
     logError("callModel", "Model call failed after all retries", lastError);
     console.warn("Model call failed after all retries:", lastError);
     showRetryUI();
-    return { ok: false, status: lastStatus };
+    return { ok: false, status: lastHttpStatus };
   }
   
   // Show retry button UI
@@ -1798,20 +1798,15 @@ ${COMMON}`
     const raw = await callModel(evalMsgs);
     
     // Handle structured failure response
-    let cleanContent = "";
     if (typeof raw === 'object' && raw.ok === false) {
       logError("evaluateConversation", "Evaluation unavailable after remote failure", { status: raw.status });
-      cleanContent = "Evaluation unavailable at this time. Please try again.";
+      const cleanContent = "Evaluation unavailable at this time. Please try again.";
+      conversation.push({ role: "assistant", content: cleanContent, _finalEval: true });
     } else {
       const { coach, clean } = extractCoach(raw);
       const finalCoach = coach || scoreReply("", clean);
-      cleanContent = clean;
-      conversation.push({ role: "assistant", content: cleanContent, _coach: finalCoach, _finalEval: true });
-      return;
+      conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
     }
-    
-    // Push fallback message if evaluation failed
-    conversation.push({ role: "assistant", content: cleanContent, _finalEval: true });
   }
 
   /* ---------- Rep-only evaluation helpers ---------- */
@@ -2064,10 +2059,11 @@ let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sani
 // Mid-sentence cut-off guard + one-pass auto-continue
 const cutOff = (t) => {
   const s = String(t || "").trim();
-  if (s.length < MIN_REPLY_LENGTH) return false; // Too short to have cutoff issues
+  // Very short replies are unlikely to have meaningful cutoffs
+  if (s.length < MIN_REPLY_LENGTH) return false;
   
-  // Check if ends with proper punctuation
-  if (/[.!?]"?\s*$/.test(s)) return false;
+  // Check if ends with proper punctuation (including quotes)
+  if (/[.!?]["']?\s*$/.test(s)) return false;
   
   // Check if last ~15 chars form partial word (no space/punctuation)
   const tail = s.slice(-CUTOFF_TAIL_CHECK);
@@ -2093,10 +2089,10 @@ if (cutOff(replyText)) {
     if (typeof contRaw === 'object' && contRaw.ok === false) {
       logError("sendMessage", "Continuation failed, trimming to last full sentence", { status: contRaw.status });
       
-      // Trim to last full sentence
-      const sentences = replyText.match(/[^.!?]+[.!?]+/g) || [];
+      // Trim to last full sentence (handles quotes and punctuation)
+      const sentences = replyText.match(/[^.!?]+[.!?]+["']?\s*/g) || [];
       if (sentences.length > 0) {
-        replyText = sentences.join(' ').trim();
+        replyText = sentences.join('').trim();
       }
       
       // If too short after trim, use fallback
