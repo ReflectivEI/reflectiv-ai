@@ -14,6 +14,16 @@
  * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
  */
 (function () {
+
+  // UI behavior constants (for buildUI)
+  const DOM_SETTLING_DELAY_MS = 50; // Delay for DOM to settle before scrolling
+  const SCORE_CLASSES = {
+    GOOD: "coach-score-good",
+    WARN: "coach-score-warn",
+    BAD: "coach-score-bad",
+    ALL: ["coach-score-good", "coach-score-warn", "coach-score-bad"]
+  };
+
   // ---------- fallback/cutoff constants ----------
   const MIN_REPLY_LENGTH = 40;  // Minimum viable reply length
   const CUTOFF_TAIL_CHECK = 15;  // Chars to check for partial words
@@ -929,15 +939,6 @@ ${COMMON}`
 
   // ---------- UI ----------
   function buildUI() {
-    // UI behavior constants
-    const DOM_SETTLING_DELAY_MS = 50; // Delay for DOM to settle before scrolling
-    const SCORE_CLASSES = {
-      GOOD: "coach-score-good",
-      WARN: "coach-score-warn",
-      BAD: "coach-score-bad",
-      ALL: ["coach-score-good", "coach-score-warn", "coach-score-bad"]
-    };
-    
     logDebug("buildUI", "Starting UI construction");
     mount.innerHTML = "";
     if (!mount.classList.contains("cw")) mount.classList.add("cw");
@@ -1342,12 +1343,18 @@ ${COMMON}`
         const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
         
         // Determine score-based accent class
-        // Priority: overall > score > 0 (fallback)
+        // Priority: fb.overall > fb.score > 0 (default if both undefined)
         const overallScore = fb.overall ?? fb.score ?? 0;
         let scoreClass = "";
-        if (overallScore >= 85) scoreClass = SCORE_CLASSES.GOOD;
-        else if (overallScore >= 70) scoreClass = SCORE_CLASSES.WARN;
-        else if (overallScore > 0) scoreClass = SCORE_CLASSES.BAD;
+        if (overallScore >= 85) {
+          scoreClass = SCORE_CLASSES.GOOD;
+        } else if (overallScore >= 70) {
+          scoreClass = SCORE_CLASSES.WARN;
+        } else if (overallScore > 0) {
+          // Scores 1-69 get BAD styling
+          // Score 0 gets no accent (likely uninitialized/default state)
+          scoreClass = SCORE_CLASSES.BAD;
+        }
         
         // Apply score class to coach section
         coach.classList.remove(...SCORE_CLASSES.ALL);
