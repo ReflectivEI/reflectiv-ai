@@ -538,7 +538,7 @@
   const USE_LEGACY_COACH_UI = true;
 
   function renderLegacyCoachCard(coachObj) {
-    logDebug("renderLegacyCoachCard", "Rendering legacy coach card with Suggested Phrasing label");
+    logDebug("renderLegacyCoachCard", "Rendering Sales Simulation coach card with Suggested Phrasing block");
     
     const challenge =
       coachObj.challenge || coachObj.feedback || "Focus on label-aligned guidance and one clear question.";
@@ -548,19 +548,23 @@
     const impact = Array.isArray(coachObj.improve) && coachObj.improve.length
       ? coachObj.improve
       : ["Drive a next step", "One idea per sentence", "Avoid off-label statements"];
-    const phrasing =
-      coachObj.phrasing || "Would confirming eGFR today help you identify one patient to start this month?";
+    const phrasing = (coachObj.phrasing || "").trim();
 
     const card = document.createElement("div");
     card.className = "coach-card legacy";
-    card.innerHTML = `
-      <span class="coach-badge">Sales Coach</span>
-
+    
+    let phrasingSection = "";
+    if (phrasing) {
+      phrasingSection = `
       <div class="coach-section coach-phrasing-block">
         <div class="coach-label"><strong>Suggested Phrasing:</strong></div>
-        <div class="coach-phrasing-text">"${esc(phrasing)}"</div>
-      </div>
-
+        <div class="coach-phrasing-text">${esc(phrasing)}</div>
+      </div>`;
+    }
+    
+    card.innerHTML = `
+      <span class="coach-badge">Sales Coach</span>
+${phrasingSection}
       <div class="coach-section">
         <div class="coach-label">Challenge:</div>
         <div class="coach-body">${esc(challenge)}</div>
