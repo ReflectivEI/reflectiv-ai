@@ -53,43 +53,6 @@
     { key: "accuracy",  label: "Accuracy & Compliance" },
     { key: "discovery", label: "Discovery" }
   ];
-  
-  // EI domain data for clickable pills
-  const EI_DOMAINS = {
-    empathy: {
-      label: "Empathy",
-      description: "Ability to acknowledge perspectives, demonstrate emotional attunement, and use phrases like 'I hear your concern' or 'It makes sense that...'",
-      rationale: "AI-derived rationale will appear here when available"
-    },
-    objection: {
-      label: "Objection Handling", 
-      description: "Skill in addressing concerns constructively, reframing objections, and maintaining composure under challenge",
-      rationale: "AI-derived rationale will appear here when available"
-    },
-    clarity: {
-      label: "Clarity & Confidence",
-      description: "Concise communication, limited jargon, clear structure, and confident delivery without overloading the listener",
-      rationale: "AI-derived rationale will appear here when available"
-    },
-    accuracy: {
-      label: "Accuracy & Compliance",
-      description: "Label-safe phrasing, fact-based claims, ethical framing, and adherence to regulatory standards",
-      rationale: "AI-derived rationale will appear here when available"
-    },
-    discovery: {
-      label: "Discovery",
-      description: "Quality of inquiry, asking open-ended questions, uncovering needs, and collaborative dialogue",
-      rationale: "AI-derived rationale will appear here when available"
-    },
-    regulation: {
-      label: "Self-Regulation",
-      description: "Neutral tone, pauses before responding, emotional control, and maintaining composure in difficult interactions",
-      rationale: "AI-derived rationale will appear here when available"
-    }
-  };
-  
-  // Constants
-  const SCORE_MULTIPLIER = 20; // Convert worker 0-5 scale to UI 0-100 display scale (5 * 20 = 100)
 
   // ---------- state ----------
   const state = {
@@ -131,110 +94,6 @@
       h("label", {}, [labelText]),
       inputNode
     ]);
-  }
-  
-  // Create clickable EI pill
-  function createEIPill(domain, label, initialScore) {
-    const pill = h("div", { 
-      class: "score ei-pill", 
-      "data-domain": domain,
-      style: "cursor:pointer;transition:transform 0.2s;",
-      role: "button",
-      tabindex: "0",
-      "aria-label": `View details for ${label}`
-    }, [
-      h("div", { class: "score-name" }, [label]),
-      h("div", { "data-score": domain, class: "score-val" }, [initialScore])
-    ]);
-    
-    // Add hover effect
-    pill.addEventListener("mouseenter", () => {
-      pill.style.transform = "scale(1.05)";
-      pill.style.boxShadow = "0 4px 12px rgba(32, 191, 169, 0.3)";
-    });
-    pill.addEventListener("mouseleave", () => {
-      pill.style.transform = "scale(1)";
-      pill.style.boxShadow = "";
-    });
-    
-    // Add click handler to show rationale
-    pill.addEventListener("click", () => showEIRationale(domain));
-    pill.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        showEIRationale(domain);
-      }
-    });
-    
-    return pill;
-  }
-  
-  // Show EI domain rationale in a modal
-  function showEIRationale(domain) {
-    const domainData = EI_DOMAINS[domain];
-    if (!domainData) return;
-    
-    const scoreEl = qs(`[data-score="${domain}"]`);
-    const currentScore = scoreEl ? scoreEl.textContent : "--";
-    
-    // Create modal
-    const modal = h("div", { 
-      class: "ei-rationale-modal",
-      style: "position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;",
-      role: "dialog",
-      "aria-modal": "true",
-      "aria-labelledby": "ei-rationale-title"
-    }, [
-      h("div", {
-        style: "background:#fff;border-radius:16px;max-width:500px;width:90%;padding:24px;box-shadow:0 12px 28px rgba(0,0,0,0.3);"
-      }, [
-        h("h3", { 
-          id: "ei-rationale-title",
-          style: "margin:0 0 12px;color:#0f2747;font-size:20px;"
-        }, [domainData.label]),
-        h("div", { 
-          style: "font-size:32px;font-weight:700;color:#20bfa9;margin:8px 0 16px;"
-        }, [currentScore]),
-        h("p", {
-          style: "color:#64748b;margin:0 0 16px;line-height:1.6;"
-        }, [domainData.description]),
-        h("div", {
-          style: "background:#f8fafc;border-left:3px solid #20bfa9;padding:12px;margin:16px 0;border-radius:4px;"
-        }, [
-          h("strong", { style: "color:#0f2747;display:block;margin-bottom:8px;" }, ["AI Rationale:"]),
-          h("p", { 
-            style: "margin:0;color:#64748b;font-size:14px;line-height:1.5;",
-            "data-rationale": domain
-          }, [domainData.rationale])
-        ]),
-        h("a", {
-          href: "ei-score-details.html",
-          target: "_blank",
-          style: "display:inline-block;margin:16px 0 12px;color:#20bfa9;text-decoration:none;font-size:14px;"
-        }, ["Learn more about EI domains →"]),
-        h("div", { style: "text-align:right;" }, [
-          h("button", {
-            class: "ei-close-btn",
-            style: "padding:8px 16px;background:#0f2747;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;",
-            type: "button"
-          }, ["Close"])
-        ])
-      ])
-    ]);
-    
-    // Close handlers
-    const closeBtn = modal.querySelector(".ei-close-btn");
-    const closeModal = () => modal.remove();
-    closeBtn.addEventListener("click", closeModal);
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeModal();
-    });
-    
-    document.body.appendChild(modal);
-    closeBtn.focus();
   }
 
   // ---------- UI shell ----------
@@ -288,23 +147,20 @@
       el("div", { id: "modeFields", class: "mode-fields" }, [])
     ]);
 
-    // score pills (clickable, updated by updateScores with EI data)
-    const scores = el("div", { class: "scores", id: "eiScoresPanel" }, [
-      createEIPill("empathy", "Empathy", "_"),
-      createEIPill("objection", "Objection Handling", "_"),
-      createEIPill("clarity", "Clarity & Confidence", "_"),
-      createEIPill("accuracy", "Accuracy & Compliance", "_"),
-      createEIPill("discovery", "Discovery", "_"),
-      createEIPill("regulation", "Self-Regulation", "_")
-    ]);
-    
-    // Add "View EI Score Breakdown" link
-    const breakdownLink = el("div", { class: "ei-breakdown-link", style: "text-align:center;margin-top:8px;" }, [
-      el("a", { 
-        href: "ei-score-details.html", 
-        target: "_blank",
-        style: "color:#20bfa9;font-size:13px;text-decoration:none;"
-      }, ["📊 View EI Score Breakdown →"])
+    // score pills (placeholders updated by updateScores)
+    const scores = el("div", { class: "scores" }, [
+      el("div", { class: "score" }, [
+        el("div", { class: "score-name" }, "Confidence"),
+        el("div", { "data-score": "confidence", class: "score-val" }, "_")
+      ]),
+      el("div", { class: "score" }, [
+        el("div", { class: "score-name" }, "Compliance"),
+        el("div", { "data-score": "compliance", class: "score-val" }, "_")
+      ]),
+      el("div", { class: "score" }, [
+        el("div", { class: "score-name" }, "Readiness"),
+        el("div", { "data-score": "readiness", class: "score-val" }, "_")
+      ])
     ]);
 
     // chat area
@@ -328,7 +184,6 @@
     root.appendChild(guidance);
     root.appendChild(controls);
     root.appendChild(scores);
-    root.appendChild(breakdownLink);
     root.appendChild(body);
 
     // wire events
@@ -443,14 +298,9 @@
     push("user", msg);
 
     try {
-      const data = await askCoach(msg);
-      push("bot", data.reply || data);
-      // Update EI scores if data contains _coach.ei
-      if (state.scoring && data._coach?.ei) {
-        updateScores(data._coach.ei);
-      } else if (state.scoring) {
-        updateScores(); // Use random fallback
-      }
+      const reply = await askCoach(msg);
+      push("bot", reply);
+      if (state.scoring) updateScores();
     } catch {
       push("bot", "Temporary issue contacting the coach service.");
     }
@@ -468,10 +318,7 @@
     const url = window.COACH_ENDPOINT || "/coach";
     const r = await fetch(url, {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "x-emit-ei": "true"  // Request EI data
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: state.mode,
         eiProfile: state.eiProfile,
@@ -484,37 +331,15 @@
     });
     if (r.ok) {
       const j = await r.json().catch(() => null);
-      return j || { reply: "OK." };
+      return j?.reply || "OK.";
     }
     // local stub
-    return { reply: "Stub reply: I parsed your intent and will tailor guidance once the worker responds." };
+    return "Stub reply: I parsed your intent and will tailor guidance once the worker responds.";
   }
 
-  function updateScores(eiData) {
-    if (eiData && eiData.scores) {
-      // Update with actual EI scores from worker
-      Object.keys(eiData.scores).forEach(domain => {
-        const scoreEl = qs(`[data-score="${domain}"]`);
-        if (scoreEl) {
-          const score = eiData.scores[domain];
-          scoreEl.textContent = score !== undefined ? Math.round(score * SCORE_MULTIPLIER) : "--"; // Convert 0-5 to 0-100
-        }
-      });
-      
-      // Update rationales if provided
-      Object.keys(eiData).forEach(domain => {
-        if (domain !== 'scores' && EI_DOMAINS[domain]) {
-          const rationaleEl = qs(`[data-rationale="${domain}"]`);
-          if (rationaleEl && eiData[domain]?.rationale) {
-            rationaleEl.textContent = eiData[domain].rationale;
-          }
-        }
-      });
-    } else {
-      // Fallback: generate random scores for demo
-      const bump = () => 60 + Math.floor(Math.random() * 35); // 60–94
-      qsa("[data-score]").forEach(n => { n.textContent = bump(); });
-    }
+  function updateScores() {
+    const bump = () => 60 + Math.floor(Math.random() * 35); // 60–94
+    qsa("[data-score]").forEach(n => { n.textContent = bump(); });
   }
 
   // ---------- public API ----------
