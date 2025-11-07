@@ -540,58 +540,64 @@
   function renderLegacyCoachCard(coachObj) {
     logDebug("renderLegacyCoachCard", "Rendering Sales Simulation coach card with extracted Suggested Phrasing");
     
-    const challenge =
+    // Helper function to extract "Suggested Phrasing:" from text
+    function extractSuggestedPhrasingFromText(text) {
+      if (!text) return { base: text, phrasing: "" };
+      const label = "Suggested Phrasing:";
+      const idx = text.toLowerCase().lastIndexOf(label.toLowerCase());
+      if (idx === -1) return { base: text, phrasing: "" };
+      const before = text.slice(0, idx).trim();
+      const afterRaw = text.slice(idx + label.length).trim();
+      const after = afterRaw.replace(/^[""]+/, "").replace(/[""]+$/, "").trim();
+      return {
+        base: before || "",
+        phrasing: after
+      };
+    }
+    
+    let challenge =
       coachObj.challenge || coachObj.feedback || "Focus on label-aligned guidance and one clear question.";
-    const repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
+    let repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
       ? coachObj.worked
       : ["Acknowledge context", "Cite one fact", "End with a discovery question"];
-    
-    // Get base phrasing from coachObj
-    const basePhrasing = (coachObj.phrasing || "").trim();
-    
-    // Initialize impact data
-    let impactRaw = Array.isArray(coachObj.improve) && coachObj.improve.length
+    let impact = Array.isArray(coachObj.improve) && coachObj.improve.length
       ? coachObj.improve
       : ["Drive a next step", "One idea per sentence", "Avoid off-label statements"];
     
-    // Extract phrasing from Impact if basePhrasing is empty
-    let phrasing = basePhrasing;
-    let phrasingFromImpact = "";
-    let impact = impactRaw;
+    // Get phrasing from coachObj
+    let phrasing = (coachObj.phrasing || "").trim();
     
-    if (!basePhrasing) {
-      // Normalize impact to a single string for extraction
-      const impactText = Array.isArray(impactRaw) ? impactRaw.join(" ") : String(impactRaw || "");
+    // If phrasing is empty, attempt fallback extraction from sections
+    if (!phrasing) {
+      let derivedPhrasing = "";
       
-      // Look for "Suggested Phrasing:" marker (case-insensitive)
-      const marker = /Suggested Phrasing\s*:\s*/i;
-      const match = impactText.match(marker);
+      // 1) Extract from challenge
+      const cResult = extractSuggestedPhrasingFromText(challenge);
+      challenge = cResult.base;
+      if (!derivedPhrasing && cResult.phrasing) derivedPhrasing = cResult.phrasing;
       
-      if (match) {
-        const markerIndex = match.index;
-        const markerLength = match[0].length;
-        
-        // Split at the first occurrence
-        const impactBody = impactText.substring(0, markerIndex).trim();
-        let extractedPhrasing = impactText.substring(markerIndex + markerLength).trim();
-        
-        // Strip leading/trailing quotes (single or double)
-        extractedPhrasing = extractedPhrasing.replace(/^["']/, "").replace(/["']$/, "");
-        
-        phrasingFromImpact = extractedPhrasing;
-        
-        // Update impact to show only the body (convert back to array with single item)
-        if (impactBody) {
-          impact = [impactBody];
-        } else {
-          // If impactBody is empty, keep original impact
-          impact = impactRaw;
-        }
+      // 2) Extract from repApproach items
+      repApproach = repApproach.map(item => {
+        if (!item) return item;
+        const r = extractSuggestedPhrasingFromText(item);
+        if (!derivedPhrasing && r.phrasing) derivedPhrasing = r.phrasing;
+        return r.base || item;
+      });
+      
+      // 3) Extract from impact items
+      impact = impact.map(item => {
+        if (!item) return item;
+        const r = extractSuggestedPhrasingFromText(item);
+        if (!derivedPhrasing && r.phrasing) derivedPhrasing = r.phrasing;
+        return r.base || item;
+      });
+      
+      // Set phrasing if we derived one
+      if (derivedPhrasing) {
+        phrasing = derivedPhrasing;
+        logDebug("renderLegacyCoachCard", "Derived Suggested Phrasing from section text", { hasPhrasing: !!phrasing });
       }
     }
-    
-    // Final phrasing selection
-    phrasing = basePhrasing || phrasingFromImpact || "";
 
     const card = document.createElement("div");
     card.className = "coach-card legacy";
