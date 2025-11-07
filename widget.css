@@ -47,9 +47,9 @@
 }
 .coach-modal.open,.coach-modal.is-open{display:grid}
 .coach-panel{
-  width:680px;
+  width:800px;
   max-width:100vw;
-  height:75vh;
+  height:85vh;
   max-height:100vh;
   background:var(--card);
   border:1px solid var(--line);
