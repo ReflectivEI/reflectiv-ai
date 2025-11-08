@@ -2,7 +2,6 @@
   "version": "2025-10-14",
   "schemaVersion": "coach-v2",
 
-  // This is only used when we call a provider directly, NOT your worker
   "model": "llama-3.1-70b-versatile",
 
   "apiBase": "https://api.groq.com/openai/v1/chat/completions",
