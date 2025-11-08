@@ -443,7 +443,9 @@
       if (typeof r1 === 'object' && r1.ok === false) {
         // Skip to next pass on failure
       } else {
-        out = sanitizeRolePlayOnly(r1);
+        // Handle both structured and text responses
+        const r1Text = (typeof r1 === 'object' && r1.reply) ? r1.reply : r1;
+        out = sanitizeRolePlayOnly(r1Text);
         if (!isGuidanceLeak(out)) return out;
       }
     } catch (_) {}
@@ -456,7 +458,9 @@
       if (typeof r2 === 'object' && r2.ok === false) {
         // Skip to Pass 3
       } else {
-        out = sanitizeRolePlayOnly(r2);
+        // Handle both structured and text responses
+        const r2Text = (typeof r2 === 'object' && r2.reply) ? r2.reply : r2;
+        out = sanitizeRolePlayOnly(r2Text);
         if (!isGuidanceLeak(out)) return out;
       }
     } catch (_) {}
@@ -1108,12 +1112,32 @@ ${COMMON}`
     lcLabel.htmlFor = "cw-mode";
     const modeSel = el("select");
     modeSel.id = "cw-mode";
-    LC_OPTIONS.forEach((name) => {
+    
+    // Create optgroups for better organization
+    const salesGroup = document.createElement("optgroup");
+    salesGroup.label = "Sales Modes";
+    const learningGroup = document.createElement("optgroup");
+    learningGroup.label = "Learning Modes";
+    const eiGroup = document.createElement("optgroup");
+    eiGroup.label = "EI Tools";
+    
+    // Helper to add options to groups
+    const addOption = (group, name) => {
       const o = el("option");
       o.value = name;
       o.textContent = name;
-      modeSel.appendChild(o);
-    });
+      group.appendChild(o);
+    };
+    
+    // Organize modes into groups
+    addOption(salesGroup, "Sales Simulation");
+    addOption(learningGroup, "Product Knowledge");
+    addOption(learningGroup, "Role Play");
+    addOption(eiGroup, "Emotional Intelligence");
+    
+    modeSel.appendChild(salesGroup);
+    modeSel.appendChild(learningGroup);
+    modeSel.appendChild(eiGroup);
     const initialLc =
       Object.keys(LC_TO_INTERNAL).find((k) => LC_TO_INTERNAL[k] === (cfg?.defaultMode || "sales-simulation")) ||
       "Sales Simulation";
@@ -1776,7 +1800,12 @@ ${COMMON}`
 
   async function callModel(messages) {
     logDebug("callModel", "Starting model call", { messageCount: messages?.length });
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    const base = getWorkerBase();
+    if (!base) {
+      logError("callModel", "Worker base URL missing");
+      throw new Error("worker_base_missing");
+    }
+    const url = `${base}/chat`;
     const useStreaming = cfg?.stream === true;
     
     logDebug("callModel", "Model call configuration", { url: url?.substring(0, 50) + "...", streaming: useStreaming });
@@ -1784,14 +1813,19 @@ ${COMMON}`
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
-    const payload = {
-      model: (cfg?.model) || "llama-3.1-8b-instant",
-      temperature: (currentMode === "role-play" ? 0.35 : 0.2),
-      top_p: 0.9,
-      stream: useStreaming,
-      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
-      messages
-    };
+    // Get scenario details if available
+const sc = scenariosById.get(currentScenarioId);
+
+// Build payload in the worker's expected format
+// The worker wants: { messages: [...], mode: "...", ... }
+const payload = {
+  messages,                          // full chat history we built above
+  mode: currentMode,                 // extra metadata (worker can ignore if it wants)
+  disease: sc?.therapeuticArea || sc?.diseaseState || "",
+  persona: sc?.hcpRole || "",
+  goal: sc?.goal || "",
+  session: "widget-session-" + Date.now()
+};
     
     // Helper to return structured failure for 5xx errors
     const returnStructuredFailure = (status, attempts) => {
@@ -1867,6 +1901,14 @@ ${COMMON}`
 
         if (r.ok) {
           const data = await r.json().catch(() => ({}));
+          
+          // Worker returns { reply, coach, plan } - return full object if coach exists
+          if (data?.coach) {
+            logDebug("callModel", "Model call successful with coach data", { replyLength: data.reply?.length, attempt: attempt + 1 });
+            return data;
+          }
+          
+          // Fallback for other formats (legacy support)
           const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
           logDebug("callModel", "Model call successful", { contentLength: content?.length, attempt: attempt + 1 });
           return content;
@@ -1990,7 +2032,16 @@ ${COMMON}`
       const cleanContent = "Evaluation unavailable at this time. Please try again.";
       conversation.push({ role: "assistant", content: cleanContent, _finalEval: true });
     } else {
-      const { coach, clean } = extractCoach(raw);
+      // Handle both structured and text responses
+      let coach, clean;
+      if (typeof raw === 'object' && raw.reply) {
+        clean = raw.reply;
+        coach = raw.coach;
+      } else {
+        const extracted = extractCoach(raw);
+        coach = extracted.coach;
+        clean = extracted.clean;
+      }
       const finalCoach = coach || scoreReply("", clean);
       conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
     }
@@ -2043,11 +2094,17 @@ ${COMMON}`
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
 
+    // Handle both structured and text responses
+    let rawText = raw;
+    if (typeof raw === 'object' && raw.reply) {
+      rawText = raw.reply;
+    }
+
     let data = null;
-    try { data = JSON.parse(raw); } catch (_) {}
+    try { data = JSON.parse(rawText); } catch (_) {}
 
     if (!data || !data.scores) {
-      const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
+      const safe = sanitizeLLM(rawText || "Rep-only evaluation unavailable.");
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>${esc(safe)}</p></div>` };
     }
 
@@ -2246,7 +2303,22 @@ ${detail}`;
           raw = fallbackText(currentMode);
         }
 
-        let { coach, clean } = extractCoach(raw);
+        // Handle new structured response format from worker
+        let coach = null;
+        let clean = "";
+        
+        if (typeof raw === 'object' && raw.reply) {
+          // New format: { reply, coach, plan }
+          clean = raw.reply;
+          coach = raw.coach || null;
+          logDebug("sendMessage", "Received structured response from worker", { hasCoach: !!coach });
+        } else {
+          // Old format: string with embedded <coach> tags
+          const extracted = extractCoach(raw);
+          coach = extracted.coach;
+          clean = extracted.clean;
+          logDebug("sendMessage", "Extracted coach from text response", { hasCoach: !!coach });
+        }
         
         // Re-ask once if phrasing is missing in sales-simulation mode
         const phrasing = coach?.phrasing;
@@ -2259,7 +2331,7 @@ Please provide your response again with all required fields including phrasing.`
           
           const retryMessages = [
             ...messages,
-            { role: "assistant", content: raw },
+            { role: "assistant", content: clean },
             { role: "system", content: correctiveHint }
           ];
           
@@ -2269,7 +2341,13 @@ Please provide your response again with all required fields including phrasing.`
             if (typeof retryRaw === 'object' && retryRaw.ok === false) {
               logError("sendMessage", "Retry for phrasing failed, keeping original", { status: retryRaw.status });
             } else if (retryRaw) {
-              const retryResult = extractCoach(retryRaw);
+              // Handle both structured and text responses
+              let retryResult;
+              if (typeof retryRaw === 'object' && retryRaw.reply) {
+                retryResult = { coach: retryRaw.coach, clean: retryRaw.reply };
+              } else {
+                retryResult = extractCoach(retryRaw);
+              }
               // Use the retry result if it has phrasing, otherwise keep original
               if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
                 coach = retryResult.coach;
@@ -2333,8 +2411,13 @@ if (bypassCutOff) {
         replyText = fallbackText(currentMode);
       }
     } else {
-      // Successful continuation
-      let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+      // Successful continuation - handle both structured and text responses
+      let contClean;
+      if (typeof contRaw === 'object' && contRaw.reply) {
+        contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw.reply) : sanitizeLLM(contRaw.reply);
+      } else {
+        contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+      }
       if (contClean) {
         replyText = (replyText + " " + contClean).trim();
         logDebug("sendMessage", "Continuation successful", { finalLength: replyText.length });
@@ -2369,7 +2452,14 @@ if (norm(replyText) === norm(userText)) {
             logError("sendMessage", "Vary pass failed, using fallback", { status: varied.status });
             varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
           } else {
-            varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
+            // Handle both structured and text responses
+            let variedText;
+            if (typeof varied === 'object' && varied.reply) {
+              variedText = varied.reply;
+            } else {
+              variedText = varied || "";
+            }
+            varied = currentMode === "role-play" ? sanitizeRolePlayOnly(variedText) : sanitizeLLM(variedText);
             if (!varied || isTooSimilar(norm(varied))) {
               varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
             }
