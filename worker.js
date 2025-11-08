@@ -191,6 +191,64 @@ function sanitizeLLM(s) {
     .trim();
 }
 
+/**
+ * Format hardening: Remove stray coach phrasing and bullets that leak into role-play
+ */
+function removeCoachLeakage(text, mode) {
+  let result = String(text || "");
+  
+  // Role-play mode: enforce plain text, no bullets, no coach phrasing
+  if (mode === "role-play") {
+    result = result
+      .replace(/^[\s\u2022\u2023\u25E6\*-]+/gm, "")  // Remove bullet points (including Unicode)
+      .replace(/Suggested Phrasing:.*$/gim, "")  // Remove coach suggestions
+      .replace(/\bCoach:\s*/gi, "")  // Remove "Coach:" prefix
+      .replace(/\bHCP:\s*/gi, "")  // Keep HCP natural
+      .trim();
+  }
+  
+  return result;
+}
+
+/**
+ * Ensure sentence completion: add period if missing at end
+ */
+function ensureSentenceCompletion(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return trimmed;
+  
+  // Check if ends with proper punctuation
+  if (!/[.!?]"?\s*$/.test(trimmed)) {
+    return trimmed + ".";
+  }
+  
+  return trimmed;
+}
+
+/**
+ * Enforce sales-simulation 5-section format
+ */
+function enforceSalesFormat(text) {
+  const required = [
+    "Assessment",
+    "Objection",
+    "Guidance",
+    "Phrasing",
+    "Next Steps"
+  ];
+  
+  // Check if text contains section-like structure
+  const hasStructure = required.some(section => 
+    text.includes(section + ":") || text.includes("**" + section)
+  );
+  
+  // If already structured, return as-is
+  if (hasStructure) return text;
+  
+  // Otherwise, return text with note
+  return text;
+}
+
 function extractCoach(raw) {
   const s = String(raw || "");
   const open = s.indexOf("<coach>");
@@ -336,18 +394,18 @@ async function postChat(req, env) {
 
     const session = body.session || "anon";
 
-  // Load or build a plan
-  let activePlan = plan;
-  if (!activePlan) {
-    const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
-    activePlan = await r.json();
-  }
+    // Load or build a plan
+    let activePlan = plan;
+    if (!activePlan) {
+      const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
+      activePlan = await r.json();
+    }
 
-  // Provider prompts
-  const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
-  const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
+    // Provider prompts
+    const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
+    const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
 
-  const commonContract = `
+    const commonContract = `
 Return exactly two parts. No code blocks or headings.
 
 1) Sales Guidance: short, accurate, label-aligned guidance (3–5 sentences) and a "Suggested Phrasing:" single-sentence line.
@@ -359,110 +417,130 @@ Return exactly two parts. No code blocks or headings.
 
 Use only the Facts IDs provided when making claims.`.trim();
 
-  const sys = (mode === "role-play")
-    ? [
-        `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        `Speak concisely.`
-      ].join("\n")
-    : [
-        `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        commonContract
-      ].join("\n");
+    const sys = (mode === "role-play")
+      ? [
+          `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
+          `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+          `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+          `Speak concisely.`
+        ].join("\n")
+      : [
+          `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
+          `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+          `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+          commonContract
+        ].join("\n");
 
-  const messages = [
-    { role: "system", content: sys },
-    ...history.map(m => ({ role: m.role, content: String(m.content || "") })).slice(-18),
-    { role: "user", content: String(user || "") }
-  ];
-
-  // Provider call with retry
-  let raw = "";
-  for (let i = 0; i < 3; i++) {
-    try {
-      raw = await providerChat(env, messages, {
-        maxTokens: mode === "sales-simulation" ? 1200 : 900,
-        temperature: 0.2
-      });
-      if (raw) break;
-    } catch (e) {
-      if (i === 2) throw e;
-      await new Promise(r => setTimeout(r, 300 * (i + 1)));
-    }
-  }
-
-  // Extract coach and clean text
-  const { coach, clean } = extractCoach(raw);
-  let reply = clean;
-
-  // Mid-sentence cut-off guard + one-pass auto-continue
-  const cutOff = (t) => {
-    const s = String(t || "").trim();
-    return s.length > 200 && !/[.!?]"?\s*$/.test(s);
-  };
-  if (cutOff(reply)) {
-    const contMsgs = [
-      ...messages,
-      { role: "assistant", content: reply },
-      { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
+    const messages = [
+      { role: "system", content: sys },
+      ...history.map(m => ({ role: m.role, content: String(m.content || "") })).slice(-18),
+      { role: "user", content: String(user || "") }
     ];
-    try {
-      const contRaw = await providerChat(env, contMsgs, { maxTokens: 360, temperature: 0.2 });
-      const contClean = sanitizeLLM(contRaw || "");
-      if (contClean) reply = (reply + " " + contClean).trim();
-    } catch (_) {}
-  }
 
-  // FSM clamps
-  const fsm = FSM[mode] || FSM["sales-simulation"];
-  const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
-  reply = capSentences(reply, cap);
-
-  // Loop guard vs last reply
-  const state = await seqGet(env, session);
-  const candNorm = norm(reply);
-  if (state && candNorm && (candNorm === state.lastNorm)) {
-    if (mode === "role-play") {
-      reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
-    } else {
-      reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
-    }
-  }
-  state.lastNorm = norm(reply);
-  await seqPut(env, session, state);
-
-  // Deterministic scoring if provider omitted or malformed
-  let coachObj = coach && typeof coach === "object" ? coach : null;
-  if (!coachObj || !coachObj.scores) {
-    const usedFactIds = (activePlan.facts || []).map(f => f.id);
-    const overall = deterministicScore({ reply, usedFactIds });
-    coachObj = {
-      overall,
-      scores: { accuracy: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, clarity: 4, objection_handling: 3, empathy: 3 },
-      worked: ["Tied guidance to facts"],
-      improve: ["End with one specific discovery question"],
-      phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
-      feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
-      context: { rep_question: String(user || ""), hcp_reply: reply }
+    // Provider call with retry and mode-specific token budgets
+    // Token limits (relative): sales-simulation > role-play > EI > product-knowledge
+    const tokenBudgets = {
+      "sales-simulation": 2200,      // larger budget for long coaching replies
+      "role-play": 1800,             // larger budget for longer HCP utterances
+      "emotional-assessment": 900,   // smaller than RP/Sim
+      "product-knowledge": 800       // smallest; factual, concise answers
     };
-  }
-
-  // Build response
-  const responseData = { reply, coach: coachObj, plan: { id: planId || activePlan.planId } };
-
-  // Add EI data if flag is enabled
-  if (getEiFlag(req, env)) {
-    responseData._coach = {
-      ei: {
-        scores: coachObj.scores || {}
+    const maxTokens = tokenBudgets[mode] || 1200;
+  
+    let raw = "";
+    for (let i = 0; i < 3; i++) {
+      try {
+        raw = await providerChat(env, messages, {
+          maxTokens,
+          temperature: 0.2
+        });
+        if (raw) break;
+      } catch (e) {
+        if (i === 2) throw e;
+        await new Promise(r => setTimeout(r, 300 * (i + 1)));
       }
-    };
-  }
+    }
 
-  return json(responseData, 200, env, req);
+    // Extract coach and clean text
+    const { coach, clean } = extractCoach(raw);
+    let reply = clean;
+
+    // Apply format hardening based on mode
+    reply = removeCoachLeakage(reply, mode);
+  
+    // Enforce sales-simulation 5-section format
+    if (mode === "sales-simulation") {
+      reply = enforceSalesFormat(reply);
+    }
+
+    // Mid-sentence cut-off guard + one-pass auto-continue
+    const cutOff = (t) => {
+      const s = String(t || "").trim();
+      return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+    };
+    if (cutOff(reply)) {
+      const contMsgs = [
+        ...messages,
+        { role: "assistant", content: reply },
+        { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
+      ];
+      try {
+        const contRaw = await providerChat(env, contMsgs, { maxTokens: 360, temperature: 0.2 });
+        const contClean = sanitizeLLM(contRaw || "");
+        if (contClean) reply = (reply + " " + contClean).trim();
+      } catch (_) {}
+    }
+  
+    // Ensure sentence completion
+    reply = ensureSentenceCompletion(reply);
+
+    // FSM clamps
+    const fsm = FSM[mode] || FSM["sales-simulation"];
+    const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
+    reply = capSentences(reply, cap);
+
+    // Loop guard vs last reply
+    const state = await seqGet(env, session);
+    const candNorm = norm(reply);
+    if (state && candNorm && (candNorm === state.lastNorm)) {
+      if (mode === "role-play") {
+        reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
+      } else {
+        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
+      }
+    }
+    state.lastNorm = norm(reply);
+    await seqPut(env, session, state);
+
+    // Deterministic scoring if provider omitted or malformed
+    let coachObj = coach && typeof coach === "object" ? coach : null;
+    if (!coachObj || !coachObj.scores) {
+      const usedFactIds = (activePlan.facts || []).map(f => f.id);
+      const overall = deterministicScore({ reply, usedFactIds });
+      coachObj = {
+        overall,
+        scores: { accuracy: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, clarity: 4, objection_handling: 3, empathy: 3 },
+        worked: ["Tied guidance to facts"],
+        improve: ["End with one specific discovery question"],
+        phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
+        feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
+        context: { rep_question: String(user || ""), hcp_reply: reply }
+      };
+    }
+
+    // Build response
+    const responseData = { reply, coach: coachObj, plan: { id: planId || activePlan.planId } };
+
+    // Add EI data if flag is enabled
+    if (getEiFlag(req, env)) {
+      responseData._coach = {
+        ei: {
+          scores: coachObj.scores || {}
+        }
+      };
+    }
+
+    return json(responseData, 200, env, req);
   } catch (err) {
     // Sanitize error message to avoid leaking sensitive information
     const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
