@@ -1,7 +1,7 @@
 
 /**
  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
- * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version
+ * Endpoints: POST /facts, POST /plan, POST /chat, GET/HEAD /health, GET /version, GET /debug/ei
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
  * KV namespaces (optional):
@@ -33,14 +33,28 @@ export default {
         return new Response(null, { status: 204, headers: cors(env, req) });
       }
 
+      // Health check - supports both GET and HEAD for frontend health checks
       if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
-  // For HEAD, no body is needed
-  const body = req.method === "GET" ? "ok" : null;
-  return new Response(body, { status: 200, headers: cors(env, req) });
-}
-      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
-  return new Response(null, { status: 200, headers: cors(env, req) });
-}
+        // HEAD requests return no body, GET returns "ok"
+        const body = req.method === "GET" ? "ok" : null;
+        return new Response(body, { status: 200, headers: cors(env, req) });
+      }
+
+      // Version endpoint
+      if (url.pathname === "/version" && req.method === "GET") {
+        return json({ version: "r10.1" }, 200, env, req);
+      }
+
+      // Debug EI endpoint - returns basic info about the worker
+      if (url.pathname === "/debug/ei" && req.method === "GET") {
+        return json({
+          worker: "ReflectivAI Gateway",
+          version: "r10.1",
+          endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"],
+          timestamp: new Date().toISOString()
+        }, 200, env, req);
+      }
+
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
       if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
       if (url.pathname === "/chat"  && req.method === "POST") return postChat(req, env);
@@ -130,6 +144,14 @@ const COACH_SCHEMA = {
 
 /* ------------------------------ Helpers ------------------------------------ */
 
+/**
+ * CORS configuration and header builder.
+ * 
+ * IMPORTANT: CORS_ORIGINS must include https://reflectivei.github.io for GitHub Pages deployment.
+ * 
+ * When an origin is allowed, we echo it back in Access-Control-Allow-Origin.
+ * When an origin is denied, we log a warning and return "null" to block the request.
+ */
 function cors(env, req) {
   const reqOrigin = req.headers.get("Origin") || "";
   const allowed = String(env.CORS_ORIGINS || "")
@@ -141,10 +163,15 @@ function cors(env, req) {
   // If allowlist exists, check if request origin is in the list
   const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
   
+  // Log CORS denials for diagnostics
+  if (!isAllowed && reqOrigin) {
+    console.warn("CORS deny", { origin: reqOrigin, allowedList: allowed });
+  }
+  
   // Determine the Access-Control-Allow-Origin value
   let allowOrigin;
   if (isAllowed && reqOrigin) {
-    // Specific origin is allowed and present
+    // Specific origin is allowed and present - echo it back
     allowOrigin = reqOrigin;
   } else if (isAllowed && !reqOrigin) {
     // Allowed but no origin header (e.g., same-origin or non-browser request)
@@ -370,8 +397,14 @@ async function postChat(req, env) {
       activePlan = await r.json();
     } catch (e) {
       console.error("chat_error", { step: "plan_generation", message: e.message });
-      throw e;
+      throw new Error("plan_generation_failed");
     }
+  }
+
+  // Validate activePlan structure to avoid obscure crashes
+  if (!activePlan || !Array.isArray(activePlan.facts) || activePlan.facts.length === 0) {
+    console.error("chat_error", { step: "plan_validation", message: "no_active_plan_or_facts", activePlan });
+    throw new Error("no_active_plan_or_facts");
   }
 
   // Provider prompts
@@ -485,7 +518,34 @@ Use only the Facts IDs provided when making claims.`.trim();
   return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
     console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
-    return json({ error: "server_error", message: "Chat request failed" }, 500, env, req);
+    
+    // Distinguish provider errors from client bad_request errors
+    const isProviderError = e.message && (
+      e.message.startsWith("provider_http_") || 
+      e.message === "plan_generation_failed"
+    );
+    
+    const isPlanError = e.message === "no_active_plan_or_facts";
+    
+    if (isProviderError) {
+      // Provider errors return 502 Bad Gateway
+      return json({ 
+        error: "provider_error", 
+        message: "External provider failed or is unavailable" 
+      }, 502, env, req);
+    } else if (isPlanError) {
+      // Plan validation errors return 422 Unprocessable Entity
+      return json({ 
+        error: "bad_request", 
+        message: "Unable to generate or validate plan with provided parameters" 
+      }, 422, env, req);
+    } else {
+      // Other errors are treated as bad_request
+      return json({ 
+        error: "bad_request", 
+        message: "Chat request failed" 
+      }, 400, env, req);
+    }
   }
 }
 
