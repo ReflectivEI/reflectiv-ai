@@ -1789,13 +1789,23 @@ ${COMMON}`
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
+    // Extract user message and history from messages array
+    const userMessages = messages.filter(m => m.role === "user");
+    const lastUserMsg = userMessages[userMessages.length - 1];
+    const historyMsgs = messages.filter(m => m.role !== "system").slice(0, -1);
+    
+    // Get scenario details if available
+    const sc = scenariosById.get(currentScenarioId);
+    
+    // Build payload in worker's expected format
     const payload = {
-      model: (cfg?.model) || "llama-3.1-8b-instant",
-      temperature: (currentMode === "role-play" ? 0.35 : 0.2),
-      top_p: 0.9,
-      stream: useStreaming,
-      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
-      messages
+      mode: currentMode,
+      user: lastUserMsg?.content || "",
+      history: historyMsgs,
+      disease: sc?.therapeuticArea || sc?.diseaseState || "",
+      persona: sc?.hcpRole || "",
+      goal: sc?.goal || "",
+      session: "widget-session-" + Date.now()
     };
     
     // Helper to return structured failure for 5xx errors
@@ -1872,6 +1882,14 @@ ${COMMON}`
 
         if (r.ok) {
           const data = await r.json().catch(() => ({}));
+          
+          // Worker returns { reply, coach, plan } - return full object if coach exists
+          if (data?.coach) {
+            logDebug("callModel", "Model call successful with coach data", { replyLength: data.reply?.length, attempt: attempt + 1 });
+            return data;
+          }
+          
+          // Fallback for other formats (legacy support)
           const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
           logDebug("callModel", "Model call successful", { contentLength: content?.length, attempt: attempt + 1 });
           return content;
@@ -2251,7 +2269,22 @@ ${detail}`;
           raw = fallbackText(currentMode);
         }
 
-        let { coach, clean } = extractCoach(raw);
+        // Handle new structured response format from worker
+        let coach = null;
+        let clean = "";
+        
+        if (typeof raw === 'object' && raw.reply) {
+          // New format: { reply, coach, plan }
+          clean = raw.reply;
+          coach = raw.coach || null;
+          logDebug("sendMessage", "Received structured response from worker", { hasCoach: !!coach });
+        } else {
+          // Old format: string with embedded <coach> tags
+          const extracted = extractCoach(raw);
+          coach = extracted.coach;
+          clean = extracted.clean;
+          logDebug("sendMessage", "Extracted coach from text response", { hasCoach: !!coach });
+        }
         
         // Re-ask once if phrasing is missing in sales-simulation mode
         const phrasing = coach?.phrasing;
