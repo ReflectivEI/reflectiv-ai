@@ -39,7 +39,9 @@ export default {
 
       return json({ error: "not_found" }, 404, env, req);
     } catch (e) {
-      return json({ error: "server_error", detail: String(e?.message || e) }, 500, env, req);
+      // Log the error for debugging but don't expose details to client
+      console.error("Top-level error:", e);
+      return json({ error: "server_error", detail: "Internal server error" }, 500, env, req);
     }
   }
 };
@@ -262,57 +264,94 @@ const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
 
 /* ------------------------------ /facts ------------------------------------- */
 async function postFacts(req, env) {
-  const { disease, topic, limit = 6 } = await readJson(req);
-  const out = FACTS_DB.filter(f => {
-    const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
-    const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
-    return dOk && tOk;
-  }).slice(0, limit);
-  return json({ facts: out }, 200, env, req);
+  try {
+    const { disease, topic, limit = 6 } = await readJson(req);
+    const out = FACTS_DB.filter(f => {
+      const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
+      const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
+      return dOk && tOk;
+    }).slice(0, limit);
+    return json({ facts: out }, 200, env, req);
+  } catch (e) {
+    console.error("postFacts error:", e);
+    return json({ error: "server_error", detail: "Failed to fetch facts" }, 500, env, req);
+  }
 }
 
 /* ------------------------------ /plan -------------------------------------- */
 async function postPlan(req, env) {
-  const body = await readJson(req);
-  const { mode = "sales-simulation", disease = "", persona = "", goal = "", topic = "" } = body || {};
+  try {
+    const body = await readJson(req);
+    const { mode = "sales-simulation", disease = "", persona = "", goal = "", topic = "" } = body || {};
 
-  const factsRes = FACTS_DB.filter(f => {
-    const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
-    const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
-    return dOk && tOk;
-  });
-  const facts = factsRes.slice(0, 8);
-  if (env.REQUIRE_FACTS === "true" && facts.length === 0)
-    return json({ error: "no_facts_for_request" }, 422, env, req);
+    const factsRes = FACTS_DB.filter(f => {
+      const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
+      const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
+      return dOk && tOk;
+    });
+    const facts = factsRes.slice(0, 8);
+    if (env.REQUIRE_FACTS === "true" && facts.length === 0)
+      return json({ error: "no_facts_for_request" }, 422, env, req);
 
-  const plan = {
-    planId: cryptoRandomId(),
-    mode, disease, persona, goal,
-    facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
-    fsm: FSM[mode] || FSM["sales-simulation"]
-  };
+    const plan = {
+      planId: cryptoRandomId(),
+      mode, disease, persona, goal,
+      facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
+      fsm: FSM[mode] || FSM["sales-simulation"]
+    };
 
-  const valid = Array.isArray(plan.facts) && plan.facts.length > 0 && typeof plan.mode === "string";
-  if (!valid) return json({ error: "invalid_plan" }, 422, env, req);
+    const valid = Array.isArray(plan.facts) && plan.facts.length > 0 && typeof plan.mode === "string";
+    if (!valid) return json({ error: "invalid_plan" }, 422, env, req);
 
-  return json(plan, 200, env, req);
+    return json(plan, 200, env, req);
+  } catch (e) {
+    console.error("postPlan error:", e);
+    return json({ error: "server_error", detail: "Failed to create plan" }, 500, env, req);
+  }
 }
 
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
-  const body = await readJson(req);
-  const {
-    mode = "sales-simulation",
-    user,
-    history = [],
-    disease = "",
-    persona = "",
-    goal = "",
-    plan,
-    planId
-  } = body || {};
+  try {
+    // Defensive check: ensure PROVIDER_KEY is configured
+    if (!env.PROVIDER_KEY) {
+      return json({ error: "server_error", detail: "Provider API key not configured" }, 500, env, req);
+    }
 
-  const session = body.session || "anon";
+    const body = await readJson(req);
+    
+    // Handle both payload formats:
+    // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
+    // 2. Widget format: { model, temperature, messages, ... }
+    let mode, user, history, disease, persona, goal, plan, planId, session;
+    
+    if (body.messages && Array.isArray(body.messages)) {
+      // Widget is sending provider-style payload - extract user message from messages array
+      const msgs = body.messages;
+      const lastUserMsg = msgs.filter(m => m.role === "user").pop();
+      const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
+      
+      mode = body.mode || "sales-simulation";
+      user = lastUserMsg?.content || "";
+      history = historyMsgs;
+      disease = body.disease || "";
+      persona = body.persona || "";
+      goal = body.goal || "";
+      plan = body.plan;
+      planId = body.planId;
+      session = body.session || "anon";
+    } else {
+      // ReflectivAI format
+      mode = body.mode || "sales-simulation";
+      user = body.user;
+      history = body.history || [];
+      disease = body.disease || "";
+      persona = body.persona || "";
+      goal = body.goal || "";
+      plan = body.plan;
+      planId = body.planId;
+      session = body.session || "anon";
+    }
 
   // Load or build a plan
   let activePlan = plan;
@@ -429,6 +468,10 @@ Use only the Facts IDs provided when making claims.`.trim();
   }
 
   return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
+  } catch (e) {
+    console.error("postChat error:", e);
+    return json({ error: "server_error", detail: "Chat request failed" }, 500, env, req);
+  }
 }
 
 function cryptoRandomId() {

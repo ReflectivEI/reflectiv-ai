@@ -58,6 +58,11 @@
     "Role Play": "role-play"
   };
 
+  // ---------- SSE Configuration ----------
+  // Set to false to disable SSE streaming and use regular fetch only
+  // SSE streaming is disabled by default due to payload size limitations
+  const USE_SSE = false;
+
   let cfg = null;
   let systemPrompt = "";
   let eiHeuristics = "";
@@ -1862,7 +1867,7 @@ ${COMMON}`
     });
   }
 
-  async function callModel(messages) {
+  async function callModel(messages, scenarioContext = null) {
     // Use window.WORKER_URL directly and append /chat
     const baseUrl = window.WORKER_URL || "";
     if (!baseUrl) {
@@ -1873,7 +1878,8 @@ ${COMMON}`
     }
     
     const url = `${baseUrl}/chat`;
-    const useStreaming = cfg?.stream === true;
+    // Check both cfg.stream and USE_SSE flag
+    const useStreaming = USE_SSE && cfg?.stream === true;
     
     // Initialize telemetry
     initTelemetry();
@@ -1885,7 +1891,28 @@ ${COMMON}`
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
+    // Extract scenario information if available
+    const disease = scenarioContext?.therapeuticArea || scenarioContext?.diseaseState || "";
+    const persona = scenarioContext?.hcpRole || scenarioContext?.label || "";
+    const goal = scenarioContext?.goal || "";
+    
+    // Build ReflectivAI-compatible payload
+    // Extract history from messages (exclude system and last user message)
+    const history = messages
+      .filter(m => m.role !== "system")
+      .slice(0, -1); // exclude the last user message
+    
+    const lastUserMsg = messages.filter(m => m.role === "user").pop();
+    
     const payload = {
+      mode: currentMode,
+      user: lastUserMsg?.content || "",
+      history: history,
+      disease: disease,
+      persona: persona,
+      goal: goal,
+      session: "widget-" + (Math.random().toString(36).slice(2, 10)),
+      // Include legacy fields for backward compatibility
       model: (cfg?.model) || "llama-3.1-8b-instant",
       temperature: (currentMode === "role-play" ? 0.35 : 0.2),
       top_p: 0.9,
@@ -2135,7 +2162,7 @@ ${COMMON}`
       }
     ].filter(Boolean);
 
-    const raw = await callModel(evalMsgs);
+    const raw = await callModel(evalMsgs, sc);
     const { coach, clean } = extractCoach(raw);
     const finalCoach = coach || scoreReply("", clean);
     conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
@@ -2177,7 +2204,7 @@ ${COMMON}`
 
     let raw = "";
     try {
-      raw = await callModel([{ role: "system", content: sys }, user]);
+      raw = await callModel([{ role: "system", content: sys }, user], null);
     } catch (e) {
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
@@ -2337,7 +2364,7 @@ ${detail}`;
           if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
         }
 
-        let raw = await callModel(messages);
+        let raw = await callModel(messages, sc);
         if (!raw) {
           console.warn("[coach] degrade-to-legacy - Using fallback text due to empty response");
           raw = fallbackText(currentMode);
@@ -2361,7 +2388,7 @@ Please provide your response again with all required fields including phrasing.`
           ];
           
           try {
-            const retryRaw = await callModel(retryMessages);
+            const retryRaw = await callModel(retryMessages, sc);
             if (retryRaw) {
               const retryResult = extractCoach(retryRaw);
               // Use the retry result if it has phrasing, otherwise keep original
@@ -2389,14 +2416,16 @@ if (cutOff(replyText)) {
     { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
   ];
   try {
-    let contRaw = await callModel(contMsgs);
+    let contRaw = await callModel(contMsgs, sc);
     let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
     if (contClean) replyText = (replyText + " " + contClean).trim();
   } catch (_) { /* no-op */ }
 }
 
 if (currentMode === "role-play") {
-  replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+  // Create a wrapper that passes scenario context to callModel
+  const callModelWithContext = (msgs) => callModel(msgs, sc);
+  replyText = await enforceHcpOnly(replyText, sc, messages, callModelWithContext);
 }
 
 if (norm(replyText) === norm(userText)) {
@@ -2411,7 +2440,7 @@ if (norm(replyText) === norm(userText)) {
             { role:"system", content:"Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
             messages[messages.length-1]
           ];
-          let varied = await callModel(varyMsgs);
+          let varied = await callModel(varyMsgs, sc);
           varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
           if (!varied || isTooSimilar(norm(varied))) {
             const alts = [

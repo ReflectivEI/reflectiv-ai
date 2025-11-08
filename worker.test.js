@@ -42,6 +42,52 @@ const mockEnv = {
 };
 
 // Test /chat error handling
+async function testChatErrorHandling() {
+  console.log("\n=== Testing /chat error handling ===");
+
+  // Test missing PROVIDER_KEY
+  const envNoKey = { ...mockEnv, PROVIDER_KEY: undefined };
+  const req1 = new Request("http://test.com/chat", {
+    method: "POST",
+    headers: { 
+      "Origin": "https://reflectivai.github.io",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ mode: "sales-simulation", user: "test" })
+  });
+  const res1 = await worker.fetch(req1, envNoKey, {});
+  const data1 = await res1.json();
+  
+  assert(res1.status === 500, "/chat returns 500 when PROVIDER_KEY missing");
+  assert(data1.error === "server_error", "Returns server_error when key missing");
+  assert(res1.headers.get("Access-Control-Allow-Origin") === "https://reflectivai.github.io", 
+    "/chat error includes CORS header");
+
+  // Test widget-style payload (with messages array)
+  const req2 = new Request("http://test.com/chat", {
+    method: "POST",
+    headers: { 
+      "Origin": "https://reflectivai.github.io",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ 
+      model: "llama-3.1-8b-instant",
+      messages: [
+        { role: "system", content: "You are a coach" },
+        { role: "user", content: "How do I approach this HCP?" }
+      ]
+    })
+  });
+  // This will fail due to missing PROVIDER_KEY but should handle payload gracefully
+  const res2 = await worker.fetch(req2, envNoKey, {});
+  const data2 = await res2.json();
+  
+  assert(res2.status === 500, "/chat handles widget payload format");
+  assert(data2.error === "server_error", "Returns error for widget payload");
+  assert(res2.headers.get("Access-Control-Allow-Origin") === "https://reflectivai.github.io",
+    "/chat widget payload error includes CORS header");
+}
+
 // Test existing endpoints still work
 async function testExistingEndpoints() {
   console.log("\n=== Testing existing endpoints ===");
@@ -86,6 +132,7 @@ async function runTests() {
 
   try {
     await testExistingEndpoints();
+    await testChatErrorHandling();
 
     console.log("\n=== Test Summary ===");
     console.log(`Passed: ${testsPassed}`);
