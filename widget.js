@@ -14,61 +14,6 @@
  * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
  */
 (function () {
-
-  // UI behavior constants (for buildUI)
-  const DOM_SETTLING_DELAY_MS = 50; // Delay for DOM to settle before scrolling
-  const THINKING_TIMEOUT_MS = 10000; // 10s delay before showing "still working" message
-  const SCORE_CLASSES = {
-    GOOD: "coach-score-good",
-    WARN: "coach-score-warn",
-    BAD: "coach-score-bad",
-    ALL: ["coach-score-good", "coach-score-warn", "coach-score-bad"]
-  };
-
-  // Score explanations for clickable pills (Sales Simulation mode)
-  const SCORE_EXPLANATIONS = {
-    accuracy: ["Keeps details medically accurate", "Avoids misleading claims"],
-    empathy: ["Acknowledges HCP perspective", "Uses supportive, non-judgmental language"],
-    clarity: ["Uses simple, concise phrasing", "Avoids jargon where possible"],
-    compliance: ["Aligns with label and guidance", "Avoids off-label or speculative claims"],
-    discovery: ["Asks clear, open-ended questions", "Explores needs before recommending solutions"],
-    objection_handling: ["Addresses concerns directly", "Links responses back to clinical value"]
-  };
-
-  // ---------- fallback/cutoff constants ----------
-  const MIN_REPLY_LENGTH = 40;  // Minimum viable reply length
-  const CUTOFF_TAIL_CHECK = 15;  // Chars to check for partial words
-  
-  // Fallback variants for duplicate/failure scenarios (role-play mode)
-  const ROLEPLAY_FALLBACK_VARIANTS = [
-    "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-    "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-    "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-  ];
-
-  // ---------- diagnostic logging ----------
-  const DEBUG_WIDGET = false;
-
-  function logDebug(fnName, message, data) {
-    if (!DEBUG_WIDGET) return;
-    const prefix = "[ReflectivWidget]";
-    if (data !== undefined) {
-      console.log(`${prefix} ${fnName}: ${message}`, data);
-    } else {
-      console.log(`${prefix} ${fnName}: ${message}`);
-    }
-  }
-
-  function logError(fnName, message, error) {
-    if (!DEBUG_WIDGET) return;
-    const prefix = "[ReflectivWidget]";
-    if (error !== undefined) {
-      console.error(`${prefix} ${fnName}: ${message}`, error);
-    } else {
-      console.error(`${prefix} ${fnName}: ${message}`);
-    }
-  }
-
   // ---------- safe bootstrapping ----------
   let mount = null;
 
@@ -81,33 +26,24 @@
   }
 
   function waitForMount(cb) {
-    logDebug("waitForMount", "Starting mount search");
     const findMount = () =>
       document.getElementById("reflectiv-widget") ||
       document.querySelector("#coach-widget, [data-coach-mount], .reflectiv-widget");
 
     const tryGet = () => {
       mount = findMount();
-      if (mount) {
-        logDebug("waitForMount", "Mount element found", { id: mount.id, className: mount.className });
-        return cb();
-      }
+      if (mount) return cb();
 
-      logDebug("waitForMount", "Mount not found, setting up MutationObserver");
       const obs = new MutationObserver(() => {
         mount = findMount();
         if (mount) {
-          logDebug("waitForMount", "Mount element detected via MutationObserver", { id: mount.id, className: mount.className });
           obs.disconnect();
           cb();
         }
       });
 
       obs.observe(document.documentElement, { childList: true, subtree: true });
-      setTimeout(() => {
-        logDebug("waitForMount", "MutationObserver timeout reached (15s)");
-        obs.disconnect();
-      }, 15000);
+      setTimeout(() => obs.disconnect(), 15000);
     };
 
     onReady(tryGet);
@@ -143,9 +79,67 @@
 
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
-  
-  // ---------- Coach active metric (for clickable pills in Sales Simulation) ----------
-  let coachActiveMetric = null;
+
+  // ---------- Health gate state ----------
+  let isHealthy = false;
+  let healthCheckInterval = null;
+  let healthBanner = null;
+
+  // ---------- EI dev shim ----------
+  const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
+
+  // ---------- Performance telemetry ----------
+  let debugMode = false;
+  let telemetryFooter = null;
+  let currentTelemetry = null;
+  const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
+
+  function isDebugMode() {
+    return /[?&]debug=1/.test(window.location.search);
+  }
+
+  function initTelemetry() {
+    debugMode = isDebugMode();
+    currentTelemetry = {
+      t_open: 0,
+      t_first_byte: 0,
+      t_first_chunk: 0,
+      t_done: 0,
+      retries: 0,
+      httpStatus: "",
+      mode: "",
+      bytes_rx: 0,
+      tokens_rx: 0
+    };
+  }
+
+  function updateDebugFooter() {
+    if (!debugMode || !telemetryFooter || !currentTelemetry) return;
+    
+    const t = currentTelemetry;
+    const ttfb = t.t_first_byte > 0 ? ((t.t_first_byte - t.t_open) / 1000).toFixed(1) : "–.–";
+    const firstChunk = t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "–.–";
+    const done = t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "–.–";
+    
+    telemetryFooter.textContent = `TTFB/FirstChunk/Done: ${ttfb}s / ${firstChunk}s / ${done}s • retries:${t.retries} • ${t.httpStatus || "—"}`;
+  }
+
+  function logTelemetry() {
+    if (!currentTelemetry || currentTelemetry.t_open === 0) return;
+    
+    const t = currentTelemetry;
+    const row = {
+      mode: t.mode,
+      TTFB_s: t.t_first_byte > 0 ? ((t.t_first_byte - t.t_open) / 1000).toFixed(1) : "—",
+      FirstChunk_s: t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "—",
+      Done_s: t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "—",
+      retries: t.retries,
+      status: t.httpStatus || "—",
+      bytes_rx: t.bytes_rx,
+      tokens_rx: t.tokens_rx
+    };
+    console.table([row]);
+  }
 
   // ---------- EI defaults ----------
   const DEFAULT_PERSONAS = [
@@ -162,9 +156,21 @@
   ];
 
   // ---------- utils ----------
+  const STUB_MODE = new URLSearchParams(location.search).has('stub');
+  const IS_GITHUB_IO = /github\.io/i.test(location.hostname);
+  
   async function fetchLocal(path) {
     const r = await fetch(path, { cache: "no-store" });
-    if (!r.ok) throw new Error(`Failed to load ${path} (${r.status})`);
+    
+    // 404 handling with stub mode guard
+    if (!r.ok) {
+      if (r.status === 404 && IS_GITHUB_IO && STUB_MODE) {
+        console.warn(`[stub mode] ${path} returned 404, returning empty stub`);
+        return path.endsWith('.json') ? {} : '';
+      }
+      throw new Error(`Failed to load ${path} (${r.status})`);
+    }
+    
     const ct = r.headers.get("content-type") || "";
     return ct.includes("application/json") ? r.json() : r.text();
   }
@@ -176,6 +182,161 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+
+  // ---------- Health gate ----------
+  async function checkHealth() {
+    const healthUrl = `${window.WORKER_URL}/health`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+    
+    try {
+      const response = await fetch(healthUrl, {
+        method: "HEAD",
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      
+      if (response.ok) {
+        isHealthy = true;
+        hideHealthBanner();
+        enableSendButton();
+        if (healthCheckInterval) {
+          clearInterval(healthCheckInterval);
+          healthCheckInterval = null;
+        }
+        return true;
+      }
+      
+      isHealthy = false;
+      showHealthBanner();
+      disableSendButton();
+      return false;
+    } catch (e) {
+      clearTimeout(timeout);
+      isHealthy = false;
+      showHealthBanner();
+      disableSendButton();
+      return false;
+    }
+  }
+
+  function showHealthBanner() {
+    if (!mount) return;
+    
+    if (!healthBanner) {
+      healthBanner = document.createElement("div");
+      healthBanner.style.cssText = "background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin:8px 0;color:#856404;font-size:14px;font-weight:600;text-align:center;";
+      healthBanner.textContent = "⚠️ Backend unavailable. Trying again…";
+    }
+    
+    const shell = mount.querySelector(".reflectiv-chat");
+    if (shell && !shell.contains(healthBanner)) {
+      shell.insertBefore(healthBanner, shell.firstChild);
+    }
+  }
+
+  function hideHealthBanner() {
+    if (healthBanner && healthBanner.parentNode) {
+      healthBanner.parentNode.removeChild(healthBanner);
+    }
+  }
+
+  function enableSendButton() {
+    const shell = mount?.querySelector(".reflectiv-chat");
+    const sendBtn = shell?._sendBtn || shell?.querySelector(".chat-input .btn");
+    if (sendBtn) {
+      sendBtn.disabled = false;
+    }
+  }
+
+  function disableSendButton() {
+    const shell = mount?.querySelector(".reflectiv-chat");
+    const sendBtn = shell?._sendBtn || shell?.querySelector(".chat-input .btn");
+    if (sendBtn) {
+      sendBtn.disabled = true;
+    }
+  }
+
+  function startHealthRetry() {
+    if (healthCheckInterval) return;
+    
+    healthCheckInterval = setInterval(async () => {
+      await checkHealth();
+    }, 20000); // 20 seconds
+  }
+
+  // ---------- Toast notifications ----------
+  function showToast(message, type = "error") {
+    const toast = document.createElement("div");
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      max-width: 400px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      animation: slideIn 0.3s ease-out;
+      ${type === "error" ? "background:#fee;border:1px solid #f5c2c2;color:#991b1b;" : "background:#e8f6ee;border:1px solid #bfe7cf;color:#0b5a2a;"}
+    `;
+    toast.textContent = message;
+    
+    // Add animation
+    const style = document.createElement("style");
+    style.textContent = `@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
+    if (!document.querySelector('style[data-toast-anim]')) {
+      style.setAttribute('data-toast-anim', 'true');
+      document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.transition = "opacity 0.3s ease-out";
+      toast.style.opacity = "0";
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 5000);
+  }
+
+  // === EI summary renderer for yellow panel ===
+  function renderEiPanel(msg){
+    const ei = msg && msg._coach && msg._coach.ei;
+    if (!ei || !ei.scores) return "";
+
+    const S = ei.scores || {};
+    const R = ei.rationales || {};
+    const tips = Array.isArray(ei.tips) ? ei.tips.slice(0,3) : [];
+    const rubver = ei.rubric_version || "v1";
+
+    const mk = (k,label) => {
+      const v = Number(S[k] ?? 0);
+      const cls = v>=4 ? "good" : v===3 ? "ok" : "bad";
+      const val = (v || v === 0) ? String(v) : "–";
+      const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
+      return `<span class="ei-pill ${cls}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
+    };
+
+    return `
+  <div class="ei-wrap">
+    <div class="ei-h">Emotional Intelligence Summary</div>
+    <div class="ei-row">
+      ${mk("empathy","Empathy")}
+      ${mk("discovery","Discovery")}
+      ${mk("compliance","Compliance")}
+      ${mk("clarity","Clarity")}
+      ${mk("accuracy","Accuracy")}
+    </div>
+    ${tips.length ? `<ul class="ei-tips">${tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+    <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
+  </div>`;
+  }
 
   function sanitizeLLM(raw) {
     let s = String(raw || "");
@@ -196,11 +357,7 @@
   // --- Worker base normalizer + tiny JSON fetch helper ---
   // Ensures add-on calls like jfetch("/plan") hit the base (…/plan), even when config points to …/chat
   function getWorkerBase() {
-    const raw =
-      (window.COACH_ENDPOINT || window.WORKER_URL || (cfg && (cfg.apiBase || cfg.workerUrl)) || "").trim();
-    if (!raw) return "";
-    // Strip trailing /chat (with or without slash), then trailing slashes
-    return raw.replace(/\/chat\/?$/i, "").replace(/\/+$/g, "");
+    return window.WORKER_URL || "";
   }
 
   async function jfetch(path, payload) {
@@ -439,30 +596,16 @@
     ];
     try {
       const r1 = await callModelFn(rewriteMsgs);
-      // Handle structured failure response
-      if (typeof r1 === 'object' && r1.ok === false) {
-        // Skip to next pass on failure
-      } else {
-        // Handle both structured and text responses
-        const r1Text = (typeof r1 === 'object' && r1.reply) ? r1.reply : r1;
-        out = sanitizeRolePlayOnly(r1Text);
-        if (!isGuidanceLeak(out)) return out;
-      }
+      out = sanitizeRolePlayOnly(r1);
+      if (!isGuidanceLeak(out)) return out;
     } catch (_) {}
 
     // Pass 2: fresh completion with corrective rails prepended to original convo
     try {
       const hardened = [{ role: "system", content: correctiveRails(sc) }, ...messages];
       const r2 = await callModelFn(hardened);
-      // Handle structured failure response
-      if (typeof r2 === 'object' && r2.ok === false) {
-        // Skip to Pass 3
-      } else {
-        // Handle both structured and text responses
-        const r2Text = (typeof r2 === 'object' && r2.reply) ? r2.reply : r2;
-        out = sanitizeRolePlayOnly(r2Text);
-        if (!isGuidanceLeak(out)) return out;
-      }
+      out = sanitizeRolePlayOnly(r2);
+      if (!isGuidanceLeak(out)) return out;
     } catch (_) {}
 
     // Pass 3: last-ditch strip + diversified variants (PATCH D)
@@ -484,7 +627,12 @@
       .trim();
 
     if (!out) {
-      out = ROLEPLAY_FALLBACK_VARIANTS[Math.floor(Math.random() * ROLEPLAY_FALLBACK_VARIANTS.length)];
+      const variants = [
+        "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
+        "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
+        "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
+      ];
+      out = variants[Math.floor(Math.random() * variants.length)];
     }
     return out;
   }
@@ -522,102 +670,28 @@
     return e;
   }
 
-  // Helper to normalize Role Play HCP text - removes bullet formatting for conversational flow
-  function normalizeRolePlayHcpText(text) {
-    if (!text) return "";
-    // Remove bullet markers from line starts, join lines, clean up spaces
-    return text
-      .replace(/^[\s]*[•\-*]\s+/gm, "")  // Strip bullets
-      .replace(/\n+/g, " ")               // Join lines
-      .replace(/\s+/g, " ")               // Clean multiple spaces
-      .trim();
-  }
-
-  // Helper to check if a message is from HCP (used in Role Play mode)
-  function isHcpMessage(message) {
-    return message._speaker === "hcp" || (message.role === "assistant" && message._speaker !== "rep");
-  }
-
   // ---------- Legacy Coach Renderer (RESTORED UI) ----------
   const USE_LEGACY_COACH_UI = true;
 
   function renderLegacyCoachCard(coachObj) {
-    logDebug("renderLegacyCoachCard", "Rendering Sales Simulation coach card with extracted Suggested Phrasing");
-    
-    // Helper function to extract "Suggested Phrasing:" from text
-    function extractSuggestedPhrasingFromText(text) {
-      if (!text) return { base: text, phrasing: "" };
-      const label = "Suggested Phrasing:";
-      const idx = text.toLowerCase().lastIndexOf(label.toLowerCase());
-      if (idx === -1) return { base: text, phrasing: "" };
-      const before = text.slice(0, idx).trim();
-      const afterRaw = text.slice(idx + label.length).trim();
-      const after = afterRaw.replace(/^[""'"]+/, "").replace(/[""'"]+$/, "").trim();
-      return {
-        base: before || "",
-        phrasing: after
-      };
-    }
-    
-    let challenge =
+    const challenge =
       coachObj.challenge || coachObj.feedback || "Focus on label-aligned guidance and one clear question.";
-    let repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
+    const repApproach = Array.isArray(coachObj.worked) && coachObj.worked.length
       ? coachObj.worked
       : ["Acknowledge context", "Cite one fact", "End with a discovery question"];
-    let impact = Array.isArray(coachObj.improve) && coachObj.improve.length
+    const impact = Array.isArray(coachObj.improve) && coachObj.improve.length
       ? coachObj.improve
       : ["Drive a next step", "One idea per sentence", "Avoid off-label statements"];
-    
-    // Get phrasing from coachObj
-    let phrasing = (coachObj.phrasing || "").trim();
-    
-    // If phrasing is empty, attempt fallback extraction from sections
-    if (!phrasing) {
-      let derivedPhrasing = "";
-      
-      // 1) Extract from challenge
-      const cResult = extractSuggestedPhrasingFromText(challenge);
-      challenge = cResult.base;
-      if (!derivedPhrasing && cResult.phrasing) derivedPhrasing = cResult.phrasing;
-      
-      // 2) Extract from repApproach items
-      repApproach = repApproach.map(item => {
-        if (!item) return item;
-        const r = extractSuggestedPhrasingFromText(item);
-        if (!derivedPhrasing && r.phrasing) derivedPhrasing = r.phrasing;
-        return r.base !== undefined ? r.base : item;
-      });
-      
-      // 3) Extract from impact items
-      impact = impact.map(item => {
-        if (!item) return item;
-        const r = extractSuggestedPhrasingFromText(item);
-        if (!derivedPhrasing && r.phrasing) derivedPhrasing = r.phrasing;
-        return r.base !== undefined ? r.base : item;
-      });
-      
-      // Set phrasing if we derived one
-      if (derivedPhrasing) {
-        phrasing = derivedPhrasing;
-        logDebug("renderLegacyCoachCard", "Derived Suggested Phrasing from section text", { hasPhrasing: !!phrasing });
-      }
-    }
+    const phrasing =
+      coachObj.phrasing || "Would confirming eGFR today help you identify one patient to start this month?";
 
     const card = document.createElement("div");
     card.className = "coach-card legacy";
-    
-    let phrasingSection = "";
-    if (phrasing) {
-      phrasingSection = `
-      <div class="coach-section coach-phrasing-block">
-        <div class="coach-label"><strong>Suggested Phrasing:</strong></div>
-        <div class="coach-phrasing-text">${esc(phrasing)}</div>
-      </div>`;
-    }
-    
     card.innerHTML = `
-      <span class="coach-badge">Sales Coach</span>
-${phrasingSection}
+      <div class="coach-head">
+        <span class="coach-badge">Sales Coach</span>
+      </div>
+
       <div class="coach-section">
         <div class="coach-label">Challenge:</div>
         <div class="coach-body">${esc(challenge)}</div>
@@ -625,20 +699,21 @@ ${phrasingSection}
 
       <div class="coach-section">
         <div class="coach-label">Rep Approach:</div>
-        <div class="coach-body">
-          <ul>
-            ${repApproach.map(i => `<li>${esc(i)}</li>`).join("")}
-          </ul>
-        </div>
+        <ul class="coach-list">
+          ${repApproach.map(i => `<li>${esc(i)}</li>`).join("")}
+        </ul>
       </div>
 
       <div class="coach-section">
         <div class="coach-label">Impact:</div>
-        <div class="coach-body">
-          <ul>
-            ${impact.map(i => `<li>${esc(i)}</li>`).join("")}
-          </ul>
-        </div>
+        <ul class="coach-list">
+          ${impact.map(i => `<li>${esc(i)}</li>`).join("")}
+        </ul>
+      </div>
+
+      <div class="coach-section">
+        <div class="coach-label">Suggested Phrasing:</div>
+        <div class="coach-quote">“${esc(phrasing)}”</div>
       </div>
     `;
     return card;
@@ -1030,7 +1105,6 @@ ${COMMON}`
 
   // ---------- UI ----------
   function buildUI() {
-    logDebug("buildUI", "Starting UI construction");
     mount.innerHTML = "";
     if (!mount.classList.contains("cw")) mount.classList.add("cw");
 
@@ -1072,19 +1146,19 @@ ${COMMON}`
 #reflectiv-widget .streaming .content{background:#f0f7ff;border-color:#b3d9ff}
 @media (max-width:900px){#reflectiv-widget .sim-controls{grid-template-columns:1fr;gap:8px}#reflectiv-widget .sim-controls label{justify-self:start}}
 @media (max-width:520px){#reflectiv-widget .chat-messages{height:46vh}}
-#reflectiv-widget .coach-phrasing-block{padding:8px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:6px;margin-top:4px;font-style:italic}
-#reflectiv-widget .coach-phrasing-text{font-style:italic}
-#reflectiv-widget .coach-section.coach-score-good{border-left:3px solid #28a745}
-#reflectiv-widget .coach-section.coach-score-warn{border-left:3px solid #ffc107}
-#reflectiv-widget .coach-section.coach-score-bad{border-left:3px solid #dc3545}
-#reflectiv-widget .coach-subs .pill{cursor:pointer;transition:all 0.2s ease}
-#reflectiv-widget .coach-subs .pill:hover{background:#e1e6ef;border-color:#bfc7d4}
-#reflectiv-widget .coach-subs .pill.coach-score-pill-active{background:#2f3a4f;color:#fff;border-color:#2f3a4f;font-weight:600}
-#reflectiv-widget .coach-score-detail{margin-top:12px;padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:8px}
-#reflectiv-widget .coach-score-detail .detail-heading{font-weight:600;margin-bottom:6px;color:#2f3a4f}
-#reflectiv-widget .coach-score-detail ul{margin:4px 0 0 18px;padding:0}
-#reflectiv-widget .coach-score-detail li{margin:3px 0;font-size:13px;color:#4a5568}
-#reflectiv-widget .thinking-status{display:inline-block;margin-left:8px;font-size:12px;color:#666;font-style:italic}
+/* === EI summary in yellow panel === */
+#reflectiv-widget .ei-wrap{padding:10px 12px}
+#reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
+#reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; border:1px solid #d9d9d9; background:#fff}
+#reflectiv-widget .ei-pill .k{opacity:.65; margin-right:6px; font-weight:600}
+#reflectiv-widget .ei-pill.good{background:#e8f6ee;border-color:#bfe7cf}
+#reflectiv-widget .ei-pill.ok{background:#fff7e6;border-color:#ffe1a3}
+#reflectiv-widget .ei-pill.bad{background:#fdeaea;border-color:#f5c2c2}
+#reflectiv-widget .ei-tips{margin:8px 0 0; padding-left:16px}
+#reflectiv-widget .ei-tips li{margin:2px 0}
+#reflectiv-widget .ei-meta{margin-top:8px; font:500 11px/1.3 Inter,system-ui; opacity:.8}
+#reflectiv-widget .ei-meta a{text-decoration:underline}
       `;
       document.head.appendChild(style);
     }
@@ -1103,6 +1177,30 @@ ${COMMON}`
       </div>
     `;
     mount.appendChild(shell);
+    
+    // Add debug footer if ?debug=1
+    if (isDebugMode()) {
+      telemetryFooter = el("div", "telemetry-footer");
+      // Style for minimal, unobtrusive debug footer
+      Object.assign(telemetryFooter.style, {
+        position: "absolute",
+        bottom: "64px",
+        left: "16px",
+        right: "16px",
+        fontSize: "12px",
+        fontFamily: "monospace",
+        opacity: "0.7",
+        color: "#2f3a4f",
+        padding: "4px 8px",
+        background: "rgba(255,255,255,0.9)",
+        borderTop: "1px solid #e1e6ef",
+        pointerEvents: "none",
+        zIndex: "100"
+      });
+      telemetryFooter.textContent = "TTFB/FirstChunk/Done: –.– / –.– / –.– • retries:0 • —";
+      shell.style.position = "relative";
+      shell.appendChild(telemetryFooter);
+    }
 
     // rebuild real UI
     const bar = el("div", "chat-toolbar");
@@ -1112,32 +1210,12 @@ ${COMMON}`
     lcLabel.htmlFor = "cw-mode";
     const modeSel = el("select");
     modeSel.id = "cw-mode";
-    
-    // Create optgroups for better organization
-    const salesGroup = document.createElement("optgroup");
-    salesGroup.label = "Sales Modes";
-    const learningGroup = document.createElement("optgroup");
-    learningGroup.label = "Learning Modes";
-    const eiGroup = document.createElement("optgroup");
-    eiGroup.label = "EI Tools";
-    
-    // Helper to add options to groups
-    const addOption = (group, name) => {
+    LC_OPTIONS.forEach((name) => {
       const o = el("option");
       o.value = name;
       o.textContent = name;
-      group.appendChild(o);
-    };
-    
-    // Organize modes into groups
-    addOption(salesGroup, "Sales Simulation");
-    addOption(learningGroup, "Product Knowledge");
-    addOption(learningGroup, "Role Play");
-    addOption(eiGroup, "Emotional Intelligence");
-    
-    modeSel.appendChild(salesGroup);
-    modeSel.appendChild(learningGroup);
-    modeSel.appendChild(eiGroup);
+      modeSel.appendChild(o);
+    });
     const initialLc =
       Object.keys(LC_TO_INTERNAL).find((k) => LC_TO_INTERNAL[k] === (cfg?.defaultMode || "sales-simulation")) ||
       "Sales Simulation";
@@ -1337,8 +1415,33 @@ ${COMMON}`
     }
 
     function populateDiseases() {
+      if (scenariosLoadError) {
+        // Show error and disable dropdown
+        setSelectOptions(diseaseSelect, [{ value: "", label: "⚠ Failed to load scenarios" }], true);
+        diseaseSelect.disabled = true;
+        hcpSelect.disabled = true;
+        setSelectOptions(hcpSelect, [{ value: "", label: "—" }], true);
+        
+        // Show inline error message in meta area if available
+        const metaEl = mount.querySelector(".scenario-meta");
+        if (metaEl) {
+          metaEl.innerHTML = `<div style="padding:10px 12px;background:#fdeaea;border:1px solid #f5c2c2;border-radius:10px;color:#991b1b;">
+            <strong>⚠ Data Loading Error:</strong> Could not load scenarios. Please check your connection or contact support.
+          </div>`;
+        }
+        return;
+      }
+      
       const ds = getDiseaseStates();
       setSelectOptions(diseaseSelect, ds, true);
+      
+      // Enable if we have scenarios
+      if (scenarios.length > 0) {
+        diseaseSelect.disabled = false;
+      } else {
+        diseaseSelect.disabled = true;
+        setSelectOptions(diseaseSelect, [{ value: "", label: "No scenarios available" }], true);
+      }
     }
 
     function populateHcpForDisease(ds) {
@@ -1393,66 +1496,22 @@ ${COMMON}`
         }
 
         const body = el("div");
-        let contentToRender = m.content;
-        
-        // Role Play mode: normalize HCP messages to remove bullet formatting
-        if (currentMode === "role-play" && isHcpMessage(m)) {
-          contentToRender = normalizeRolePlayHcpText(contentToRender);
-        }
-        
-        const normalized = normalizeGuidanceLabels(contentToRender);
+        const normalized = normalizeGuidanceLabels(m.content);
         body.innerHTML = md(normalized);
         c.appendChild(body);
 
         row.appendChild(c);
         msgsEl.appendChild(row);
       }
-      // Scroll to show the top of the latest message (especially important for coach cards)
-      if (conversation.length > 0) {
-        const lastMsg = conversation[conversation.length - 1];
-        if (lastMsg.role === "assistant") {
-          // For assistant messages, scroll to show the top of the message
-          // Small delay allows DOM to settle after rendering before scrolling
-          setTimeout(() => {
-            const lastMsgEl = msgsEl.lastElementChild;
-            if (lastMsgEl) {
-              lastMsgEl.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-          }, DOM_SETTLING_DELAY_MS);
-        } else {
-          // For user messages, scroll to bottom as before
-          msgsEl.scrollTop = msgsEl.scrollHeight;
-        }
-      } else {
-        msgsEl.scrollTop = msgsEl.scrollHeight;
-      }
+      msgsEl.scrollTop = msgsEl.scrollHeight;
     }
 
-    function orderedPills(scores, clickable = false) {
+    function orderedPills(scores) {
       const order = ["accuracy", "empathy", "clarity", "compliance", "discovery", "objection_handling"];
       return order
         .filter((k) => k in (scores || {}))
-        .map((k) => {
-          const activeClass = (clickable && coachActiveMetric === k) ? " coach-score-pill-active" : "";
-          const dataAttr = clickable ? ` data-metric="${k}"` : "";
-          return `<span class="pill${activeClass}"${dataAttr}>${esc(k)}: ${scores[k]}</span>`;
-        })
+        .map((k) => `<span class="pill">${esc(k)}: ${scores[k]}</span>`)
         .join(" ");
-    }
-    
-    function renderScoreExplanation(metric) {
-      if (!metric || !SCORE_EXPLANATIONS[metric]) return "";
-      
-      const explanation = SCORE_EXPLANATIONS[metric];
-      const metricLabel = metric.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-      
-      const bulletPoints = explanation.map(point => `<li>${esc(point)}</li>`).join("");
-      
-      return `
-        <div class="coach-score-detail">
-          <div class="detail-heading">${esc(metricLabel)}</div>
-          <ul>${bulletPoints}</ul>
-        </div>`;
     }
 
     function renderCoach() {
@@ -1485,52 +1544,46 @@ ${COMMON}`
 
       // Sales Simulation yellow panel spec:
       if (currentMode === "sales-simulation") {
-        const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
-        const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
-        
-        // Determine score-based accent class
-        // Priority: fb.overall > fb.score > 0 (default if both undefined)
-        const overallScore = fb.overall ?? fb.score ?? 0;
-        let scoreClass = "";
-        if (overallScore >= 85) {
-          scoreClass = SCORE_CLASSES.GOOD;
-        } else if (overallScore >= 70) {
-          scoreClass = SCORE_CLASSES.WARN;
-        } else if (overallScore > 0) {
-          // Scores 1-69 get BAD styling
-          // Score 0 gets no accent (likely uninitialized/default state)
-          scoreClass = SCORE_CLASSES.BAD;
+        // Optional dev shim (guarded)
+        if (DEBUG_EI_SHIM && last && last._coach && !last._coach.ei) {
+          last._coach.ei = {
+            scores:{ empathy:4, discovery:3, compliance:5, clarity:4, accuracy:4 },
+            rationales:{
+              empathy:"Validated HCP constraints and reframed",
+              discovery:"Asked one focused question",
+              compliance:"On-label; AE capture ready",
+              clarity:"Concise, one idea per sentence",
+              accuracy:"Claims match label"
+            },
+            tips:[
+              "Open with HCP context then one ask",
+              "Anchor claims to label/guideline",
+              "Close with one specific next step"
+            ],
+            rubric_version:"v1.2"
+          };
         }
+
+        const eiHTML = renderEiPanel(last);
         
-        // Apply score class to coach section
-        coach.classList.remove(...SCORE_CLASSES.ALL);
-        if (scoreClass) {
-          coach.classList.add(scoreClass);
-        }
-        
-        const explanationHTML = coachActiveMetric ? renderScoreExplanation(coachActiveMetric) : "";
-        
-        body.innerHTML = `
-          <div style="margin-bottom:12px">
-            <strong>Performance Snapshot:</strong> ${overallScore}/100
-          </div>
-          <div class="coach-subs" style="margin-bottom:12px">${orderedPills(scores, true)}${explanationHTML}</div>
-          <div style="margin-bottom:8px"><strong>What Worked:</strong></div>
-          ${workedStr}
-          <div style="margin-bottom:8px"><strong>What to Improve:</strong></div>
-          ${improveStr}
+        // Fallback to old yellow panel HTML if no EI data
+        const oldYellowHTML = (() => {
+          const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+          const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+          const phrasingStr = fb.phrasing || "—";
+          return `
+          <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
+          <ul class="coach-list">
+            <li><strong>Focus:</strong> ${workedStr}</li>
+            <li><strong>Strategy:</strong> ${improveStr}</li>
+            <li><strong>Suggested Phrasing:</strong>
+              <div class="mono">${esc(phrasingStr)}</div>
+            </li>
+          </ul>
           ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
-        
-        // Add click handlers to pills
-        const pills = body.querySelectorAll(".pill[data-metric]");
-        pills.forEach(pill => {
-          pill.addEventListener("click", () => {
-            const metric = pill.getAttribute("data-metric");
-            coachActiveMetric = (coachActiveMetric === metric) ? null : metric;
-            renderCoach();
-          });
-        });
-        
+        })();
+
+        body.innerHTML = eiHTML || oldYellowHTML;
         return;
       }
 
@@ -1663,7 +1716,6 @@ ${COMMON}`
     populateDiseases();
     hydrateEISelects();
     applyModeVisibility();
-    logDebug("buildUI", "UI construction complete");
   }
 
   // ---------- callModel (hardened with retries, timeout, SSE streaming, and backoff) ----------
@@ -1695,11 +1747,12 @@ ${COMMON}`
   }
 
   // SSE streaming handler with requestAnimationFrame batching
-  async function streamWithSSE(url, payload, onToken) {
+  async function streamWithSSE(url, payload, onToken, telemetry, onFirstByte) {
     return new Promise((resolve, reject) => {
       let accumulated = "";
       let pendingUpdate = false;
       let updateScheduled = false;
+      let firstByteRecorded = false;
       
       // Validate payload size to prevent URL length issues
       const payloadStr = JSON.stringify(payload);
@@ -1763,6 +1816,17 @@ ${COMMON}`
       eventSource.onmessage = (event) => {
         lastTokenTime = Date.now();
         
+        // Record first byte on first message
+        if (!firstByteRecorded) {
+          firstByteRecorded = true;
+          if (telemetry) {
+            telemetry.t_first_byte = Date.now();
+          }
+          if (onFirstByte) {
+            onFirstByte();
+          }
+        }
+        
         try {
           const data = JSON.parse(event.data);
           const token = data.token || data.content || data.delta || "";
@@ -1799,45 +1863,42 @@ ${COMMON}`
   }
 
   async function callModel(messages) {
-    logDebug("callModel", "Starting model call", { messageCount: messages?.length });
-    const base = getWorkerBase();
-    if (!base) {
-      logError("callModel", "Worker base URL missing");
-      throw new Error("worker_base_missing");
+    // Use window.WORKER_URL directly and append /chat
+    const baseUrl = window.WORKER_URL || "";
+    if (!baseUrl) {
+      const msg = "Worker URL not configured";
+      console.error("[chat] error=worker_url_missing");
+      showToast("Configuration error. Please contact support.", "error");
+      throw new Error(msg);
     }
-    const url = `${base}/chat`;
+    
+    const url = `${baseUrl}/chat`;
     const useStreaming = cfg?.stream === true;
     
-    logDebug("callModel", "Model call configuration", { url: url?.substring(0, 50) + "...", streaming: useStreaming });
+    // Initialize telemetry
+    initTelemetry();
+    currentTelemetry.t_open = Date.now();
+    currentTelemetry.mode = currentMode;
+    currentTelemetry.retries = 0;
+    updateDebugFooter();
     
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
-    // Get scenario details if available
-const sc = scenariosById.get(currentScenarioId);
-
-// Build payload in the worker's expected format
-// The worker wants: { messages: [...], mode: "...", ... }
-const payload = {
-  messages,                          // full chat history we built above
-  mode: currentMode,                 // extra metadata (worker can ignore if it wants)
-  disease: sc?.therapeuticArea || sc?.diseaseState || "",
-  persona: sc?.hcpRole || "",
-  goal: sc?.goal || "",
-  session: "widget-session-" + Date.now()
-};
-    
-    // Helper to return structured failure for 5xx errors
-    const returnStructuredFailure = (status, attempts) => {
-      logError("callModel", "Remote unavailable after retries", { status, attempts });
-      return { ok: false, status };
+    const payload = {
+      model: (cfg?.model) || "llama-3.1-8b-instant",
+      temperature: (currentMode === "role-play" ? 0.35 : 0.2),
+      top_p: 0.9,
+      stream: useStreaming,
+      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
+      messages
     };
 
     // SSE Streaming branch
     if (useStreaming) {
-      logDebug("callModel", "Using SSE streaming");
       try {
         let streamedContent = "";
+        let firstChunkRecorded = false;
         const shellEl = mount.querySelector(".reflectiv-chat");
         const msgsEl = shellEl?.querySelector(".chat-messages");
         
@@ -1854,34 +1915,57 @@ const payload = {
         
         const result = await streamWithSSE(url, payload, (content) => {
           streamedContent = content;
+          
+          // Record first chunk with actual content
+          if (!firstChunkRecorded && content && content.trim().length > 0) {
+            currentTelemetry.t_first_chunk = Date.now();
+            firstChunkRecorded = true;
+            updateDebugFooter();
+          }
+          
           streamBody.innerHTML = md(sanitizeLLM(content));
           if (msgsEl) {
             msgsEl.scrollTop = msgsEl.scrollHeight;
           }
+          
+          // Approximate bytes received
+          currentTelemetry.bytes_rx = textEncoder.encode(content).length;
+        }, currentTelemetry, () => {
+          // onFirstByte callback
+          updateDebugFooter();
         });
+        
+        // Mark done
+        currentTelemetry.t_done = Date.now();
+        currentTelemetry.httpStatus = "stream";
+        updateDebugFooter();
         
         // Remove streaming element - the actual message will be added by sendMessage
         if (streamRow.parentNode) {
           streamRow.parentNode.removeChild(streamRow);
         }
         
-        logDebug("callModel", "SSE streaming complete", { contentLength: result?.length });
         return result || streamedContent;
       } catch (e) {
-        logError("callModel", "SSE streaming failed, falling back", e);
         removeTypingIndicator(typingIndicator);
-        console.warn("SSE streaming failed, falling back to regular fetch:", e);
+        currentTelemetry.httpStatus = e.message || "error";
+        currentTelemetry.t_done = Date.now();
+        updateDebugFooter();
+        console.warn("[coach] degrade-to-legacy - SSE streaming failed, falling back to regular fetch:", e);
         // Fall through to regular fetch with retry
       }
     }
 
     // Regular fetch with exponential backoff retries (300ms → 800ms → 1.5s)
-    logDebug("callModel", "Using regular fetch with retries");
     const delays = [300, 800, 1500];
     let lastError = null;
-    let lastHttpStatus = 0; // Tracks last HTTP status code, 0 if no response received
     
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
+      if (attempt > 0) {
+        currentTelemetry.retries = attempt;
+        updateDebugFooter();
+      }
+      
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
       
@@ -1897,35 +1981,63 @@ const payload = {
         });
 
         clearTimeout(timeout);
+        
+        // Record first byte (HTTP headers received)
+        if (currentTelemetry.t_first_byte === 0) {
+          currentTelemetry.t_first_byte = Date.now();
+          updateDebugFooter();
+        }
+        
         removeTypingIndicator(typingIndicator);
 
         if (r.ok) {
-          const data = await r.json().catch(() => ({}));
-          
-          // Worker returns { reply, coach, plan } - return full object if coach exists
-          if (data?.coach) {
-            logDebug("callModel", "Model call successful with coach data", { replyLength: data.reply?.length, attempt: attempt + 1 });
-            return data;
+          try {
+            const bodyText = await r.text();
+            currentTelemetry.bytes_rx = textEncoder.encode(bodyText).length;
+            currentTelemetry.httpStatus = r.status.toString();
+            
+            const data = JSON.parse(bodyText);
+            
+            // Extract tokens if available (prefer completion_tokens for accuracy)
+            if (data.usage?.completion_tokens) {
+              currentTelemetry.tokens_rx = data.usage.completion_tokens;
+            }
+            
+            const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
+            
+            // Record first chunk (first response data)
+            if (currentTelemetry.t_first_chunk === 0 && content) {
+              currentTelemetry.t_first_chunk = Date.now();
+            }
+            
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            
+            return content;
+          } catch (jsonErr) {
+            // JSON parse error
+            console.error(`[chat] status=${r.status} path=/chat error=json_parse`);
+            showToast(`Request failed (JSON parse error). Please retry.`, "error");
+            throw new Error("JSON parse error");
           }
-          
-          // Fallback for other formats (legacy support)
-          const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
-          logDebug("callModel", "Model call successful", { contentLength: content?.length, attempt: attempt + 1 });
-          return content;
         }
         
-        // Track status for final failure reporting
-        lastHttpStatus = r.status;
+        // Record status even on error
+        currentTelemetry.httpStatus = r.status.toString();
+        updateDebugFooter();
+        
+        // Log error with status
+        console.error(`[chat] status=${r.status} path=/chat`);
         
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
           lastError = new Error("HTTP " + r.status);
-          logDebug("callModel", `HTTP error ${r.status}, retrying`, { attempt: attempt + 1, delay: delays[attempt] });
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
         
-        logError("callModel", "HTTP error, no retry", { status: r.status, attempt: attempt + 1 });
+        // Show toast for non-retryable errors
+        showToast(`Request failed (status ${r.status}). Please retry.`, "error");
         throw new Error("HTTP " + r.status);
       } catch (e) {
         clearTimeout(timeout);
@@ -1933,20 +2045,21 @@ const payload = {
         // Retry on timeout or network errors
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
-          logDebug("callModel", "Network/timeout error, retrying", { error: e.message, attempt: attempt + 1, delay: delays[attempt] });
+          currentTelemetry.httpStatus = "timeout";
+          updateDebugFooter();
+          console.error(`[chat] status=timeout path=/chat retry=${attempt + 1}`);
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
         
         removeTypingIndicator(typingIndicator);
+        currentTelemetry.httpStatus = e.message || "error";
+        currentTelemetry.t_done = Date.now();
+        updateDebugFooter();
         
-        // Return structured failure info for 5xx errors
-        if (lastHttpStatus >= 500) {
-          return returnStructuredFailure(lastHttpStatus, attempt + 1);
-        }
-        
-        logError("callModel", "Model call failed", e);
-        console.warn("Model call failed:", e);
+        // Log network error
+        console.error(`[chat] status=network_error path=/chat error=${e.message || "unknown"}`);
+        showToast(`Network error. Please check your connection and retry.`, "error");
         
         // Show retry UI if we've exhausted all retries and taken >= 8s total
         const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
@@ -1954,21 +2067,19 @@ const payload = {
           showRetryUI();
         }
         
-        return { ok: false, status: lastHttpStatus };
+        return "";
       }
     }
 
     removeTypingIndicator(typingIndicator);
+    currentTelemetry.httpStatus = lastError?.message || "failed";
+    currentTelemetry.t_done = Date.now();
+    updateDebugFooter();
     
-    // Final failure after all retries
-    if (lastHttpStatus >= 500) {
-      return returnStructuredFailure(lastHttpStatus, delays.length + 1);
-    }
-    
-    logError("callModel", "Model call failed after all retries", lastError);
-    console.warn("Model call failed after all retries:", lastError);
+    console.error(`[chat] status=all_retries_failed path=/chat`);
+    showToast(`Request failed after retries. Please try again.`, "error");
     showRetryUI();
-    return { ok: false, status: lastHttpStatus };
+    return "";
   }
   
   // Show retry button UI
@@ -2025,26 +2136,9 @@ const payload = {
     ].filter(Boolean);
 
     const raw = await callModel(evalMsgs);
-    
-    // Handle structured failure response
-    if (typeof raw === 'object' && raw.ok === false) {
-      logError("evaluateConversation", "Evaluation unavailable after remote failure", { status: raw.status });
-      const cleanContent = "Evaluation unavailable at this time. Please try again.";
-      conversation.push({ role: "assistant", content: cleanContent, _finalEval: true });
-    } else {
-      // Handle both structured and text responses
-      let coach, clean;
-      if (typeof raw === 'object' && raw.reply) {
-        clean = raw.reply;
-        coach = raw.coach;
-      } else {
-        const extracted = extractCoach(raw);
-        coach = extracted.coach;
-        clean = extracted.clean;
-      }
-      const finalCoach = coach || scoreReply("", clean);
-      conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
-    }
+    const { coach, clean } = extractCoach(raw);
+    const finalCoach = coach || scoreReply("", clean);
+    conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
   }
 
   /* ---------- Rep-only evaluation helpers ---------- */
@@ -2084,27 +2178,15 @@ const payload = {
     let raw = "";
     try {
       raw = await callModel([{ role: "system", content: sys }, user]);
-      
-      // Handle structured failure response
-      if (typeof raw === 'object' && raw.ok === false) {
-        logError("evaluateRepOnly", "Evaluation unavailable after remote failure", { status: raw.status });
-        return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
-      }
     } catch (e) {
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
 
-    // Handle both structured and text responses
-    let rawText = raw;
-    if (typeof raw === 'object' && raw.reply) {
-      rawText = raw.reply;
-    }
-
     let data = null;
-    try { data = JSON.parse(rawText); } catch (_) {}
+    try { data = JSON.parse(raw); } catch (_) {}
 
     if (!data || !data.scores) {
-      const safe = sanitizeLLM(rawText || "Rep-only evaluation unavailable.");
+      const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>${esc(safe)}</p></div>` };
     }
 
@@ -2154,43 +2236,6 @@ const payload = {
   function isTooSimilar(n){ return recentAssistantNorms.some(p => jaccard4gram(p,n) >= 0.88); }
 
   let isSending = false;
-  let thinkingTimeout = null;
-  let abortController = null;
-
-  function showThinkingStatus(sendBtn) {
-    if (!sendBtn) return;
-    
-    // Create status element if it doesn't exist
-    let statusEl = sendBtn.parentElement?.querySelector(".thinking-status");
-    if (!statusEl) {
-      statusEl = document.createElement("span");
-      statusEl.className = "thinking-status";
-      sendBtn.parentElement?.insertBefore(statusEl, sendBtn);
-    }
-    
-    statusEl.textContent = "Thinking…";
-    logDebug("showThinkingStatus", "Thinking status displayed");
-    
-    // After configured timeout, upgrade message
-    thinkingTimeout = setTimeout(() => {
-      if (statusEl && statusEl.parentElement) {
-        statusEl.textContent = "Still working — this might take a moment.";
-        logDebug("showThinkingStatus", "Long-wait message displayed");
-      }
-    }, THINKING_TIMEOUT_MS);
-  }
-  
-  function hideThinkingStatus(sendBtn) {
-    if (thinkingTimeout) {
-      clearTimeout(thinkingTimeout);
-      thinkingTimeout = null;
-    }
-    
-    const statusEl = sendBtn?.parentElement?.querySelector(".thinking-status");
-    if (statusEl) {
-      statusEl.remove();
-    }
-  }
 
   function trimConversationIfNeeded() {
     if (conversation.length <= 30) return;
@@ -2199,9 +2244,14 @@ const payload = {
 
   async function sendMessage(userText) {
     if (isSending) return;
-    isSending = true;
     
-    logDebug("sendMessage", "Starting message send", { textLength: userText?.length });
+    // Health gate: block sends when unhealthy
+    if (!isHealthy) {
+      showToast("Backend unavailable. Please wait...", "error");
+      return;
+    }
+    
+    isSending = true;
     
     // Track timing for auto-fail feature
     window._lastCallModelAttempt = Date.now();
@@ -2250,9 +2300,6 @@ const payload = {
       renderCoach();
 
       if (currentMode === "emotional-assessment") generateFeedback();
-      
-      // Show thinking status
-      showThinkingStatus(sendBtn);
 
       const sc = scenariosById.get(currentScenarioId);
       const messages = [];
@@ -2291,34 +2338,12 @@ ${detail}`;
         }
 
         let raw = await callModel(messages);
-        
-        // Handle structured failure response from callModel
-        if (typeof raw === 'object' && raw.ok === false) {
-          const status = raw.status || 'unknown';
-          logError("sendMessage", "Using local fallback after remote failure", { mode: currentMode, status });
-          raw = fallbackText(currentMode);
-        } else if (!raw || (typeof raw === 'string' && !raw.trim())) {
-          // Handle empty string responses
-          logError("sendMessage", "Empty response, using local fallback", { mode: currentMode });
+        if (!raw) {
+          console.warn("[coach] degrade-to-legacy - Using fallback text due to empty response");
           raw = fallbackText(currentMode);
         }
 
-        // Handle new structured response format from worker
-        let coach = null;
-        let clean = "";
-        
-        if (typeof raw === 'object' && raw.reply) {
-          // New format: { reply, coach, plan }
-          clean = raw.reply;
-          coach = raw.coach || null;
-          logDebug("sendMessage", "Received structured response from worker", { hasCoach: !!coach });
-        } else {
-          // Old format: string with embedded <coach> tags
-          const extracted = extractCoach(raw);
-          coach = extracted.coach;
-          clean = extracted.clean;
-          logDebug("sendMessage", "Extracted coach from text response", { hasCoach: !!coach });
-        }
+        let { coach, clean } = extractCoach(raw);
         
         // Re-ask once if phrasing is missing in sales-simulation mode
         const phrasing = coach?.phrasing;
@@ -2331,23 +2356,14 @@ Please provide your response again with all required fields including phrasing.`
           
           const retryMessages = [
             ...messages,
-            { role: "assistant", content: clean },
+            { role: "assistant", content: raw },
             { role: "system", content: correctiveHint }
           ];
           
           try {
             const retryRaw = await callModel(retryMessages);
-            // Handle structured failure in retry
-            if (typeof retryRaw === 'object' && retryRaw.ok === false) {
-              logError("sendMessage", "Retry for phrasing failed, keeping original", { status: retryRaw.status });
-            } else if (retryRaw) {
-              // Handle both structured and text responses
-              let retryResult;
-              if (typeof retryRaw === 'object' && retryRaw.reply) {
-                retryResult = { coach: retryRaw.coach, clean: retryRaw.reply };
-              } else {
-                retryResult = extractCoach(retryRaw);
-              }
+            if (retryRaw) {
+              const retryResult = extractCoach(retryRaw);
               // Use the retry result if it has phrasing, otherwise keep original
               if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
                 coach = retryResult.coach;
@@ -2364,69 +2380,19 @@ let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sani
 // Mid-sentence cut-off guard + one-pass auto-continue
 const cutOff = (t) => {
   const s = String(t || "").trim();
-  // Very short replies are unlikely to have meaningful cutoffs
-  if (s.length < MIN_REPLY_LENGTH) return false;
-  
-  // Check if ends with proper punctuation (including quotes)
-  if (/[.!?]["']?\s*$/.test(s)) return false;
-  
-  // Check if last ~15 chars form partial word (no space/punctuation)
-  const tail = s.slice(-CUTOFF_TAIL_CHECK);
-  if (tail && !/[\s.!?,;:]/.test(tail)) return true;
-  
-  // If longer than 200 chars and no ending punctuation, likely cutoff
-  return s.length > 200;
+  return s.length > 200 && !/[.!?]"?\s*$/.test(s);
 };
-
-// Phase 4C: Bypass cutOff for sales-simulation and role-play modes
-const bypassCutOff = (currentMode === "sales-simulation" || currentMode === "role-play");
-
-if (bypassCutOff) {
-  logDebug("sendMessage", "Bypassing cutOff for " + currentMode, { length: replyText.length });
-} else if (cutOff(replyText)) {
-  logDebug("sendMessage", "Detected mid-reply cutoff, attempting continuation", { length: replyText.length });
-  
+if (cutOff(replyText)) {
   const contMsgs = [
     ...messages,
     { role: "assistant", content: replyText },
     { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
   ];
-  
   try {
     let contRaw = await callModel(contMsgs);
-    
-    // Handle continuation failure
-    if (typeof contRaw === 'object' && contRaw.ok === false) {
-      logError("sendMessage", "Continuation failed, trimming to last full sentence", { status: contRaw.status });
-      
-      // Trim to last full sentence (handles quotes and punctuation)
-      const sentences = replyText.match(/[^.!?]+[.!?]+["']?\s*/g) || [];
-      if (sentences.length > 0) {
-        replyText = sentences.join('').trim();
-      }
-      
-      // If too short after trim, use fallback
-      if (replyText.length < MIN_REPLY_LENGTH) {
-        logError("sendMessage", "Reply too short after trim, using fallback", { mode: currentMode });
-        replyText = fallbackText(currentMode);
-      }
-    } else {
-      // Successful continuation - handle both structured and text responses
-      let contClean;
-      if (typeof contRaw === 'object' && contRaw.reply) {
-        contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw.reply) : sanitizeLLM(contRaw.reply);
-      } else {
-        contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
-      }
-      if (contClean) {
-        replyText = (replyText + " " + contClean).trim();
-        logDebug("sendMessage", "Continuation successful", { finalLength: replyText.length });
-      }
-    }
-  } catch (e) {
-    logError("sendMessage", "Continuation threw error, keeping original", e);
-    // Keep original replyText on exception
-  }
+    let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+    if (contClean) replyText = (replyText + " " + contClean).trim();
+  } catch (_) { /* no-op */ }
 }
 
 if (currentMode === "role-play") {
@@ -2446,38 +2412,22 @@ if (norm(replyText) === norm(userText)) {
             messages[messages.length-1]
           ];
           let varied = await callModel(varyMsgs);
-          
-          // Handle structured failure in vary pass
-          if (typeof varied === 'object' && varied.ok === false) {
-            logError("sendMessage", "Vary pass failed, using fallback", { status: varied.status });
-            varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
-          } else {
-            // Handle both structured and text responses
-            let variedText;
-            if (typeof varied === 'object' && varied.reply) {
-              variedText = varied.reply;
-            } else {
-              variedText = varied || "";
-            }
-            varied = currentMode === "role-play" ? sanitizeRolePlayOnly(variedText) : sanitizeLLM(variedText);
-            if (!varied || isTooSimilar(norm(varied))) {
-              varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
-            }
+          varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
+          if (!varied || isTooSimilar(norm(varied))) {
+            const alts = [
+              "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
+              "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
+              "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
+            ];
+            varied = alts.find(a => !isTooSimilar(norm(a))) || alts[0];
           }
-          
           replyText = varied;
           candidate = norm(replyText);
         }
         lastAssistantNorm = candidate;
         pushRecent(candidate);
 
-        // Phase 4C: Skip clampLen for sales-simulation and role-play modes
-        if (currentMode === "sales-simulation" || currentMode === "role-play") {
-          logDebug("sendMessage", "Bypassing clampLen for " + currentMode, { rawLength: replyText.length });
-        } else {
-          // For emotional-assessment and product-knowledge modes
-          replyText = clampLen(replyText, 1400);
-        }
+        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 1200 : 1400);
 
         const computed = scoreReply(userText, replyText, currentMode);
 
@@ -2510,6 +2460,9 @@ if (norm(replyText) === norm(userText)) {
         trimConversationIfNeeded();
         renderMessages();
         renderCoach();
+        
+        // Log telemetry after assistant reply completes
+        logTelemetry();
 
         if (currentMode === "emotional-assessment") generateFeedback();
 
@@ -2530,6 +2483,7 @@ if (norm(replyText) === norm(userText)) {
           }).catch(() => {});
         }
       } catch (e) {
+        console.error("[coach] degrade-to-legacy - Error in sendMessage:", e);
         conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
         trimConversationIfNeeded();
         renderMessages();
@@ -2538,20 +2492,19 @@ if (norm(replyText) === norm(userText)) {
       const shellEl2 = mount.querySelector(".reflectiv-chat");
       const sendBtn2 = shellEl2?._sendBtn;
       const ta2 = shellEl2?._ta;
-      hideThinkingStatus(sendBtn2);
       if (sendBtn2) sendBtn2.disabled = false;
       if (ta2) { ta2.disabled = false; ta2.focus(); }
       isSending = false;
-      logDebug("sendMessage", "Message send complete");
     }
   }
 
   // ---------- scenarios loader ----------
+  let scenariosLoadError = null;
+  
   async function loadScenarios() {
-    logDebug("loadScenarios", "Starting scenario load");
     try {
+      scenariosLoadError = null;
       if (cfg && cfg.scenariosUrl) {
-        logDebug("loadScenarios", "Loading scenarios from URL", { url: cfg.scenariosUrl });
         const payload = await fetchLocal(cfg.scenariosUrl);
         const arr = Array.isArray(payload) ? payload : payload.scenarios || [];
         scenarios = arr.map((s) => ({
@@ -2562,9 +2515,7 @@ if (norm(replyText) === norm(userText)) {
           background: s.background || "",
           goal: s.goal || ""
         }));
-        logDebug("loadScenarios", "Scenarios loaded from URL", { count: scenarios.length });
       } else if (Array.isArray(cfg?.scenarios)) {
-        logDebug("loadScenarios", "Loading scenarios from config");
         scenarios = cfg.scenarios.map((s) => ({
           id: String(s.id),
           label: s.label || String(s.id),
@@ -2573,14 +2524,12 @@ if (norm(replyText) === norm(userText)) {
           background: s.background || "",
           goal: s.goal || ""
         }));
-        logDebug("loadScenarios", "Scenarios loaded from config", { count: scenarios.length });
       } else {
-        logDebug("loadScenarios", "No scenarios configured");
         scenarios = [];
       }
     } catch (e) {
-      logError("loadScenarios", "Scenarios load failed", e);
       console.error("scenarios load failed:", e);
+      scenariosLoadError = e.message || String(e);
       scenarios = [];
     }
 
@@ -2592,56 +2541,47 @@ if (norm(replyText) === norm(userText)) {
     for (const s of scenarios) byId.set(s.id, s);
     scenarios = Array.from(byId.values());
     scenariosById = byId;
-    logDebug("loadScenarios", "Scenario load complete", { totalScenarios: scenarios.length });
   }
 
   // ---------- init ----------
   async function init() {
-    logDebug("init", "Starting initialization");
     try {
       try {
-        logDebug("init", "Loading config from ./assets/chat/config.json");
         cfg = await fetchLocal("./assets/chat/config.json");
-        logDebug("init", "Config loaded successfully from assets path");
       } catch (e) {
-        logDebug("init", "Fallback: loading config from ./config.json");
         cfg = await fetchLocal("./config.json");
-        logDebug("init", "Config loaded successfully from root path");
       }
     } catch (e) {
-      logError("init", "Config load failed, using defaults", e);
       console.error("config load failed:", e);
       cfg = { defaultMode: "sales-simulation" };
     }
 
     if (!cfg.apiBase && !cfg.workerUrl) {
-      cfg.apiBase = (window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
-      logDebug("init", "API base set from window globals", { apiBase: cfg.apiBase });
+      cfg.apiBase = window.WORKER_URL || "";
     }
 
     try {
-      logDebug("init", "Loading system prompt");
       systemPrompt = await fetchLocal("./assets/chat/system.md");
-      logDebug("init", "System prompt loaded", { length: systemPrompt.length });
     } catch (e) {
-      logError("init", "System.md load failed", e);
       console.error("system.md load failed:", e);
       systemPrompt = "";
     }
 
     try {
-      logDebug("init", "Loading EI heuristics");
       eiHeuristics = await fetchLocal("./assets/chat/about-ei.md");
-      logDebug("init", "EI heuristics loaded", { length: eiHeuristics.length });
     } catch (e) {
-      logError("init", "About-ei.md load failed", e);
       console.warn("about-ei.md load failed:", e);
       eiHeuristics = "";
     }
 
     await loadScenarios();
     buildUI();
-    logDebug("init", "Initialization complete");
+    
+    // Health gate: check on init
+    const healthy = await checkHealth();
+    if (!healthy) {
+      startHealthRetry();
+    }
   }
 
   // ---------- start ----------
