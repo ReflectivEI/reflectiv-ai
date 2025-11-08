@@ -1915,14 +1915,7 @@ ${COMMON}`
       disease: disease,
       persona: persona,
       goal: goal,
-      session: "widget-" + (Math.random().toString(36).slice(2, 10)),
-      // Include legacy fields for backward compatibility
-      model: (cfg?.model) || "llama-3.1-8b-instant",
-      temperature: (currentMode === "role-play" ? 0.35 : 0.2),
-      top_p: 0.9,
-      stream: useStreaming,
-      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
-      messages
+      session: "widget-" + (Math.random().toString(36).slice(2, 10))
     };
 
     // SSE Streaming branch
