@@ -207,21 +207,6 @@
     const base = getWorkerBase();
     if (!base) throw new Error("worker_base_missing");
     const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-
-    // Wrapper for Cloudflare /chat endpoint
-async function callWorkerChat({ mode, user, history, disease, persona, goal }) {
-  const payload = {
-    mode,
-    user,
-    history,
-    disease,
-    persona,
-    goal,
-    session: (cfg && cfg.sessionId) ? cfg.sessionId : "web-" + rid()
-  };
-  // Reuses jfetch which already normalizes the worker base URL
-  return jfetch("/chat", payload);
-}
     
     // Retry logic with exponential backoff for 429/5xx errors
     const delays = [300, 800, 1500];
