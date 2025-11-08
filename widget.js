@@ -1635,9 +1635,6 @@ ${COMMON}`
     shell._renderMeta = renderMeta;
     shell._sendBtn = send;
     shell._ta = ta;
-    // expose selects so sendMessage can build worker payload
-    shell._diseaseSelect = diseaseSelect;
-    shell._hcpSelect = hcpSelect;
 
     populateDiseases();
     hydrateEISelects();
@@ -2143,12 +2140,12 @@ ${COMMON}`
     conversation = conversation.slice(-30);
   }
 
-    async function sendMessage(userText) {
+  async function sendMessage(userText) {
     if (isSending) return;
     isSending = true;
-
+    
     logDebug("sendMessage", "Starting message send", { textLength: userText?.length });
-
+    
     // Track timing for auto-fail feature
     window._lastCallModelAttempt = Date.now();
 
@@ -2157,9 +2154,6 @@ ${COMMON}`
     const renderCoach = shellEl._renderCoach;
     const sendBtn = shellEl._sendBtn;
     const ta = shellEl._ta;
-    const diseaseSelect = shellEl._diseaseSelect || null; // may be undefined if not wired
-    const hcpSelect = shellEl._hcpSelect || null;         // kept for future use
-
     if (sendBtn) sendBtn.disabled = true;
     if (ta) ta.disabled = true;
 
@@ -2168,7 +2162,6 @@ ${COMMON}`
       if (!userText) return;
       lastUserMessage = userText;
 
-      // Full-exchange evaluation
       const evalRe =
         /\b(evaluate|assessment|assess|grade|score)\b.*\b(conversation|exchange|dialog|dialogue|chat)\b|\bfinal (eval|evaluation|assessment)\b/i;
       if (evalRe.test(userText)) {
@@ -2179,7 +2172,6 @@ ${COMMON}`
         return;
       }
 
-      // Rep-only evaluation
       const repEvalRe = /^\s*(evaluate\s+rep|rep\s+only\s+eval(?:uation)?|evaluate\s+the\s+rep)\s*$/i;
       if (repEvalRe.test(userText)) {
         const sc = scenariosById.get(currentScenarioId);
@@ -2191,7 +2183,6 @@ ${COMMON}`
         return;
       }
 
-      // Push user turn
       conversation.push({
         role: "user",
         content: userText,
@@ -2202,308 +2193,256 @@ ${COMMON}`
       renderCoach();
 
       if (currentMode === "emotional-assessment") generateFeedback();
-
+      
       // Show thinking status
       showThinkingStatus(sendBtn);
 
       const sc = scenariosById.get(currentScenarioId);
+      const messages = [];
 
-      // ---------- Cloudflare Worker path (preferred) ----------
-      const workerBase = getWorkerBase();
-      const useWorker = !!workerBase;
-      let replyText = "";
-      let coachFromWorker = null;
-
-      if (useWorker) {
-        try {
-          const disease = diseaseSelect && diseaseSelect.value ? diseaseSelect.value : "";
-          const persona = sc?.hcpRole || sc?.label || "";
-          const goal = sc?.goal || "";
-
-          const historyForWorker = conversation
-            .slice(0, -1) // all prior turns except current user
-            .map((m) => ({
-              role: m.role === "assistant" ? "assistant" : "user",
-              content: m.content
-            }));
-
-          const payload = {
-            mode: currentMode,
-            user: userText,
-            history: historyForWorker,
-            disease,
-            persona,
-            goal,
-            session: (cfg && cfg.sessionId) ? cfg.sessionId : "web-" + rid()
-          };
-
-          const data = await jfetch("/chat", payload);
-
-          if (data && typeof data.reply === "string") {
-            logDebug("sendMessage", "Worker /chat reply received", { mode: currentMode });
-            replyText = String(data.reply || "");
-            coachFromWorker = data.coach || null;
-          } else {
-            logError("sendMessage", "Worker /chat returned no usable reply, will fall back", data);
-          }
-        } catch (e) {
-          logError("sendMessage", "Worker /chat call failed, will fall back", e);
-        }
+      if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+      if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
+        messages.push({ role: "system", content: eiHeuristics });
       }
 
-      // ---------- Direct model path (fallback + legacy behaviour) ----------
-      if (!replyText) {
-        logDebug("sendMessage", "Falling back to direct model path", { mode: currentMode });
-
-        const messages = [];
-
-        if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
-        if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
-          messages.push({ role: "system", content: eiHeuristics });
-        }
-
-        if (currentMode === "role-play") {
-          const personaLine = currentPersonaHint();
-          const detail = sc
-            ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${sc.hcpRole || "—"}. ${
-                sc.background ? `Background: ${sc.background}. ` : ""
-              }${sc.goal ? `Today’s Goal: ${sc.goal}.` : ""}`
-            : "";
-          const roleplayRails = buildPreface("role-play", sc) + `
+      if (currentMode === "role-play") {
+        const personaLine = currentPersonaHint();
+        const detail = sc
+          ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${sc.hcpRole || "—"}. ${
+              sc.background ? `Background: ${sc.background}. ` : ""
+            }${sc.goal ? `Today’s Goal: ${sc.goal}.` : ""}`
+          : "";
+        const roleplayRails = buildPreface("role-play", sc) + `
 
 Context:
 ${personaLine}
 ${detail}`;
-          messages.push({ role: "system", content: roleplayRails });
-        } else {
-          messages.push({ role: "system", content: buildPreface(currentMode, sc) });
+        messages.push({ role: "system", content: roleplayRails });
+      } else {
+        messages.push({ role: "system", content: buildPreface(currentMode, sc) });
+      }
+
+      messages.push({ role: "user", content: userText });
+
+      try {
+        if (currentMode !== "role-play") {
+          const sysExtras =
+            typeof EIContext !== "undefined" && EIContext?.getSystemExtras
+              ? await EIContext.getSystemExtras().catch(() => null)
+              : null;
+          if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
         }
 
-        messages.push({ role: "user", content: userText });
+        let raw = await callModel(messages);
+        
+        // Handle structured failure response from callModel
+        if (typeof raw === 'object' && raw.ok === false) {
+          const status = raw.status || 'unknown';
+          logError("sendMessage", "Using local fallback after remote failure", { mode: currentMode, status });
+          raw = fallbackText(currentMode);
+        } else if (!raw || (typeof raw === 'string' && !raw.trim())) {
+          // Handle empty string responses
+          logError("sendMessage", "Empty response, using local fallback", { mode: currentMode });
+          raw = fallbackText(currentMode);
+        }
 
-        try {
-          if (currentMode !== "role-play") {
-            const sysExtras =
-              typeof EIContext !== "undefined" && EIContext?.getSystemExtras
-                ? await EIContext.getSystemExtras().catch(() => null)
-                : null;
-            if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
-          }
-
-          let raw = await callModel(messages);
-
-          // Handle structured failure response from callModel
-          if (typeof raw === "object" && raw.ok === false) {
-            const status = raw.status || "unknown";
-            logError("sendMessage", "Using local fallback after remote failure", { mode: currentMode, status });
-            raw = fallbackText(currentMode);
-          } else if (!raw || (typeof raw === "string" && !raw.trim())) {
-            // Handle empty string responses
-            logError("sendMessage", "Empty response, using local fallback", { mode: currentMode });
-            raw = fallbackText(currentMode);
-          }
-
-          let { coach, clean } = extractCoach(raw);
-
-          // Re-ask once if phrasing is missing in sales-simulation mode
-          const phrasing = coach?.phrasing;
-          if (currentMode === "sales-simulation" && coach && (!phrasing || !phrasing.trim())) {
-            const correctiveHint = `
+        let { coach, clean } = extractCoach(raw);
+        
+        // Re-ask once if phrasing is missing in sales-simulation mode
+        const phrasing = coach?.phrasing;
+        if (currentMode === "sales-simulation" && coach && (!phrasing || !phrasing.trim())) {
+          const correctiveHint = `
 IMPORTANT: The response must include a "phrasing" field in the <coach> JSON block.
 The phrasing should be a concrete, actionable question or statement the rep can use with the HCP.
 Example: "Given your criteria, which patients would be the best fit to start, and what would help you try one this month?"
 Please provide your response again with all required fields including phrasing.`;
-
-            const retryMessages = [
-              ...messages,
-              { role: "assistant", content: raw },
-              { role: "system", content: correctiveHint }
-            ];
-
-            try {
-              const retryRaw = await callModel(retryMessages);
-              // Handle structured failure in retry
-              if (typeof retryRaw === "object" && retryRaw.ok === false) {
-                logError("sendMessage", "Retry for phrasing failed, keeping original", { status: retryRaw.status });
-              } else if (retryRaw) {
-                const retryResult = extractCoach(retryRaw);
-                // Use the retry result if it has phrasing, otherwise keep original
-                if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
-                  coach = retryResult.coach;
-                  clean = retryResult.clean;
-                }
+          
+          const retryMessages = [
+            ...messages,
+            { role: "assistant", content: raw },
+            { role: "system", content: correctiveHint }
+          ];
+          
+          try {
+            const retryRaw = await callModel(retryMessages);
+            // Handle structured failure in retry
+            if (typeof retryRaw === 'object' && retryRaw.ok === false) {
+              logError("sendMessage", "Retry for phrasing failed, keeping original", { status: retryRaw.status });
+            } else if (retryRaw) {
+              const retryResult = extractCoach(retryRaw);
+              // Use the retry result if it has phrasing, otherwise keep original
+              if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
+                coach = retryResult.coach;
+                clean = retryResult.clean;
               }
-            } catch (retryErr) {
-              console.warn("Retry for missing phrasing failed:", retryErr);
             }
+          } catch (retryErr) {
+            console.warn("Retry for missing phrasing failed:", retryErr);
           }
-
-          coachFromWorker = coach || null;
-          replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
-
-          // Mid-sentence cut-off guard + one-pass auto-continue
-          const cutOff = (t) => {
-            const s = String(t || "").trim();
-            // Very short replies are unlikely to have meaningful cutoffs
-            if (s.length < MIN_REPLY_LENGTH) return false;
-
-            // Check if ends with proper punctuation (including quotes)
-            if (/[.!?]["']?\s*$/.test(s)) return false;
-
-            // Check if last ~15 chars form partial word (no space/punctuation)
-            const tail = s.slice(-CUTOFF_TAIL_CHECK);
-            if (tail && !/[\s.!?,;:]/.test(tail)) return true;
-
-            // If longer than 200 chars and no ending punctuation, likely cutoff
-            return s.length > 200;
-          };
-
-          // Phase 4C: Bypass cutOff for sales-simulation and role-play modes
-          const bypassCutOff = (currentMode === "sales-simulation" || currentMode === "role-play");
-
-          if (bypassCutOff) {
-            logDebug("sendMessage", "Bypassing cutOff for " + currentMode, { length: replyText.length });
-          } else if (cutOff(replyText)) {
-            logDebug("sendMessage", "Detected mid-reply cutoff, attempting continuation", { length: replyText.length });
-
-            const contMsgs = [
-              ...messages,
-              { role: "assistant", content: replyText },
-              { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
-            ];
-
-            try {
-              let contRaw = await callModel(contMsgs);
-
-              // Handle continuation failure
-              if (typeof contRaw === "object" && contRaw.ok === false) {
-                logError("sendMessage", "Continuation failed, trimming to last full sentence", { status: contRaw.status });
-
-                // Trim to last full sentence (handles quotes and punctuation)
-                const sentences = replyText.match(/[^.!?]+[.!?]+["']?\s*/g) || [];
-                if (sentences.length > 0) {
-                  replyText = sentences.join("").trim();
-                }
-
-                // If too short after trim, use fallback
-                if (replyText.length < MIN_REPLY_LENGTH) {
-                  logError("sendMessage", "Reply too short after trim, using fallback", { mode: currentMode });
-                  replyText = fallbackText(currentMode);
-                }
-              } else {
-                // Successful continuation
-                let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
-                if (contClean) {
-                  replyText = (replyText + " " + contClean).trim();
-                  logDebug("sendMessage", "Continuation successful", { finalLength: replyText.length });
-                }
-              }
-            } catch (e) {
-              logError("sendMessage", "Continuation threw error, keeping original", e);
-              // Keep original replyText on exception
-            }
-          }
-        } catch (e) {
-          conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
-          trimConversationIfNeeded();
-          renderMessages();
-          return;
         }
+        
+let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
+
+// Mid-sentence cut-off guard + one-pass auto-continue
+const cutOff = (t) => {
+  const s = String(t || "").trim();
+  // Very short replies are unlikely to have meaningful cutoffs
+  if (s.length < MIN_REPLY_LENGTH) return false;
+  
+  // Check if ends with proper punctuation (including quotes)
+  if (/[.!?]["']?\s*$/.test(s)) return false;
+  
+  // Check if last ~15 chars form partial word (no space/punctuation)
+  const tail = s.slice(-CUTOFF_TAIL_CHECK);
+  if (tail && !/[\s.!?,;:]/.test(tail)) return true;
+  
+  // If longer than 200 chars and no ending punctuation, likely cutoff
+  return s.length > 200;
+};
+
+// Phase 4C: Bypass cutOff for sales-simulation and role-play modes
+const bypassCutOff = (currentMode === "sales-simulation" || currentMode === "role-play");
+
+if (bypassCutOff) {
+  logDebug("sendMessage", "Bypassing cutOff for " + currentMode, { length: replyText.length });
+} else if (cutOff(replyText)) {
+  logDebug("sendMessage", "Detected mid-reply cutoff, attempting continuation", { length: replyText.length });
+  
+  const contMsgs = [
+    ...messages,
+    { role: "assistant", content: replyText },
+    { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
+  ];
+  
+  try {
+    let contRaw = await callModel(contMsgs);
+    
+    // Handle continuation failure
+    if (typeof contRaw === 'object' && contRaw.ok === false) {
+      logError("sendMessage", "Continuation failed, trimming to last full sentence", { status: contRaw.status });
+      
+      // Trim to last full sentence (handles quotes and punctuation)
+      const sentences = replyText.match(/[^.!?]+[.!?]+["']?\s*/g) || [];
+      if (sentences.length > 0) {
+        replyText = sentences.join('').trim();
       }
-
-      // ---------- Shared post-processing (worker + direct) ----------
-
-      if (currentMode === "role-play") {
-        replyText = await enforceHcpOnly(replyText, sc, [], callModel);
-      }
-
-      if (norm(replyText) === norm(userText)) {
+      
+      // If too short after trim, use fallback
+      if (replyText.length < MIN_REPLY_LENGTH) {
+        logError("sendMessage", "Reply too short after trim, using fallback", { mode: currentMode });
         replyText = fallbackText(currentMode);
       }
+    } else {
+      // Successful continuation
+      let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+      if (contClean) {
+        replyText = (replyText + " " + contClean).trim();
+        logDebug("sendMessage", "Continuation successful", { finalLength: replyText.length });
+      }
+    }
+  } catch (e) {
+    logError("sendMessage", "Continuation threw error, keeping original", e);
+    // Keep original replyText on exception
+  }
+}
 
-      // Semantic duplicate handling with vary pass (only via direct model)
-      let candidate = norm(replyText);
-      if (candidate && (candidate === lastAssistantNorm || isRecent(candidate) || isTooSimilar(candidate))) {
-        const varyMsgs = [
-          { role: "system", content: "Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
-          { role: "user", content: userText }
-        ];
-        let varied = await callModel(varyMsgs);
+if (currentMode === "role-play") {
+  replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+}
 
-        // Handle structured failure in vary pass
-        if (typeof varied === "object" && varied.ok === false) {
-          logError("sendMessage", "Vary pass failed, using fallback", { status: varied.status });
-          varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
-        } else {
-          varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
-          if (!varied || isTooSimilar(norm(varied))) {
+if (norm(replyText) === norm(userText)) {
+  replyText = fallbackText(currentMode);
+}
+
+        // PATCH B: semantic duplicate handling with vary pass
+        let candidate = norm(replyText);
+        if (candidate && (candidate === lastAssistantNorm || isRecent(candidate) || isTooSimilar(candidate))) {
+          const varyMsgs = [
+            ...messages.slice(0,-1),
+            { role:"system", content:"Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
+            messages[messages.length-1]
+          ];
+          let varied = await callModel(varyMsgs);
+          
+          // Handle structured failure in vary pass
+          if (typeof varied === 'object' && varied.ok === false) {
+            logError("sendMessage", "Vary pass failed, using fallback", { status: varied.status });
             varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
+          } else {
+            varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
+            if (!varied || isTooSimilar(norm(varied))) {
+              varied = ROLEPLAY_FALLBACK_VARIANTS.find(a => !isTooSimilar(norm(a))) || ROLEPLAY_FALLBACK_VARIANTS[0];
+            }
           }
+          
+          replyText = varied;
+          candidate = norm(replyText);
+        }
+        lastAssistantNorm = candidate;
+        pushRecent(candidate);
+
+        // Phase 4C: Skip clampLen for sales-simulation and role-play modes
+        if (currentMode === "sales-simulation" || currentMode === "role-play") {
+          logDebug("sendMessage", "Bypassing clampLen for " + currentMode, { rawLength: replyText.length });
+        } else {
+          // For emotional-assessment and product-knowledge modes
+          replyText = clampLen(replyText, 1400);
         }
 
-        replyText = varied;
-        candidate = norm(replyText);
-      }
-      lastAssistantNorm = candidate;
-      pushRecent(candidate);
+        const computed = scoreReply(userText, replyText, currentMode);
 
-      // Skip clampLen for sales-simulation and role-play modes
-      if (currentMode === "sales-simulation" || currentMode === "role-play") {
-        logDebug("sendMessage", "Bypassing clampLen for " + currentMode, { rawLength: replyText.length });
-      } else {
-        replyText = clampLen(replyText, 1400);
-      }
+        const finalCoach = (() => {
+          if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
+            const scores = coach.scores || coach.subscores;
+            const overall =
+              typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
+            return {
+              overall: overall ?? computed.overall,
+              scores,
+              feedback: coach.feedback || computed.feedback,
+              worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
+              improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
+              phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
+              context: coach.context || { rep_question: userText, hcp_reply: replyText },
+              score: overall ?? computed.overall,
+              subscores: scores
+            };
+          }
+          return computed;
+        })();
 
-      const computed = scoreReply(userText, replyText, currentMode);
+        conversation.push({
+          role: "assistant",
+          content: replyText,
+          _coach: finalCoach,
+          _speaker: currentMode === "role-play" ? "hcp" : "assistant"
+        });
+        trimConversationIfNeeded();
+        renderMessages();
+        renderCoach();
 
-      const finalCoach = (() => {
-        const coach = coachFromWorker;
-        if (coach && (coach.scores || coach.subscores) && currentMode !== "role-play") {
-          const scores = coach.scores || coach.subscores;
-          const overall =
-            typeof coach.overall === "number" ? coach.overall : typeof coach.score === "number" ? coach.score : undefined;
-          return {
-            overall: overall ?? computed.overall,
-            scores,
-            feedback: coach.feedback || computed.feedback,
-            worked: coach.worked && coach.worked.length ? coach.worked : computed.worked,
-            improve: coach.improve && coach.improve.length ? coach.improve : computed.improve,
-            phrasing: typeof coach.phrasing === "string" && coach.phrasing ? coach.phrasing : computed.phrasing,
-            context: coach.context || { rep_question: userText, hcp_reply: replyText },
-            score: overall ?? computed.overall,
-            subscores: scores
-          };
+        if (currentMode === "emotional-assessment") generateFeedback();
+
+        if (cfg && cfg.analyticsEndpoint) {
+          fetch(cfg.analyticsEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ts: Date.now(),
+              schema: cfg.schemaVersion || "coach-v2",
+              mode: currentMode,
+              scenarioId: currentScenarioId,
+              turn: conversation.length,
+              context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
+              overall: finalCoach.overall,
+              scores: finalCoach.scores
+            })
+          }).catch(() => {});
         }
-        return computed;
-      })();
-
-      conversation.push({
-        role: "assistant",
-        content: replyText,
-        _coach: finalCoach,
-        _speaker: currentMode === "role-play" ? "hcp" : "assistant"
-      });
-      trimConversationIfNeeded();
-      renderMessages();
-      renderCoach();
-
-      if (currentMode === "emotional-assessment") generateFeedback();
-
-      if (cfg && cfg.analyticsEndpoint) {
-        fetch(cfg.analyticsEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ts: Date.now(),
-            schema: cfg.schemaVersion || "coach-v2",
-            mode: currentMode,
-            scenarioId: currentScenarioId,
-            turn: conversation.length,
-            context: finalCoach.context || { rep_question: userText, hcp_reply: replyText },
-            overall: finalCoach.overall,
-            scores: finalCoach.scores
-          })
-        }).catch(() => {});
+      } catch (e) {
+        conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
+        trimConversationIfNeeded();
+        renderMessages();
       }
     } finally {
       const shellEl2 = mount.querySelector(".reflectiv-chat");

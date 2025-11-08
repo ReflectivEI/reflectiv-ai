@@ -465,15 +465,7 @@ Use only the Facts IDs provided when making claims.`.trim();
   return json(responseData, 200, env, req);
   } catch (err) {
     // Sanitize error message to avoid leaking sensitive information
-    const safeMessage = String(err.message || "unknown").replace(/\s+/g, " ").slice(0, 200);
-    
-    // Differentiate between client errors (400) and upstream errors (502)
-    // Provider errors (fetch failures, API errors) should return 502
-    if (safeMessage.includes("provider_http") || safeMessage.includes("fetch")) {
-      return json({ error: "upstream_error", message: safeMessage }, 502, env, req);
-    }
-    
-    // Other errors are likely client/validation errors
+    const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
     return json({ error: "bad_request", message: safeMessage }, 400, env, req);
   }
 }
