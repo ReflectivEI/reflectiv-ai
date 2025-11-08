@@ -217,6 +217,20 @@ function extractCoach(raw) {
 }
 
 async function providerChat(env, messages, { maxTokens = 1400, temperature = 0.2 } = {}) {
+  // Validate required environment variables
+  if (!env.PROVIDER_URL) {
+    console.error("PROVIDER_URL not configured");
+    throw new Error("provider_url_missing");
+  }
+  if (!env.PROVIDER_KEY) {
+    console.error("PROVIDER_KEY not configured");
+    throw new Error("provider_key_missing");
+  }
+  if (!env.PROVIDER_MODEL) {
+    console.error("PROVIDER_MODEL not configured");
+    throw new Error("provider_model_missing");
+  }
+
   const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
   const finalMax = cap > 0 ? Math.min(maxTokens, cap) : maxTokens;
 
@@ -324,6 +338,100 @@ async function postChat(req, env) {
     }
 
     const body = await readJson(req);
+    
+    // Support two payload formats:
+    // 1. OpenAI-style (from widget.js callModel): { messages, model, temperature, ... }
+    // 2. ReflectivAI-style: { mode, user, history, disease, persona, ... }
+    
+    // Detect OpenAI-style payload (has messages array but no mode/user fields)
+    const isOpenAIStyle = Array.isArray(body.messages) && !body.mode && !body.user;
+    
+    if (isOpenAIStyle) {
+      // Extract last user message from messages array
+      const messages = body.messages || [];
+      const lastUserMsg = messages.filter(m => m.role === "user").pop();
+      const userText = lastUserMsg?.content || "";
+      
+      // Extract system prompts (will be used to supplement worker's prompts)
+      const systemPrompts = messages.filter(m => m.role === "system").map(m => m.content || "");
+      
+      // Extract mode from messages if system prompt mentions it, otherwise default
+      let mode = "sales-simulation";
+      const systemMsgs = messages.filter(m => m.role === "system");
+      if (systemMsgs.some(m => /role.?play/i.test(m.content || ""))) {
+        mode = "role-play";
+      } else if (systemMsgs.some(m => /product.?knowledge/i.test(m.content || ""))) {
+        mode = "product-knowledge";
+      } else if (systemMsgs.some(m => /emotional.?assessment/i.test(m.content || ""))) {
+        mode = "emotional-assessment";
+      }
+      
+      // Build history from messages (exclude last user message, already extracted)
+      const history = messages
+        .slice(0, -1)
+        .filter(m => m.role !== "system")
+        .map(m => ({ role: m.role, content: m.content || "" }));
+      
+      // Convert to ReflectivAI format and continue processing
+      const convertedBody = {
+        mode,
+        user: userText,
+        history,
+        disease: "",
+        persona: "",
+        goal: "",
+        session: body.session || "anon",
+        systemPrompts  // Pass along system prompts from client
+      };
+      
+      // Continue with converted payload
+      return await processChatRequest(convertedBody, env, req);
+    }
+    
+    // ReflectivAI-style payload
+    return await processChatRequest(body, env, req);
+  } catch (err) {
+    // Provide specific error messages for common failures
+    const errMsg = String(err.message || err);
+    
+    if (errMsg.includes("provider_key_missing")) {
+      return json({ 
+        error: "configuration_error", 
+        message: "PROVIDER_KEY not configured. Contact system administrator." 
+      }, 500, env, req);
+    }
+    
+    if (errMsg.includes("provider_url_missing")) {
+      return json({ 
+        error: "configuration_error", 
+        message: "PROVIDER_URL not configured. Contact system administrator." 
+      }, 500, env, req);
+    }
+    
+    if (errMsg.includes("provider_model_missing")) {
+      return json({ 
+        error: "configuration_error", 
+        message: "PROVIDER_MODEL not configured. Contact system administrator." 
+      }, 500, env, req);
+    }
+    
+    if (errMsg.includes("provider_http_")) {
+      const status = errMsg.match(/provider_http_(\d+)/)?.[1] || "unknown";
+      return json({ 
+        error: "provider_error", 
+        message: `AI provider returned error status: ${status}` 
+      }, 502, env, req);
+    }
+    
+    // Sanitize error message to avoid leaking sensitive information
+    const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
+    console.error("Chat request failed:", err);
+    return json({ error: "bad_request", message: safeMessage }, 400, env, req);
+  }
+}
+
+// Extracted processing logic to be shared by both payload formats
+async function processChatRequest(body, env, req) {
     const {
       mode = "sales-simulation",
       user,
@@ -332,7 +440,8 @@ async function postChat(req, env) {
       persona = "",
       goal = "",
       plan,
-      planId
+      planId,
+      systemPrompts = []  // Client-provided system prompts (e.g., from system.md)
     } = body || {};
 
     const session = body.session || "anon";
@@ -342,6 +451,15 @@ async function postChat(req, env) {
   if (!activePlan) {
     const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
     activePlan = await r.json();
+  }
+
+  // Validate plan has facts array
+  if (!activePlan || !Array.isArray(activePlan.facts)) {
+    console.error("Plan missing facts array:", activePlan);
+    return json({ 
+      error: "invalid_plan", 
+      message: "Plan does not contain valid facts array. Please check disease/persona configuration." 
+    }, 422, env, req);
   }
 
   // Provider prompts
@@ -374,7 +492,12 @@ Use only the Facts IDs provided when making claims.`.trim();
         commonContract
       ].join("\n");
 
+  // Build messages array - prepend client system prompts if provided
   const messages = [
+    ...(systemPrompts && systemPrompts.length > 0 
+      ? systemPrompts.map(content => ({ role: "system", content }))
+      : []
+    ),
     { role: "system", content: sys },
     ...history.map(m => ({ role: m.role, content: String(m.content || "") })).slice(-18),
     { role: "user", content: String(user || "") }

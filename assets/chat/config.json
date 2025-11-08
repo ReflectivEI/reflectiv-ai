@@ -3,7 +3,7 @@
   "schemaVersion": "coach-v2",
   "model": "llama-3.1-8b-instant",
 
-  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
   "stream": false,
 
   "modes": [
