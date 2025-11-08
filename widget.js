@@ -15,7 +15,7 @@
  */
 (function () {
   // ---------- debug flag and helpers ----------
-  const DEBUG_WIDGET = true;
+  const DEBUG_WIDGET = false;
   
   function logDebug(msg) {
     if (DEBUG_WIDGET) console.debug("[ReflectivWidget]", msg);
