@@ -127,17 +127,38 @@ function cors(env, req) {
     .map(s => s.trim())
     .filter(Boolean);
 
+  // If no allowlist is configured, allow any origin
+  // If allowlist exists, check if request origin is in the list
   const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
-  const allowOrigin = isAllowed ? (reqOrigin || "*") : "null";
+  
+  // Determine the Access-Control-Allow-Origin value
+  let allowOrigin;
+  if (isAllowed && reqOrigin) {
+    // Specific origin is allowed and present
+    allowOrigin = reqOrigin;
+  } else if (isAllowed && !reqOrigin) {
+    // Allowed but no origin header (e.g., same-origin or non-browser request)
+    allowOrigin = "*";
+  } else {
+    // Not allowed
+    allowOrigin = "null";
+  }
 
-  return {
+  const headers = {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
-    "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
-    Vary: "Origin"
+    "Vary": "Origin"
   };
+
+  // Only set credentials header when we have a specific origin
+  // Cannot use credentials with wildcard origin (*)
+  if (allowOrigin !== "*" && allowOrigin !== "null") {
+    headers["Access-Control-Allow-Credentials"] = "true";
+  }
+
+  return headers;
 }
 
 function ok(body, headers = {}) {
