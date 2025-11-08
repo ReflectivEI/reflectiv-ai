@@ -190,13 +190,15 @@
 
   // ---------- Health gate ----------
   async function checkHealth() {
-    const healthUrl = `${window.WORKER_URL}/health`;
+    // Normalize base URL to avoid double slashes
+    const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
+    const healthUrl = `${baseUrl}/health`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1500);
     
     try {
       const response = await fetch(healthUrl, {
-        method: "HEAD",
+        method: "GET",
         signal: controller.signal
       });
       clearTimeout(timeout);
@@ -362,7 +364,8 @@
   // --- Worker base normalizer + tiny JSON fetch helper ---
   // Ensures add-on calls like jfetch("/plan") hit the base (…/plan), even when config points to …/chat
   function getWorkerBase() {
-    return window.WORKER_URL || "";
+    // Normalize by removing trailing slashes
+    return (window.WORKER_URL || "").replace(/\/+$/, "");
   }
 
   async function jfetch(path, payload) {
@@ -1869,7 +1872,8 @@ ${COMMON}`
 
   async function callModel(messages, scenarioContext = null) {
     // Use window.WORKER_URL directly and append /chat
-    const baseUrl = window.WORKER_URL || "";
+    // Normalize by removing trailing slashes to avoid double slashes
+    const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
     if (!baseUrl) {
       const msg = "Worker URL not configured";
       console.error("[chat] error=worker_url_missing");
@@ -1978,7 +1982,8 @@ ${COMMON}`
         currentTelemetry.httpStatus = e.message || "error";
         currentTelemetry.t_done = Date.now();
         updateDebugFooter();
-        console.warn("[coach] degrade-to-legacy - SSE streaming failed, falling back to regular fetch:", e);
+        // SSE streaming not available, falling back to regular fetch
+        // Note: This should only happen when USE_SSE is true and streaming fails
         // Fall through to regular fetch with retry
       }
     }

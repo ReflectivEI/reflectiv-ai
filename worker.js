@@ -11,7 +11,14 @@
  *  - PROVIDER_URL    e.g., "https://api.groq.com/openai/v1/chat/completions"
  *  - PROVIDER_MODEL  e.g., "llama-3.1-70b-versatile"
  *  - PROVIDER_KEY    bearer key for provider
- *  - CORS_ORIGINS    comma-separated allowlist, e.g. "https://a.com,https://b.com"
+ *  - CORS_ORIGINS    comma-separated allowlist of allowed origins
+ *                    REQUIRED VALUES (must include):
+ *                      https://reflectivei.github.io
+ *                      https://tonyabdelmalak.github.io
+ *                      https://tonyabdelmalak.com
+ *                      https://www.tonyabdelmalak.com
+ *                    Example: "https://reflectivei.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com"
+ *                    If not set, allows all origins (not recommended for production)
  *  - REQUIRE_FACTS   "true" to require at least one fact in plan
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  */
@@ -41,7 +48,7 @@ export default {
     } catch (e) {
       // Log the error for debugging but don't expose details to client
       console.error("Top-level error:", e);
-      return json({ error: "server_error", detail: "Internal server error" }, 500, env, req);
+      return json({ error: "server_error", message: "Internal server error" }, 500, env, req);
     }
   }
 };
@@ -274,7 +281,7 @@ async function postFacts(req, env) {
     return json({ facts: out }, 200, env, req);
   } catch (e) {
     console.error("postFacts error:", e);
-    return json({ error: "server_error", detail: "Failed to fetch facts" }, 500, env, req);
+    return json({ error: "server_error", message: "Failed to fetch facts" }, 500, env, req);
   }
 }
 
@@ -306,7 +313,7 @@ async function postPlan(req, env) {
     return json(plan, 200, env, req);
   } catch (e) {
     console.error("postPlan error:", e);
-    return json({ error: "server_error", detail: "Failed to create plan" }, 500, env, req);
+    return json({ error: "server_error", message: "Failed to create plan" }, 500, env, req);
   }
 }
 
@@ -315,7 +322,8 @@ async function postChat(req, env) {
   try {
     // Defensive check: ensure PROVIDER_KEY is configured
     if (!env.PROVIDER_KEY) {
-      return json({ error: "server_error", detail: "Provider API key not configured" }, 500, env, req);
+      console.error("chat_error", { step: "config_check", message: "PROVIDER_KEY not configured" });
+      return json({ error: "server_error", message: "Provider API key not configured" }, 500, env, req);
     }
 
     const body = await readJson(req);
@@ -356,8 +364,13 @@ async function postChat(req, env) {
   // Load or build a plan
   let activePlan = plan;
   if (!activePlan) {
-    const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
-    activePlan = await r.json();
+    try {
+      const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
+      activePlan = await r.json();
+    } catch (e) {
+      console.error("chat_error", { step: "plan_generation", message: e.message });
+      throw e;
+    }
   }
 
   // Provider prompts
@@ -406,6 +419,7 @@ Use only the Facts IDs provided when making claims.`.trim();
       });
       if (raw) break;
     } catch (e) {
+      console.error("chat_error", { step: "provider_call", attempt: i + 1, message: e.message });
       if (i === 2) throw e;
       await new Promise(r => setTimeout(r, 300 * (i + 1)));
     }
@@ -469,8 +483,8 @@ Use only the Facts IDs provided when making claims.`.trim();
 
   return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
-    console.error("postChat error:", e);
-    return json({ error: "server_error", detail: "Chat request failed" }, 500, env, req);
+    console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
+    return json({ error: "server_error", message: "Chat request failed" }, 500, env, req);
   }
 }
 
