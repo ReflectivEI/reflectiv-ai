@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker — ReflectivAI Gateway (r10.1)
+ * Cloudflare Worker — ReflectivAI Gateway (r10.2)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version, GET /debug/ei
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
@@ -14,6 +14,7 @@
  *  - REQUIRE_FACTS   "true" to require at least one fact in plan
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  *  - EMIT_EI / emitEi  "true" to enable EI (Emotional Intelligence) data in responses
+ *  - SYSTEM_URL      public URL to system.md (e.g., raw GitHub)
  */
 
 export default {
@@ -30,7 +31,7 @@ export default {
         return new Response("ok", { status: 200, headers: cors(env, req) });
       }
       if (url.pathname === "/version" && req.method === "GET") {
-        return json({ version: "r10.1" }, 200, env, req);
+        return json({ version: "r10.2" }, 200, env, req);
       }
 
       if (url.pathname === "/debug/ei" && req.method === "GET") {
@@ -124,6 +125,28 @@ const COACH_SCHEMA = {
 
 /* ------------------------------ Helpers ------------------------------------ */
 
+// Simple cached fetch for system.md
+let SYSTEM_CACHE = "";
+let SYSTEM_CACHE_TS = 0;
+async function getSystemPrompt(env) {
+  const ttlMs = 5 * 60 * 1000; // 5 minutes
+  const now = Date.now();
+  if (SYSTEM_CACHE && now - SYSTEM_CACHE_TS < ttlMs) return SYSTEM_CACHE;
+
+  const url = env.SYSTEM_URL;
+  if (!url) return "";
+  try {
+    const r = await fetch(url, { method: "GET", headers: { "accept": "text/plain" } });
+    if (!r.ok) return "";
+    const txt = await r.text();
+    SYSTEM_CACHE = txt;
+    SYSTEM_CACHE_TS = now;
+    return txt;
+  } catch {
+    return "";
+  }
+}
+
 function getEiFlag(req, env) {
   const url = new URL(req.url);
   const queryFlag = url.searchParams.get("emitEi");
@@ -201,9 +224,9 @@ function removeCoachLeakage(text, mode) {
   if (mode === "role-play") {
     result = result
       .replace(/^[\s\u2022\u2023\u25E6\*-]+/gm, "")  // Remove bullet points (including Unicode)
-      .replace(/Suggested Phrasing:.*$/gim, "")  // Remove coach suggestions
-      .replace(/\bCoach:\s*/gi, "")  // Remove "Coach:" prefix
-      .replace(/\bHCP:\s*/gi, "")  // Keep HCP natural
+      .replace(/Suggested Phrasing:.*$/gim, "")      // Remove coach suggestions
+      .replace(/\bCoach:\s*/gi, "")                  // Remove "Coach:" prefix
+      .replace(/\bHCP:\s*/gi, "")                    // Keep HCP natural
       .trim();
   }
   
@@ -216,17 +239,15 @@ function removeCoachLeakage(text, mode) {
 function ensureSentenceCompletion(text) {
   const trimmed = String(text || "").trim();
   if (!trimmed) return trimmed;
-  
-  // Check if ends with proper punctuation
   if (!/[.!?]"?\s*$/.test(trimmed)) {
     return trimmed + ".";
   }
-  
   return trimmed;
 }
 
 /**
  * Enforce sales-simulation 5-section format
+ * (currently a no-op if structure already present; kept for future hardening)
  */
 function enforceSalesFormat(text) {
   const required = [
@@ -236,16 +257,10 @@ function enforceSalesFormat(text) {
     "Phrasing",
     "Next Steps"
   ];
-  
-  // Check if text contains section-like structure
   const hasStructure = required.some(section => 
     text.includes(section + ":") || text.includes("**" + section)
   );
-  
-  // If already structured, return as-is
   if (hasStructure) return text;
-  
-  // Otherwise, return text with note
   return text;
 }
 
@@ -286,7 +301,7 @@ async function providerChat(env, messages, { maxTokens = 1400, temperature = 0.2
     body: JSON.stringify({
       model: env.PROVIDER_MODEL,
       temperature,
-      max_output_tokens: finalMax,
+      max_output_tokens: finalMax,   // if your provider expects max_tokens, rename here
       messages
     })
   });
@@ -417,19 +432,45 @@ Return exactly two parts. No code blocks or headings.
 
 Use only the Facts IDs provided when making claims.`.trim();
 
-    const sys = (mode === "role-play")
-      ? [
-          `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
-          `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-          `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-          `Speak concisely.`
-        ].join("\n")
-      : [
-          `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
-          `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-          `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-          commonContract
-        ].join("\n");
+    const systemInstructions = await getSystemPrompt(env);
+    const modeLower = String(mode || "").toLowerCase();
+
+    // Build system message: system.md (global rules) + mode-specific overrides + scenario/facts
+    let sys;
+    if (modeLower === "role-play") {
+      sys = [
+        systemInstructions || "You are Reflectiv Coach. Use Role Play mode rules.",
+        "",
+        "[ACTIVE MODE: ROLE PLAY / HCP PERSONA]",
+        "Follow the Role Play section of the system instructions.",
+        "You are the HCP in this mode. First-person HCP only. No coaching. No lists. No <coach> JSON.",
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        "Speak concisely."
+      ].join("\n");
+    } else if (modeLower === "sales-simulation") {
+      sys = [
+        systemInstructions || "You are Reflectiv Coach. Use Sales Simulation rules.",
+        "",
+        "[ACTIVE MODE: SALES SIMULATION / COACH]",
+        "Follow the Sales Simulation section of the system instructions.",
+        "You are the Sales Coach, not the HCP. Voice: Coach only.",
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        commonContract
+      ].join("\n");
+    } else {
+      // Other modes (emotional-assessment, product-knowledge, etc.) still reuse the Sales Coach contract for now
+      sys = [
+        systemInstructions || "You are Reflectiv Coach.",
+        "",
+        `[ACTIVE MODE: ${mode}]`,
+        "You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.",
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        commonContract
+      ].join("\n");
+    }
 
     const messages = [
       { role: "system", content: sys },
@@ -445,7 +486,7 @@ Use only the Facts IDs provided when making claims.`.trim();
       "emotional-assessment": 900,   // smaller than RP/Sim
       "product-knowledge": 800       // smallest; factual, concise answers
     };
-    const maxTokens = tokenBudgets[mode] || 1200;
+    const maxTokens = tokenBudgets[modeLower] || 1200;
   
     let raw = "";
     for (let i = 0; i < 3; i++) {
@@ -466,10 +507,10 @@ Use only the Facts IDs provided when making claims.`.trim();
     let reply = clean;
 
     // Apply format hardening based on mode
-    reply = removeCoachLeakage(reply, mode);
+    reply = removeCoachLeakage(reply, modeLower);
   
     // Enforce sales-simulation 5-section format
-    if (mode === "sales-simulation") {
+    if (modeLower === "sales-simulation") {
       reply = enforceSalesFormat(reply);
     }
 
@@ -495,7 +536,7 @@ Use only the Facts IDs provided when making claims.`.trim();
     reply = ensureSentenceCompletion(reply);
 
     // FSM clamps
-    const fsm = FSM[mode] || FSM["sales-simulation"];
+    const fsm = FSM[modeLower] || FSM["sales-simulation"];
     const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
     reply = capSentences(reply, cap);
 
@@ -503,7 +544,7 @@ Use only the Facts IDs provided when making claims.`.trim();
     const state = await seqGet(env, session);
     const candNorm = norm(reply);
     if (state && candNorm && (candNorm === state.lastNorm)) {
-      if (mode === "role-play") {
+      if (modeLower === "role-play") {
         reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
       } else {
         reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
