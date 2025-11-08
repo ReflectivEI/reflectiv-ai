@@ -138,8 +138,8 @@ async function testChatErrorHandling() {
   const data2 = await res2.json();
   
   // readJson catches parse errors gracefully, so this might still return 200 with empty body processing
-  // or could fail elsewhere (502 if provider fails) - let's check it doesn't crash
-  assert(res2.status >= 200 && res2.status < 600, "Handles invalid JSON without crashing");
+  // or could fail elsewhere - let's check it doesn't crash
+  assert(res2.status >= 200 && res2.status < 500, "Handles invalid JSON without crashing");
 }
 
 // Test existing endpoints still work
