@@ -4,8 +4,7 @@
 
   "model": "llama-3.1-70b-versatile",
 
-  "apiBase": "https://api.groq.com/openai/v1/chat/completions",
-  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
+  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
   "stream": false,
 
   "modes": [
