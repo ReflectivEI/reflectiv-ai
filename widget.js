@@ -58,6 +58,11 @@
     "Role Play": "role-play"
   };
 
+  // ---------- SSE Configuration ----------
+  // Set to false to disable SSE streaming and use regular fetch only
+  // SSE streaming is disabled by default due to payload size limitations
+  const USE_SSE = false;
+
   let cfg = null;
   let systemPrompt = "";
   let eiHeuristics = "";
@@ -80,8 +85,13 @@
   // ---------- Rep-only eval panel store ----------
   let repOnlyPanelHTML = "";
 
+  // ---------- Health gate state ----------
+  let isHealthy = false;
+  let healthCheckInterval = null;
+  let healthBanner = null;
+
   // ---------- EI dev shim ----------
-  const DEBUG_EI_SHIM = false;
+  const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
 
   // ---------- Performance telemetry ----------
   let debugMode = false;
@@ -151,9 +161,21 @@
   ];
 
   // ---------- utils ----------
+  const STUB_MODE = new URLSearchParams(location.search).has('stub');
+  const IS_GITHUB_IO = /github\.io/i.test(location.hostname);
+  
   async function fetchLocal(path) {
     const r = await fetch(path, { cache: "no-store" });
-    if (!r.ok) throw new Error(`Failed to load ${path} (${r.status})`);
+    
+    // 404 handling with stub mode guard
+    if (!r.ok) {
+      if (r.status === 404 && IS_GITHUB_IO && STUB_MODE) {
+        console.warn(`[stub mode] ${path} returned 404, returning empty stub`);
+        return path.endsWith('.json') ? {} : '';
+      }
+      throw new Error(`Failed to load ${path} (${r.status})`);
+    }
+    
     const ct = r.headers.get("content-type") || "";
     return ct.includes("application/json") ? r.json() : r.text();
   }
@@ -165,6 +187,128 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+
+  // ---------- Health gate ----------
+  async function checkHealth() {
+    const healthUrl = `${window.WORKER_URL}/health`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+    
+    try {
+      const response = await fetch(healthUrl, {
+        method: "HEAD",
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      
+      if (response.ok) {
+        isHealthy = true;
+        hideHealthBanner();
+        enableSendButton();
+        if (healthCheckInterval) {
+          clearInterval(healthCheckInterval);
+          healthCheckInterval = null;
+        }
+        return true;
+      }
+      
+      isHealthy = false;
+      showHealthBanner();
+      disableSendButton();
+      return false;
+    } catch (e) {
+      clearTimeout(timeout);
+      isHealthy = false;
+      showHealthBanner();
+      disableSendButton();
+      return false;
+    }
+  }
+
+  function showHealthBanner() {
+    if (!mount) return;
+    
+    if (!healthBanner) {
+      healthBanner = document.createElement("div");
+      healthBanner.style.cssText = "background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin:8px 0;color:#856404;font-size:14px;font-weight:600;text-align:center;";
+      healthBanner.textContent = "⚠️ Backend unavailable. Trying again…";
+    }
+    
+    const shell = mount.querySelector(".reflectiv-chat");
+    if (shell && !shell.contains(healthBanner)) {
+      shell.insertBefore(healthBanner, shell.firstChild);
+    }
+  }
+
+  function hideHealthBanner() {
+    if (healthBanner && healthBanner.parentNode) {
+      healthBanner.parentNode.removeChild(healthBanner);
+    }
+  }
+
+  function enableSendButton() {
+    const shell = mount?.querySelector(".reflectiv-chat");
+    const sendBtn = shell?._sendBtn || shell?.querySelector(".chat-input .btn");
+    if (sendBtn) {
+      sendBtn.disabled = false;
+    }
+  }
+
+  function disableSendButton() {
+    const shell = mount?.querySelector(".reflectiv-chat");
+    const sendBtn = shell?._sendBtn || shell?.querySelector(".chat-input .btn");
+    if (sendBtn) {
+      sendBtn.disabled = true;
+    }
+  }
+
+  function startHealthRetry() {
+    if (healthCheckInterval) return;
+    
+    healthCheckInterval = setInterval(async () => {
+      await checkHealth();
+    }, 20000); // 20 seconds
+  }
+
+  // ---------- Toast notifications ----------
+  function showToast(message, type = "error") {
+    const toast = document.createElement("div");
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      max-width: 400px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      animation: slideIn 0.3s ease-out;
+      ${type === "error" ? "background:#fee;border:1px solid #f5c2c2;color:#991b1b;" : "background:#e8f6ee;border:1px solid #bfe7cf;color:#0b5a2a;"}
+    `;
+    toast.textContent = message;
+    
+    // Add animation
+    const style = document.createElement("style");
+    style.textContent = `@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
+    if (!document.querySelector('style[data-toast-anim]')) {
+      style.setAttribute('data-toast-anim', 'true');
+      document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.transition = "opacity 0.3s ease-out";
+      toast.style.opacity = "0";
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 5000);
+  }
 
   // === EI summary renderer for yellow panel ===
   function renderEiPanel(msg){
@@ -218,11 +362,7 @@
   // --- Worker base normalizer + tiny JSON fetch helper ---
   // Ensures add-on calls like jfetch("/plan") hit the base (…/plan), even when config points to …/chat
   function getWorkerBase() {
-    const raw =
-      (window.COACH_ENDPOINT || window.WORKER_URL || (cfg && (cfg.apiBase || cfg.workerUrl)) || "").trim();
-    if (!raw) return "";
-    // Strip trailing /chat (with or without slash), then trailing slashes
-    return raw.replace(/\/chat\/?$/i, "").replace(/\/+$/g, "");
+    return window.WORKER_URL || "";
   }
 
   async function jfetch(path, payload) {
@@ -1280,8 +1420,33 @@ ${COMMON}`
     }
 
     function populateDiseases() {
+      if (scenariosLoadError) {
+        // Show error and disable dropdown
+        setSelectOptions(diseaseSelect, [{ value: "", label: "⚠ Failed to load scenarios" }], true);
+        diseaseSelect.disabled = true;
+        hcpSelect.disabled = true;
+        setSelectOptions(hcpSelect, [{ value: "", label: "—" }], true);
+        
+        // Show inline error message in meta area if available
+        const metaEl = mount.querySelector(".scenario-meta");
+        if (metaEl) {
+          metaEl.innerHTML = `<div style="padding:10px 12px;background:#fdeaea;border:1px solid #f5c2c2;border-radius:10px;color:#991b1b;">
+            <strong>⚠ Data Loading Error:</strong> Could not load scenarios. Please check your connection or contact support.
+          </div>`;
+        }
+        return;
+      }
+      
       const ds = getDiseaseStates();
       setSelectOptions(diseaseSelect, ds, true);
+      
+      // Enable if we have scenarios
+      if (scenarios.length > 0) {
+        diseaseSelect.disabled = false;
+      } else {
+        diseaseSelect.disabled = true;
+        setSelectOptions(diseaseSelect, [{ value: "", label: "No scenarios available" }], true);
+      }
     }
 
     function populateHcpForDisease(ds) {
@@ -1702,9 +1867,19 @@ ${COMMON}`
     });
   }
 
-  async function callModel(messages) {
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
-    const useStreaming = cfg?.stream === true;
+  async function callModel(messages, scenarioContext = null) {
+    // Use window.WORKER_URL directly and append /chat
+    const baseUrl = window.WORKER_URL || "";
+    if (!baseUrl) {
+      const msg = "Worker URL not configured";
+      console.error("[chat] error=worker_url_missing");
+      showToast("Configuration error. Please contact support.", "error");
+      throw new Error(msg);
+    }
+    
+    const url = `${baseUrl}/chat`;
+    // Check both cfg.stream and USE_SSE flag
+    const useStreaming = USE_SSE && cfg?.stream === true;
     
     // Initialize telemetry
     initTelemetry();
@@ -1716,7 +1891,28 @@ ${COMMON}`
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
+    // Extract scenario information if available
+    const disease = scenarioContext?.therapeuticArea || scenarioContext?.diseaseState || "";
+    const persona = scenarioContext?.hcpRole || scenarioContext?.label || "";
+    const goal = scenarioContext?.goal || "";
+    
+    // Build ReflectivAI-compatible payload
+    // Extract history from messages (exclude system and last user message)
+    const history = messages
+      .filter(m => m.role !== "system")
+      .slice(0, -1); // exclude the last user message
+    
+    const lastUserMsg = messages.filter(m => m.role === "user").pop();
+    
     const payload = {
+      mode: currentMode,
+      user: lastUserMsg?.content || "",
+      history: history,
+      disease: disease,
+      persona: persona,
+      goal: goal,
+      session: "widget-" + (Math.random().toString(36).slice(2, 10)),
+      // Include legacy fields for backward compatibility
       model: (cfg?.model) || "llama-3.1-8b-instant",
       temperature: (currentMode === "role-play" ? 0.35 : 0.2),
       top_p: 0.9,
@@ -1782,7 +1978,7 @@ ${COMMON}`
         currentTelemetry.httpStatus = e.message || "error";
         currentTelemetry.t_done = Date.now();
         updateDebugFooter();
-        console.warn("SSE streaming failed, falling back to regular fetch:", e);
+        console.warn("[coach] degrade-to-legacy - SSE streaming failed, falling back to regular fetch:", e);
         // Fall through to regular fetch with retry
       }
     }
@@ -1822,33 +2018,43 @@ ${COMMON}`
         removeTypingIndicator(typingIndicator);
 
         if (r.ok) {
-          const bodyText = await r.text();
-          currentTelemetry.bytes_rx = textEncoder.encode(bodyText).length;
-          currentTelemetry.httpStatus = r.status.toString();
-          
-          const data = JSON.parse(bodyText);
-          
-          // Extract tokens if available (prefer completion_tokens for accuracy)
-          if (data.usage?.completion_tokens) {
-            currentTelemetry.tokens_rx = data.usage.completion_tokens;
+          try {
+            const bodyText = await r.text();
+            currentTelemetry.bytes_rx = textEncoder.encode(bodyText).length;
+            currentTelemetry.httpStatus = r.status.toString();
+            
+            const data = JSON.parse(bodyText);
+            
+            // Extract tokens if available (prefer completion_tokens for accuracy)
+            if (data.usage?.completion_tokens) {
+              currentTelemetry.tokens_rx = data.usage.completion_tokens;
+            }
+            
+            const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
+            
+            // Record first chunk (first response data)
+            if (currentTelemetry.t_first_chunk === 0 && content) {
+              currentTelemetry.t_first_chunk = Date.now();
+            }
+            
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            
+            return content;
+          } catch (jsonErr) {
+            // JSON parse error
+            console.error(`[chat] status=${r.status} path=/chat error=json_parse`);
+            showToast(`Request failed (JSON parse error). Please retry.`, "error");
+            throw new Error("JSON parse error");
           }
-          
-          const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
-          
-          // Record first chunk (first response data)
-          if (currentTelemetry.t_first_chunk === 0 && content) {
-            currentTelemetry.t_first_chunk = Date.now();
-          }
-          
-          currentTelemetry.t_done = Date.now();
-          updateDebugFooter();
-          
-          return content;
         }
         
         // Record status even on error
         currentTelemetry.httpStatus = r.status.toString();
         updateDebugFooter();
+        
+        // Log error with status
+        console.error(`[chat] status=${r.status} path=/chat`);
         
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
@@ -1857,6 +2063,8 @@ ${COMMON}`
           continue;
         }
         
+        // Show toast for non-retryable errors
+        showToast(`Request failed (status ${r.status}). Please retry.`, "error");
         throw new Error("HTTP " + r.status);
       } catch (e) {
         clearTimeout(timeout);
@@ -1866,6 +2074,7 @@ ${COMMON}`
           lastError = e;
           currentTelemetry.httpStatus = "timeout";
           updateDebugFooter();
+          console.error(`[chat] status=timeout path=/chat retry=${attempt + 1}`);
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
@@ -1874,7 +2083,10 @@ ${COMMON}`
         currentTelemetry.httpStatus = e.message || "error";
         currentTelemetry.t_done = Date.now();
         updateDebugFooter();
-        console.warn("Model call failed:", e);
+        
+        // Log network error
+        console.error(`[chat] status=network_error path=/chat error=${e.message || "unknown"}`);
+        showToast(`Network error. Please check your connection and retry.`, "error");
         
         // Show retry UI if we've exhausted all retries and taken >= 8s total
         const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
@@ -1890,7 +2102,9 @@ ${COMMON}`
     currentTelemetry.httpStatus = lastError?.message || "failed";
     currentTelemetry.t_done = Date.now();
     updateDebugFooter();
-    console.warn("Model call failed after all retries:", lastError);
+    
+    console.error(`[chat] status=all_retries_failed path=/chat`);
+    showToast(`Request failed after retries. Please try again.`, "error");
     showRetryUI();
     return "";
   }
@@ -1948,7 +2162,7 @@ ${COMMON}`
       }
     ].filter(Boolean);
 
-    const raw = await callModel(evalMsgs);
+    const raw = await callModel(evalMsgs, sc);
     const { coach, clean } = extractCoach(raw);
     const finalCoach = coach || scoreReply("", clean);
     conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
@@ -1990,7 +2204,7 @@ ${COMMON}`
 
     let raw = "";
     try {
-      raw = await callModel([{ role: "system", content: sys }, user]);
+      raw = await callModel([{ role: "system", content: sys }, user], null);
     } catch (e) {
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
@@ -2057,6 +2271,13 @@ ${COMMON}`
 
   async function sendMessage(userText) {
     if (isSending) return;
+    
+    // Health gate: block sends when unhealthy
+    if (!isHealthy) {
+      showToast("Backend unavailable. Please wait...", "error");
+      return;
+    }
+    
     isSending = true;
     
     // Track timing for auto-fail feature
@@ -2143,8 +2364,11 @@ ${detail}`;
           if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
         }
 
-        let raw = await callModel(messages);
-        if (!raw) raw = fallbackText(currentMode);
+        let raw = await callModel(messages, sc);
+        if (!raw) {
+          console.warn("[coach] degrade-to-legacy - Using fallback text due to empty response");
+          raw = fallbackText(currentMode);
+        }
 
         let { coach, clean } = extractCoach(raw);
         
@@ -2164,7 +2388,7 @@ Please provide your response again with all required fields including phrasing.`
           ];
           
           try {
-            const retryRaw = await callModel(retryMessages);
+            const retryRaw = await callModel(retryMessages, sc);
             if (retryRaw) {
               const retryResult = extractCoach(retryRaw);
               // Use the retry result if it has phrasing, otherwise keep original
@@ -2192,14 +2416,16 @@ if (cutOff(replyText)) {
     { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
   ];
   try {
-    let contRaw = await callModel(contMsgs);
+    let contRaw = await callModel(contMsgs, sc);
     let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
     if (contClean) replyText = (replyText + " " + contClean).trim();
   } catch (_) { /* no-op */ }
 }
 
 if (currentMode === "role-play") {
-  replyText = await enforceHcpOnly(replyText, sc, messages, callModel);
+  // Create a wrapper that passes scenario context to callModel
+  const callModelWithContext = (msgs) => callModel(msgs, sc);
+  replyText = await enforceHcpOnly(replyText, sc, messages, callModelWithContext);
 }
 
 if (norm(replyText) === norm(userText)) {
@@ -2214,7 +2440,7 @@ if (norm(replyText) === norm(userText)) {
             { role:"system", content:"Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
             messages[messages.length-1]
           ];
-          let varied = await callModel(varyMsgs);
+          let varied = await callModel(varyMsgs, sc);
           varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
           if (!varied || isTooSimilar(norm(varied))) {
             const alts = [
@@ -2286,6 +2512,7 @@ if (norm(replyText) === norm(userText)) {
           }).catch(() => {});
         }
       } catch (e) {
+        console.error("[coach] degrade-to-legacy - Error in sendMessage:", e);
         conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
         trimConversationIfNeeded();
         renderMessages();
@@ -2301,8 +2528,11 @@ if (norm(replyText) === norm(userText)) {
   }
 
   // ---------- scenarios loader ----------
+  let scenariosLoadError = null;
+  
   async function loadScenarios() {
     try {
+      scenariosLoadError = null;
       if (cfg && cfg.scenariosUrl) {
         const payload = await fetchLocal(cfg.scenariosUrl);
         const arr = Array.isArray(payload) ? payload : payload.scenarios || [];
@@ -2328,6 +2558,7 @@ if (norm(replyText) === norm(userText)) {
       }
     } catch (e) {
       console.error("scenarios load failed:", e);
+      scenariosLoadError = e.message || String(e);
       scenarios = [];
     }
 
@@ -2355,7 +2586,7 @@ if (norm(replyText) === norm(userText)) {
     }
 
     if (!cfg.apiBase && !cfg.workerUrl) {
-      cfg.apiBase = (window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+      cfg.apiBase = window.WORKER_URL || "";
     }
 
     try {
@@ -2374,6 +2605,12 @@ if (norm(replyText) === norm(userText)) {
 
     await loadScenarios();
     buildUI();
+    
+    // Health gate: check on init
+    const healthy = await checkHealth();
+    if (!healthy) {
+      startHealthRetry();
+    }
   }
 
   // ---------- start ----------

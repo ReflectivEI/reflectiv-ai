@@ -39,34 +39,82 @@
    MODAL + PANEL
    ================================================================= */
 .coach-modal{
-  position:fixed;inset:0;
-  display:none;place-items:start center;
-  padding:32px 12px;
-  background:rgba(10,18,28,.38);
-  z-index:9999;
+  position: fixed;
+  inset: 0;
+  display: none;
+  /* center horizontally + vertically */
+  display: grid;
+  place-items: center;
+  padding: 32px 12px;
+  background: rgba(10,18,28,.38);
+  z-index: 9999;
 }
-.coach-modal.open,.coach-modal.is-open{display:grid}
+
+.coach-modal.open,
+.coach-modal.is-open{
+  display: grid;
+}
+
 .coach-panel{
-  width:min(980px,96vw);
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow);
-  overflow:hidden;
+  width: 800px;
+  max-width: 100vw;
+
+  /* keep panel itself from growing past viewport */
+  max-height: 85vh;
+
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* scrolling handled by inner container */
+}
+
+/* make the main body of the modal scrollable instead of growing */
+.coach-panel-body{
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 640px){
+  .coach-panel{
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
 }
 
 /* Header */
-.coach-header{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:12px 16px;background:var(--soft-2);
-  border-bottom:1px solid var(--line);
+.coach-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--soft-2);
+  border-bottom: 1px solid var(--line);
 }
-.coach-title{font:800 18px/1 "Inter";color:var(--navy)}
-.coach-close{
-  appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);
-  border-radius:999px;padding:6px 12px;font-weight:700;cursor:pointer;
+.coach-title {
+  font: 800 18px/1 "Inter";
+  color: var(--navy);
 }
-.coach-close:hover{background:#f9fbfe}
+.coach-close {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.coach-close:hover {
+  background: #f9fbfe;
+}
 
 /* =================================================================
    TOOLBAR / CONTROLS
@@ -326,12 +374,30 @@
 /* ===== Patch: map site modal to coach styles, and lock typography ===== */
 
 /* 1) Modal + panel aliases for #coachModal */
-#coachModal.modal.open { display:grid; place-items:start center; padding:32px 12px; background:rgba(10,18,28,.38); z-index:9999; }
-#coachModal .modal-box { width:min(980px,96vw); background:#fff; border:1px solid var(--line); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
-#coachModal .modal-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 16px; background:var(--soft-2); border-bottom:1px solid var(--line); }
-#coachModal .modal-title { font:800 18px/1 "Inter"; color:var(--navy); }
-#coachModal .modal-close { appearance:none; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:999px; padding:6px 12px; font-weight:700; cursor:pointer; }
-#coachModal .modal-close:hover { background:#f9fbfe; }
+#coachModal.modal.open {
+  /* override generic .modal layout: center the coach modal */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px 12px;
+  background:rgba(10,18,28,.38);
+  z-index:9999;
+}
+#coachModal .modal-box {
+  width:min(980px,96vw);
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+/* make coach header draggable affordance */
+#coachModal .modal-head {
+  cursor:move;
+}
+#coachModal .modal-head .modal-close {
+  cursor:pointer;
+}
 
 /* 2) Contain inherited typography inside the widget only */
 #coachBody, #reflectiv-widget { font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:var(--ink); }
@@ -355,7 +421,7 @@
 #coachModal .modal-box {
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: 94vh;      /* more vertical space, still safe */
   overflow: hidden;
 }
 
@@ -371,6 +437,6 @@
 #reflectiv-widget .chat-messages {
   min-height: 220px;
   height: auto !important;       /* beats inline style from widget.js */
-  max-height: none !important;   /* remove cap */
+  max-height: none !important;   /* remove cap; coachBody handles scroll */
   overflow-y: auto !important;   /* ensure scrolling */
 }
