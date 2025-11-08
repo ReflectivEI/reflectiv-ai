@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker — ReflectivAI Gateway (r10.2)
+ * Cloudflare Worker — ReflectivAI Gateway (r10.1)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version, GET /debug/ei
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
@@ -14,7 +14,6 @@
  *  - REQUIRE_FACTS   "true" to require at least one fact in plan
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  *  - EMIT_EI / emitEi  "true" to enable EI (Emotional Intelligence) data in responses
- *  - SYSTEM_URL      public URL to system.md (e.g., raw GitHub)
  */
 
 export default {
@@ -31,7 +30,7 @@ export default {
         return new Response("ok", { status: 200, headers: cors(env, req) });
       }
       if (url.pathname === "/version" && req.method === "GET") {
-        return json({ version: "r10.2" }, 200, env, req);
+        return json({ version: "r10.1" }, 200, env, req);
       }
 
       if (url.pathname === "/debug/ei" && req.method === "GET") {
@@ -125,28 +124,6 @@ const COACH_SCHEMA = {
 
 /* ------------------------------ Helpers ------------------------------------ */
 
-// Simple cached fetch for system.md
-let SYSTEM_CACHE = "";
-let SYSTEM_CACHE_TS = 0;
-async function getSystemPrompt(env) {
-  const ttlMs = 5 * 60 * 1000; // 5 minutes
-  const now = Date.now();
-  if (SYSTEM_CACHE && now - SYSTEM_CACHE_TS < ttlMs) return SYSTEM_CACHE;
-
-  const url = env.SYSTEM_URL;
-  if (!url) return "";
-  try {
-    const r = await fetch(url, { method: "GET", headers: { "accept": "text/plain" } });
-    if (!r.ok) return "";
-    const txt = await r.text();
-    SYSTEM_CACHE = txt;
-    SYSTEM_CACHE_TS = now;
-    return txt;
-  } catch {
-    return "";
-  }
-}
-
 function getEiFlag(req, env) {
   const url = new URL(req.url);
   const queryFlag = url.searchParams.get("emitEi");
@@ -214,56 +191,6 @@ function sanitizeLLM(s) {
     .trim();
 }
 
-/**
- * Format hardening: Remove stray coach phrasing and bullets that leak into role-play
- */
-function removeCoachLeakage(text, mode) {
-  let result = String(text || "");
-  
-  // Role-play mode: enforce plain text, no bullets, no coach phrasing
-  if (mode === "role-play") {
-    result = result
-      .replace(/^[\s\u2022\u2023\u25E6\*-]+/gm, "")  // Remove bullet points (including Unicode)
-      .replace(/Suggested Phrasing:.*$/gim, "")      // Remove coach suggestions
-      .replace(/\bCoach:\s*/gi, "")                  // Remove "Coach:" prefix
-      .replace(/\bHCP:\s*/gi, "")                    // Keep HCP natural
-      .trim();
-  }
-  
-  return result;
-}
-
-/**
- * Ensure sentence completion: add period if missing at end
- */
-function ensureSentenceCompletion(text) {
-  const trimmed = String(text || "").trim();
-  if (!trimmed) return trimmed;
-  if (!/[.!?]"?\s*$/.test(trimmed)) {
-    return trimmed + ".";
-  }
-  return trimmed;
-}
-
-/**
- * Enforce sales-simulation 5-section format
- * (currently a no-op if structure already present; kept for future hardening)
- */
-function enforceSalesFormat(text) {
-  const required = [
-    "Assessment",
-    "Objection",
-    "Guidance",
-    "Phrasing",
-    "Next Steps"
-  ];
-  const hasStructure = required.some(section => 
-    text.includes(section + ":") || text.includes("**" + section)
-  );
-  if (hasStructure) return text;
-  return text;
-}
-
 function extractCoach(raw) {
   const s = String(raw || "");
   const open = s.indexOf("<coach>");
@@ -301,7 +228,7 @@ async function providerChat(env, messages, { maxTokens = 1400, temperature = 0.2
     body: JSON.stringify({
       model: env.PROVIDER_MODEL,
       temperature,
-      max_output_tokens: finalMax,   // if your provider expects max_tokens, rename here
+      max_output_tokens: finalMax,
       messages
     })
   });
@@ -409,18 +336,18 @@ async function postChat(req, env) {
 
     const session = body.session || "anon";
 
-    // Load or build a plan
-    let activePlan = plan;
-    if (!activePlan) {
-      const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
-      activePlan = await r.json();
-    }
+  // Load or build a plan
+  let activePlan = plan;
+  if (!activePlan) {
+    const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
+    activePlan = await r.json();
+  }
 
-    // Provider prompts
-    const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
-    const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
+  // Provider prompts
+  const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
+  const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
 
-    const commonContract = `
+  const commonContract = `
 Return exactly two parts. No code blocks or headings.
 
 1) Sales Guidance: short, accurate, label-aligned guidance (3–5 sentences) and a "Suggested Phrasing:" single-sentence line.
@@ -432,156 +359,110 @@ Return exactly two parts. No code blocks or headings.
 
 Use only the Facts IDs provided when making claims.`.trim();
 
-    const systemInstructions = await getSystemPrompt(env);
-    const modeLower = String(mode || "").toLowerCase();
+  const sys = (mode === "role-play")
+    ? [
+        `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        `Speak concisely.`
+      ].join("\n")
+    : [
+        `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        commonContract
+      ].join("\n");
 
-    // Build system message: system.md (global rules) + mode-specific overrides + scenario/facts
-    let sys;
-    if (modeLower === "role-play") {
-      sys = [
-        systemInstructions || "You are Reflectiv Coach. Use Role Play mode rules.",
-        "",
-        "[ACTIVE MODE: ROLE PLAY / HCP PERSONA]",
-        "Follow the Role Play section of the system instructions.",
-        "You are the HCP in this mode. First-person HCP only. No coaching. No lists. No <coach> JSON.",
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        "Speak concisely."
-      ].join("\n");
-    } else if (modeLower === "sales-simulation") {
-      sys = [
-        systemInstructions || "You are Reflectiv Coach. Use Sales Simulation rules.",
-        "",
-        "[ACTIVE MODE: SALES SIMULATION / COACH]",
-        "Follow the Sales Simulation section of the system instructions.",
-        "You are the Sales Coach, not the HCP. Voice: Coach only.",
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        commonContract
-      ].join("\n");
-    } else {
-      // Other modes (emotional-assessment, product-knowledge, etc.) still reuse the Sales Coach contract for now
-      sys = [
-        systemInstructions || "You are Reflectiv Coach.",
-        "",
-        `[ACTIVE MODE: ${mode}]`,
-        "You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.",
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        commonContract
-      ].join("\n");
+  const messages = [
+    { role: "system", content: sys },
+    ...history.map(m => ({ role: m.role, content: String(m.content || "") })).slice(-18),
+    { role: "user", content: String(user || "") }
+  ];
+
+  // Provider call with retry
+  let raw = "";
+  for (let i = 0; i < 3; i++) {
+    try {
+      raw = await providerChat(env, messages, {
+        maxTokens: mode === "sales-simulation" ? 1200 : 900,
+        temperature: 0.2
+      });
+      if (raw) break;
+    } catch (e) {
+      if (i === 2) throw e;
+      await new Promise(r => setTimeout(r, 300 * (i + 1)));
     }
+  }
 
-    const messages = [
-      { role: "system", content: sys },
-      ...history.map(m => ({ role: m.role, content: String(m.content || "") })).slice(-18),
-      { role: "user", content: String(user || "") }
+  // Extract coach and clean text
+  const { coach, clean } = extractCoach(raw);
+  let reply = clean;
+
+  // Mid-sentence cut-off guard + one-pass auto-continue
+  const cutOff = (t) => {
+    const s = String(t || "").trim();
+    return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+  };
+  if (cutOff(reply)) {
+    const contMsgs = [
+      ...messages,
+      { role: "assistant", content: reply },
+      { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
     ];
+    try {
+      const contRaw = await providerChat(env, contMsgs, { maxTokens: 360, temperature: 0.2 });
+      const contClean = sanitizeLLM(contRaw || "");
+      if (contClean) reply = (reply + " " + contClean).trim();
+    } catch (_) {}
+  }
 
-    // Provider call with retry and mode-specific token budgets
-    // Token limits (relative): sales-simulation > role-play > EI > product-knowledge
-    const tokenBudgets = {
-      "sales-simulation": 2200,      // larger budget for long coaching replies
-      "role-play": 1800,             // larger budget for longer HCP utterances
-      "emotional-assessment": 900,   // smaller than RP/Sim
-      "product-knowledge": 800       // smallest; factual, concise answers
+  // FSM clamps
+  const fsm = FSM[mode] || FSM["sales-simulation"];
+  const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
+  reply = capSentences(reply, cap);
+
+  // Loop guard vs last reply
+  const state = await seqGet(env, session);
+  const candNorm = norm(reply);
+  if (state && candNorm && (candNorm === state.lastNorm)) {
+    if (mode === "role-play") {
+      reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
+    } else {
+      reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
+    }
+  }
+  state.lastNorm = norm(reply);
+  await seqPut(env, session, state);
+
+  // Deterministic scoring if provider omitted or malformed
+  let coachObj = coach && typeof coach === "object" ? coach : null;
+  if (!coachObj || !coachObj.scores) {
+    const usedFactIds = (activePlan.facts || []).map(f => f.id);
+    const overall = deterministicScore({ reply, usedFactIds });
+    coachObj = {
+      overall,
+      scores: { accuracy: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, clarity: 4, objection_handling: 3, empathy: 3 },
+      worked: ["Tied guidance to facts"],
+      improve: ["End with one specific discovery question"],
+      phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
+      feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
+      context: { rep_question: String(user || ""), hcp_reply: reply }
     };
-    const maxTokens = tokenBudgets[modeLower] || 1200;
-  
-    let raw = "";
-    for (let i = 0; i < 3; i++) {
-      try {
-        raw = await providerChat(env, messages, {
-          maxTokens,
-          temperature: 0.2
-        });
-        if (raw) break;
-      } catch (e) {
-        if (i === 2) throw e;
-        await new Promise(r => setTimeout(r, 300 * (i + 1)));
+  }
+
+  // Build response
+  const responseData = { reply, coach: coachObj, plan: { id: planId || activePlan.planId } };
+
+  // Add EI data if flag is enabled
+  if (getEiFlag(req, env)) {
+    responseData._coach = {
+      ei: {
+        scores: coachObj.scores || {}
       }
-    }
-
-    // Extract coach and clean text
-    const { coach, clean } = extractCoach(raw);
-    let reply = clean;
-
-    // Apply format hardening based on mode
-    reply = removeCoachLeakage(reply, modeLower);
-  
-    // Enforce sales-simulation 5-section format
-    if (modeLower === "sales-simulation") {
-      reply = enforceSalesFormat(reply);
-    }
-
-    // Mid-sentence cut-off guard + one-pass auto-continue
-    const cutOff = (t) => {
-      const s = String(t || "").trim();
-      return s.length > 200 && !/[.!?]"?\s*$/.test(s);
     };
-    if (cutOff(reply)) {
-      const contMsgs = [
-        ...messages,
-        { role: "assistant", content: reply },
-        { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
-      ];
-      try {
-        const contRaw = await providerChat(env, contMsgs, { maxTokens: 360, temperature: 0.2 });
-        const contClean = sanitizeLLM(contRaw || "");
-        if (contClean) reply = (reply + " " + contClean).trim();
-      } catch (_) {}
-    }
-  
-    // Ensure sentence completion
-    reply = ensureSentenceCompletion(reply);
+  }
 
-    // FSM clamps
-    const fsm = FSM[modeLower] || FSM["sales-simulation"];
-    const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
-    reply = capSentences(reply, cap);
-
-    // Loop guard vs last reply
-    const state = await seqGet(env, session);
-    const candNorm = norm(reply);
-    if (state && candNorm && (candNorm === state.lastNorm)) {
-      if (modeLower === "role-play") {
-        reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
-      } else {
-        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
-      }
-    }
-    state.lastNorm = norm(reply);
-    await seqPut(env, session, state);
-
-    // Deterministic scoring if provider omitted or malformed
-    let coachObj = coach && typeof coach === "object" ? coach : null;
-    if (!coachObj || !coachObj.scores) {
-      const usedFactIds = (activePlan.facts || []).map(f => f.id);
-      const overall = deterministicScore({ reply, usedFactIds });
-      coachObj = {
-        overall,
-        scores: { accuracy: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, clarity: 4, objection_handling: 3, empathy: 3 },
-        worked: ["Tied guidance to facts"],
-        improve: ["End with one specific discovery question"],
-        phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
-        feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
-        context: { rep_question: String(user || ""), hcp_reply: reply }
-      };
-    }
-
-    // Build response
-    const responseData = { reply, coach: coachObj, plan: { id: planId || activePlan.planId } };
-
-    // Add EI data if flag is enabled
-    if (getEiFlag(req, env)) {
-      responseData._coach = {
-        ei: {
-          scores: coachObj.scores || {}
-        }
-      };
-    }
-
-    return json(responseData, 200, env, req);
+  return json(responseData, 200, env, req);
   } catch (err) {
     // Sanitize error message to avoid leaking sensitive information
     const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
