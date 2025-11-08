@@ -1784,53 +1784,14 @@ ${COMMON}`
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
-    // Check if we should use worker's /chat endpoint (r10.1 format)
-    // The worker expects: {mode, user, history, disease, persona, goal}
-    const isWorkerEndpoint = url && url.includes('workers.dev');
-    
-    let payload;
-    if (isWorkerEndpoint) {
-      // Extract current scenario context
-      const sc = scenariosById.get(currentScenarioId);
-      
-      // Extract user message (last non-system message)
-      const userMsg = messages.filter(m => m.role === 'user').pop();
-      const userContent = userMsg ? userMsg.content : '';
-      
-      // Build history from conversation (exclude current user message)
-      const history = conversation.slice(0, -1).map(m => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: m.content
-      }));
-      
-      // Worker-compatible payload for r10.1
-      payload = {
-        mode: currentMode || "sales-simulation",
-        user: userContent,
-        history: history,
-        disease: sc?.therapeuticArea || sc?.diseaseState || "",
-        persona: sc?.hcpRole || sc?.label || "",
-        goal: sc?.goal || ""
-      };
-      
-      logDebug("callModel", "Using worker /chat endpoint with r10.1 format", { 
-        mode: payload.mode, 
-        disease: payload.disease,
-        historyLength: history.length 
-      });
-    } else {
-      // OpenAI-compatible format for direct LLM calls
-      payload = {
-        model: (cfg?.model) || "llama-3.1-8b-instant",
-        temperature: (currentMode === "role-play" ? 0.35 : 0.2),
-        top_p: 0.9,
-        stream: useStreaming,
-        max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
-        messages
-      };
-      
-      logDebug("callModel", "Using OpenAI-compatible format", { model: payload.model });
-    }
+    const payload = {
+      model: (cfg?.model) || "llama-3.1-8b-instant",
+      temperature: (currentMode === "role-play" ? 0.35 : 0.2),
+      top_p: 0.9,
+      stream: useStreaming,
+      max_output_tokens: (cfg?.max_output_tokens || cfg?.maxTokens) || (currentMode === "sales-simulation" ? 1000 : 1200),
+      messages
+    };
     
     // Helper to return structured failure for 5xx errors
     const returnStructuredFailure = (status, attempts) => {
@@ -1838,8 +1799,8 @@ ${COMMON}`
       return { ok: false, status };
     };
 
-    // SSE Streaming branch (only for non-worker endpoints)
-    if (useStreaming && !isWorkerEndpoint) {
+    // SSE Streaming branch
+    if (useStreaming) {
       logDebug("callModel", "Using SSE streaming");
       try {
         let streamedContent = "";
@@ -1886,16 +1847,12 @@ ${COMMON}`
     let lastError = null;
     let lastHttpStatus = 0; // Tracks last HTTP status code, 0 if no response received
     
-    // Ensure we're calling the /chat endpoint for worker
-    const fetchUrl = isWorkerEndpoint ? `${url}/chat` : url;
-    logDebug("callModel", "Fetch URL", { url: fetchUrl });
-    
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
       
       try {
-        const r = await fetch(fetchUrl, {
+        const r = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1910,20 +1867,7 @@ ${COMMON}`
 
         if (r.ok) {
           const data = await r.json().catch(() => ({}));
-          
-          // Handle worker response format (r10.1): {reply, coach, plan}
-          if (data?.reply) {
-            logDebug("callModel", "Worker response received", { 
-              replyLength: data.reply?.length, 
-              hasCoach: !!data.coach,
-              attempt: attempt + 1 
-            });
-            // Return the full data object so sendMessage can extract coach separately
-            return { content: data.reply, coach: data.coach };
-          }
-          
-          // Handle OpenAI-compatible format: {choices: [{message: {content}}]} or {content}
-          const content = data?.content || data?.choices?.[0]?.message?.content || "";
+          const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
           logDebug("callModel", "Model call successful", { contentLength: content?.length, attempt: attempt + 1 });
           return content;
         }
@@ -2302,21 +2246,7 @@ ${detail}`;
           raw = fallbackText(currentMode);
         }
 
-        // Handle worker response format: {content, coach}
-        let workerCoach = null;
-        if (typeof raw === 'object' && raw.content && raw.coach) {
-          logDebug("sendMessage", "Using worker response with pre-extracted coach", { hasCoach: !!raw.coach });
-          workerCoach = raw.coach;
-          raw = raw.content;
-        }
-
         let { coach, clean } = extractCoach(raw);
-        
-        // Use worker-provided coach if available, otherwise use extracted coach
-        if (workerCoach) {
-          coach = workerCoach;
-          clean = raw; // Worker already provides clean text without coach tags
-        }
         
         // Re-ask once if phrasing is missing in sales-simulation mode
         const phrasing = coach?.phrasing;
