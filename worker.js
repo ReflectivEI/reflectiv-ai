@@ -1,3 +1,4 @@
+
 /**
  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version, GET /debug/ei
@@ -228,15 +229,11 @@ async function providerChat(env, messages, { maxTokens = 1400, temperature = 0.2
     body: JSON.stringify({
       model: env.PROVIDER_MODEL,
       temperature,
-      max_tokens: finalMax,
+      max_output_tokens: finalMax,
       messages
     })
   });
-  if (!r.ok) {
-    const errBody = await r.text().catch(() => "");
-    console.error(`Provider error ${r.status}:`, errBody);
-    throw new Error(`provider_http_${r.status}`);
-  }
+  if (!r.ok) throw new Error(`provider_http_${r.status}`);
   const j = await r.json().catch(() => ({}));
   return j?.choices?.[0]?.message?.content || j?.content || "";
 }
@@ -327,63 +324,6 @@ async function postChat(req, env) {
     }
 
     const body = await readJson(req);
-    
-    // Support two payload formats:
-    // 1. OpenAI-style (from widget.js callModel): { messages, model, temperature, ... }
-    // 2. ReflectivAI-style: { mode, user, history, disease, persona, ... }
-    
-    // Detect OpenAI-style payload (has messages array but no mode/user fields)
-    const isOpenAIStyle = Array.isArray(body.messages) && !body.mode && !body.user;
-    
-    if (isOpenAIStyle) {
-      // Extract last user message from messages array
-      const messages = body.messages || [];
-      const lastUserMsg = messages.filter(m => m.role === "user").pop();
-      const userText = lastUserMsg?.content || "";
-      
-      // Extract mode from messages if system prompt mentions it, otherwise default
-      let mode = "sales-simulation";
-      const systemMsgs = messages.filter(m => m.role === "system");
-      if (systemMsgs.some(m => /role.?play/i.test(m.content || ""))) {
-        mode = "role-play";
-      } else if (systemMsgs.some(m => /product.?knowledge/i.test(m.content || ""))) {
-        mode = "product-knowledge";
-      } else if (systemMsgs.some(m => /emotional.?assessment/i.test(m.content || ""))) {
-        mode = "emotional-assessment";
-      }
-      
-      // Build history from messages (exclude last user message, already extracted)
-      const history = messages
-        .slice(0, -1)
-        .filter(m => m.role !== "system")
-        .map(m => ({ role: m.role, content: m.content || "" }));
-      
-      // Convert to ReflectivAI format and continue processing
-      const convertedBody = {
-        mode,
-        user: userText,
-        history,
-        disease: "",
-        persona: "",
-        goal: "",
-        session: body.session || "anon"
-      };
-      
-      // Continue with converted payload
-      return await processChatRequest(convertedBody, env, req);
-    }
-    
-    // ReflectivAI-style payload
-    return await processChatRequest(body, env, req);
-  } catch (err) {
-    // Sanitize error message to avoid leaking sensitive information
-    const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
-    return json({ error: "bad_request", message: safeMessage }, 400, env, req);
-  }
-}
-
-// Extracted processing logic to be shared by both payload formats
-async function processChatRequest(body, env, req) {
     const {
       mode = "sales-simulation",
       user,
@@ -524,6 +464,11 @@ Use only the Facts IDs provided when making claims.`.trim();
   }
 
   return json(responseData, 200, env, req);
+  } catch (err) {
+    // Sanitize error message to avoid leaking sensitive information
+    const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
+    return json({ error: "bad_request", message: safeMessage }, 400, env, req);
+  }
 }
 
 function cryptoRandomId() {
