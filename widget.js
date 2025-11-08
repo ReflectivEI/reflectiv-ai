@@ -1793,24 +1793,19 @@ ${COMMON}`
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
     
-    // Extract user message and history from messages array
-    const userMessages = messages.filter(m => m.role === "user");
-    const lastUserMsg = userMessages[userMessages.length - 1];
-    const historyMsgs = messages.filter(m => m.role !== "system").slice(0, -1);
-    
     // Get scenario details if available
-    const sc = scenariosById.get(currentScenarioId);
-    
-    // Build payload in worker's expected format
-    const payload = {
-      mode: currentMode,
-      user: lastUserMsg?.content || "",
-      history: historyMsgs,
-      disease: sc?.therapeuticArea || sc?.diseaseState || "",
-      persona: sc?.hcpRole || "",
-      goal: sc?.goal || "",
-      session: "widget-session-" + Date.now()
-    };
+const sc = scenariosById.get(currentScenarioId);
+
+// Build payload in the worker's expected format
+// The worker wants: { messages: [...], mode: "...", ... }
+const payload = {
+  messages,                          // full chat history we built above
+  mode: currentMode,                 // extra metadata (worker can ignore if it wants)
+  disease: sc?.therapeuticArea || sc?.diseaseState || "",
+  persona: sc?.hcpRole || "",
+  goal: sc?.goal || "",
+  session: "widget-session-" + Date.now()
+};
     
     // Helper to return structured failure for 5xx errors
     const returnStructuredFailure = (status, attempts) => {
