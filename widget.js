@@ -1112,12 +1112,32 @@ ${COMMON}`
     lcLabel.htmlFor = "cw-mode";
     const modeSel = el("select");
     modeSel.id = "cw-mode";
-    LC_OPTIONS.forEach((name) => {
+    
+    // Create optgroups for better organization
+    const salesGroup = document.createElement("optgroup");
+    salesGroup.label = "Sales Modes";
+    const learningGroup = document.createElement("optgroup");
+    learningGroup.label = "Learning Modes";
+    const eiGroup = document.createElement("optgroup");
+    eiGroup.label = "EI Tools";
+    
+    // Helper to add options to groups
+    const addOption = (group, name) => {
       const o = el("option");
       o.value = name;
       o.textContent = name;
-      modeSel.appendChild(o);
-    });
+      group.appendChild(o);
+    };
+    
+    // Organize modes into groups
+    addOption(salesGroup, "Sales Simulation");
+    addOption(learningGroup, "Product Knowledge");
+    addOption(learningGroup, "Role Play");
+    addOption(eiGroup, "Emotional Intelligence");
+    
+    modeSel.appendChild(salesGroup);
+    modeSel.appendChild(learningGroup);
+    modeSel.appendChild(eiGroup);
     const initialLc =
       Object.keys(LC_TO_INTERNAL).find((k) => LC_TO_INTERNAL[k] === (cfg?.defaultMode || "sales-simulation")) ||
       "Sales Simulation";
