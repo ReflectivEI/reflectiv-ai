@@ -169,4 +169,3 @@ but to **become** emotionally intelligent through measurable, adaptive practice.
 3. Collaborative for Academic, Social, and Emotional Learning (CASEL). (2023). *SEL Framework.*  
 4. ReflectivAI Internal Heuristic Framework v2.0 (2025).
 
-
