@@ -1,3 +1,4 @@
+
 /**
  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version, GET /debug/ei
@@ -242,15 +243,11 @@ async function providerChat(env, messages, { maxTokens = 1400, temperature = 0.2
     body: JSON.stringify({
       model: env.PROVIDER_MODEL,
       temperature,
-      max_tokens: finalMax,
+      max_output_tokens: finalMax,
       messages
     })
   });
-  if (!r.ok) {
-    const errBody = await r.text().catch(() => "");
-    console.error(`Provider error ${r.status}:`, errBody);
-    throw new Error(`provider_http_${r.status}`);
-  }
+  if (!r.ok) throw new Error(`provider_http_${r.status}`);
   const j = await r.json().catch(() => ({}));
   return j?.choices?.[0]?.message?.content || j?.content || "";
 }
@@ -590,6 +587,11 @@ Use only the Facts IDs provided when making claims.`.trim();
   }
 
   return json(responseData, 200, env, req);
+  } catch (err) {
+    // Sanitize error message to avoid leaking sensitive information
+    const safeMessage = String(err.message || "invalid").replace(/\s+/g, " ").slice(0, 200);
+    return json({ error: "bad_request", message: safeMessage }, 400, env, req);
+  }
 }
 
 function cryptoRandomId() {
