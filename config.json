@@ -5,13 +5,8 @@
   // This is only used when we call a provider directly, NOT your worker
   "model": "llama-3.1-70b-versatile",
 
-  // IMPORTANT: apiBase should be the *provider* URL, not the worker
   "apiBase": "https://api.groq.com/openai/v1/chat/completions",
-
-  // Worker base URL (no /chat at the end, widget adds it)
   "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
-
-  // Turn off streaming for now to simplify; your worker does not stream
   "stream": false,
 
   "modes": [
