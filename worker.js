@@ -39,7 +39,9 @@ export default {
 
       return json({ error: "not_found" }, 404, env, req);
     } catch (e) {
-      return json({ error: "server_error", detail: String(e?.message || e) }, 500, env, req);
+      // Log the error for debugging but don't expose details to client
+      console.error("Top-level error:", e);
+      return json({ error: "server_error", detail: "Internal server error" }, 500, env, req);
     }
   }
 };
@@ -271,7 +273,8 @@ async function postFacts(req, env) {
     }).slice(0, limit);
     return json({ facts: out }, 200, env, req);
   } catch (e) {
-    return json({ error: "server_error", detail: String(e?.message || e) }, 500, env, req);
+    console.error("postFacts error:", e);
+    return json({ error: "server_error", detail: "Failed to fetch facts" }, 500, env, req);
   }
 }
 
@@ -302,7 +305,8 @@ async function postPlan(req, env) {
 
     return json(plan, 200, env, req);
   } catch (e) {
-    return json({ error: "server_error", detail: String(e?.message || e) }, 500, env, req);
+    console.error("postPlan error:", e);
+    return json({ error: "server_error", detail: "Failed to create plan" }, 500, env, req);
   }
 }
 
@@ -465,7 +469,8 @@ Use only the Facts IDs provided when making claims.`.trim();
 
   return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
-    return json({ error: "server_error", detail: String(e?.message || e) }, 500, env, req);
+    console.error("postChat error:", e);
+    return json({ error: "server_error", detail: "Chat request failed" }, 500, env, req);
   }
 }
 
