@@ -1776,7 +1776,12 @@ ${COMMON}`
 
   async function callModel(messages) {
     logDebug("callModel", "Starting model call", { messageCount: messages?.length });
-    const url = (cfg?.apiBase || cfg?.workerUrl || window.COACH_ENDPOINT || window.WORKER_URL || "").trim();
+    const base = getWorkerBase();
+    if (!base) {
+      logError("callModel", "Worker base URL missing");
+      throw new Error("worker_base_missing");
+    }
+    const url = `${base}/chat`;
     const useStreaming = cfg?.stream === true;
     
     logDebug("callModel", "Model call configuration", { url: url?.substring(0, 50) + "...", streaming: useStreaming });
