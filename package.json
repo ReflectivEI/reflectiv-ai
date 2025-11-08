@@ -5,6 +5,8 @@
   "description": "ReflectivAI Gateway Worker",
   "main": "worker.js",
   "scripts": {
-    "test": "node worker.test.js"
+    "test": "node worker.test.js && node test-chat-contract.js",
+    "test:worker": "node worker.test.js",
+    "test:contract": "node test-chat-contract.js"
   }
 }
