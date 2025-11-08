@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0c2740">
   <title>ReflectivAI – AI Sales Enablement for Life Sciences</title>
-  <link rel="icon" type="image/png" href="logo-modern.png">
+  <link rel="icon" href="assets/favicon.ico">
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
   <!-- Allows Tailwind CDN + Google Fonts + your Worker -->
@@ -99,6 +99,65 @@
     }
   </style>
 
+  <!-- Flip Card Styles & Animations -->
+  <style>
+    /* Flip card container */
+    .metric-card {
+      perspective: 1000px;
+      height: 200px;
+    }
+    .metric-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .metric-card.is-flipped .metric-card-inner {
+      transform: rotateY(180deg);
+    }
+    .metric-card-front,
+    .metric-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .metric-card-back {
+      transform: rotateY(180deg);
+    }
+
+    /* Fade-in animation for sections */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fade-in {
+      animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* Stagger animation for children */
+    .stagger-animation > * {
+      opacity: 0;
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+    .stagger-animation > *:nth-child(1) { animation-delay: 0.1s; }
+    .stagger-animation > *:nth-child(2) { animation-delay: 0.2s; }
+    .stagger-animation > *:nth-child(3) { animation-delay: 0.3s; }
+    .stagger-animation > *:nth-child(4) { animation-delay: 0.4s; }
+    .stagger-animation > *:nth-child(5) { animation-delay: 0.5s; }
+  </style>
+
   <!-- Site CSS (keep external if you want broader styles) -->
   <link rel="stylesheet" href="styles.css?v=20251021B">
 
@@ -146,7 +205,7 @@
   <nav class="nav" aria-label="Primary">
     <!-- Brand -->
     <a href="#home" class="brand" aria-label="ReflectivAI home">
-      <img src="logo-modern.png" alt="" width="28" height="28" />
+      <img src="logo-modern.png" alt="" width="36" height="36" />
       <span>ReflectivAI</span>
     </a>
 
@@ -160,15 +219,16 @@
           <li role="none"><a role="menuitem" href="#learning">Learning Center</a></li>
         </ul>
       </li>
+      <li role="none"><a role="menuitem" href="analytics.html">Analytics</a></li>
       <li class="dropdown" role="none">
-        <a href="#analytics" role="menuitem" aria-haspopup="true" aria-expanded="false">Analytics ▾</a>
-        <ul class="dropdown-menu" role="menu" aria-label="Analytics submenu">
-          <li role="none"><a role="menuitem" href="#metrics">Performance Metrics</a></li>
-          <li role="none"><a role="menuitem" href="#dashboards">Dashboards</a></li>
+        <a href="#about-ei" role="menuitem" aria-haspopup="true" aria-expanded="false">About EI ▾</a>
+        <ul class="dropdown-menu" role="menu" aria-label="About EI submenu">
+          <li role="none"><a role="menuitem" href="https://www.eqmentor.com/emotional-intelligence-assessment" target="_blank" rel="noopener">Take EI Assessment</a></li>
+          <li role="none"><a role="menuitem" href="#" onclick="openAboutEI();return false;">EI Overview</a></li>
+          <li role="none"><a role="menuitem" href="ei-score-details.html">EI Score Breakdown</a></li>
         </ul>
       </li>
       <li role="none"><a role="menuitem" href="#ethics">Ethics</a></li>
-      <li role="none"><a role="menuitem" href="#" onclick="openAboutEI();return false;">About EI</a></li>
       <li role="none"><a role="menuitem" href="#contact" class="btn-demo">Request Demo</a></li>
     </ul>
 
@@ -205,58 +265,421 @@
 </section>
 
 <!-- ===== Why ===== -->
-<section id="why-it-matters" class="py-16 border-t border-gray-200 text-white" style="background-color:#0f2747;">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-    <h2 class="text-3xl font-bold mb-4">Why Emotional Intelligence Matters in Sales</h2>
-    <div class="w-20 mx-auto section-separator" style="background-color:#20bfa9;"></div>
-    <p class="text-lg max-w-3xl mx-auto">
-      Emotional intelligence drives connection and adherence. ReflectivAI helps reps practice
-      active listening, empathy, and tone calibration—transforming compliance into confidence
-      and insight into influence.
-    </p>
-  </div>
-</section>
-
-<!-- ===== Platform Modules ===== -->
-<section id="platform" class="py-16 md:py-24 bg-white">
+<!-- BEGIN: Traditional Training vs ReflectivAI Impact Infographic Section -->
+<section id="comparison" class="py-16 md:py-20 bg-gray-50 border-t border-gray-200">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center md:text-left">Platform Modules</h2>
-    <div class="section-separator mx-auto md:mx-0"></div>
-    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:text-left mx-auto md:mx-0">Integrated tools designed for high-stakes life science interactions.</p>
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+        Traditional Training vs ReflectivAI Impact
+      </h2>
+      <div class="w-20 mx-auto section-separator"></div>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+        See how ReflectivAI transforms pharmaceutical sales training from static workshops to dynamic, emotionally intelligent practice.
+      </p>
+    </div>
 
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
-        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-3">Product Knowledge</h3>
-        <p class="text-gray-600">Train on complex clinical data and regulatory messaging with compliance and real-time correction built in.</p>
+    <!-- 3-column comparison grid -->
+    <div class="grid md:grid-cols-3 gap-8 items-start">
+      <!-- Column 1: Traditional Training -->
+      <div class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
+        <h3 class="text-xl font-bold text-gray-900 mb-4 text-center">Traditional Training</h3>
+        <ul class="space-y-3 text-gray-700">
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+            </svg>
+            <span>One-time workshops with limited follow-up</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+            </svg>
+            <span>Static role-plays with limited scenarios</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+            </svg>
+            <span>Delayed feedback from managers</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+            </svg>
+            <span>Minimal focus on emotional intelligence</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+            </svg>
+            <span>Difficult to scale across field force</span>
+          </li>
+        </ul>
       </div>
-      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
-        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Simulation</h3>
-        <p class="text-gray-600">Practice high-stakes calls in oncology, vaccines, and other areas — anytime, anywhere with adaptive AI personas.</p>
+
+      <!-- Column 2: Visual/Summary -->
+      <div class="flex flex-col items-center justify-center text-center p-8">
+        <svg class="h-16 w-16 text-accent-teal mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+        </svg>
+        <p class="text-lg font-semibold text-gray-700">
+          Transforming training from static to adaptive, from delayed to instant, from generic to emotionally intelligent.
+        </p>
       </div>
-      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
-        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-3">Relationship Intelligence</h3>
-        <p class="text-gray-600">Track behavioral blind spots. Understand empathy, tone, and conversational agility with granular data.</p>
+
+      <!-- Column 3: ReflectivAI Impact -->
+      <div class="bg-gradient-to-br from-blue-50 to-teal-50 p-8 rounded-xl shadow-md border-2 border-accent-teal">
+        <h3 class="text-xl font-bold text-gray-900 mb-4 text-center">ReflectivAI Impact</h3>
+        <ul class="space-y-3 text-gray-700">
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span><strong>AI HCP role-play</strong> with realistic personas and objections</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span><strong>Instant coach feedback</strong> with suggested phrasing and improvements</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span><strong>EI scoring</strong> on empathy, clarity, and active listening</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span><strong>Compliance protection</strong> with label-only guardrails built in</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span><strong>Scalable practice</strong> anytime, anywhere across your team</span>
+          </li>
+        </ul>
       </div>
     </div>
   </div>
 </section>
+<!-- END: Traditional Training vs ReflectivAI Impact Infographic Section -->
 
-<!-- ===== Analytics ===== -->
+<!-- BEGIN: Why Emotional Intelligence Matters -->
+
+<!-- ===== Platform Modules ===== -->
+<section id="platform" class="py-16 md:py-24 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center md:text-left">
+      Platform Modules
+    </h2>
+    <div class="section-separator mx-auto md:mx-0"></div>
+    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:text-left mx-auto md:mx-0">
+      Integrated tools designed for high-stakes life science interactions.
+    </p>
+
+    <!-- Three primary modules -->
+    <div class="grid md:grid-cols-3 gap-8">
+      <!-- Sales Simulation Card -->
+      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Simulation</h3>
+        <p class="text-gray-600 mb-4">
+          Practice high-stakes calls in oncology, vaccines, and other therapeutic areas with adaptive AI personas. Each simulation tracks not just what you say, but how you say it—measuring empathy, tone, and active listening alongside clinical accuracy.
+        </p>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Dynamic HCP personas by specialty</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Real-time objection handling</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>EI assessment on every exchange</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Product Knowledge Card -->
+      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3">Product Knowledge</h3>
+        <p class="text-gray-600 mb-4">
+          Train on complex clinical data and regulatory messaging with compliance and real-time correction built in. The Coach evaluates accuracy while simultaneously teaching how to communicate complex science with clarity and empathy.
+        </p>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Label-compliant messaging only</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Simplify complex science effectively</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Instant correction and guidance</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- EI Analytics & Relationship Intelligence Card -->
+      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19h16"></path>
+            <path d="M7 15l3-6 4 5 3-9"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3">Relationship Intelligence</h3>
+        <p class="text-gray-600 mb-4">
+          Track behavioral blind spots and conversational patterns. Understand empathy, tone calibration, and conversational agility with granular data. ReflectivAI captures EI metrics that traditional training misses, helping reps build authentic connections.
+        </p>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Empathy &amp; tone scoring</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Active listening analysis</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Conversational agility tracking</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+        <!-- Additional platform feature with logo -->
+    <div class="mt-12 rounded-2xl shadow-lg border border-transparent bg-gradient-to-r from-[#0f2747] via-[#0b2f5c] to-[#0b3954] p-8 md:p-10">
+      <div class="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-10 items-center">
+        
+        <!-- Left: logo + narrative -->
+<div>
+  <div class="flex flex-col md:flex-row md:items-start gap-4 mb-4">
+    <div class="flex-shrink-0 flex items-start">
+      <img
+        src="assets/site_image5_logo.jpeg"
+        alt="ReflectivAI logo"
+        class="w-24 h-24 object-contain"
+        style="background:none !important; border-radius:0; display:block;"
+      />
+    </div>
+    <div>
+      <h3 class="text-2xl font-bold text-white mb-2">The ReflectivAI Difference</h3>
+      <p class="text-sm md:text-base text-indigo-100 mb-3">
+        Our platform doesn’t just teach product knowledge—it transforms how your reps connect
+        with HCPs. By embedding emotional intelligence into every simulation, we help build
+        skills that drive trust, adherence, and long-term relationships.
+      </p>
+      <p class="text-sm md:text-base text-indigo-100">
+        With AI-powered coaching that feels human, compliance guardrails that protect your
+        brand, and analytics that illuminate growth opportunities, ReflectivAI delivers
+        training that actually changes behavior.
+      </p>
+    </div>
+  </div>
+</div>
+
+
+
+        <!-- Right: clean, aligned benefit column -->
+        <div>
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
+                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <div class="pt-0.5">
+                <h4 class="font-semibold text-white">Always Compliant</h4>
+                <p class="text-xs md:text-sm text-indigo-100">
+                  Label-only content with automated guardrails.
+                </p>
+              </div>
+            </li>
+
+            <li class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
+                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+              </div>
+              <div class="pt-0.5">
+                <h4 class="font-semibold text-white">Instantly Scalable</h4>
+                <p class="text-xs md:text-sm text-indigo-100">
+                  Deploy across your entire field force in days.
+                </p>
+              </div>
+            </li>
+
+            <li class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
+                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+              </div>
+              <div class="pt-0.5">
+                <h4 class="font-semibold text-white">Measurable Impact</h4>
+                <p class="text-xs md:text-sm text-indigo-100">
+                  Track EI growth and business outcomes together.
+                </p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+</section>
+  
+<!-- END: Platform Modules Section -->
+
+<!-- BEGIN: EI Coaching Section -->
+<section id="ei-coaching" class="py-16 md:py-24 bg-gray-50 border-t border-gray-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+      <h2 class="text-4xl font-extrabold text-gray-900 mb-4">EI-Driven Coaching</h2>
+      <div class="w-20 mx-auto section-separator"></div>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+        The ReflectivAI Coach evaluates every exchange through an emotional intelligence lens, measuring not just what reps say, but how effectively they connect, listen, and adapt.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-12 items-center mb-12">
+      <div>
+        <h3 class="text-2xl font-bold text-gray-900 mb-4">How the Coach Works</h3>
+        <p class="text-gray-700 mb-4">
+          Each simulation exchange is analyzed across six critical dimensions:
+          <strong>Accuracy</strong> (clinical correctness),
+          <strong>Empathy</strong> (emotional resonance),
+          <strong>Clarity</strong> (message simplicity),
+          <strong>Compliance</strong> (label adherence),
+          <strong>Discovery</strong> (uncovering needs), and
+          <strong>Objection Handling</strong> (navigating resistance).
+        </p>
+        <p class="text-gray-700 mb-4">
+          After every rep response, the Coach provides <strong>Suggested Phrasing</strong>—alternative ways to express the same idea with better tone, empathy, or precision. The <strong>What Worked / What to Improve</strong> panel breaks down strengths and growth areas, helping reps practice EI-driven conversations that build trust and drive action.
+        </p>
+        <p class="text-gray-700 mb-4">
+          This isn’t generic feedback. Every coaching moment ties back to emotional intelligence principles, teaching reps to regulate tone under pressure, listen for emotional cues, and respond with authentic empathy—all while staying compliant.
+        </p>
+      </div>
+      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+        <h4 class="text-lg font-bold text-gray-900 mb-4 text-center">EI in Practice</h4>
+        <ul class="space-y-4">
+          <li class="flex items-start">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+              <svg class="h-5 w-5 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div>
+              <h5 class="font-bold text-gray-900">Regulate Tone Under Pressure</h5>
+              <p class="text-sm text-gray-600">Learn to stay calm and confident when HCPs push back or challenge your message.</p>
+            </div>
+          </li>
+          <li class="flex items-start">
+            <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+              <svg class="h-5 w-5 text-accent-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+            </div>
+            <div>
+              <h5 class="font-bold text-gray-900">Listen for Emotional Cues</h5>
+              <p class="text-sm text-gray-600">Detect hesitation, skepticism, or interest in HCP responses and adjust your approach.</p>
+            </div>
+          </li>
+          <li class="flex items-start">
+            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+              <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+              </svg>
+            </div>
+            <div>
+              <h5 class="font-bold text-gray-900">Respond with Label-Aligned Empathy</h5>
+              <p class="text-sm text-gray-600">Show you understand HCP concerns while guiding back to approved, compliant messaging.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+        <div class="p-8 rounded-xl border border-transparent" style="background-color:#0f2747;">
+      <h3 class="text-xl font-bold text-white mb-3 text-center">
+        Real-Time, Actionable Coaching
+      </h3>
+      <p class="text-center max-w-3xl mx-auto text-indigo-100">
+        The Coach doesn’t just score you—it teaches you. With every simulation, reps build
+        muscle memory for emotionally intelligent conversations that drive trust, adherence,
+        and long-term HCP relationships.
+      </p>
+    </div>
+
+  </div>
+</section>
+<!-- END: EI Coaching Section -->
+  
+<!-- BEGIN: Performance Analytics Section -->
 <section id="analytics" class="py-16 md:py-24 text-white" style="background-color:#0f2747;">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-12">
       <h2 class="text-4xl font-extrabold mb-4">Performance Analytics & Coaching Intelligence</h2>
       <div class="w-20 mx-auto section-separator" style="background-color:white"></div>
       <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes.</p>
+      <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with EI-driven metrics.</p>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
@@ -342,39 +765,82 @@
 <section id="ethics" class="py-16 md:py-24 bg-gray-50 border-t border-gray-200">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-12">
-      <h2 class="text-4xl font-extrabold text-gray-900 mb-4">Ethics, Privacy & Governance</h2>
+      <h2 class="text-4xl font-extrabold text-gray-900 mb-4">Ethics, Privacy &amp; Governance</h2>
       <div class="w-20 mx-auto section-separator"></div>
-      <p class="text-xl text-gray-600 max-w-3xl mx-auto">Compliance and responsible AI built for the rigors of life-sciences training.</p>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+        Compliance and responsible AI built for the rigors of life-sciences training.
+      </p>
     </div>
+
     <div class="grid md:grid-cols-2 gap-6">
+
+      <!-- Data Privacy & Security -->
       <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
         <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-teal mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          Data Privacy & Security
+          <svg xmlns="http://www.w3.org/2000/svg"
+               class="h-6 w-6 text-accent-teal mr-2"
+               viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          Data Privacy &amp; Security
         </h4>
-        <p class="text-gray-600 text-sm">PHI is off by default; when enabled, BAA, encryption, and RBAC apply.</p>
+        <p class="text-gray-600 text-sm">
+          PHI is off by default; when enabled, BAA, encryption, and RBAC apply.
+        </p>
       </div>
+
+      <!-- Algorithmic Bias & Fairness -->
       <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
         <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-teal mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
-          Algorithmic Bias & Fairness
+          <svg xmlns="http://www.w3.org/2000/svg"
+               class="h-6 w-6 text-accent-teal mr-2"
+               viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 6v6l4 2"></path>
+          </svg>
+          Algorithmic Bias &amp; Fairness
         </h4>
-        <p class="text-gray-600 text-sm">Pre-deployment bias testing with monitoring and remediation steps.</p>
+        <p class="text-gray-600 text-sm">
+          Pre-deployment bias testing with monitoring and remediation steps.
+        </p>
       </div>
-      <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
-        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center>
-          <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6 text-accent-teal mr-2' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><line x1='12' y1='1' x2='12' y2='23'></line><path d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'></path></svg>
-          Transparency & Explainability
-        </h4>
-        <p class="text-gray-600 text-sm">Reason codes in-product; model cards document limits and cadence.</p>
-      </div>
+
+      <!-- Transparency & Explainability -->
       <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
         <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-teal mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9l6-6M20 6l-6 6M10 20l-6-6M4 14l6 6"></path></svg>
-          Human Oversight & Accountability
+          <svg xmlns="http://www.w3.org/2000/svg"
+               class="h-6 w-6 text-accent-teal mr-2"
+               viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+          Transparency &amp; Explainability
         </h4>
-        <p class="text-gray-600 text-sm">Curated scenarios; MLR versioning for full traceability.</p>
+        <p class="text-gray-600 text-sm">
+          Reason codes in-product; model cards document limits and cadence.
+        </p>
       </div>
+
+      <!-- Human Oversight & Accountability -->
+      <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
+        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg"
+               class="h-6 w-6 text-accent-teal mr-2"
+               viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2">
+            <path d="M14 9l6-6M20 6l-6 6M10 20l-6-6M4 14l6 6"></path>
+          </svg>
+          Human Oversight &amp; Accountability
+        </h4>
+        <p class="text-gray-600 text-sm">
+          Curated scenarios; MLR versioning for full traceability.
+        </p>
+      </div>
+
     </div>
   </div>
 </section>
@@ -471,15 +937,108 @@
   onReady(()=>{
 
     /* ---------- Generic modal controls ---------- */
-    function openModal(sel){const el=document.querySelector(sel);if(el){el.classList.add('open');el.setAttribute('aria-hidden','false');}}
-    function closeModal(sel){const el=document.querySelector(sel);if(el){el.classList.remove('open');el.setAttribute('aria-hidden','true');}}
+    function openModal(sel){
+      const el=document.querySelector(sel);
+      if(!el) return;
+      el.classList.add('open');
+      el.setAttribute('aria-hidden','false');
+
+      // Reset coach modal position on each open so it recenters
+      if(sel==='#coachModal'){
+        const box=el.querySelector('.modal-box');
+        if(box){
+          box.style.position='';
+          box.style.margin='';
+          box.style.top='';
+          box.style.left='';
+          box.style.transform='';
+        }
+      }
+    }
+    function closeModal(sel){
+      const el=document.querySelector(sel);
+      if(el){
+        el.classList.remove('open');
+        el.setAttribute('aria-hidden','true');
+      }
+    }
     window.openModal = openModal; // expose for About EI link
-    document.querySelectorAll('.modal-close').forEach(b=>b.addEventListener('click',()=>closeModal(b.getAttribute('data-close'))));
-    document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)}));
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));});
+
+    document.querySelectorAll('.modal-close').forEach(b=>
+      b.addEventListener('click',()=>closeModal(b.getAttribute('data-close')))
+    );
+    document.querySelectorAll('.modal').forEach(m=>
+      m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)})
+    );
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape')
+        document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));
+    });
+
+    /* ---------- Coach modal drag (mouse) ---------- */
+    (function(){
+      const coachModal=document.getElementById('coachModal');
+      if(!coachModal) return;
+      const box=coachModal.querySelector('.modal-box');
+      const head=coachModal.querySelector('.modal-head');
+      if(!box || !head) return;
+
+      let dragging=false, offsetX=0, offsetY=0;
+
+      function moveAt(clientX,clientY){
+        const padding=12;
+        const w=box.offsetWidth;
+        const h=box.offsetHeight;
+        let x=clientX-offsetX;
+        let y=clientY-offsetY;
+        const maxX=window.innerWidth-padding-w;
+        const maxY=window.innerHeight-padding-h;
+        if(x<padding) x=padding;
+        if(y<padding) y=padding;
+        if(x>maxX) x=maxX;
+        if(y>maxY) y=maxY;
+        box.style.left=x+'px';
+        box.style.top=y+'px';
+      }
+
+      function onMouseMove(e){
+        if(!dragging) return;
+        moveAt(e.clientX,e.clientY);
+      }
+
+      function onMouseUp(){
+        dragging=false;
+        document.removeEventListener('mousemove',onMouseMove);
+        document.removeEventListener('mouseup',onMouseUp);
+      }
+
+      function onMouseDown(e){
+        if(e.button!==0) return;
+        // Don't start drag from the Close button
+        if(e.target.closest('.modal-close')) return;
+
+        dragging=true;
+        const rect=box.getBoundingClientRect();
+        offsetX=e.clientX-rect.left;
+        offsetY=e.clientY-rect.top;
+
+        box.style.position='absolute';
+        box.style.margin='0';
+        box.style.transform='none';
+
+        moveAt(e.clientX,e.clientY);
+        document.addEventListener('mousemove',onMouseMove);
+        document.addEventListener('mouseup',onMouseUp);
+      }
+
+      head.addEventListener('mousedown',onMouseDown);
+    })();
 
     /* ---------- Coach trigger ---------- */
-    document.getElementById('openCoach')?.addEventListener('click',e=>{e.preventDefault();openModal('#coachModal')});
+    document.getElementById('openCoach')?.addEventListener('click',e=>{
+      e.preventDefault();
+      openModal('#coachModal');
+    });
 
     /* ---------- Pill modal wiring ---------- */
     (function(){
