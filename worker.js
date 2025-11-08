@@ -26,13 +26,14 @@ export default {
         return new Response(null, { status: 204, headers: cors(env, req) });
       }
 
-      if (url.pathname === "/health" && req.method === "GET") {
-        return new Response("ok", { status: 200, headers: cors(env, req) });
-      }
-      if (url.pathname === "/version" && req.method === "GET") {
-        return json({ version: "r10.1" }, 200, env, req);
-      }
-
+      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
+  // For HEAD, no body is needed
+  const body = req.method === "GET" ? "ok" : null;
+  return new Response(body, { status: 200, headers: cors(env, req) });
+}
+      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
+  return new Response(null, { status: 200, headers: cors(env, req) });
+}
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
       if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
       if (url.pathname === "/chat"  && req.method === "POST") return postChat(req, env);
