@@ -5,6 +5,8 @@
   "description": "ReflectivAI Gateway Worker",
   "main": "worker.js",
   "scripts": {
-    "test": "node worker.test.js"
+    "test": "node worker.test.js",
+    "test:cors": "node worker.cors.test.js",
+    "test:all": "node worker.cors.test.js && node worker.test.js"
   }
 }
