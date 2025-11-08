@@ -219,26 +219,9 @@
 
   // ---------- interactions ----------
   function onModeChange(e) {
-    const workflowKey = e.target.value || null;
-    state.workflowMode = workflowKey;
-    
-    // Determine backend mode(s) from workflow selection
-    const workflow = WORKFLOW_MODES.find(w => w.key === workflowKey);
-    if (!workflow) {
-      state.backendMode = null;
-      return;
-    }
-    
-    // For single backend mode workflows
-    if (workflow.backendMode) {
-      state.backendMode = workflow.backendMode;
-    } else {
-      // For EI & PK workflow, default to EI mode
-      state.backendMode = BACKEND_MODES.EMOTIONAL_ASSESSMENT;
-      state.eiPkSubMode = "ei";
-    }
+    state.mode = e.target.value || null;
 
-    // fresh session per workflow change
+    // fresh session per mode
     state.sessionId = `${Date.now()}`;
     const chat = qs("#chat"); if (chat) chat.innerHTML = "";
 
@@ -248,8 +231,26 @@
 
     host.innerHTML = "";
 
-    // Sales Coach & Call Prep workflow
-    if (workflowKey === "sales-coach") {
+    if (state.mode === "emotional-intelligence") {
+      host.appendChild(field("EI Profile", select("eiProfile", [
+        { value: "", label: "Select EI Profile" },
+        ...EI_PROFILES.map(x => ({ value: x.key, label: x.label }))
+      ])));
+      host.appendChild(field("EI Feature", select("eiFeature", [
+        { value: "", label: "Select EI Feature" },
+        ...EI_FEATURES.map(x => ({ value: x.key, label: x.label }))
+      ])));
+      host.appendChild(toggleScoring(true)); // ON by default, can be toggled off
+      qs('select[name="eiProfile"]')?.addEventListener("change",
+        (ev) => { state.eiProfile = ev.target.value || null; });
+      qs('select[name="eiFeature"]')?.addEventListener("change",
+        (ev) => { state.eiFeature = ev.target.value || null; });
+      preloadHeaders(
+        "HCP Background: Time-pressured; direct; workflow sensitive.",
+        "Key Takeaways: Lead with relevance; ask one barrier question."
+      );
+
+    } else if (state.mode === "product-knowledge" || state.mode === "sales-simulation") {
       host.appendChild(field("Disease State", select("disease", [
         { value: "",           label: "Select Disease" },
         { value: "oncology",   label: "Oncology" },
@@ -259,7 +260,7 @@
         { value: "hepb",       label: "Hepatitis B" },
         { value: "cardiology", label: "Cardiology" }
       ])));
-      host.appendChild(field("HCP Persona", select("hcp", [
+      host.appendChild(field("HCP Profile", select("hcp", [
         { value: "",    label: "Select HCP" },
         { value: "im",  label: "Internal Medicine MD" },
         { value: "np",  label: "Nurse Practitioner (NP)" },
@@ -269,93 +270,24 @@
         { value: "pulm",label: "Pulmonologist" },
         { value: "card",label: "Cardiologist" }
       ])));
-      
+      host.appendChild(toggleScoring(false)); // OFF by default
       qs('select[name="disease"]')?.addEventListener("change",
         (ev) => { state.disease = ev.target.value || null; });
       qs('select[name="hcp"]')?.addEventListener("change",
         (ev) => { state.hcp = ev.target.value || null; });
-      
       preloadHeaders(
-        "Sales Simulation: Practice your call preparation and delivery",
-        "Get structured coaching on clarity, compliance, and discovery"
+        "HCP Background: Evidence-focused; prior-auth burden; limited time.",
+        "Key Takeaways: Tie to guidance; ask one targeted needs question."
       );
 
-    // Role Play w/ HCP workflow
-    } else if (workflowKey === "role-play") {
-      host.appendChild(field("Disease State", select("disease", [
-        { value: "",           label: "Select Disease" },
-        { value: "oncology",   label: "Oncology" },
-        { value: "vaccines",   label: "Vaccines" },
-        { value: "hiv",        label: "HIV" },
-        { value: "pulmonology",label: "Pulmonology" },
-        { value: "hepb",       label: "Hepatitis B" },
-        { value: "cardiology", label: "Cardiology" }
-      ])));
-      host.appendChild(field("HCP Persona", select("hcp", [
-        { value: "",    label: "Select HCP" },
-        { value: "im",  label: "Internal Medicine MD" },
-        { value: "np",  label: "Nurse Practitioner (NP)" },
-        { value: "pa",  label: "Physician Assistant (PA)" },
-        { value: "id",  label: "Infectious Disease Specialist" },
-        { value: "onc", label: "Oncologist" },
-        { value: "pulm",label: "Pulmonologist" },
-        { value: "card",label: "Cardiologist" }
-      ])));
-      
-      qs('select[name="disease"]')?.addEventListener("change",
-        (ev) => { state.disease = ev.target.value || null; });
-      qs('select[name="hcp"]')?.addEventListener("change",
-        (ev) => { state.hcp = ev.target.value || null; });
-      
+    } else if (state.mode === "role-play") {
+      // Reuse PK controls, then force scoring ON
+      onModeChange({ target: { value: "product-knowledge" } });
+      state.mode = "role-play";
+      toggleScoring(true, true); // ensure ON
       preloadHeaders(
-        "Role Play: Interact directly with an HCP persona",
-        "Practice real-time conversations with realistic responses"
-      );
-
-    // EI & Product Knowledge workflow
-    } else if (workflowKey === "ei-pk") {
-      // Sub-mode selector (EI vs PK)
-      const subModeSelect = el("select", { name: "eiPkSubMode", class: "input" }, [
-        option("ei", "EI Guidance"),
-        option("pk", "Product Knowledge")
-      ]);
-      subModeSelect.addEventListener("change", (ev) => {
-        state.eiPkSubMode = ev.target.value;
-        state.backendMode = ev.target.value === "ei" 
-          ? BACKEND_MODES.EMOTIONAL_ASSESSMENT 
-          : BACKEND_MODES.PRODUCT_KNOWLEDGE;
-      });
-      host.appendChild(field("Mode", subModeSelect));
-      
-      // Disease state and HCP type (optional context)
-      host.appendChild(field("Disease State (optional)", select("disease", [
-        { value: "",           label: "Select Disease" },
-        { value: "oncology",   label: "Oncology" },
-        { value: "vaccines",   label: "Vaccines" },
-        { value: "hiv",        label: "HIV" },
-        { value: "pulmonology",label: "Pulmonology" },
-        { value: "hepb",       label: "Hepatitis B" },
-        { value: "cardiology", label: "Cardiology" }
-      ])));
-      host.appendChild(field("HCP Type (optional)", select("hcp", [
-        { value: "",    label: "Select HCP" },
-        { value: "im",  label: "Internal Medicine MD" },
-        { value: "np",  label: "Nurse Practitioner (NP)" },
-        { value: "pa",  label: "Physician Assistant (PA)" },
-        { value: "id",  label: "Infectious Disease Specialist" },
-        { value: "onc", label: "Oncologist" },
-        { value: "pulm",label: "Pulmonologist" },
-        { value: "card",label: "Cardiologist" }
-      ])));
-      
-      qs('select[name="disease"]')?.addEventListener("change",
-        (ev) => { state.disease = ev.target.value || null; });
-      qs('select[name="hcp"]')?.addEventListener("change",
-        (ev) => { state.hcp = ev.target.value || null; });
-      
-      preloadHeaders(
-        "EI & Product Knowledge: Get guidance and answers",
-        "Ask about emotional intelligence or product/label information"
+        "HCP Background: Practical, time-constrained.",
+        "Today’s Goal: Practice concise value; ask one discovery question."
       );
     }
   }
@@ -382,22 +314,13 @@
     ev.preventDefault();
     const inp = qs("#chatInput");
     const msg = (inp?.value || "").trim();
-    if (!msg || !state.backendMode) return;
+    if (!msg) return;
     inp.value = "";
     push("user", msg);
 
-    // Add to per-mode history
-    const history = state.history[state.backendMode] || [];
-    history.push({ role: "user", content: msg });
-
     try {
-      const reply = await askCoach(msg, history);
+      const reply = await askCoach(msg);
       push("bot", reply);
-      
-      // Add assistant reply to history
-      history.push({ role: "assistant", content: reply });
-      state.history[state.backendMode] = history;
-      
       if (state.scoring) updateScores();
     } catch {
       push("bot", "Temporary issue contacting the coach service.");
@@ -412,14 +335,13 @@
     chat.scrollTop = chat.scrollHeight;
   }
 
-  async function askCoach(text, history = []) {
+  async function askCoach(text) {
     const url = window.COACH_ENDPOINT || "/coach";
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        mode: state.backendMode,  // Use backend mode, not workflow mode
-        history: history.slice(-10),  // Last 10 turns for context
+        mode: state.mode,
         eiProfile: state.eiProfile,
         eiFeature: state.eiFeature,
         disease: state.disease,

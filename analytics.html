@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c2740">
+  <title>Analytics Dashboard – ReflectivAI</title>
+  <link rel="icon" href="assets/favicon.ico">
+  
+  <!-- Content Security Policy - includes Plotly CDN -->
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          img-src 'self' data:;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src  'self' https://fonts.gstatic.com;
+          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.plot.ly;
+          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+        ">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+    :root{
+      --navy:#0f2747; --navy-2:#0b3954; --teal:#20bfa9; --ink:#1e2a3a; --soft:#eef4fa;
+      --card:#ffffff; --line:#d9e3ef; --shadow:0 12px 28px rgba(12,39,64,.14);
+    }
+    body{font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:0;}
+    .container{max-width:1400px;margin:0 auto;padding:20px;}
+    .header{background:var(--navy);color:#fff;padding:20px 0;margin-bottom:40px;}
+    .chart-section{background:#fff;border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:var(--shadow);}
+    .chart-section h2{color:var(--navy);margin:0 0 20px 0;font-size:1.5rem;}
+    .chart-section p{color:#64748b;margin:0 0 16px 0;line-height:1.6;}
+    .stat-card{background:var(--soft);border-radius:12px;padding:20px;text-align:center;}
+    .stat-card .label{font-size:0.875rem;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
+    .stat-card .value{font-size:2.5rem;font-weight:800;color:var(--navy);}
+    .stat-card .trend{font-size:0.875rem;color:#10b981;margin-top:8px;}
+    .stat-card .trend.down{color:#ef4444;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:32px;}
+    .back-link{display:inline-block;padding:12px 24px;background:var(--navy);color:#fff;border-radius:8px;text-decoration:none;margin-top:20px;}
+    .back-link:hover{background:var(--navy-2);}
+    .note{background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;border-radius:8px;margin:20px 0;color:#78350f;}
+  </style>
+</head>
+<body>
+  
+  <div class="header">
+    <div class="container">
+      <h1 style="margin:0;font-size:2rem;">Analytics Dashboard</h1>
+      <p style="margin:8px 0 0 0;opacity:0.9;">Track Your Learning Progress and EI Growth</p>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <div class="note">
+      <strong>📊 NOTE:</strong> This dashboard currently displays <strong>stub data</strong> for demonstration purposes. 
+      In production, these charts will be populated with real analytics data from your coaching sessions, 
+      including actual session counts, EI scores, risk flags, and growth trajectories.
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid">
+      <div class="stat-card">
+        <div class="label">Total Sessions</div>
+        <div class="value" id="totalSessions">247</div>
+        <div class="trend">↑ 12% this month</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Avg EI Score</div>
+        <div class="value" id="avgEiScore">82</div>
+        <div class="trend">↑ +5 pts vs last month</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Risk Flags</div>
+        <div class="value" id="riskFlags">3</div>
+        <div class="trend down">↓ 60% reduction</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Active Days</div>
+        <div class="value" id="activeDays">18</div>
+        <div class="trend">↑ 22% this month</div>
+      </div>
+    </div>
+
+    <!-- Volume by Mode -->
+    <div class="chart-section">
+      <h2>Session Volume by Mode</h2>
+      <p>Distribution of your learning activities across different coaching modes.</p>
+      <div id="volumeByModeChart" style="width:100%;height:400px;"></div>
+    </div>
+
+    <!-- EI Score Trend -->
+    <div class="chart-section">
+      <h2>EI Composite Score Trend</h2>
+      <p>Your emotional intelligence composite score over the past 30 days, showing growth trajectory.</p>
+      <div id="eiScoreTrendChart" style="width:100%;height:400px;"></div>
+    </div>
+
+    <!-- EI Domain Radar -->
+    <div class="chart-section">
+      <h2>EI Domain Profile</h2>
+      <p>Current performance across six emotional intelligence domains.</p>
+      <div id="eiDomainRadarChart" style="width:100%;height:500px;"></div>
+    </div>
+
+    <!-- Risk Flags Over Time -->
+    <div class="chart-section">
+      <h2>Risk Flags Over Time</h2>
+      <p>Tracking of compliance and ethical risk flags by mode, showing improvement in off-label awareness.</p>
+      <div id="riskFlagsChart" style="width:100%;height:400px;"></div>
+    </div>
+
+    <!-- Session Activity Heatmap -->
+    <div class="chart-section">
+      <h2>Weekly Activity Pattern</h2>
+      <p>Your engagement pattern throughout the week helps identify optimal learning times.</p>
+      <div id="activityHeatmapChart" style="width:100%;height:350px;"></div>
+    </div>
+
+    <!-- Back Link -->
+    <div style="text-align:center;margin-top:40px;">
+      <a href="index.html" class="back-link">← Back to ReflectivAI Coach</a>
+    </div>
+
+  </div>
+
+  <script>
+    // NOTE: Stub data layer – Replace with real analytics feed when available.
+    // In production, this would:
+    // 1. Fetch data from an analytics API endpoint
+    // 2. Read from browser storage (sessionStorage/localStorage)
+    // 3. Query a KV store or database with user session data
+    
+    // STUB DATA: Volume by Mode
+    const volumeData = [{
+      x: ['Sales Coach & Call Prep', 'Role Play w/ HCP', 'EI & Product Knowledge'],
+      y: [98, 87, 62],
+      type: 'bar',
+      marker: {
+        color: ['#0f2747', '#20bfa9', '#3b82f6']
+      },
+      text: ['98 sessions', '87 sessions', '62 sessions'],
+      textposition: 'outside'
+    }];
+    
+    const volumeLayout = {
+      title: '',
+      xaxis: { title: 'Mode' },
+      yaxis: { title: 'Number of Sessions' },
+      font: { family: 'Inter, sans-serif' },
+      paper_bgcolor: '#ffffff',
+      plot_bgcolor: '#f8fafc',
+      margin: { l: 60, r: 30, t: 30, b: 100 }
+    };
+    
+    Plotly.newPlot('volumeByModeChart', volumeData, volumeLayout, {responsive: true});
+
+    // STUB DATA: EI Score Trend (Last 30 Days)
+    const dates = [];
+    const scores = [];
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      dates.push(date.toISOString().split('T')[0]);
+      // Simulate gradual improvement with some variance
+      scores.push(Math.min(95, 70 + (29 - i) * 0.5 + Math.random() * 5));
+    }
+    
+    const eiTrendData = [{
+      x: dates,
+      y: scores,
+      type: 'scatter',
+      mode: 'lines+markers',
+      line: { color: '#20bfa9', width: 3 },
+      marker: { size: 6, color: '#0f2747' },
+      fill: 'tozeroy',
+      fillcolor: 'rgba(32, 191, 169, 0.1)'
+    }];
+    
+    const eiTrendLayout = {
+      title: '',
+      xaxis: { title: 'Date' },
+      yaxis: { title: 'EI Composite Score', range: [0, 100] },
+      font: { family: 'Inter, sans-serif' },
+      paper_bgcolor: '#ffffff',
+      plot_bgcolor: '#f8fafc',
+      margin: { l: 60, r: 30, t: 30, b: 80 }
+    };
+    
+    Plotly.newPlot('eiScoreTrendChart', eiTrendData, eiTrendLayout, {responsive: true});
+
+    // STUB DATA: EI Domain Radar Chart
+    const eiDomainData = [{
+      type: 'scatterpolar',
+      r: [85, 78, 92, 88, 76, 82],
+      theta: ['Empathy', 'Self-Regulation', 'Clarity', 'Compliance', 'Self-Awareness', 'Social Skills'],
+      fill: 'toself',
+      fillcolor: 'rgba(32, 191, 169, 0.2)',
+      line: { color: '#20bfa9', width: 2 },
+      marker: { size: 8, color: '#0f2747' }
+    }];
+    
+    const eiDomainLayout = {
+      polar: {
+        radialaxis: {
+          visible: true,
+          range: [0, 100]
+        }
+      },
+      font: { family: 'Inter, sans-serif' },
+      paper_bgcolor: '#ffffff',
+      margin: { l: 80, r: 80, t: 40, b: 40 }
+    };
+    
+    Plotly.newPlot('eiDomainRadarChart', eiDomainData, eiDomainLayout, {responsive: true});
+
+    // STUB DATA: Risk Flags Over Time
+    const riskDates = [];
+    const salesRiskFlags = [];
+    const rolePlayRiskFlags = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i * 3); // Every 3 days
+      riskDates.push(date.toISOString().split('T')[0]);
+      // Simulate declining risk flags over time
+      salesRiskFlags.push(Math.max(0, Math.floor(5 - i * 0.4 + Math.random() * 2)));
+      rolePlayRiskFlags.push(Math.max(0, Math.floor(3 - i * 0.25 + Math.random() * 1.5)));
+    }
+    
+    const riskFlagsData = [
+      {
+        x: riskDates,
+        y: salesRiskFlags,
+        name: 'Sales Coach & Call Prep',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#ef4444', width: 2 },
+        marker: { size: 7 }
+      },
+      {
+        x: riskDates,
+        y: rolePlayRiskFlags,
+        name: 'Role Play w/ HCP',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#f59e0b', width: 2 },
+        marker: { size: 7 }
+      }
+    ];
+    
+    const riskFlagsLayout = {
+      title: '',
+      xaxis: { title: 'Date' },
+      yaxis: { title: 'Number of Risk Flags' },
+      font: { family: 'Inter, sans-serif' },
+      paper_bgcolor: '#ffffff',
+      plot_bgcolor: '#f8fafc',
+      margin: { l: 60, r: 30, t: 30, b: 80 },
+      showlegend: true,
+      legend: { x: 0.02, y: 0.98 }
+    };
+    
+    Plotly.newPlot('riskFlagsChart', riskFlagsData, riskFlagsLayout, {responsive: true});
+
+    // STUB DATA: Weekly Activity Heatmap
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    const activityMatrix = [
+      [5, 8, 12, 10, 7, 2, 1],
+      [7, 10, 15, 13, 9, 3, 2],
+      [6, 9, 14, 12, 8, 4, 2],
+      [8, 11, 16, 14, 10, 3, 1]
+    ];
+    
+    const heatmapData = [{
+      z: activityMatrix,
+      x: days,
+      y: weeks,
+      type: 'heatmap',
+      colorscale: [
+        [0, '#f8fafc'],
+        [0.2, '#dbeafe'],
+        [0.4, '#93c5fd'],
+        [0.6, '#3b82f6'],
+        [0.8, '#1e40af'],
+        [1, '#0f2747']
+      ],
+      showscale: true,
+      colorbar: {
+        title: 'Sessions',
+        titleside: 'right'
+      }
+    }];
+    
+    const heatmapLayout = {
+      title: '',
+      xaxis: { title: 'Day of Week', side: 'bottom' },
+      yaxis: { title: '' },
+      font: { family: 'Inter, sans-serif' },
+      paper_bgcolor: '#ffffff',
+      margin: { l: 80, r: 80, t: 30, b: 60 }
+    };
+    
+    Plotly.newPlot('activityHeatmapChart', heatmapData, heatmapLayout, {responsive: true});
+    
+    // NOTE: In production, replace all stub data above with real API calls:
+    // Example:
+    // fetch('/api/analytics/volume-by-mode')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     Plotly.newPlot('volumeByModeChart', data.traces, data.layout, {responsive: true});
+    //   });
+  </script>
+</body>
+</html>

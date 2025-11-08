@@ -344,6 +344,7 @@ async function postChat(req, env) {
   }
 
   // Provider prompts
+  // Provider prompts with format hardening
   const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
   const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
 
@@ -359,19 +360,73 @@ Return exactly two parts. No code blocks or headings.
 
 Use only the Facts IDs provided when making claims.`.trim();
 
-  const sys = (mode === "role-play")
-    ? [
-        `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        `Speak concisely.`
-      ].join("\n")
-    : [
-        `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        commonContract
-      ].join("\n");
+  // Enhanced prompts for format hardening
+  const salesSimPrompt = [
+    `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
+    `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+    `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+    ``,
+    `CRITICAL FORMAT REQUIREMENTS:`,
+    `- Use ONLY these section headings: "Coach Guidance", "Next-Move Planner", "Risk Flags", "Suggested Phrasing", "Rubric JSON"`,
+    `- Bullets are ONLY allowed inside Coach Guidance section`,
+    `- "Suggested Phrasing:" must be followed by ONE complete sentence, NO bullets`,
+    `- Always end responses with proper punctuation (. ! ?)`,
+    `- Keep total response under 900 words`,
+    ``,
+    commonContract
+  ].join("\n");
+
+  const rolePlayPrompt = [
+    `You are the HCP. CRITICAL: First-person only. No coaching. NEVER use lists, bullets, or numbered items.`,
+    `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+    `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+    ``,
+    `SPEAKING RULES:`,
+    `- Respond with 1-3 natural sentences ONLY`,
+    `- Plain conversational text - no markup, no lists, no labels like "Suggested Phrasing:"`,
+    `- NO bullets (•), NO numbers (1.), NO dashes at line starts`,
+    `- Speak as the HCP persona would speak in real life`,
+    `- Always end with proper punctuation`,
+    `- Stay in character - you are NOT providing coaching feedback`
+  ].join("\n");
+
+  const eiPrompt = [
+    `You are the ReflectivAI EI Coach. Focus on emotional intelligence guidance.`,
+    `Disease: ${disease || "—"}; HCP Type: ${persona || "—"}.`,
+    `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+    ``,
+    `Provide concise EI guidance (max 300 words):`,
+    `- Use clear, short paragraphs`,
+    `- Include 1-2 Socratic questions to build metacognition`,
+    `- Reference Triple-Loop Reflection when relevant`,
+    `- Always end with proper punctuation`
+  ].join("\n");
+
+  const pkPrompt = [
+    `You are the ReflectivAI Product Knowledge Expert. Answer label-safe questions accurately.`,
+    `Disease: ${disease || "—"}; HCP Type: ${persona || "—"}.`,
+    `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+    ``,
+    `Provide accurate, concise answers (max 250 words):`,
+    `- Use clear, short paragraphs`,
+    `- Cite fact IDs when making claims`,
+    `- Stay label-aligned and compliant`,
+    `- Always end with proper punctuation`
+  ].join("\n");
+
+  // Select prompt based on mode
+  let sys;
+  if (mode === "role-play") {
+    sys = rolePlayPrompt;
+  } else if (mode === "sales-simulation") {
+    sys = salesSimPrompt;
+  } else if (mode === "emotional-assessment") {
+    sys = eiPrompt;
+  } else if (mode === "product-knowledge") {
+    sys = pkPrompt;
+  } else {
+    sys = salesSimPrompt; // default fallback
+  }
 
   const messages = [
     { role: "system", content: sys },
@@ -379,12 +434,26 @@ Use only the Facts IDs provided when making claims.`.trim();
     { role: "user", content: String(user || "") }
   ];
 
-  // Provider call with retry
+  // Provider call with retry and mode-specific token allocation
   let raw = "";
   for (let i = 0; i < 3; i++) {
     try {
+      // Token allocation prioritization
+      let maxTokens;
+      if (mode === "sales-simulation") {
+        maxTokens = 1400; // Higher for comprehensive coaching
+      } else if (mode === "role-play") {
+        maxTokens = 1200; // Higher for natural conversation flow
+      } else if (mode === "emotional-assessment") {
+        maxTokens = 800; // Moderate for focused EI guidance
+      } else if (mode === "product-knowledge") {
+        maxTokens = 700; // Concise for direct answers
+      } else {
+        maxTokens = 900; // Default
+      }
+      
       raw = await providerChat(env, messages, {
-        maxTokens: mode === "sales-simulation" ? 1200 : 900,
+        maxTokens,
         temperature: 0.2
       });
       if (raw) break;
@@ -397,6 +466,35 @@ Use only the Facts IDs provided when making claims.`.trim();
   // Extract coach and clean text
   const { coach, clean } = extractCoach(raw);
   let reply = clean;
+
+  // Post-processing: Strip unwanted formatting for role-play mode
+  if (mode === "role-play") {
+    // Remove bullet points, numbered lists, and stray labels
+    reply = reply
+      .replace(/^[\s]*[•\-\*]\s+/gm, '')  // Remove bullets at line starts
+      .replace(/^[\s]*\d+\.\s+/gm, '')     // Remove numbered lists
+      .replace(/^[\s]*Suggested Phrasing:\s*/gmi, '')  // Remove "Suggested Phrasing:" labels
+      .replace(/^[\s]*Coach Guidance:\s*/gmi, '')      // Remove any leaked coach headings
+      .replace(/^[\s]*Next-Move Planner:\s*/gmi, '')
+      .replace(/^[\s]*Risk Flags:\s*/gmi, '')
+      .trim();
+    
+    // Ensure it's truly conversational - if multiple paragraphs, keep only first 2-3 sentences
+    const sentences = reply.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    if (sentences.length > 3) {
+      reply = sentences.slice(0, 3).join('. ') + '.';
+    }
+  }
+
+  // Post-processing: Normalize headings for sales-simulation mode
+  if (mode === "sales-simulation") {
+    reply = reply
+      .replace(/Coach guidance:/gi, 'Coach Guidance:')
+      .replace(/Next move planner:/gi, 'Next-Move Planner:')
+      .replace(/Risk flags:/gi, 'Risk Flags:')
+      .replace(/Suggested phrasing:/gi, 'Suggested Phrasing:')
+      .replace(/Rubric json:/gi, 'Rubric JSON:');
+  }
 
   // Mid-sentence cut-off guard + one-pass auto-continue
   const cutOff = (t) => {
