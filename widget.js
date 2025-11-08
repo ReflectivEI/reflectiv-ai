@@ -94,7 +94,7 @@
   const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
 
   // ---------- Performance telemetry ----------
-  let debugMode = false;
+  let debugMode = true;
   let telemetryFooter = null;
   let currentTelemetry = null;
   const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
