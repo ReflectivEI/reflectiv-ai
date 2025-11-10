@@ -22,7 +22,7 @@ MAX_CHARS_CONTEXT = "12000"
 RESPONSE_TTL_SECONDS = "86400"
 
 # CORS Origins - All allowed domains
-CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com"
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,http://localhost:8000,http://127.0.0.1:8000"
 
 # Rate limiting configuration
 RATELIMIT_RATE = "10"

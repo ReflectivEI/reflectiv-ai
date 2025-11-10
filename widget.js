@@ -651,6 +651,82 @@
     return String(text).replace(/\bMy\s*Approach\b/gi, "Rep Approach");
   }
 
+  /**
+   * formatSalesSimulationReply - Format sales-simulation responses with proper structure
+   * Expected format:
+   * Challenge: [text]
+   * 
+   * Rep Approach:
+   * • [bullet]
+   * • [bullet]
+   * 
+   * Impact: [text]
+   * 
+   * Suggested Phrasing: "[text]"
+   */
+  function formatSalesSimulationReply(text) {
+    if (!text) return "";
+    
+    let html = "";
+    const sections = [];
+    
+    // Split by major sections
+    const challengeMatch = text.match(/Challenge:\s*(.+?)(?=\n\s*Rep Approach:|$)/is);
+    const repApproachMatch = text.match(/Rep Approach:\s*(.+?)(?=\n\s*Impact:|$)/is);
+    const impactMatch = text.match(/Impact:\s*(.+?)(?=\n\s*Suggested Phrasing:|$)/is);
+    const phrasingMatch = text.match(/Suggested Phrasing:\s*(.+?)(?=\n\s*<coach>|$)/is);
+    
+    // Challenge section
+    if (challengeMatch) {
+      const challengeText = challengeMatch[1].trim();
+      html += `<div class="sales-sim-section">`;
+      html += `<div class="section-header"><strong>Challenge:</strong></div>`;
+      html += `<div class="section-content">${esc(challengeText)}</div>`;
+      html += `</div>\n\n`;
+    }
+    
+    // Rep Approach section
+    if (repApproachMatch) {
+      const repText = repApproachMatch[1].trim();
+      html += `<div class="sales-sim-section">`;
+      html += `<div class="section-header"><strong>Rep Approach:</strong></div>`;
+      html += `<ul class="section-bullets">`;
+      
+      // Extract bullets
+      const bullets = repText.split(/\n/).map(line => {
+        // Remove bullet markers (•, *, -, etc.)
+        return line.trim().replace(/^[•\*\-\+]\s*/, '');
+      }).filter(line => line.length > 0);
+      
+      bullets.forEach(bullet => {
+        html += `<li>${esc(bullet)}</li>`;
+      });
+      
+      html += `</ul>`;
+      html += `</div>\n\n`;
+    }
+    
+    // Impact section
+    if (impactMatch) {
+      const impactText = impactMatch[1].trim();
+      html += `<div class="sales-sim-section">`;
+      html += `<div class="section-header"><strong>Impact:</strong></div>`;
+      html += `<div class="section-content">${esc(impactText)}</div>`;
+      html += `</div>\n\n`;
+    }
+    
+    // Suggested Phrasing section
+    if (phrasingMatch) {
+      const phrasingText = phrasingMatch[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
+      html += `<div class="sales-sim-section">`;
+      html += `<div class="section-header"><strong>Suggested Phrasing:</strong></div>`;
+      html += `<div class="section-quote">"${esc(phrasingText)}"</div>`;
+      html += `</div>`;
+    }
+    
+    return html || md(text); // Fallback to regular markdown if parsing fails
+  }
+
   function md(text) {
     if (!text) return "";
     let s = esc(String(text)).replace(/\r\n?/g, "\n");
@@ -816,7 +892,8 @@
       if (labeled) {
         return { coach: normalizeCoachData(labeled), clean: sanitizeLLM(head) };
       }
-      return { coach: null, clean: sanitizeLLM(head) };
+      // Fallback: Return raw block text as feedback field
+      return { coach: { feedback: block.trim() }, clean: sanitizeLLM(head) };
     }
 
     let depth = 0, end = -1;
@@ -842,6 +919,9 @@
       const labeled = parseLabeledText(block);
       if (labeled) {
         coach = normalizeCoachData(labeled);
+      } else {
+        // Last resort: Return raw block text as feedback
+        coach = { feedback: block.trim() };
       }
     }
     const after = closeIdx >= 0 ? tail.slice(closeIdx + "</coach>".length) : "";
@@ -1505,7 +1585,14 @@ ${COMMON}`
 
         const body = el("div");
         const normalized = normalizeGuidanceLabels(m.content);
-        body.innerHTML = md(normalized);
+        
+        // Use special formatting for sales-simulation mode
+        if (currentMode === "sales-simulation" && m.role === "assistant") {
+          body.innerHTML = formatSalesSimulationReply(normalized);
+        } else {
+          body.innerHTML = md(normalized);
+        }
+        
         c.appendChild(body);
 
         row.appendChild(c);
@@ -1576,19 +1663,34 @@ ${COMMON}`
         
         // Fallback to old yellow panel HTML if no EI data
         const oldYellowHTML = (() => {
-          const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-          const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-          const phrasingStr = fb.phrasing || "—";
-          return `
-          <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
-          <ul class="coach-list">
-            <li><strong>Focus:</strong> ${workedStr}</li>
-            <li><strong>Strategy:</strong> ${improveStr}</li>
-            <li><strong>Suggested Phrasing:</strong>
-              <div class="mono">${esc(phrasingStr)}</div>
-            </li>
-          </ul>
-          ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+          const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
+          const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
+          const phrasingStr = fb.phrasing || "";
+          
+          // If parsed fields exist, use structured format
+          if (workedStr || improveStr || phrasingStr) {
+            return `
+            <div class="coach-subs" style="display:none">${orderedPills(scores)}</div>
+            <ul class="coach-list">
+              ${workedStr ? `<li><strong>Focus:</strong> ${workedStr}</li>` : ""}
+              ${improveStr ? `<li><strong>Strategy:</strong> ${improveStr}</li>` : ""}
+              ${phrasingStr ? `<li><strong>Suggested Phrasing:</strong><div class="mono">${esc(phrasingStr)}</div></li>` : ""}
+            </ul>
+            ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+          }
+          
+          // Otherwise display raw feedback text with formatted labels
+          const rawText = fb.feedback || fb.comment || "";
+          if (rawText) {
+            const formatted = String(rawText)
+              .replace(/\n\n/g, '<br><br>')
+              .replace(/\n/g, '<br>')
+              .replace(/(Challenge:|Rep Approach:|Impact:|Suggested Phrasing:)/g, '<br><strong>$1</strong>')
+              .replace(/^<br>/, ''); // Remove leading break
+            return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div style="line-height:1.6">${formatted}</div>`;
+          }
+          
+          return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div class="muted">No coach feedback available</div>`;
         })();
 
         body.innerHTML = eiHTML || oldYellowHTML;
@@ -1599,7 +1701,10 @@ ${COMMON}`
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
       const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
       body.innerHTML = `
-        <div class="coach-score">Score: <strong>${fb.overall ?? fb.score ?? "—"}</strong>/100</div>
+        <div class="coach-score">
+          Score: <strong>${fb.overall ?? fb.score ?? "—"}</strong>/100
+          <a href="ei-scoring-guide.html" target="_blank" class="score-guide-link" title="View detailed scoring criteria">ℹ️ Scoring Guide</a>
+        </div>
         <div class="coach-subs">${orderedPills(scores)}</div>
         <ul class="coach-list">
           <li><strong>What worked:</strong> ${esc(workedStr)}</li>
