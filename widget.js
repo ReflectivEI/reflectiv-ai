@@ -1713,15 +1713,14 @@ ${COMMON}`
               sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Challenge:</strong><div style="line-height:1.6">${esc(challengeMatch[1].trim())}</div></div>`);
             }
             
-            // Extract Rep Approach with citation highlighting
+            // Extract Rep Approach
             const repMatch = text.match(/Rep Approach:\s*(.+?)(?=\s*Impact:|$)/is);
             if (repMatch) {
               const repText = repMatch[1].trim();
               const bullets = repText.split(/\s*•\s*/).filter(Boolean).map(b => {
-                const highlighted = b.trim().replace(/(\[[^\]]+\])/g, '<span style="background:#e0f2fe;padding:2px 4px;border-radius:4px;font-weight:600">$1</span>');
-                return `<li style="margin:4px 0">${highlighted}</li>`;
+                return `<li style="margin:8px 0;line-height:1.7">${esc(b.trim())}</li>`;
               }).join('');
-              sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Rep Approach:</strong><ul style="margin:0;padding-left:20px;line-height:1.6">${bullets}</ul></div>`);
+              sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Rep Approach:</strong><ul style="margin:0;padding-left:20px;line-height:1.8;list-style-type:disc">${bullets}</ul></div>`);
             }
             
             // Extract Impact
