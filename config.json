@@ -2,7 +2,7 @@
   "version": "2025-10-14",
   "schemaVersion": "coach-v2",
 
-  "model": "llama-3.1-70b-versatile",
+  "model": "llama-3.3-70b-versatile",
 
   "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
   "stream": false,
