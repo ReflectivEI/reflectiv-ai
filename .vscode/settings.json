@@ -1,0 +1,7 @@
+{
+    "debug.allowBreakpointsEverywhere": true,
+    "debug.javascript.autoAttachFilter": "always",
+    "files.autoSave": "onFocusChange",
+    "files.autoSaveWhenNoErrors": true,
+    "debug.javascript.resourceRequestOptions": {}
+}

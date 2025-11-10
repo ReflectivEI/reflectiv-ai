@@ -1,6 +1,6 @@
 # name must match your worker name in Cloudflare dashboard
 name = "my-chat-agent-v2"
-main = "worker.js"
+main = "worker-r9.js"  # Using the new r9 worker
 compatibility_date = "2024-11-12"
 workers_dev = true
 
