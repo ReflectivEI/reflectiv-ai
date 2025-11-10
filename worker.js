@@ -393,8 +393,19 @@ async function postChat(req, env) {
   let activePlan = plan;
   if (!activePlan) {
     try {
-      const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
-      activePlan = await r.json();
+      // Generate plan directly without creating a fake Request
+      const factsRes = FACTS_DB.filter(f => {
+        const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
+        return dOk;
+      });
+      const facts = factsRes.slice(0, 8);
+      
+      activePlan = {
+        planId: cryptoRandomId(),
+        mode, disease, persona, goal,
+        facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
+        fsm: FSM[mode] || FSM["sales-simulation"]
+      };
     } catch (e) {
       console.error("chat_error", { step: "plan_generation", message: e.message });
       throw new Error("plan_generation_failed");
