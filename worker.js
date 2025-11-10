@@ -58,6 +58,7 @@ export default {
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
       if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
       if (url.pathname === "/chat"  && req.method === "POST") return postChat(req, env);
+      if (url.pathname === "/coach-metrics" && req.method === "POST") return postCoachMetrics(req, env);
 
       return json({ error: "not_found" }, 404, env, req);
     } catch (e) {
@@ -557,6 +558,34 @@ Use only the Facts IDs provided when making claims.`.trim();
         message: "Chat request failed" 
       }, 400, env, req);
     }
+  }
+}
+
+/* -------------------------- /coach-metrics --------------------------------- */
+async function postCoachMetrics(req, env) {
+  try {
+    const body = await readJson(req);
+    
+    // Log the metrics (in production, you could store these in KV or send to analytics)
+    console.log("coach_metrics", {
+      ts: body.ts || Date.now(),
+      schema: body.schema || "coach-v2",
+      mode: body.mode,
+      scenarioId: body.scenarioId,
+      turn: body.turn,
+      overall: body.overall,
+      scores: body.scores
+    });
+    
+    // Return success
+    return json({ 
+      ok: true, 
+      message: "Metrics recorded",
+      timestamp: Date.now()
+    }, 200, env, req);
+  } catch (e) {
+    console.error("postCoachMetrics error:", e);
+    return json({ error: "server_error", message: "Failed to record metrics" }, 500, env, req);
   }
 }
 
