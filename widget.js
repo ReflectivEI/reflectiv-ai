@@ -68,6 +68,7 @@
   let eiHeuristics = "";
   let scenarios = [];
   let scenariosById = new Map();
+  let citationsDb = {}; // Citation reference database
 
   let currentMode = "sales-simulation";
   let currentScenarioId = null;
@@ -187,6 +188,44 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+
+  // ---------- Citation Management ----------
+  /**
+   * Load citations database from citations.json
+   */
+  async function loadCitations() {
+    try {
+      const resp = await fetch('./citations.json?' + Date.now());
+      if (resp.ok) {
+        citationsDb = await resp.json();
+        console.log('[Citations] Loaded', Object.keys(citationsDb).length, 'references');
+      }
+    } catch (e) {
+      console.warn('[Citations] Failed to load citations.json:', e);
+    }
+  }
+
+  /**
+   * Convert citation codes [HIV-PREP-001] to clickable footnote links
+   * @param {string} text - Text containing citation codes
+   * @returns {string} HTML with citation codes converted to links
+   */
+  function convertCitations(text) {
+    if (!text) return text;
+    
+    // Match citation codes like [HIV-PREP-001] or [HIV-TREAT-TAF-001]
+    return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9]{3,})\]/g, (match, code) => {
+      const citation = citationsDb[code];
+      if (!citation) {
+        // Unknown code - show as-is but styled
+        return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${match}</span>`;
+      }
+      
+      // Create clickable footnote link
+      const tooltip = citation.apa || `${citation.source}, ${citation.year}`;
+      return `<a href="${citation.url}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${code.split('-').pop()}]</a>`;
+    });
+  }
 
   // ---------- Health gate ----------
   async function checkHealth() {
@@ -1718,7 +1757,8 @@ ${COMMON}`
             if (repMatch) {
               const repText = repMatch[1].trim();
               const bullets = repText.split(/\s*•\s*/).filter(Boolean).map(b => {
-                return `<li style="margin:8px 0;line-height:1.7">${esc(b.trim())}</li>`;
+                const bulletText = convertCitations(esc(b.trim()));
+                return `<li style="margin:8px 0;line-height:1.7">${bulletText}</li>`;
               }).join('');
               sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Rep Approach:</strong><ul style="margin:0;padding-left:20px;line-height:1.8;list-style-type:disc">${bullets}</ul></div>`);
             }
@@ -2456,6 +2496,19 @@ ${COMMON}`
       if (!userText) return;
       lastUserMessage = userText;
 
+      // INTELLIGENT MODE AUTO-DETECTION
+      // If user asks a general knowledge question (What/How/Why/Explain) 
+      // without HCP simulation context, auto-switch to Product Knowledge
+      const generalQuestionPatterns = /^(what|how|why|explain|tell me|describe|define|compare|list|when)/i;
+      const simulationContextWords = /(hcp|doctor|physician|clinician|rep|objection|customer|prescriber)/i;
+      
+      if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
+        // This looks like a general knowledge question - use Product Knowledge mode
+        const prevMode = currentMode;
+        currentMode = "product-knowledge";
+        console.log(`[Auto-Detect] Switched from ${prevMode} → product-knowledge for general question`);
+      }
+
       const evalRe =
         /\b(evaluate|assessment|assess|grade|score)\b.*\b(conversation|exchange|dialog|dialogue|chat)\b|\bfinal (eval|evaluation|assessment)\b/i;
       if (evalRe.test(userText)) {
@@ -2764,6 +2817,7 @@ if (norm(replyText) === norm(userText)) {
     }
 
     await loadScenarios();
+    await loadCitations(); // Load citation database
     buildUI();
     
     // Health gate: check on init

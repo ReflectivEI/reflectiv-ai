@@ -653,9 +653,9 @@ RESPONSE FORMAT (MANDATORY - MUST INCLUDE ALL 4 SECTIONS):
 Challenge: [EXACTLY ONE SENTENCE, MAX 80 CHARACTERS - State the core HCP concern or gap]
 
 Rep Approach:
-• [ACTION 1: Specific tactic based on HCP objection/question - Max 25 words]
-• [ACTION 2: Supporting strategy or data point - Max 25 words]
-• [ACTION 3: Patient-centric benefit or safety consideration - Max 25 words]
+• [ACTION 1: Specific tactic - Max 25 words - Include reference code if making clinical claim]
+• [ACTION 2: Supporting strategy - Max 25 words - Include reference code if making clinical claim]
+• [ACTION 3: Patient benefit - Max 25 words - Include reference code if making clinical claim]
 [EXACTLY 3 BULLETS - NO MORE, NO LESS]
 
 Impact: [EXACTLY ONE SENTENCE, MAX 100 CHARACTERS - Expected outcome]
@@ -664,9 +664,10 @@ Suggested Phrasing: "[MAX 2 SENTENCES, MAX 120 CHARACTERS TOTAL - Exact words re
 
 STRICT RULES:
 - Challenge: 1 sentence, 80 chars max
-- Rep Approach: EXACTLY 3 bullets, 25 words each max, MUST be specific and actionable
+- Rep Approach: EXACTLY 3 bullets, 25 words each max
 - Impact: 1 sentence, 100 chars max
 - Suggested Phrasing: 2 sentences max, 120 chars total, QUOTED
+- ANY clinical claim MUST include reference in format: [HIV-PREP-XXX] or [HIV-TREAT-XXX]
 - Use clinical language, avoid jargon
 - NO off-label language
 - NO comparative claims without data
@@ -675,9 +676,9 @@ EXAMPLE (follow this structure exactly):
 Challenge: HCP questions PrEP adherence in high-risk patients.
 
 Rep Approach:
-• Discuss CDC adherence counseling protocols for at-risk populations.
-• Highlight once-daily Descovy dosing convenience to support consistent use.
-• Address renal monitoring schedules to ensure ongoing patient safety.
+• Discuss CDC adherence counseling protocols for at-risk populations [HIV-PREP-ELIG-001].
+• Highlight once-daily Descovy dosing convenience [HIV-PREP-TAF-002].
+• Address renal monitoring schedules for safety [HIV-PREP-SAFETY-003].
 
 Impact: Addresses adherence concerns with evidence-based reassurance.
 
@@ -691,7 +692,7 @@ Then append deterministic EI scoring:
   "rubric_version":"v1.2"
 }</coach>
 
-Use ONLY Facts IDs provided. Flag any off-label language immediately.`.trim();
+CRITICAL: Use ONLY the provided Facts context when making claims. NO fabricated references or citations.`.trim();
 
   const commonContract = `
 Return exactly two parts. No code blocks or headings.
@@ -703,7 +704,7 @@ Return exactly two parts. No code blocks or headings.
   "context":{"rep_question":"...","hcp_reply":"..."}
 }</coach>
 
-Use only the Facts IDs provided when making claims.`.trim();
+CRITICAL: Base all claims on the provided Facts context. NO fabricated citations.`.trim();
 
   // Enhanced prompts for format hardening
   const salesSimPrompt = [
