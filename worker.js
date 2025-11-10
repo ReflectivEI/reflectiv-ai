@@ -1,758 +1,556 @@
+
 /**
- * Unified Cloudflare Worker — Persona-Locked Gateway (r9, GROQ-only, merged)
- * --------------------------------------------------------------------------
- * Keeps your robustness:
- *  - CORS allowlist, site detection
- *  - Rate limiting + soft serialization gate
- *  - SSE streaming with early ping
- *  - Deep health, metrics sink
- *  - Remote system/persona fetch for Tony/ReflectivAI
+ * Cloudflare Worker — ReflectivAI Gateway (r10.1)
+ * Endpoints: POST /facts, POST /plan, POST /chat, GET/HEAD /health, GET /version, GET /debug/ei
+ * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
- * Adds hard guarantees:
- *  - KV session + monotonic seq (server-enforced)
- *  - Per-mode thread isolation (session_id:mode:thread_id)
- *  - Fixed mode anchors + leak guard on every call
- *  - XML role schema validation; leak firewall
- *  - GROQ-only with deterministic key rotation
- *  - /agent and /evaluate endpoints; /chat adapter for back-compat
+ * KV namespaces (optional):
+ *  - SESS : per-session state (last replies, FSM state)
  *
- * REQUIRED BINDINGS (wrangler.toml):
- *  [[kv_namespaces]]
- *  binding = "SESS"
- *
- *  [vars]
- *  PROVIDER_URL          = "https://api.groq.com/openai/v1/chat/completions"
- *  PROVIDER_MODEL_HCP    = "llama-3.1-70b-versatile"
- *  PROVIDER_MODEL_COACH  = "llama-3.1-70b-versatile"
- *  PROVIDER_SIG          = "groq:llama-3.1-70b-versatile"
- *  MAX_CHARS_CONTEXT     = "12000"
- *  RESPONSE_TTL_SECONDS  = "86400"
- *  CORS_ORIGINS          = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com"
- *
- *  RATELIMIT_RATE        = "10"
- *  RATELIMIT_BURST       = "4"
- *  RATELIMIT_RATE_TONY   = "10"
- *  RATELIMIT_BURST_TONY  = "4"
- *  RATELIMIT_RATE_REFLECTIVAI  = "10"
- *  RATELIMIT_BURST_REFLECTIVAI = "4"
- *
- *  # Remote content (optional; used by /chat adapter when site=tony/reflectivai)
- *  TONY_SYSTEM_URL       = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/system.md"
- *  TONY_KB_URL           = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/about-tony.md"
- *  TONY_PERSONA_URL      = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/persona.json"
- *
- *  # Rotating GROQ keys (support both old and new names)
- *  # Secrets (set via: wrangler secret put GROQ_KEY_1)
- *  GROQ_KEY_1 / GROQ_API_KEY
- *  GROQ_KEY_2 / GROQ_API_KEY_2
- *  GROQ_KEY_3 / GROQ_API_KEY_3
+ * Required VARS:
+ *  - PROVIDER_URL    e.g., "https://api.groq.com/openai/v1/chat/completions"
+ *  - PROVIDER_MODEL  e.g., "llama-3.1-70b-versatile"
+ *  - PROVIDER_KEY    bearer key for provider
+ *  - CORS_ORIGINS    comma-separated allowlist of allowed origins
+ *                    REQUIRED VALUES (must include):
+ *                      https://reflectivei.github.io
+ *                      https://tonyabdelmalak.github.io
+ *                      https://tonyabdelmalak.com
+ *                      https://www.tonyabdelmalak.com
+ *                    Example: "https://reflectivei.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com"
+ *                    If not set, allows all origins (not recommended for production)
+ *  - REQUIRE_FACTS   "true" to require at least one fact in plan
+ *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  */
 
-/* ---------------------------- Small stdlib ---------------------------- */
+export default {
+  async fetch(req, env, ctx) {
+    try {
+      const url = new URL(req.url);
 
-var __defProp = Object.defineProperty;
-var __name = (t, v) => __defProp(t, "name", { value: v, configurable: true });
+      // CORS preflight
+      if (req.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: cors(env, req) });
+      }
 
-/* ----------------------------- Constants ----------------------------- */
+      // Health check - supports both GET and HEAD for frontend health checks
+      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
+        // HEAD requests return no body, GET returns "ok"
+        const body = req.method === "GET" ? "ok" : null;
+        return new Response(body, { status: 200, headers: cors(env, req) });
+      }
 
-const PRIMARY_MODEL = "llama-3.1-70b-versatile";
-const RETRY_STATUSES = new Set([408, 429, 500, 502, 503, 522, 524, 529]);
+      // Version endpoint
+      if (url.pathname === "/version" && req.method === "GET") {
+        return json({ version: "r10.1" }, 200, env, req);
+      }
 
-/* ----------------------------- Rate limit ---------------------------- */
+      // Debug EI endpoint - returns basic info about the worker
+      if (url.pathname === "/debug/ei" && req.method === "GET") {
+        return json({
+          worker: "ReflectivAI Gateway",
+          version: "r10.1",
+          endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"],
+          timestamp: new Date().toISOString()
+        }, 200, env, req);
+      }
 
-const _buckets = new Map(); // key -> { tokens, ts }
-function rateLimit(key, env, site) {
-  const gRate  = Number(env.RATELIMIT_RATE  || 10);
-  const gBurst = Number(env.RATELIMIT_BURST || 4);
-  const s = String(site || "tony").toUpperCase();
-  const sRate  = Number(env[`RATELIMIT_RATE_${s}`]  || gRate);
-  const sBurst = Number(env[`RATELIMIT_BURST_${s}`] || gBurst);
+      if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
+      if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
+      if (url.pathname === "/chat"  && req.method === "POST") return postChat(req, env);
 
-  const now = Date.now();
-  const b = _buckets.get(key) || { tokens: sBurst, ts: now };
-  const elapsed = (now - b.ts) / 60000;
-  b.tokens = Math.min(sBurst, b.tokens + elapsed * sRate);
-  b.ts = now;
-  if (b.tokens < 1) { _buckets.set(key, b); return { ok:false, limit:sRate, remaining:0 }; }
-  b.tokens -= 1; _buckets.set(key, b);
-  return { ok:true, limit:sRate, remaining:Math.max(0, Math.floor(b.tokens)) };
-}
-__name(rateLimit, "rateLimit");
+      return json({ error: "not_found" }, 404, env, req);
+    } catch (e) {
+      // Log the error for debugging but don't expose details to client
+      console.error("Top-level error:", e);
+      return json({ error: "server_error", message: "Internal server error" }, 500, env, req);
+    }
+  }
+};
 
-/* ------------------------------ CORS/site ---------------------------- */
+/* ------------------------- Inlined Knowledge & Rules ------------------------ */
 
-function parseAllowed(env) {
-  // Combine runtime env list and baked-in defaults
-  const raw = (env.CORS_ORIGINS || env.ALLOWED_ORIGINS || "")
+// Minimal curated facts for demo. Add more or move to KV.
+const FACTS_DB = [
+  {
+    id: "HIV-PREP-ELIG-001",
+    ta: "HIV",
+    topic: "PrEP Eligibility",
+    text: "PrEP is recommended for individuals at substantial risk of HIV. Discuss sexual and injection risk factors.",
+    cites: ["CDC PrEP 2024"]
+  },
+  {
+    id: "HIV-PREP-TAF-002",
+    ta: "HIV",
+    topic: "Descovy for PrEP",
+    text: "Descovy (emtricitabine/tenofovir alafenamide) is indicated for PrEP excluding receptive vaginal sex.",
+    cites: ["FDA Label Descovy PrEP"]
+  },
+  {
+    id: "HIV-PREP-SAFETY-003",
+    ta: "HIV",
+    topic: "Safety",
+    text: "Assess renal function before and during PrEP. Consider eGFR thresholds per label.",
+    cites: ["FDA Label Descovy", "CDC PrEP 2024"]
+  }
+];
+
+// Finite State Machines per mode
+const FSM = {
+  "sales-simulation": {
+    states: { START: { capSentences: 5, next: "COACH" }, COACH: { capSentences: 6, next: "COACH" } },
+    start: "START"
+  },
+  "role-play": {
+    states: { START: { capSentences: 4, next: "HCP" }, HCP: { capSentences: 4, next: "HCP" } },
+    start: "START"
+  }
+};
+
+// JSON Schemas (basic)
+const PLAN_SCHEMA = {
+  type: "object",
+  required: ["mode", "disease", "persona", "goal", "facts"],
+  properties: {
+    mode: { type: "string" },
+    disease: { type: "string" },
+    persona: { type: "string" },
+    goal: { type: "string" },
+    facts: {
+      type: "array",
+      minItems: 1,
+      items: { type: "object", required: ["id", "text"], properties: {
+        id: { type: "string" }, text: { type: "string" }, cites: { type: "array", items: { type: "string" } }
+      } }
+    }
+  }
+};
+
+const COACH_SCHEMA = {
+  type: "object",
+  required: ["scores"],
+  properties: {
+    overall: { type: "number" },
+    score: { type: "number" },
+    scores: { type: "object" },
+    subscores: { type: "object" },
+    worked: { type: "array" },
+    improve: { type: "array" },
+    phrasing: { type: "string" },
+    feedback: { type: "string" },
+    context: { type: "object" }
+  }
+};
+
+/* ------------------------------ Helpers ------------------------------------ */
+
+/**
+ * CORS configuration and header builder.
+ * 
+ * IMPORTANT: CORS_ORIGINS must include https://reflectivei.github.io for GitHub Pages deployment.
+ * 
+ * When an origin is allowed, we echo it back in Access-Control-Allow-Origin.
+ * When an origin is denied, we log a warning and return "null" to block the request.
+ */
+function cors(env, req) {
+  const reqOrigin = req.headers.get("Origin") || "";
+  const allowed = String(env.CORS_ORIGINS || "")
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
 
-  const defaults = [
-    "https://tonyabdelmalak.com",
-    "https://www.tonyabdelmalak.com",
-    "https://tonyabdelmalak.github.io",
-    "https://reflectivei.github.io",
-    "https://reflectivai.github.io",
-    "https://reflectivai.com",
-    "https://www.reflectivai.com",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8080",
-    "http://localhost",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:8080"
-  ];
+  // If no allowlist is configured, allow any origin
+  // If allowlist exists, check if request origin is in the list
+  const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
+  
+  // Log CORS denials for diagnostics
+  if (!isAllowed && reqOrigin) {
+    console.warn("CORS deny", { origin: reqOrigin, allowedList: allowed });
+  }
+  
+  // Determine the Access-Control-Allow-Origin value
+  let allowOrigin;
+  if (isAllowed && reqOrigin) {
+    // Specific origin is allowed and present - echo it back
+    allowOrigin = reqOrigin;
+  } else if (isAllowed && !reqOrigin) {
+    // Allowed but no origin header (e.g., same-origin or non-browser request)
+    allowOrigin = "*";
+  } else {
+    // Not allowed
+    allowOrigin = "null";
+  }
 
-  // Merge and deduplicate
-  const merged = [...new Set([...raw, ...defaults])];
-  return merged;
-}
-__name(parseAllowed, "parseAllowed");
-
-function originAllowed(origin, allowlist) {
-  if (!origin) return false;
-  if (allowlist.includes(origin)) return true;
-  try {
-    const u = new URL(origin);
-    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
-  } catch {}
-  return false;
-}
-__name(originAllowed, "originAllowed");
-
-function cors(env, origin) {
-  const allowlist = parseAllowed(env);
-  const allowOrigin = originAllowed(origin, allowlist) ? origin : undefined;
-  const base = {
-    "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+  const headers = {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };
-  if (allowOrigin) base["Access-Control-Allow-Origin"] = allowOrigin;
-  return base;
+
+  // Only set credentials header when we have a specific origin
+  // Cannot use credentials with wildcard origin (*)
+  if (allowOrigin !== "*" && allowOrigin !== "null") {
+    headers["Access-Control-Allow-Credentials"] = "true";
+  }
+
+  return headers;
 }
-__name(cors, "cors");
 
-function siteFromOrigin(origin, explicitSite) {
-  if (explicitSite === "tony" || explicitSite === "reflectivai") return explicitSite;
-  const o = (origin || "").toLowerCase();
-  if (o.includes("tonyabdelmalak.com") || o.includes("tonyabdelmalak.github.io")) return "tony";
-  if (o.includes("reflectivei.github.io") || o.includes("reflectivai.github.io") || o.includes("reflectivai.com")) return "reflectivai";
-  return "tony";
-}
-__name(siteFromOrigin, "siteFromOrigin");
-
-/* ------------------------------ Utilities ---------------------------- */
-
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-__name(sleep, "sleep");
-
-async function safeJson(req) { try { return await req.json(); } catch { return {}; } }
-__name(safeJson, "safeJson");
-
-async function safeText(r) { try { return await r.text(); } catch { return `status=${r.status}`; } }
-__name(safeText, "safeText");
-
-function json(obj, status = 200, env, origin, extraHeaders = {}) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8", ...cors(env, origin), ...extraHeaders }
+function ok(body, headers = {}) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json", ...headers }
   });
 }
-__name(json, "json");
 
-function text(s, status = 200, env, origin, extraHeaders = {}) {
-  return new Response(s, {
+function json(body, status, env, req) {
+  return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "text/plain; charset=utf-8", ...cors(env, origin), ...extraHeaders }
+    headers: { "content-type": "application/json", ...cors(env, req) }
   });
 }
-__name(text, "text");
 
-/* -------------------------- Soft serialization ------------------------ */
-
-const INFLIGHT = new Map(); // ip -> { untilTs }
-const SOFT_WAIT_MS = 900;
-function softGate(ip) {
-  const now = Date.now();
-  const g = INFLIGHT.get(ip);
-  const delay = g && g.untilTs > now ? (g.untilTs - now) : 0;
-  INFLIGHT.set(ip, { untilTs: now + SOFT_WAIT_MS });
-  return delay;
+async function readJson(req) {
+  const txt = await req.text();
+  if (!txt) return {};
+  try { return JSON.parse(txt); } catch { return {}; }
 }
-__name(softGate, "softGate");
 
-/* -------------------------- Remote memo fetch ------------------------- */
-
-class LruMemo {
-  constructor(max = 128) { this.max = max; this.map = new Map(); }
-  get(k) { const v = this.map.get(k); if (v) { this.map.delete(k); this.map.set(k, v); } return v; }
-  set(k, v) { if (this.map.has(k)) this.map.delete(k); this.map.set(k, v);
-    if (this.map.size > this.max) { const f = this.map.keys().next().value; this.map.delete(f); } }
+function capSentences(text, n) {
+  const parts = String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
+  return parts.slice(0, n).join(" ").trim();
 }
-__name(LruMemo, "LruMemo");
 
-const MEMO = new LruMemo(128);
-async function cachedText(url, ttl = 600) {
-  const key = "T:" + url;
-  const now = Date.now();
-  const hit = MEMO.get(key);
-  if (hit && now - hit.t < ttl * 1e3) return hit.v;
-  const r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(15000) });
-  if (!r.ok) throw new Error(`Fetch ${url} ${r.status}`);
-  const v = await r.text(); MEMO.set(key, { v, t: now }); return v;
+function sanitizeLLM(s) {
+  return String(s || "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/<pre[\s\S]*?<\/pre>/gi, "")
+    .replace(/^\s*#{1,6}\s+/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
-__name(cachedText, "cachedText");
 
-/* -------------------------- Persona anchors --------------------------- */
-
-function buildAnchors(mode) {
-  if (mode === 'role-play') {
-    return [
-      "[MODE=HCP_ROLE_PLAY][ONLY SPEAK AS: HCP]",
-      "Output XML exactly: <role>HCP</role><content>…</content>",
-      "Do not evaluate, score, or coach. No rubrics. No meta-commentary.",
-      "Stay in character. Concise, clinical responses."
-    ].join('\n');
+function extractCoach(raw) {
+  const s = String(raw || "");
+  const open = s.indexOf("<coach>");
+  if (open < 0) return { coach: null, clean: sanitizeLLM(s) };
+  const head = s.slice(0, open);
+  const tail = s.slice(open + 7);
+  const close = tail.indexOf("</coach>");
+  const body = close >= 0 ? tail.slice(0, close) : tail;
+  const start = body.indexOf("{");
+  if (start < 0) return { coach: null, clean: sanitizeLLM(head) };
+  let depth = 0, end = -1;
+  for (let i = start; i < body.length; i++) {
+    const ch = body[i];
+    if (ch === "{") depth++;
+    if (ch === "}") depth--;
+    if (depth === 0) { end = i; break; }
   }
-  if (mode === 'sales-simulation') {
-    return [
-      "[MODE=HCP_SALES_SIM][ONLY SPEAK AS: HCP]",
-      "Default: no rubric. Only if explicitly asked with /evaluate may you produce an evaluation.",
-      "Output XML exactly: <role>HCP</role><content>…</content>"
-    ].join('\n');
-  }
-  if (mode === 'product-knowledge') {
-    return [
-      "[MODE=PRODUCT_KNOWLEDGE]",
-      "Label-only claims. No promotional extrapolation.",
-      "Output XML: <role>PK</role><content>…</content>"
-    ].join('\n');
-  }
-  if (mode === 'emotional-assessment') {
-    return [
-      "[MODE=EI_REFLECTION]",
-      "You are an EI reflection assistant. Do not role-play an HCP.",
-      "Output XML: <role>EI</role><content>…</content>"
-    ].join('\n');
-  }
-  if (mode === 'coach') {
-    return [
-      "[MODE=COACH_FEEDBACK][ONLY SPEAK AS: COACH]",
-      "Do not role-play the HCP. Provide scores and guidance when asked.",
-      "Output XML: <role>Coach</role><content>…</content>"
-    ].join('\n');
-  }
-  return "[MODE=GENERIC]";
+  if (end < 0) return { coach: null, clean: sanitizeLLM(head) };
+  let coach = null;
+  try { coach = JSON.parse(body.slice(start, end + 1)); } catch {}
+  const after = close >= 0 ? tail.slice(close + 8) : "";
+  return { coach, clean: sanitizeLLM((head + " " + after).trim()) };
 }
 
-function leakGuardrail() {
-  return {
-    role: 'system',
-    content:
-      "HARD GUARDRAIL: If draft includes any of these, replace with the correct role response only:\n" +
-      "- 'Evaluate Rep' or rubric dimensions like 'Accuracy:' 'Compliance:' 'Discovery:' 'Objection Handling:' 'Empathy:' 'Clarity:'\n" +
-      "- Phrases like 'The representative should have…'\n" +
-      "- Any numbered scoring block\n"
-  };
-}
+async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2 } = {}) {
+  const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
+  const finalMax = cap > 0 ? Math.min(maxTokens, cap) : maxTokens;
 
-const LEAK_RE = /Evaluate Rep|Accuracy:\s*\d|Compliance:\s*\d|Discovery:\s*\d|Objection Handling:\s*\d|Empathy:\s*\d|Clarity:\s*\d|The representative should have/i;
-
-/* -------------------------- Session + threads ------------------------- */
-
-function ttl(env) {
-  const d = parseInt(env.RESPONSE_TTL_SECONDS || '86400', 10);
-  return Number.isFinite(d) ? d : 86400;
-}
-__name(ttl,"ttl");
-
-function capChars(env, requested) {
-  const def = parseInt(env.MAX_CHARS_CONTEXT || '12000', 10);
-  const max = Number.isFinite(def) ? def : 12000;
-  if (!requested || !Number.isFinite(requested)) return max;
-  return Math.max(4000, Math.min(max, requested));
-}
-__name(capChars,"capChars");
-
-function normalizeMode(mode, forceCoach = false) {
-  const m = String(mode || '').toLowerCase();
-  if (forceCoach) return 'coach';
-  if (m === 'role-play' || m === 'roleplay' || m === 'rp') return 'role-play';
-  if (m === 'sales-simulation' || m === 'sales') return 'sales-simulation';
-  if (m === 'product-knowledge' || m === 'pk') return 'product-knowledge';
-  if (m === 'emotional-assessment' || m === 'ei') return 'emotional-assessment';
-  if (m === 'coach' || m === 'evaluation' || m === 'feedback') return 'coach';
-  return 'role-play';
-}
-__name(normalizeMode,"normalizeMode");
-
-function defaultModeVersion(mode) {
-  if (mode === 'role-play') return 'rp-v2';
-  if (mode === 'coach') return 'coach-v2';
-  return 'v1';
-}
-__name(defaultModeVersion,"defaultModeVersion");
-
-function parseXMLRoleContent(t) {
-  const role = (t.match(/<role>(.*?)<\/role>/is) || [])[1]?.trim();
-  const content = (t.match(/<content>([\s\S]*?)<\/content>/i) || [])[1]?.trim();
-  return { role, content };
-}
-__name(parseXMLRoleContent,"parseXMLRoleContent");
-
-function trimChars(messages, maxChars) {
-  if (!maxChars || maxChars <= 0) return messages;
-  const keep = messages.slice(0, 2); // anchors
-  const rest = messages.slice(2);
-  let acc = keep.reduce((n, m) => n + (m.content?.length || 0), 0);
-  const out = [...keep];
-  for (let i = rest.length - 1; i >= 0; i--) {
-    const m = rest[i];
-    const len = m.content?.length || 0;
-    if (acc + len <= maxChars) { out.unshift(m); acc += len; }
-    else break;
-  }
-  return out;
-}
-__name(trimChars,"trimChars");
-
-function persistTurn(thread, lastUser, assistantBlob) {
-  const out = Array.isArray(thread) ? thread.slice() : [];
-  if (lastUser && lastUser.trim()) out.push({ role: 'user', content: lastUser.trim(), ts: Date.now() });
-  out.push({ role: 'assistant', content: assistantBlob, ts: Date.now() });
-  const MAX_TURNS = 80;
-  if (out.length > MAX_TURNS) return out.slice(out.length - MAX_TURNS);
-  return out;
-}
-__name(persistTurn,"persistTurn");
-
-function buildHistory({ anchors, thread, lastUser, clientMsgs, maxChars }) {
-  const sysA = Array.isArray(anchors) ? anchors.map(a => typeof a === 'string' ? { role: 'system', content: a } : a) : [{ role: 'system', content: String(anchors || '') }];
-  const base = [...sysA];
-
-  const turns = [];
-  for (const t of thread) {
-    if (t.role === 'user') turns.push({ role: 'user', content: t.content });
-    else if (t.role === 'assistant') turns.push({ role: 'assistant', content: t.content });
-  }
-
-  if (Array.isArray(clientMsgs) && clientMsgs.length) {
-    return trimChars([...base, ...clientMsgs], maxChars);
-  }
-
-  if (lastUser && lastUser.trim()) {
-    turns.push({ role: 'user', content: lastUser.trim() });
-  }
-
-  return trimChars([...base, ...turns], maxChars);
-}
-__name(buildHistory,"buildHistory");
-
-/* ------------------------------- GROQ ------------------------------- */
-
-function selectGroqKeys(env) {
-  // Support both naming schemes
-  const keys = [
-    env.GROQ_KEY_1, env.GROQ_KEY_2, env.GROQ_KEY_3,
-    env.GROQ_API_KEY, env.GROQ_API_KEY_2, env.GROQ_API_KEY_3
-  ].filter(Boolean);
-  return keys;
-}
-__name(selectGroqKeys,"selectGroqKeys");
-
-function selectGroqKeyDeterministic(env, seq) {
-  const keys = selectGroqKeys(env);
-  if (!keys.length) throw new Error('Missing GROQ keys');
-  const idx = Math.abs(seq || 0) % keys.length;
-  return keys[idx];
-}
-__name(selectGroqKeyDeterministic,"selectGroqKeyDeterministic");
-
-async function groqChat({ apiKey, model, temperature, top_p, messages, max_tokens }) {
-  const url = "https://api.groq.com/openai/v1/chat/completions";
-  const r = await fetch(url, {
+  const r = await fetch(env.PROVIDER_URL, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, temperature, top_p, messages, max_tokens: max_tokens ?? 1536 }),
-    signal: AbortSignal.timeout(55000)
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${env.PROVIDER_KEY}`
+    },
+    body: JSON.stringify({
+      model: env.PROVIDER_MODEL,
+      temperature,
+      max_output_tokens: finalMax,
+      messages
+    })
   });
+  if (!r.ok) throw new Error(`provider_http_${r.status}`);
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Groq ${r.status}: ${JSON.stringify(j)}`);
-  const text = j.choices?.[0]?.message?.content || "";
-  const finish_reason = j.choices?.[0]?.finish_reason || "stop";
-  return { text, model_used: model, finish_reason };
+  return j?.choices?.[0]?.message?.content || j?.content || "";
 }
-__name(groqChat,"groqChat");
 
-async function groqStream({ apiKey, model, temperature, top_p, messages, max_tokens, env, origin }) {
-  const url = "https://api.groq.com/openai/v1/chat/completions";
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, temperature, top_p, messages, stream: true, max_tokens: max_tokens ?? 1536 }),
-    signal: AbortSignal.timeout(55000)
-  });
-  if (!r.ok || !r.body || RETRY_STATUSES.has(r.status)) {
-    const detail = await r.text().catch(() => "");
-    const err = new Error(`Groq stream ${r.status}: ${detail}`);
-    err.status = r.status;
-    throw err;
-  }
-  const headers = {
-    ...cors(env, origin),
-    "Content-Type": "text/event-stream; charset=utf-8",
-    "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
-    "X-Mode": "stream"
-  };
-  const reader = r.body.getReader();
-  const stream = new ReadableStream({
-    start(controller) {
-      controller.enqueue(new TextEncoder().encode("event: ping\ndata: 1\n\n"));
-    },
-    async pull(controller) {
-      const { value, done } = await reader.read();
-      if (done) {
-        controller.enqueue(new TextEncoder().encode("event: done\ndata: [DONE]\n\n"));
-        controller.close(); return;
-      }
-      controller.enqueue(value);
-    },
-    cancel() { try { reader.cancel(); } catch {} }
-  });
-  return new Response(stream, { status: 200, headers });
+function deterministicScore({ reply, usedFactIds = [] }) {
+  const len = (reply || "").split(/\s+/).filter(Boolean).length;
+  const base = Math.max(40, Math.min(92, 100 - Math.abs(len - 110) * 0.35));
+  const factBonus = Math.min(8, usedFactIds.length * 3);
+  return Math.round(base + factBonus);
 }
-__name(groqStream,"groqStream");
 
-/* ----------------------------- Health/metrics ------------------------- */
-
-async function deepHealth(env) {
-  const out = { ok: true, groq: null, time: Date.now() };
-  const keys = selectGroqKeys(env);
-  if (keys[0]) {
-    try {
-      const r = await fetch("https://api.groq.com/openai/v1/models", {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${keys[0]}` },
-        signal: AbortSignal.timeout(5000)
-      });
-      out.groq = { ok: r.ok, status: r.status };
-    } catch (e) {
-      out.groq = { ok: false, error: String(e && e.message || e) };
-    }
-  }
-  return out;
+async function seqGet(env, session) {
+  if (!env.SESS) return { lastNorm: "", fsm: {} };
+  const k = `state:${session}`;
+  const v = await env.SESS.get(k, "json");
+  return v || { lastNorm: "", fsm: {} };
 }
-__name(deepHealth,"deepHealth");
-
-function validateCoachV2(rec){
-  if (!rec || typeof rec !== "object") return "payload not object";
-  if (!Number.isInteger(rec.ts)) return "ts missing";
-  if (!rec.schema) return "schema missing";
-  if (!rec.mode) return "mode missing";
-  if (typeof rec.overall !== "number") return "overall missing";
-  if (!rec.scores || typeof rec.scores !== "object") return "scores missing";
-  const keys = ["accuracy","empathy","clarity","compliance","discovery","objection_handling"];
-  for (const k of keys) if (!(k in rec.scores)) return `score ${k} missing`;
-  if (!rec.context || typeof rec.context !== "object") return "context missing";
-  if (typeof rec.context.rep_question !== "string") return "rep_question missing";
-  if (typeof rec.context.hcp_reply !== "string") return "hcp_reply missing";
-  return null;
+async function seqPut(env, session, state) {
+  if (!env.SESS) return;
+  await env.SESS.put(`state:${session}`, JSON.stringify(state), { expirationTtl: 60 * 60 * 12 });
 }
-__name(validateCoachV2,"validateCoachV2");
+const norm = s => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
 
-/* ----------------------------- Core handler --------------------------- */
-
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    const origin = request.headers.get("Origin") || "";
-
-    // OPTIONS
-    if (request.method === "OPTIONS") {
-      const reqHdrs = request.headers.get("Access-Control-Request-Headers") || "";
-      const h = { ...cors(env, origin) };
-      h["Access-Control-Allow-Headers"] = reqHdrs || "Content-Type, Authorization, HTTP-Referer, X-Title";
-      return new Response(null, { status: 204, headers: h });
-    }
-
-    // Health
-    if (url.pathname === "/health") {
-      if (url.searchParams.get("deep") === "1") {
-        const deep = await deepHealth(env);
-        return json(deep, 200, env, origin);
-      }
-      return json({ ok: true, time: Date.now(), groq_keys: selectGroqKeys(env).length }, 200, env, origin);
-    }
-
-    // Version
-    if (url.pathname === "/version") {
-      return json({ ok: true, version: "r9", sig: env.PROVIDER_SIG || "unset" }, 200, env, origin);
-    }
-
-    // Metrics sink (kept)
-    if (url.pathname === "/coach-metrics" && request.method === "POST") {
-      try {
-        const rec = await safeJson(request);
-        const err = validateCoachV2(rec);
-        if (err) return json({ ok:false, error:`bad_request: ${err}` }, 400, env, origin);
-        try {
-          if (env.METRICS_KV) {
-            const key = `m:${rec.ts}:${crypto.randomUUID()}`;
-            await env.METRICS_KV.put(key, JSON.stringify(rec), { expirationTtl: 60*60*24*30 });
-          }
-        } catch (_) {}
-        return json({ ok:true }, 200, env, origin);
-      } catch {
-        return json({ ok:false, error:"invalid_json" }, 400, env, origin);
-      }
-    }
-
-    // New strict endpoints
-    if ((url.pathname === "/agent" || url.pathname === "/evaluate") && request.method === "POST") {
-      const body = await safeJson(request);
-      const isEvalPath = url.pathname === "/evaluate";
-      const out = await handleAgent(body, env, origin, isEvalPath);
-      return out;
-    }
-
-    // Back-compat adapter for /chat
-    if (url.pathname === "/chat" && request.method === "POST") {
-      const ip = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
-      const gateWait = softGate(ip);
-      if (gateWait > 0) await sleep(gateWait);
-
-      const body = await safeJson(request);
-      const site = siteFromOrigin(origin, body.site);
-      const mode = typeof body.mode === "string" ? body.mode : "default";
-      const isRP = mode === "role-play";
-      const rl = rateLimit(`${ip}:${site}:${mode}`, env, site);
-      if (!rl.ok) {
-        const retry = Number(env.RATELIMIT_RETRY_AFTER || 2);
-        return json(
-          { error: "rate_limited", retry_after_sec: retry, hint: "Auto-retry is safe.", site },
-          429, env, origin,
-          { "Retry-After": String(retry), "X-RateLimit-Limit": String(rl.limit), "X-RateLimit-Remaining": String(rl.remaining) }
-        );
-      }
-
-      // Build a minimal envelope for the strict handler
-      // Try to reuse client values; generate if absent
-      const session_id = body.session_id || body.sid || crypto.randomUUID();
-      const thread_id = body.thread_id || body.tid || `chat-${site}`;
-      // seq: make monotonic server-side if missing
-      const sessKey = `sess:${session_id}`;
-      let sess = await env.SESS.get(sessKey, 'json');
-      let nextSeq = 0;
-      if (sess && Number.isInteger(sess.last_seq)) nextSeq = sess.last_seq + 1;
-
-      // Optional: preserve your remote system usage by passing through label/policy text
-      const adapted = {
-        session_id,
-        thread_id,
-        seq: Number.isInteger(body.seq) ? body.seq : nextSeq,
-        mode,
-        mode_version: body.mode_version || (isRP ? 'rp-v2' : 'v1'),
-        input: Array.isArray(body.messages) ? body.messages.at(-1)?.content || "" : "",
-        messages: Array.isArray(body.messages) ? body.messages : undefined,
-        labelText: typeof body.labelText === "string" ? body.labelText : "",
-        policyText: typeof body.policyText === "string" ? body.policyText : "",
-        stream: body.stream !== false,
-        provider_sig: body.provider_sig || (env.PROVIDER_SIG || "")
-      };
-
-      // Route to strict engine; for RP we force non-stream to validate
-      const strict = await handleAgent(adapted, env, origin, body.eval === true);
-      return strict;
-    }
-
-    return text("not found", 404, env, origin);
-  }
-};
-
-/* ---------------------------- Strict engine ---------------------------- */
-
-async function handleAgent(body, env, origin, isEvaluatePath) {
-  const {
-    session_id,
-    thread_id,
-    seq,
-    mode,
-    mode_version,
-    provider_sig,
-    temperature,
-    top_p,
-    max_context,
-    messages,     // optional legacy array
-    input,        // last user text preferred
-    stream,       // boolean
-    labelText,    // optional for site-specific content
-    policyText    // optional for site-specific content
-  } = body || {};
-
-  // Provider signature check
-  if (env.PROVIDER_SIG && provider_sig && provider_sig !== env.PROVIDER_SIG) {
-    return json({ error: 'provider_mismatch', server_sig: env.PROVIDER_SIG, client_sig: provider_sig }, 409, env, origin);
-  }
-
-  if (!session_id || !Number.isInteger(seq) || !mode) {
-    return json({ error: 'bad_request', need: ['session_id', 'seq:int', 'mode'] }, 400, env, origin);
-  }
-
-  const effectiveMode = normalizeMode(mode, isEvaluatePath);
-
-  // Session load/init
-  const sessKey = `sess:${session_id}`;
-  let sess = await env.SESS.get(sessKey, 'json');
-  const now = Date.now();
-  if (!sess) {
-    sess = { mode: effectiveMode, mode_version: mode_version || defaultModeVersion(effectiveMode), last_seq: -1, created_at: now };
-    await env.SESS.put(sessKey, JSON.stringify(sess), { expirationTtl: ttl(env) });
-  }
-
-  // Mode pin
-  if (sess.mode !== effectiveMode) {
-    return json({ error: 'mode_mismatch', server_mode: sess.mode, client_mode: effectiveMode }, 409, env, origin);
-  }
-
-  // Sequencing
-  if (seq <= sess.last_seq) {
-    return json({ error: 'stale_seq', last_seq: sess.last_seq }, 409, env, origin);
-  }
-  sess.last_seq = seq;
-  await env.SESS.put(sessKey, JSON.stringify(sess), { expirationTtl: ttl(env) });
-
-  // Thread history
-  const tId = thread_id || `auto-${effectiveMode}`;
-  const kvThreadKey = `thread:${session_id}:${effectiveMode}:${tId}`;
-  let thread = await env.SESS.get(kvThreadKey, 'json');
-  if (!Array.isArray(thread)) thread = [];
-
-  // Anchors each call
-  const sysAnchors = buildAnchors(effectiveMode);
-  const guardrail = leakGuardrail();
-
-  // Build conversation
-  const history = buildHistory({
-    anchors: [sysAnchors, guardrail,
-      ...(labelText ? [{ role:'system', content: "## Label Excerpts Provided\n" + String(labelText).slice(0, 24000) }] : []),
-      ...(policyText ? [{ role:'system', content: "## Policy Excerpts Provided\n" + String(policyText).slice(0, 16000) }] : [])
-    ],
-    thread,
-    lastUser: input,
-    clientMsgs: messages,
-    maxChars: capChars(env, max_context)
-  });
-
-  // Streaming is blocked for RP to allow validation
-  const wantStream = !!stream && effectiveMode !== 'role-play';
-
-  const model = effectiveMode === 'coach'
-    ? (env.PROVIDER_MODEL_COACH || PRIMARY_MODEL)
-    : (env.PROVIDER_MODEL_HCP || PRIMARY_MODEL);
-
-  const apiKey = selectGroqKeyDeterministic(env, seq);
-
-  // Stream path
-  if (wantStream) {
-    try {
-      const sse = await groqStream({
-        apiKey, model,
-        temperature: pickTemp(effectiveMode, temperature),
-        top_p: pickTopP(effectiveMode, top_p),
-        messages: history,
-        max_tokens: 1536,
-        env, origin
-      });
-      return sse;
-    } catch (e) {
-      return json({ error: 'provider_stream_error', detail: String(e?.message || e) }, 502, env, origin);
-    }
-  }
-
-  // Non-stream with validation
-  let result;
+/* ------------------------------ /facts ------------------------------------- */
+async function postFacts(req, env) {
   try {
-    result = await groqChat({
-      apiKey, model,
-      temperature: pickTemp(effectiveMode, temperature),
-      top_p: pickTopP(effectiveMode, top_p),
-      messages: history,
-      max_tokens: 1536
-    });
+    const { disease, topic, limit = 6 } = await readJson(req);
+    const out = FACTS_DB.filter(f => {
+      const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
+      const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
+      return dOk && tOk;
+    }).slice(0, limit);
+    return json({ facts: out }, 200, env, req);
   } catch (e) {
-    return json({ error: 'provider_error', detail: String(e?.message || e) }, 502, env, origin);
+    console.error("postFacts error:", e);
+    return json({ error: "server_error", message: "Failed to fetch facts" }, 500, env, req);
   }
+}
 
-  const raw = result.text || '';
-  const parsed = parseXMLRoleContent(raw);
+/* ------------------------------ /plan -------------------------------------- */
+async function postPlan(req, env) {
+  try {
+    const body = await readJson(req);
+    const { mode = "sales-simulation", disease = "", persona = "", goal = "", topic = "" } = body || {};
 
-  // Leak firewall
-  if (effectiveMode === 'role-play' && LEAK_RE.test(raw || '')) {
-    return json({ error: 'leak_blocked', message: 'Evaluation content blocked in role-play mode' }, 422, env, origin);
+    const factsRes = FACTS_DB.filter(f => {
+      const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
+      const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
+      return dOk && tOk;
+    });
+    const facts = factsRes.slice(0, 8);
+    if (env.REQUIRE_FACTS === "true" && facts.length === 0)
+      return json({ error: "no_facts_for_request" }, 422, env, req);
+
+    const plan = {
+      planId: cryptoRandomId(),
+      mode, disease, persona, goal,
+      facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
+      fsm: FSM[mode] || FSM["sales-simulation"]
+    };
+
+    const valid = Array.isArray(plan.facts) && plan.facts.length > 0 && typeof plan.mode === "string";
+    if (!valid) return json({ error: "invalid_plan" }, 422, env, req);
+
+    return json(plan, 200, env, req);
+  } catch (e) {
+    console.error("postPlan error:", e);
+    return json({ error: "server_error", message: "Failed to create plan" }, 500, env, req);
   }
+}
 
-  // Role/schema enforcement with one retry
-  if (effectiveMode === 'role-play' && (!parsed.role || parsed.role.toLowerCase() !== 'hcp')) {
+/* ------------------------------ /chat -------------------------------------- */
+async function postChat(req, env) {
+  try {
+    // Defensive check: ensure PROVIDER_KEY is configured
+    if (!env.PROVIDER_KEY) {
+      console.error("chat_error", { step: "config_check", message: "PROVIDER_KEY not configured" });
+      return json({ error: "server_error", message: "Provider API key not configured" }, 500, env, req);
+    }
+
+    const body = await readJson(req);
+    
+    // Handle both payload formats:
+    // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
+    // 2. Widget format: { model, temperature, messages, ... }
+    let mode, user, history, disease, persona, goal, plan, planId, session;
+    
+    if (body.messages && Array.isArray(body.messages)) {
+      // Widget is sending provider-style payload - extract user message from messages array
+      const msgs = body.messages;
+      const lastUserMsg = msgs.filter(m => m.role === "user").pop();
+      const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
+      
+      mode = body.mode || "sales-simulation";
+      user = lastUserMsg?.content || "";
+      history = historyMsgs;
+      disease = body.disease || "";
+      persona = body.persona || "";
+      goal = body.goal || "";
+      plan = body.plan;
+      planId = body.planId;
+      session = body.session || "anon";
+    } else {
+      // ReflectivAI format
+      mode = body.mode || "sales-simulation";
+      user = body.user;
+      history = body.history || [];
+      disease = body.disease || "";
+      persona = body.persona || "";
+      goal = body.goal || "";
+      plan = body.plan;
+      planId = body.planId;
+      session = body.session || "anon";
+    }
+
+  // Load or build a plan
+  let activePlan = plan;
+  if (!activePlan) {
     try {
-      const retry = await groqChat({
-        apiKey: selectGroqKeyDeterministic(env, seq + 1),
-        model,
-        temperature: pickTemp(effectiveMode, temperature),
-        top_p: pickTopP(effectiveMode, top_p),
-        messages: buildHistory({
-          anchors: [sysAnchors + '\nHARD CONSTRAINT: Output <role>HCP</role> only.', guardrail],
-          thread, lastUser: input, clientMsgs: messages, maxChars: Math.floor(capChars(env, max_context) * 0.8)
-        }),
-        max_tokens: 1400
-      });
-      const raw2 = retry.text || '';
-      const parsed2 = parseXMLRoleContent(raw2);
-      if (!parsed2.role || parsed2.role.toLowerCase() !== 'hcp') {
-        return json({ error: 'role_drift', raw: raw2.slice(0, 2000) }, 409, env, origin);
-      }
-      thread = persistTurn(thread, input, `<role>${parsed2.role}</role><content>${parsed2.content}</content>`);
-      await env.SESS.put(kvThreadKey, JSON.stringify(thread), { expirationTtl: ttl(env) });
-      return json({ ok: true, role: parsed2.role, text: parsed2.content, raw: raw2 }, 200, env, origin, {
-        "X-Model-Used": result.model_used || model, "X-Mode": effectiveMode
-      });
+      const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
+      activePlan = await r.json();
     } catch (e) {
-      return json({ error: 'provider_error_retry', detail: String(e?.message || e) }, 502, env, origin);
+      console.error("chat_error", { step: "plan_generation", message: e.message });
+      throw new Error("plan_generation_failed");
     }
   }
 
-  if (effectiveMode === 'coach' && (!parsed.role || parsed.role.toLowerCase() !== 'coach')) {
-    return json({ error: 'role_drift', expected: 'coach', got: parsed.role || 'none' }, 409, env, origin);
+  // Validate activePlan structure to avoid obscure crashes
+  if (!activePlan || !Array.isArray(activePlan.facts) || activePlan.facts.length === 0) {
+    console.error("chat_error", { step: "plan_validation", message: "no_active_plan_or_facts", activePlan });
+    throw new Error("no_active_plan_or_facts");
   }
 
-  const toPersist = parsed.role && parsed.content
-    ? `<role>${parsed.role}</role><content>${parsed.content}</content>`
-    : raw;
+  // Provider prompts
+  const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
+  const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
 
-  thread = persistTurn(thread, input, toPersist);
-  await env.SESS.put(kvThreadKey, JSON.stringify(thread), { expirationTtl: ttl(env) });
+  const commonContract = `
+Return exactly two parts. No code blocks or headings.
 
-  return json({ ok: true, role: parsed.role || null, text: parsed.content || raw, raw: raw, model_used: result.model_used || model }, 200, env, origin, {
-    "X-Model-Used": result.model_used || model, "X-Mode": effectiveMode
-  });
+1) Sales Guidance: short, accurate, label-aligned guidance (3–5 sentences) and a "Suggested Phrasing:" single-sentence line.
+2) <coach>{
+  "scores":{"accuracy":0-5,"compliance":0-5,"discovery":0-5,"clarity":0-5,"objection_handling":0-5,"empathy":0-5},
+  "worked":["…"],"improve":["…"],"phrasing":"…","feedback":"…",
+  "context":{"rep_question":"...","hcp_reply":"..."}
+}</coach>
+
+Use only the Facts IDs provided when making claims.`.trim();
+
+  const sys = (mode === "role-play")
+    ? [
+        `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        `Speak concisely.`
+      ].join("\n")
+    : [
+        `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        commonContract
+      ].join("\n");
+
+  const messages = [
+    { role: "system", content: sys },
+    ...history.map(m => ({ role: m.role, content: String(m.content || "") })).slice(-18),
+    { role: "user", content: String(user || "") }
+  ];
+
+  // Provider call with retry
+  let raw = "";
+  for (let i = 0; i < 3; i++) {
+    try {
+      raw = await providerChat(env, messages, {
+        maxTokens: mode === "sales-simulation" ? 700 : 500,
+        temperature: 0.2
+      });
+      if (raw) break;
+    } catch (e) {
+      console.error("chat_error", { step: "provider_call", attempt: i + 1, message: e.message });
+      if (i === 2) throw e;
+      await new Promise(r => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+
+  // Extract coach and clean text
+  const { coach, clean } = extractCoach(raw);
+  let reply = clean;
+
+  // Mid-sentence cut-off guard + one-pass auto-continue
+  const cutOff = (t) => {
+    const s = String(t || "").trim();
+    return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+  };
+  if (cutOff(reply)) {
+    const contMsgs = [
+      ...messages,
+      { role: "assistant", content: reply },
+      { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
+    ];
+    try {
+      const contRaw = await providerChat(env, contMsgs, { maxTokens: 180, temperature: 0.2 });
+      const contClean = sanitizeLLM(contRaw || "");
+      if (contClean) reply = (reply + " " + contClean).trim();
+    } catch (_) {}
+  }
+
+  // FSM clamps
+  const fsm = FSM[mode] || FSM["sales-simulation"];
+  const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
+  reply = capSentences(reply, cap);
+
+  // Loop guard vs last reply
+  const state = await seqGet(env, session);
+  const candNorm = norm(reply);
+  if (state && candNorm && (candNorm === state.lastNorm)) {
+    if (mode === "role-play") {
+      reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
+    } else {
+      reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
+    }
+  }
+  state.lastNorm = norm(reply);
+  await seqPut(env, session, state);
+
+  // Deterministic scoring if provider omitted or malformed
+  let coachObj = coach && typeof coach === "object" ? coach : null;
+  if (!coachObj || !coachObj.scores) {
+    const usedFactIds = (activePlan.facts || []).map(f => f.id);
+    const overall = deterministicScore({ reply, usedFactIds });
+    coachObj = {
+      overall,
+      scores: { accuracy: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, clarity: 4, objection_handling: 3, empathy: 3 },
+      worked: ["Tied guidance to facts"],
+      improve: ["End with one specific discovery question"],
+      phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
+      feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
+      context: { rep_question: String(user || ""), hcp_reply: reply }
+    };
+  }
+
+  return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
+  } catch (e) {
+    console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
+    
+    // Distinguish provider errors from client bad_request errors
+    const isProviderError = e.message && (
+      e.message.startsWith("provider_http_") || 
+      e.message === "plan_generation_failed"
+    );
+    
+    const isPlanError = e.message === "no_active_plan_or_facts";
+    
+    if (isProviderError) {
+      // Provider errors return 502 Bad Gateway
+      return json({ 
+        error: "provider_error", 
+        message: "External provider failed or is unavailable" 
+      }, 502, env, req);
+    } else if (isPlanError) {
+      // Plan validation errors return 422 Unprocessable Entity
+      return json({ 
+        error: "bad_request", 
+        message: "Unable to generate or validate plan with provided parameters" 
+      }, 422, env, req);
+    } else {
+      // Other errors are treated as bad_request
+      return json({ 
+        error: "bad_request", 
+        message: "Chat request failed" 
+      }, 400, env, req);
+    }
+  }
 }
-__name(handleAgent,"handleAgent");
 
-/* --------------------------- Model params ---------------------------- */
-
-function pickTemp(mode, t) {
-  if (typeof t === 'number') return t;
-  if (mode === 'coach') return 0.3;
-  if (mode === 'role-play' || mode === 'sales-simulation') return 0.2;
-  return 0.2;
+function cryptoRandomId() {
+  const a = new Uint8Array(8);
+  crypto.getRandomValues(a);
+  return [...a].map(x => x.toString(16).padStart(2, "0")).join("");
 }
-__name(pickTemp,"pickTemp");
-
-function pickTopP(mode, p) {
-  if (typeof p === 'number') return p;
-  return 0.8;
-}
-__name(pickTopP,"pickTopP");
