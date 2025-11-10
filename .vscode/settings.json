@@ -1,7 +1,54 @@
 {
+    // ═══════════════════════════════════════════════════════════════════
+    // DEBUG CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════════
     "debug.allowBreakpointsEverywhere": true,
     "debug.javascript.autoAttachFilter": "always",
+    "debug.javascript.unmapMissingSources": true,
+    "debug.javascript.resourceRequestOptions": {},
+    "debug.javascript.breakOnConditionalError": true,
+    "debug.inlineValues": "on",
+    "debug.showBreakpointsInOverviewRuler": true,
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // FILE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════
     "files.autoSave": "onFocusChange",
     "files.autoSaveWhenNoErrors": true,
-    "debug.javascript.resourceRequestOptions": {}
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.exclude": {
+        "**/.vscode/chrome-debug": true,
+        "**/.vscode/edge-debug": true,
+        "**/.wrangler": true
+    },
+
+    // ═══════════════════════════════════════════════════════════════════
+    // JAVASCRIPT/TYPESCRIPT
+    // ═══════════════════════════════════════════════════════════════════
+    "javascript.validate.enable": true,
+    "javascript.suggest.autoImports": true,
+    "javascript.preferences.quoteStyle": "double",
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // EDITOR ENHANCEMENTS
+    // ═══════════════════════════════════════════════════════════════════
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit"
+    },
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": true,
+    "editor.minimap.enabled": true,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SEARCH EXCLUSIONS
+    // ═══════════════════════════════════════════════════════════════════
+    "search.exclude": {
+        "**/.wrangler": true,
+        "**/node_modules": true,
+        "**/.vscode/chrome-debug": true,
+        "**/.vscode/edge-debug": true
+    }
 }

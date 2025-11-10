@@ -12,9 +12,9 @@ workers_dev = true
 [vars]
 # Provider configuration
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
-PROVIDER_MODEL_HCP = "llama-3.1-70b-versatile"
-PROVIDER_MODEL_COACH = "llama-3.1-70b-versatile"
-PROVIDER_SIG = "groq:llama-3.1-70b-versatile"
+PROVIDER_MODEL_HCP = "llama-3.3-70b-versatile"
+PROVIDER_MODEL_COACH = "llama-3.3-70b-versatile"
+PROVIDER_SIG = "groq:llama-3.3-70b-versatile"
 
 # Context and response limits
 MAX_CHARS_CONTEXT = "12000"
@@ -40,8 +40,8 @@ TONY_PERSONA_URL = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelma
 # KV Namespace for session storage (REQUIRED)
 [[kv_namespaces]]
 binding = "SESS"
-id = "dev-sess-kv"
-preview_id = "dev-sess-kv"
+id = "376844df820c49488b7a4ed3560c383a"
+preview_id = "376844df820c49488b7a4ed3560c383a"
 
 # Optional: Metrics KV namespace
 # [[kv_namespaces]]

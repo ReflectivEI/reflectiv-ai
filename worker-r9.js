@@ -55,7 +55,7 @@ var __name = (t, v) => __defProp(t, "name", { value: v, configurable: true });
 
 /* ----------------------------- Constants ----------------------------- */
 
-const PRIMARY_MODEL = "llama-3.1-70b-versatile";
+const PRIMARY_MODEL = "llama-3.3-70b-versatile";
 const RETRY_STATUSES = new Set([408, 429, 500, 502, 503, 522, 524, 529]);
 
 /* ----------------------------- Rate limit ---------------------------- */

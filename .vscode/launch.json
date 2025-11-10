@@ -1,0 +1,132 @@
+{
+    // ReflectivAI Debug Configurations
+    // Supports: Cloudflare Worker (Wrangler), Frontend Browser Debugging, Node Test Scripts
+    "version": "0.2.0",
+    "configurations": [
+        // ═══════════════════════════════════════════════════════════════════
+        // CLOUDFLARE WORKER DEBUGGING (Primary)
+        // ═══════════════════════════════════════════════════════════════════
+        {
+            "name": "Debug Worker (Wrangler Dev)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "wrangler",
+                "dev",
+                "--local",
+                "--port=8787",
+                "--inspector-port=9229"
+            ],
+            "skipFiles": [
+                "<node_internals>/**",
+                "**/node_modules/**"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "presentation": {
+                "group": "worker",
+                "order": 1
+            }
+        },
+        {
+            "name": "Attach to Worker",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "skipFiles": [
+                "<node_internals>/**",
+                "**/node_modules/**"
+            ],
+            "presentation": {
+                "group": "worker",
+                "order": 2
+            }
+        },
+
+        // ═══════════════════════════════════════════════════════════════════
+        // FRONTEND DEBUGGING (Browser)
+        // ═══════════════════════════════════════════════════════════════════
+        {
+            "name": "Debug Frontend (Chrome)",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:5500/index.html",
+            "webRoot": "${workspaceFolder}",
+            "sourceMaps": true,
+            "pathMapping": {
+                "/": "${workspaceFolder}"
+            },
+            "userDataDir": "${workspaceFolder}/.vscode/chrome-debug",
+            "presentation": {
+                "group": "frontend",
+                "order": 1
+            }
+        },
+        {
+            "name": "Debug Frontend (Edge)",
+            "type": "msedge",
+            "request": "launch",
+            "url": "http://localhost:5500/index.html",
+            "webRoot": "${workspaceFolder}",
+            "sourceMaps": true,
+            "pathMapping": {
+                "/": "${workspaceFolder}"
+            },
+            "userDataDir": "${workspaceFolder}/.vscode/edge-debug",
+            "presentation": {
+                "group": "frontend",
+                "order": 2
+            }
+        },
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TEST SCRIPT DEBUGGING
+        // ═══════════════════════════════════════════════════════════════════
+        {
+            "name": "Debug Worker Tests",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/worker.test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "console": "integratedTerminal",
+            "presentation": {
+                "group": "tests",
+                "order": 1
+            }
+        },
+        {
+            "name": "Debug CORS Tests",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/worker.cors.test.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "console": "integratedTerminal",
+            "presentation": {
+                "group": "tests",
+                "order": 2
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full Stack Debug (Worker + Frontend)",
+            "configurations": [
+                "Debug Worker (Wrangler Dev)",
+                "Debug Frontend (Chrome)"
+            ],
+            "stopAll": true,
+            "presentation": {
+                "order": 1
+            }
+        }
+    ]
+}

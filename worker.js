@@ -10,7 +10,11 @@
  * Required VARS:
  *  - PROVIDER_URL    e.g., "https://api.groq.com/openai/v1/chat/completions"
  *  - PROVIDER_MODEL  e.g., "llama-3.1-70b-versatile"
- *  - PROVIDER_KEY    bearer key for provider
+ *  - PROVIDER_KEY    bearer key for provider (used if no rotation pool defined)
+ *  - PROVIDER_KEYS   optional comma/semicolon separated list of provider keys for round-robin / hashed rotation
+ *    OR environment may define PROVIDER_KEY_1, PROVIDER_KEY_2, ... PROVIDER_KEY_N
+ *    Selection strategy: stable hash on session id => key index (avoids per-request randomness & keeps stickiness)
+ *    Fallback order: explicit rotation pool > single PROVIDER_KEY. If no keys present → 500 config error.
  *  - CORS_ORIGINS    comma-separated allowlist of allowed origins
  *                    REQUIRED VALUES (must include):
  *                      https://reflectivei.github.io
@@ -25,46 +29,82 @@
 
 export default {
   async fetch(req, env, ctx) {
+    const reqId = req.headers.get("x-req-id") || cryptoRandomId();
     try {
       const url = new URL(req.url);
 
+      // One-time environment validation log
+      if (!globalThis.__CFG_LOGGED__) {
+        const keyPool = getProviderKeyPool(env);
+        const allowed = String(env.CORS_ORIGINS || "").split(",").map(s=>s.trim()).filter(Boolean);
+        console.log({ event: "startup_config", key_pool_size: keyPool.length, cors_allowlist_size: allowed.length, rotation_strategy: (env.PROVIDER_ROTATION_STRATEGY || 'session') });
+        globalThis.__CFG_LOGGED__ = true;
+      }
+
       // CORS preflight
       if (req.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: cors(env, req) });
+        const h = cors(env, req);
+        h["x-req-id"] = reqId;
+        return new Response(null, { status: 204, headers: h });
       }
 
       // Health check - supports both GET and HEAD for frontend health checks
       if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
-        // HEAD requests return no body, GET returns "ok"
-        const body = req.method === "GET" ? "ok" : null;
-        return new Response(body, { status: 200, headers: cors(env, req) });
+        const deep = url.searchParams.get("deep");
+        if (req.method === "HEAD" && !deep) {
+          return new Response(null, { status: 200, headers: cors(env, req) });
+        }
+        if (deep === "1" || deep === "true") {
+          const keyPool = getProviderKeyPool(env);
+          let provider = { ok: false, status: 0 };
+          try {
+            const key = selectProviderKey(env, "healthcheck");
+            if (key) {
+              const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
+                headers: { "authorization": `Bearer ${key}` }, method: "GET" });
+              provider = { ok: r.ok, status: r.status };
+            }
+          } catch (e) {
+            provider = { ok: false, error: String(e?.message || e) };
+          }
+          return json({ ok: true, time: Date.now(), key_pool: keyPool.length, provider }, 200, env, req, { "x-req-id": reqId });
+        }
+        return new Response("ok", { status: 200, headers: { ...cors(env, req), "x-req-id": reqId } });
       }
 
       // Version endpoint
       if (url.pathname === "/version" && req.method === "GET") {
-        return json({ version: "r10.1" }, 200, env, req);
+        return json({ version: "r10.1" }, 200, env, req, { "x-req-id": reqId });
       }
 
       // Debug EI endpoint - returns basic info about the worker
       if (url.pathname === "/debug/ei" && req.method === "GET") {
-        return json({
-          worker: "ReflectivAI Gateway",
-          version: "r10.1",
-          endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"],
-          timestamp: new Date().toISOString()
-        }, 200, env, req);
+        return json({ worker: "ReflectivAI Gateway", version: "r10.1", endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"], timestamp: new Date().toISOString() }, 200, env, req, { "x-req-id": reqId });
       }
 
-      if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
-      if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
-      if (url.pathname === "/chat"  && req.method === "POST") return postChat(req, env);
-      if (url.pathname === "/coach-metrics" && req.method === "POST") return postCoachMetrics(req, env);
+          if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
+          if (url.pathname === "/plan"  && req.method === "POST") return postPlan(req, env);
+          if (url.pathname === "/chat"  && req.method === "POST") {
+            const ip = req.headers.get("CF-Connecting-IP") || "0.0.0.0";
+            const gate = rateLimit(`${ip}:chat`, env);
+            if (!gate.ok) {
+              const retry = Number(env.RATELIMIT_RETRY_AFTER || 2);
+              return json({ error: "rate_limited", retry_after_sec: retry }, 429, env, req, {
+                "Retry-After": String(retry),
+                "X-RateLimit-Limit": String(gate.limit),
+                "X-RateLimit-Remaining": String(gate.remaining),
+                "x-req-id": reqId
+              });
+            }
+            return postChat(req, env);
+          }
+          if (url.pathname === "/coach-metrics" && req.method === "POST") return postCoachMetrics(req, env);
 
-      return json({ error: "not_found" }, 404, env, req);
+      return json({ error: "not_found" }, 404, env, req, { "x-req-id": reqId });
     } catch (e) {
       // Log the error for debugging but don't expose details to client
       console.error("Top-level error:", e);
-      return json({ error: "server_error", message: "Internal server error" }, 500, env, req);
+      return json({ error: "server_error", message: "Internal server error" }, 500, env, req, { "x-req-id": reqId });
     }
   }
 };
@@ -78,7 +118,7 @@ const FACTS_DB = [
     ta: "HIV",
     topic: "PrEP Eligibility",
     text: "PrEP is recommended for individuals at substantial risk of HIV. Discuss sexual and injection risk factors.",
-    cites: ["CDC PrEP 2024"]
+     cites: ["CDC PrEP 2024"]
   },
   {
     id: "HIV-PREP-TAF-002",
@@ -96,14 +136,22 @@ const FACTS_DB = [
   }
 ];
 
-// Finite State Machines per mode
+// Finite State Machines per mode (4 modes total)
 const FSM = {
   "sales-simulation": {
-    states: { START: { capSentences: 5, next: "COACH" }, COACH: { capSentences: 6, next: "COACH" } },
+    states: { START: { capSentences: 12, next: "COACH" }, COACH: { capSentences: 12, next: "COACH" } },
     start: "START"
   },
   "role-play": {
     states: { START: { capSentences: 4, next: "HCP" }, HCP: { capSentences: 4, next: "HCP" } },
+    start: "START"
+  },
+  "emotional-assessment": {
+    states: { START: { capSentences: 6, next: "EI" }, EI: { capSentences: 6, next: "EI" } },
+    start: "START"
+  },
+  "product-knowledge": {
+    states: { START: { capSentences: 5, next: "PK" }, PK: { capSentences: 5, next: "PK" } },
     start: "START"
   }
 };
@@ -206,10 +254,11 @@ function ok(body, headers = {}) {
   });
 }
 
-function json(body, status, env, req) {
+function json(body, status, env, req, extraHeaders = {}) {
+  const rid = req && typeof req.headers?.get === 'function' ? req.headers.get('x-req-id') : null;
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", ...cors(env, req) }
+    headers: { "content-type": "application/json", ...cors(env, req), ...(rid ? { "x-req-id": rid } : {}), ...extraHeaders }
   });
 }
 
@@ -222,6 +271,54 @@ async function readJson(req) {
 function capSentences(text, n) {
   const parts = String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
   return parts.slice(0, n).join(" ").trim();
+}
+
+// ───────────────────── Provider Key Rotation Utilities ──────────────────────
+function getProviderKeyPool(env) {
+  const pool = [];
+  // Comma / semicolon separated list
+  if (env.PROVIDER_KEYS) {
+    pool.push(
+      ...String(env.PROVIDER_KEYS)
+        .split(/[;,]/)
+        .map(s => s.trim())
+        .filter(Boolean)
+    );
+  }
+  // Enumerated keys PROVIDER_KEY_1..N
+  Object.keys(env)
+    .filter(k => /^PROVIDER_KEY_\d+$/.test(k))
+    .forEach(k => { if (env[k]) pool.push(String(env[k]).trim()); });
+  // GROQ naming schemes (legacy)
+  const groqCandidates = [
+    'GROQ_KEY_1','GROQ_KEY_2','GROQ_KEY_3','GROQ_KEY_4','GROQ_KEY_5',
+    'GROQ_API_KEY','GROQ_API_KEY_2','GROQ_API_KEY_3','GROQ_API_KEY_4','GROQ_API_KEY_5'
+  ];
+  groqCandidates.forEach(k => { if (env[k]) pool.push(String(env[k]).trim()); });
+  // Single key fallback (ensure uniqueness)
+  if (env.PROVIDER_KEY) {
+    const base = String(env.PROVIDER_KEY).trim();
+    if (base && !pool.includes(base)) pool.push(base);
+  }
+  return pool.filter(Boolean);
+}
+
+function hashString(str) {
+  // FNV-1a 32-bit
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h >>> 0) * 0x01000193;
+  }
+  return h >>> 0;
+}
+
+function selectProviderKey(env, session) {
+  const pool = getProviderKeyPool(env);
+  if (!pool.length) return null;
+  const sid = String(session || "anon");
+  const idx = hashString(sid) % pool.length;
+  return pool[idx];
 }
 
 function sanitizeLLM(s) {
@@ -257,15 +354,19 @@ function extractCoach(raw) {
   return { coach, clean: sanitizeLLM((head + " " + after).trim()) };
 }
 
-async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2 } = {}) {
+async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2, session = "anon", providerKey } = {}) {
   const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
   const finalMax = cap > 0 ? Math.min(maxTokens, cap) : maxTokens;
-
+  const key = providerKey || selectProviderKey(env, session) || env.PROVIDER_KEY;
+  if (!key) throw new Error("provider_key_missing");
+  if (env.DEBUG_MODE === "true") {
+    console.log({ event: "provider_key_select", session, key_len: key.length, rotated: key !== env.PROVIDER_KEY });
+  }
   const r = await fetch(env.PROVIDER_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "authorization": `Bearer ${env.PROVIDER_KEY}`
+      "authorization": `Bearer ${key}`
     },
     body: JSON.stringify({
       model: env.PROVIDER_MODEL,
@@ -346,13 +447,135 @@ async function postPlan(req, env) {
   }
 }
 
+/* ------------------------------ Validators --------------------------------- */
+
+/**
+ * validateModeResponse - Enforce mode-specific guardrails and clean responses
+ * @param {string} mode - Current mode (sales-simulation, role-play, emotional-assessment, product-knowledge)
+ * @param {string} reply - AI response text
+ * @param {object} coach - Coach metadata object
+ * @returns {object} - { reply: cleanedReply, warnings: [...], violations: [...] }
+ */
+function validateModeResponse(mode, reply, coach) {
+  let cleaned = reply;
+  const warnings = [];
+  const violations = [];
+  
+  // ROLE-PLAY: Enforce HCP-only voice, NO coaching language
+  if (mode === "role-play") {
+    // Detect coaching leakage
+    const coachingPatterns = [
+      /Challenge:/i,
+      /Rep Approach:/i,
+      /Impact:/i,
+      /Suggested Phrasing:/i,
+      /Coach Guidance:/i,
+      /\bYou should have\b/i,
+      /\bThe rep\b/i,
+      /\bNext-Move Planner:/i
+    ];
+    
+    for (const pattern of coachingPatterns) {
+      if (pattern.test(cleaned)) {
+        violations.push(`coaching_leak_detected: ${pattern.source}`);
+        // Strip from match point onward
+        cleaned = cleaned.split(pattern)[0].trim();
+      }
+    }
+    
+    // Ensure HCP stays in first person
+    if (/\b(we evaluate|from my perspective|I think|I prioritize)/i.test(cleaned)) {
+      // This is actually GOOD for role-play - HCP should say this
+      warnings.push("hcp_first_person_detected_ok");
+    }
+  }
+  
+  // SALES-SIMULATION: Enforce coach voice, NO HCP impersonation
+  if (mode === "sales-simulation") {
+    // Detect if AI is speaking as HCP instead of coach
+    const hcpVoicePatterns = [
+      /^I'm a (busy|difficult|engaged)/i,
+      /^From my clinic's perspective/i,
+      /^We don't have time for/i,
+      /^I've got a few minutes/i
+    ];
+    
+    for (const pattern of hcpVoicePatterns) {
+      if (pattern.test(cleaned)) {
+        violations.push(`hcp_voice_in_sales_sim: ${pattern.source}`);
+      }
+    }
+    
+    // Verify required sections present
+    const hasChallenge = /Challenge:/i.test(cleaned);
+    const hasRepApproach = /Rep Approach:/i.test(cleaned);
+    const hasImpact = /Impact:/i.test(cleaned);
+    const hasSuggestedPhrasing = /Suggested Phrasing:/i.test(cleaned);
+    
+    if (!hasChallenge) warnings.push("missing_challenge_section");
+    if (!hasRepApproach) warnings.push("missing_rep_approach_section");
+    if (!hasImpact) warnings.push("missing_impact_section");
+    if (!hasSuggestedPhrasing) warnings.push("missing_suggested_phrasing_section");
+  }
+  
+  // PRODUCT-KNOWLEDGE: Check compliance
+  if (mode === "product-knowledge") {
+    // Flag potential off-label mentions
+    const offLabelKeywords = /(off-label|unapproved indication|not indicated for)/i;
+    if (offLabelKeywords.test(cleaned)) {
+      // Check if properly contextualized (warning vs recommendation)
+      if (!/explicitly state|not recommended|contraindicated|outside label/i.test(cleaned)) {
+        violations.push("potential_off_label_claim_uncontextualized");
+      } else {
+        warnings.push("off_label_mentioned_but_contextualized_ok");
+      }
+    }
+    
+    // Ensure citations present
+    const hasCitations = /\[HIV-PREP-[A-Z]+-\d+\]|\[\d+\]/i.test(cleaned);
+    if (!hasCitations) {
+      warnings.push("no_citations_detected");
+    }
+  }
+  
+  // EMOTIONAL-ASSESSMENT: Verify Socratic questions
+  if (mode === "emotional-assessment") {
+    const questionCount = (cleaned.match(/\?/g) || []).length;
+    if (questionCount === 0) {
+      warnings.push("no_socratic_questions_detected");
+    } else if (questionCount >= 2) {
+      warnings.push(`socratic_questions_present: ${questionCount}`);
+    }
+  }
+  
+  return { reply: cleaned, warnings, violations };
+}
+
+/**
+ * validateCoachSchema - Ensure _coach object has required fields per mode
+ */
+function validateCoachSchema(coach, mode) {
+  const requiredFields = {
+    "sales-simulation": ["scores", "worked", "improve", "feedback"],
+    "emotional-assessment": ["ei"],
+    "product-knowledge": [],
+    "role-play": [] // Should have NO coach data in messages
+  };
+  
+  const required = requiredFields[mode] || [];
+  const missing = required.filter(key => !(coach && key in coach));
+  
+  return { valid: missing.length === 0, missing };
+}
+
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
   try {
-    // Defensive check: ensure PROVIDER_KEY is configured
-    if (!env.PROVIDER_KEY) {
-      console.error("chat_error", { step: "config_check", message: "PROVIDER_KEY not configured" });
-      return json({ error: "server_error", message: "Provider API key not configured" }, 500, env, req);
+    // Defensive check: ensure at least one provider key is configured
+    const keyPool = getProviderKeyPool(env);
+    if (!keyPool.length) {
+      console.error("chat_error", { step: "config_check", message: "NO_PROVIDER_KEYS" });
+      return json({ error: "server_error", message: "No provider API keys configured" }, 500, env, req);
     }
 
     const body = await readJson(req);
@@ -419,9 +642,56 @@ async function postChat(req, env) {
     throw new Error("no_active_plan_or_facts");
   }
 
-  // Provider prompts
+  // Provider prompts with format hardening
   const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
   const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
+
+  // Mode-specific contracts - ENTERPRISE PHARMA FORMATTING
+  const salesContract = `
+RESPONSE FORMAT (MANDATORY - MUST INCLUDE ALL 4 SECTIONS):
+
+Challenge: [EXACTLY ONE SENTENCE, MAX 80 CHARACTERS - State the core HCP concern or gap]
+
+Rep Approach:
+• [ACTION 1: Max 25 words with fact citation]
+• [ACTION 2: Max 25 words with fact citation]
+• [ACTION 3: Max 25 words with fact citation]
+[EXACTLY 3 BULLETS - NO MORE, NO LESS]
+
+Impact: [EXACTLY ONE SENTENCE, MAX 100 CHARACTERS - Expected outcome]
+
+Suggested Phrasing: "[MAX 2 SENTENCES, MAX 120 CHARACTERS TOTAL - Exact words rep should say]"
+
+STRICT RULES:
+- Challenge: 1 sentence, 80 chars max
+- Rep Approach: EXACTLY 3 bullets, 25 words each max, MUST include fact ID [FACT-XXX]
+- Impact: 1 sentence, 100 chars max
+- Suggested Phrasing: 2 sentences max, 120 chars total, QUOTED
+- ALL claims MUST cite fact IDs
+- NO off-label language
+- NO comparative claims without data
+
+EXAMPLE (follow this structure exactly):
+Challenge: HCP questions PrEP adherence in high-risk patients.
+
+Rep Approach:
+• Discuss CDC adherence counseling protocols [HIV-PREP-ELIG-001].
+• Highlight once-daily Descovy dosing convenience [HIV-PREP-TAF-002].
+• Address renal monitoring for safety assurance [HIV-PREP-SAFETY-003].
+
+Impact: Addresses adherence concerns with evidence-based reassurance.
+
+Suggested Phrasing: "Descovy's once-daily dosing with regular follow-ups supports strong adherence in at-risk patients."
+
+Then append deterministic EI scoring:
+<coach>{
+  "scores":{"empathy":0-5,"discovery":0-5,"compliance":0-5,"clarity":0-5,"accuracy":0-5},
+  "rationales":{"empathy":"...","discovery":"...","compliance":"...","clarity":"...","accuracy":"..."},
+  "tips":["Tip 1","Tip 2","Tip 3"],
+  "rubric_version":"v1.2"
+}</coach>
+
+Use ONLY Facts IDs provided. Flag any off-label language immediately.`.trim();
 
   const commonContract = `
 Return exactly two parts. No code blocks or headings.
@@ -435,19 +705,174 @@ Return exactly two parts. No code blocks or headings.
 
 Use only the Facts IDs provided when making claims.`.trim();
 
-  const sys = (mode === "role-play")
-    ? [
-        `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        `Speak concisely.`
-      ].join("\n")
-    : [
-        `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
-        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-        commonContract
-      ].join("\n");
+  // Enhanced prompts for format hardening
+  const salesSimPrompt = [
+    `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
+    `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+    `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+    ``,
+    salesContract
+  ].join("\n");
+
+  const rolePlayPrompt = [
+    `You are the HCP in Role Play mode. Speak ONLY as the HCP in first person.`,
+    ``,
+    `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+    `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+    ``,
+    `HCP BEHAVIOR:`,
+    `- Respond naturally as this HCP would in a real clinical setting`,
+    `- Use 1-4 sentences OR brief bulleted lists when explaining clinical reasoning`,
+    `- Bullets ARE natural for HCPs when listing: priorities, processes, treatment steps, monitoring criteria`,
+    `- Reflect time pressure, priorities, and decision style from persona`,
+    `- Stay professional and realistic`,
+    ``,
+    `CRITICAL RULES:`,
+    `- NO coaching language ("You should have...", "The rep...")`,
+    `- NO evaluation or scores  `,
+    `- NO "Suggested Phrasing:" or "Rep Approach:" meta-commentary`,
+    `- STAY IN CHARACTER as HCP throughout entire conversation`,
+    ``,
+    `EXAMPLE HCP RESPONSES:`,
+    `"From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context."`,
+    `"• I prioritize regular follow-up appointments to assess treatment efficacy and detect any potential issues early. • I also encourage patients to report any changes in symptoms or side effects promptly. • Additionally, I consider using digital tools to enhance patient engagement and monitoring."`,
+    `"I appreciate your emphasis on timely interventions and proactive prescribing."`,
+    `"I've got a few minutes, what's on your mind?"`,
+    ``,
+    `Remember: You are the HCP. Natural, brief, clinical voice only - bullets allowed when clinically appropriate.`
+  ].join("\n");
+
+  const eiPrompt = [
+    `You are Reflectiv Coach in Emotional Intelligence mode.`,
+    ``,
+    `HCP Type: ${persona || "—"}; Disease context: ${disease || "—"}.`,
+    ``,
+    `MISSION: Help the rep develop emotional intelligence through reflective practice based on about-ei.md framework.`,
+    ``,
+    `FOCUS AREAS (CASEL SEL Competencies):`,
+    `- Self-Awareness: Recognizing emotions, triggers, communication patterns`,
+    `- Self-Regulation: Managing stress, tone, composure under pressure`,
+    `- Empathy/Social Awareness: Acknowledging HCP perspective, validating concerns`,
+    `- Clarity: Concise messaging without jargon`,
+    `- Relationship Skills: Building rapport, navigating disagreement`,
+    `- Responsible Decision-Making/Compliance: Balancing empathy with ethical boundaries`,
+    ``,
+    `TRIPLE-LOOP REFLECTION ARCHITECTURE:`,
+    `Loop 1 (Task Outcome): Did they accomplish the communication objective?`,
+    `Loop 2 (Emotional Regulation): How did they manage stress, tone, emotional responses?`,
+    `Loop 3 (Mindset Reframing): What beliefs or patterns should change for future conversations?`,
+    ``,
+    `USE SOCRATIC METACOACH PROMPTS:`,
+    `Self-Awareness: "What did you notice about your tone just now?" "What emotion are you holding as you plan your next response?"`,
+    `Perspective-Taking: "How might the HCP have perceived your last statement?" "What might be driving the HCP's resistance?"`,
+    `Pattern Recognition: "What do you notice about how you respond when someone challenges your evidence?"`,
+    `Reframing: "What assumption did you hold about this HCP that shaped your approach?" "If objections are requests for clarity, how would you rephrase?"`,
+    `Regulation: "Where do you feel tension when hearing that objection?" "What would change if you paused for two seconds before responding?"`,
+    ``,
+    `OUTPUT STYLE:`,
+    `- 2-4 short paragraphs of guidance (max 350 words)`,
+    `- Include 1-2 Socratic questions to deepen metacognition`,
+    `- Reference Triple-Loop Reflection when relevant`,
+    `- Model empathy and warmth in your coaching tone`,
+    `- End with a reflective question that builds emotional metacognition`,
+    ``,
+    `DO NOT:`,
+    `- Role-play as HCP`,
+    `- Provide sales coaching or product info`,
+    `- Include coach scores or rubrics`,
+    `- Use structured Challenge/Rep Approach format`
+  ].join("\n");
+
+  const pkPrompt = [
+    `You are ReflectivAI, an advanced AI knowledge partner for life sciences professionals.`,
+    ``,
+    `CORE IDENTITY:`,
+    `You are a highly knowledgeable, scientifically rigorous assistant trained to answer questions across:`,
+    `- Disease states, pathophysiology, and clinical management`,
+    `- Pharmacology, mechanisms of action, and therapeutic approaches`,
+    `- Clinical trials, evidence-based medicine, and guidelines`,
+    `- Life sciences topics: biotechnology, drug development, regulatory affairs`,
+    `- General knowledge: business, strategy, technology, healthcare trends`,
+    `- Anything a thoughtful AI assistant could help with`,
+    ``,
+    `CONVERSATION STYLE:`,
+    `- Comprehensive yet accessible - explain complex topics clearly`,
+    `- Balanced - present multiple perspectives when appropriate`,
+    `- Evidence-based - cite sources when making scientific claims`,
+    `- Helpful - anticipate follow-up questions and offer relevant insights`,
+    `- Professional - maintain scientific accuracy while being engaging`,
+    ``,
+    `RESPONSE STRUCTURE (flexible based on question):`,
+    ``,
+    `**For scientific/medical questions:**`,
+    `- Clear, structured explanations (use headers, bullets, or paragraphs as appropriate)`,
+    `- Clinical context and relevance`,
+    `- Evidence citations [1], [2] when available`,
+    `- Practical implications for HCPs or patients`,
+    `- Acknowledge uncertainties or limitations in evidence`,
+    ``,
+    `**For general questions:**`,
+    `- Direct, helpful answers`,
+    `- Context and background as needed`,
+    `- Multiple perspectives or approaches when relevant`,
+    ``,
+    `AVAILABLE CONTEXT:`,
+    `${disease ? `Disease Focus: ${disease}` : ''}`,
+    `${persona ? `HCP Context: ${persona}` : ''}`,
+    `${factsStr ? `\nRelevant Facts:\n${factsStr}` : ''}`,
+    `${citesStr ? `\nReferences:\n${citesStr}` : ''}`,
+    ``,
+    `COMPLIANCE & QUALITY STANDARDS:`,
+    `- Distinguish clearly between on-label and off-label information`,
+    `- Present risks, contraindications, and safety considerations alongside benefits`,
+    `- Recommend consulting official sources (FDA labels, guidelines) for prescribing decisions`,
+    `- Use [numbered citations] for clinical claims when references are available`,
+    `- If asked about something outside your knowledge, acknowledge limitations`,
+    ``,
+    `EXAMPLE INTERACTIONS:`,
+    ``,
+    `Q: "What are the 5 key facts I need to know about this disease state?"`,
+    `A: Here are 5 essential points about [disease]:`,
+    `1. **Epidemiology:** [prevalence, key populations affected]`,
+    `2. **Pathophysiology:** [disease mechanism, biological basis]`,
+    `3. **Clinical Presentation:** [symptoms, diagnostic criteria]`,
+    `4. **Current Standard of Care:** [first-line treatments, guidelines]`,
+    `5. **Emerging Approaches:** [new therapies, ongoing research]`,
+    ``,
+    `Q: "How should I approach a busy PCP about this therapy?"`,
+    `A: When engaging busy PCPs, focus on:`,
+    `- **Time efficiency:** Lead with the single most relevant data point`,
+    `- **Practice relevance:** Connect to their patient population and workflow`,
+    `- **Evidence:** Brief reference to key trial or guideline`,
+    `- **Action:** One clear next step (trial offer, patient identification, etc.)`,
+    ``,
+    `PCPs appreciate concise, practice-applicable information that respects their time constraints while addressing real clinical needs.`,
+    ``,
+    `Q: "Explain the mechanism of action"`,
+    `A: [Detailed, clear explanation of MOA with appropriate technical depth, clinical relevance, and how it translates to therapeutic benefit]`,
+    ``,
+    `RESPONSE LENGTH:`,
+    `- Short questions: 100-200 words`,
+    `- Complex topics: 300-600 words`,
+    `- Very complex or multi-part questions: up to 800 words`,
+    `- Always prioritize clarity over brevity`,
+    ``,
+    `YOUR GOAL: Be the most helpful, knowledgeable, and trustworthy AI thought partner possible.`
+  ].join("\n");
+
+  // Select prompt based on mode
+  let sys;
+  if (mode === "role-play") {
+    sys = rolePlayPrompt;
+  } else if (mode === "sales-simulation") {
+    sys = salesSimPrompt;
+  } else if (mode === "emotional-assessment") {
+    sys = eiPrompt;
+  } else if (mode === "product-knowledge") {
+    sys = pkPrompt;
+  } else {
+    sys = salesSimPrompt; // default fallback
+  }
 
   const messages = [
     { role: "system", content: sys },
@@ -455,13 +880,28 @@ Use only the Facts IDs provided when making claims.`.trim();
     { role: "user", content: String(user || "") }
   ];
 
-  // Provider call with retry
+  // Provider call with retry and mode-specific token allocation
   let raw = "";
   for (let i = 0; i < 3; i++) {
     try {
+      // Token allocation prioritization
+      let maxTokens;
+      if (mode === "sales-simulation") {
+        maxTokens = 1600; // Increased to ensure all 4 sections complete (including Suggested Phrasing)
+      } else if (mode === "role-play") {
+        maxTokens = 1200; // Higher for natural conversation flow
+      } else if (mode === "emotional-assessment") {
+        maxTokens = 1200; // Comprehensive EI coaching with reflective questions
+      } else if (mode === "product-knowledge") {
+        maxTokens = 1800; // HIGH - comprehensive AI assistant responses (like ChatGPT)
+      } else {
+        maxTokens = 900; // Default
+      }
+      
       raw = await providerChat(env, messages, {
-        maxTokens: mode === "sales-simulation" ? 700 : 500,
-        temperature: 0.2
+        maxTokens,
+        temperature: 0.2,
+        session
       });
       if (raw) break;
     } catch (e) {
@@ -475,6 +915,89 @@ Use only the Facts IDs provided when making claims.`.trim();
   const { coach, clean } = extractCoach(raw);
   let reply = clean;
 
+  // Role-play: honor optional XML wrapper if produced
+  if (mode === "role-play") {
+    const role = (raw.match(/<role>(.*?)<\/role>/is) || [])[1]?.trim();
+    const content = (raw.match(/<content>([\s\S]*?)<\/content>/i) || [])[1]?.trim();
+    if (role && role.toLowerCase() === "hcp" && content) {
+      reply = sanitizeLLM(content);
+    }
+  }
+
+  // Post-processing: Strip unwanted formatting for role-play mode
+  if (mode === "role-play") {
+    // Remove coaching labels but KEEP bullets for clinical explanations (natural HCP speech)
+    reply = reply
+      .replace(/^[\s]*Suggested Phrasing:\s*/gmi, '')  // Remove "Suggested Phrasing:" labels
+      .replace(/^[\s]*Coach Guidance:\s*/gmi, '')      // Remove any leaked coach headings
+      .replace(/^[\s]*Challenge:\s*/gmi, '')
+      .replace(/^[\s]*Rep Approach:\s*/gmi, '')
+      .replace(/^[\s]*Impact:\s*/gmi, '')
+      .replace(/^[\s]*Next-Move Planner:\s*/gmi, '')
+      .replace(/^[\s]*Risk Flags:\s*/gmi, '')
+      .trim();
+    
+    // Don't remove bullets - HCPs naturally use them for clinical processes
+    // Example: "• I prioritize follow-ups • I assess adherence"
+  }
+
+  // Post-processing: Normalize headings and ENFORCE FORMAT for sales-simulation mode
+  if (mode === "sales-simulation") {
+    reply = reply
+      .replace(/Coach [Gg]uidance:/g, 'Challenge:')
+      .replace(/Next[- ]?[Mm]ove [Pp]lanner:/g, 'Rep Approach:')
+      .replace(/Risk [Ff]lags:/g, 'Impact:')
+      .replace(/Suggested [Pp]hrasing:/g, 'Suggested Phrasing:')
+      .replace(/Rubric [Jj][Ss][Oo][Nn]:/g, '');
+    
+    // ENTERPRISE FORMATTING VALIDATION - Enforce exactly 1 Challenge, 3 bullets, 1 Impact, 1 Phrasing
+    const hasChallenge = /Challenge:/i.test(reply);
+    const hasRepApproach = /Rep Approach:/i.test(reply);
+    const hasImpact = /Impact:/i.test(reply);
+    const hasSuggested = /Suggested Phrasing:/i.test(reply);
+    
+    // Count bullets in Rep Approach section
+    const repMatch = reply.match(/Rep Approach:(.*?)(?=Impact:|Suggested Phrasing:|$)/is);
+    const bulletCount = repMatch ? (repMatch[1].match(/•/g) || []).length : 0;
+    
+    // Validation warnings (log for monitoring, don't block)
+    if (!hasChallenge || !hasRepApproach || !hasImpact || !hasSuggested) {
+      console.warn("sales_simulation_format_incomplete", {
+        has_challenge: hasChallenge,
+        has_rep_approach: hasRepApproach,
+        has_impact: hasImpact,
+        has_suggested: hasSuggested,
+        bullet_count: bulletCount
+      });
+    }
+    
+    // Force-add Suggested Phrasing if missing (model consistently cuts off after Impact)
+    if (!hasSuggested) {
+      const repText = repMatch ? repMatch[1] : '';
+      let phrasing = `"Would you like to discuss how this approach fits your practice?"`;
+      
+      if (repText.includes('assess') || repText.includes('eligibility')) {
+        phrasing = `"Can we review patient eligibility criteria together?"`;
+      } else if (repText.includes('renal') || repText.includes('monitor')) {
+        phrasing = `"Let's confirm the monitoring protocol that works for your workflow."`;
+      } else if (repText.includes('adherence') || repText.includes('follow-up')) {
+        phrasing = `"How do you currently support adherence in your at-risk population?"`;
+      }
+      
+      reply += `\n\nSuggested Phrasing: ${phrasing}`;
+    }
+    
+    // Enforce exactly 3 bullets if Rep Approach exists but has wrong count
+    if (hasRepApproach && bulletCount !== 3 && repMatch) {
+      const bullets = repMatch[1].split(/\n/).filter(l => l.includes('•')).slice(0, 3);
+      while (bullets.length < 3) {
+        bullets.push(`• Reinforce evidence-based approach`);
+      }
+      const newRepSection = `Rep Approach:\n${bullets.join('\n')}`;
+      reply = reply.replace(/Rep Approach:.*?(?=Impact:|Suggested Phrasing:|$)/is, newRepSection + '\n\n');
+    }
+  }
+
   // Mid-sentence cut-off guard + one-pass auto-continue
   const cutOff = (t) => {
     const s = String(t || "").trim();
@@ -487,7 +1010,7 @@ Use only the Facts IDs provided when making claims.`.trim();
       { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
     ];
     try {
-      const contRaw = await providerChat(env, contMsgs, { maxTokens: 180, temperature: 0.2 });
+      const contRaw = await providerChat(env, contMsgs, { maxTokens: 180, temperature: 0.2, session });
       const contClean = sanitizeLLM(contRaw || "");
       if (contClean) reply = (reply + " " + contClean).trim();
     } catch (_) {}
@@ -525,6 +1048,57 @@ Use only the Facts IDs provided when making claims.`.trim();
       feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
       context: { rep_question: String(user || ""), hcp_reply: reply }
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // VALIDATION & GUARDRAILS - Apply mode-specific safety checks
+  // ═══════════════════════════════════════════════════════════════════
+  const validation = validateModeResponse(mode, reply, coachObj);
+  reply = validation.reply; // Use cleaned reply
+  
+  // Log validation results for debugging
+  if (validation.warnings.length > 0 || validation.violations.length > 0) {
+    console.log({
+      event: "validation_check",
+      mode,
+      warnings: validation.warnings,
+      violations: validation.violations,
+      reply_length: reply.length
+    });
+  }
+  
+  // Schema validation
+  const schemaCheck = validateCoachSchema(coachObj, mode);
+  if (!schemaCheck.valid) {
+    console.log({
+      event: "schema_validation_failed",
+      mode,
+      missing_fields: schemaCheck.missing,
+      coach_keys: Object.keys(coachObj || {})
+    });
+  }
+  
+  // Enhanced debug logging (disabled in production via env var)
+  if (env.DEBUG_MODE === "true") {
+    console.log({
+      event: "chat_response_debug",
+      mode,
+      reply_length: reply.length,
+      has_coach: !!coachObj,
+      coach_keys: Object.keys(coachObj || {}),
+      format_check: {
+        has_challenge: /Challenge:/i.test(reply),
+        has_rep_approach: /Rep Approach:/i.test(reply),
+        has_impact: /Impact:/i.test(reply),
+        has_suggested_phrasing: /Suggested Phrasing:/i.test(reply),
+        has_citations: /\[HIV-PREP-[A-Z]+-\d+\]|\[\d+\]/i.test(reply),
+        ends_with_question: /\?\s*$/.test(reply)
+      },
+      validation: {
+        warnings: validation.warnings,
+        violations: validation.violations
+      }
+    });
   }
 
   return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
@@ -593,4 +1167,19 @@ function cryptoRandomId() {
   const a = new Uint8Array(8);
   crypto.getRandomValues(a);
   return [...a].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+/* -------------------------- Rate limiting --------------------------- */
+const _buckets = new Map();
+function rateLimit(key, env) {
+  const rate = Number(env.RATELIMIT_RATE || 10);
+  const burst = Number(env.RATELIMIT_BURST || 4);
+  const now = Date.now();
+  const b = _buckets.get(key) || { tokens: burst, ts: now };
+  const elapsed = (now - b.ts) / 60000; // per minute
+  b.tokens = Math.min(burst, b.tokens + elapsed * rate);
+  b.ts = now;
+  if (b.tokens < 1) { _buckets.set(key, b); return { ok: false, limit: rate, remaining: 0 }; }
+  b.tokens -= 1; _buckets.set(key, b);
+  return { ok: true, limit: rate, remaining: Math.max(0, Math.floor(b.tokens)) };
 }

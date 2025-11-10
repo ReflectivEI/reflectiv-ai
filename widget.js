@@ -1679,15 +1679,65 @@ ${COMMON}`
             ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
           }
           
-          // Otherwise display raw feedback text with formatted labels
+          // Otherwise display raw feedback text with formatted labels + COMPLIANCE FLAGS
           const rawText = fb.feedback || fb.comment || "";
           if (rawText) {
-            const formatted = String(rawText)
-              .replace(/\n\n/g, '<br><br>')
-              .replace(/\n/g, '<br>')
-              .replace(/(Challenge:|Rep Approach:|Impact:|Suggested Phrasing:)/g, '<br><strong>$1</strong>')
-              .replace(/^<br>/, ''); // Remove leading break
-            return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div style="line-height:1.6">${formatted}</div>`;
+            // Split into sections by extracting each labeled block
+            const sections = [];
+            const text = String(rawText);
+            const complianceFlags = [];
+            
+            // Check for compliance issues
+            const offLabelTerms = /\b(off-label|unapproved|investigational|experimental)\b/gi;
+            const missingCitations = !text.match(/\[[\w-]+\]/g);
+            const comparativeClaims = /\b(better than|superior to|more effective than|outperforms)\b/gi;
+            
+            if (offLabelTerms.test(text)) {
+              complianceFlags.push('⚠️ Off-label language detected');
+            }
+            if (missingCitations && text.length > 100) {
+              complianceFlags.push('⚠️ Missing fact citations');
+            }
+            if (comparativeClaims.test(text)) {
+              complianceFlags.push('⚠️ Comparative claim requires data');
+            }
+            
+            // Show compliance alerts at top if any
+            if (complianceFlags.length > 0) {
+              sections.push(`<div style="margin-bottom:16px;padding:12px;background:#fff7e6;border:1px solid:#fbbf24;border-radius:8px"><strong style="color:#92400e;display:block;margin-bottom:4px">⚠️ Compliance Review Needed:</strong><ul style="margin:4px 0;padding-left:20px;color:#92400e">${complianceFlags.map(f => `<li>${f}</li>`).join('')}</ul></div>`);
+            }
+            
+            // Extract Challenge
+            const challengeMatch = text.match(/Challenge:\s*(.+?)(?=\s*Rep Approach:|$)/is);
+            if (challengeMatch) {
+              sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Challenge:</strong><div style="line-height:1.6">${esc(challengeMatch[1].trim())}</div></div>`);
+            }
+            
+            // Extract Rep Approach with citation highlighting
+            const repMatch = text.match(/Rep Approach:\s*(.+?)(?=\s*Impact:|$)/is);
+            if (repMatch) {
+              const repText = repMatch[1].trim();
+              const bullets = repText.split(/\s*•\s*/).filter(Boolean).map(b => {
+                const highlighted = b.trim().replace(/(\[[^\]]+\])/g, '<span style="background:#e0f2fe;padding:2px 4px;border-radius:4px;font-weight:600">$1</span>');
+                return `<li style="margin:4px 0">${highlighted}</li>`;
+              }).join('');
+              sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Rep Approach:</strong><ul style="margin:0;padding-left:20px;line-height:1.6">${bullets}</ul></div>`);
+            }
+            
+            // Extract Impact
+            const impactMatch = text.match(/Impact:\s*(.+?)(?=\s*Suggested Phrasing:|$)/is);
+            if (impactMatch) {
+              sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Impact:</strong><div style="line-height:1.6">${esc(impactMatch[1].trim())}</div></div>`);
+            }
+            
+            // Extract Suggested Phrasing
+            const phrasingMatch = text.match(/Suggested Phrasing:\s*(.+)/is);
+            if (phrasingMatch) {
+              const phrase = phrasingMatch[1].trim().replace(/^["']|["']$/g, '');
+              sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Suggested Phrasing:</strong><div style="line-height:1.6;font-style:italic;padding:12px;background:#f0fdf4;border-left:3px solid:#22c55e;color:#1e2a3a">"${esc(phrase)}"</div></div>`);
+            }
+            
+            return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div>${sections.join('')}</div>`;
           }
           
           return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div class="muted">No coach feedback available</div>`;
@@ -1697,16 +1747,24 @@ ${COMMON}`
         return;
       }
 
-      // Emotional-assessment and Role Play final eval keep score view
+      // Emotional-assessment and Role Play final eval - Use EI 5-point scale
+      const eiScores = scores || {};
+      const eiPills = Object.keys(eiScores).slice(0,5).map(k => {
+        const v = Number(eiScores[k] ?? 0);
+        const cls = v>=4 ? "good" : v===3 ? "ok" : "bad";
+        const label = k.charAt(0).toUpperCase() + k.slice(1);
+        return `<span class="ei-pill ${cls}"><span class="k">${esc(label)}</span>${v}/5</span>`;
+      }).join('');
+      
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
       const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
+      
       body.innerHTML = `
-        <div class="coach-score">
-          Score: <strong>${fb.overall ?? fb.score ?? "—"}</strong>/100
-          <a href="ei-scoring-guide.html" target="_blank" class="score-guide-link" title="View detailed scoring criteria">ℹ️ Scoring Guide</a>
+        <div class="ei-wrap">
+          <div class="ei-h">Performance Metrics (5-Point Scale)</div>
+          <div class="ei-row">${eiPills || orderedPills(scores)}</div>
         </div>
-        <div class="coach-subs">${orderedPills(scores)}</div>
-        <ul class="coach-list">
+        <ul class="coach-list" style="margin-top:12px">
           <li><strong>What worked:</strong> ${esc(workedStr)}</li>
           <li><strong>What to improve:</strong> ${esc(improveStr)}</li>
           <li><strong>Suggested phrasing:</strong> ${esc(fb.phrasing || "—")}</li>

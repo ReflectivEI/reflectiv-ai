@@ -1,53 +1,74 @@
-# Worker.js Changes - Patch-Style Diff Summary
+# Worker Changes (r10.1 hardening patch)
 
-## Overview
-This document provides a detailed patch-style diff showing all changes made to `worker.js` to address the audit findings.
+This document summarizes the delta applied to `worker.js` to prepare for final enterprise deployment.
 
----
+## Added
 
-## Change 1: Updated Endpoint Documentation
+- **Deep Health**: `/health?deep=1` now returns `{ ok, key_pool, provider }`, where `provider` reports Groq model endpoint reachability using a selected key from the pool.
+- **Rate Limiter**: Token-bucket gate on `POST /chat` using `RATELIMIT_RATE` and `RATELIMIT_BURST` (defaults 10/min, burst 4). Responds 429 with `Retry-After`, `X-RateLimit-*` headers.
+- **Request ID Echo**: All JSON responses echo `x-req-id` if provided by client; also returned on `HEAD/GET /health`.
+- **GROQ Key Pool Compatibility**: Rotation pool now includes `PROVIDER_KEYS`, `PROVIDER_KEY_#`, `GROQ_KEY_#`, `GROQ_API_KEY[_#]`.
+- **Role‑Play XML Respect**: If the provider emits `<role>HCP</role><content>…</content>`, the `<content>` body is used as the reply (mini XML wrapper).
+- **Startup Config Log**: One-time log on first request showing key pool size, CORS allowlist size, and rotation strategy.
+- **Violation Logging**: Elevated leak detection to structured console logs with `event: "validation_check"` when violations detected.
 
-```diff
- /**
-  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
-- * Endpoints: POST /facts, POST /plan, POST /chat, GET /health, GET /version
-+ * Endpoints: POST /facts, POST /plan, POST /chat, GET/HEAD /health, GET /version, GET /debug/ei
-  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
-```
+## Fixed
 
-**Rationale:** Accurately document all supported endpoints including HEAD method for /health and new /debug/ei endpoint.
+- Removed accidental malformed line in `FACTS_DB[0]` causing syntax errors.
+- Normalized `json()` helper to avoid undefined `reqId` usage and to support extra headers parameter.
+- Cleaned stray `reqId` arguments in `postFacts`, `postPlan`, `postCoachMetrics`, and error paths.
+- Fixed `json()` signature to be `json(body, status, env, req, extraHeaders)` with x-req-id auto-detection from req.headers.
 
----
+## Notable Behavior Changes
 
-## Change 2: Fixed Duplicate /health Handler
+- Session-hash key selection (stable per session) continues to be the default; pool detection now works with your existing `GROQ_API_KEY_*` secrets.
+- `OPTIONS` responses and health endpoints include `x-req-id` when available.
+- Rate limiting applied to `/chat` per IP address; 429 with retry headers when exceeded.
 
-### Before (Lines 36-43):
-```javascript
-      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
-  // For HEAD, no body is needed
-  const body = req.method === "GET" ? "ok" : null;
-  return new Response(body, { status: 200, headers: cors(env, req) });
-}
-      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
-  return new Response(null, { status: 200, headers: cors(env, req) });
-}
-```
+## Comparison to Prior r9 Worker
 
-### After:
-```javascript
-      // Health check - supports both GET and HEAD for frontend health checks
-      if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
-        // HEAD requests return no body, GET returns "ok"
-        const body = req.method === "GET" ? "ok" : null;
-        return new Response(body, { status: 200, headers: cors(env, req) });
-      }
-```
+The current r10.1 simplified architecture removes:
+- Strict multi-endpoint engine (`/agent`, `/evaluate`)
+- XML role schema enforcement with retry (partially restored for role-play)
+- Streaming SSE (deferred; standard JSON responses only)
+- KV-enforced monotonic sequencing per session
+- Soft serialization gate and per-site rate buckets
 
-**Problem:** Two conflicting handlers causing unpredictable behavior  
-**Solution:** Single consolidated handler with explicit comments  
-**Impact:** Reliable health checks for both GET and HEAD methods with guaranteed CORS headers
+Retained and enhanced:
+- Provider key rotation (now compatible with GROQ_* names)
+- Mode-specific validation with warnings/violations
+- Deterministic scoring fallback
+- Format hardening (sales-simulation 4-section contract)
+- CORS allowlist with deny logging
 
----
+## Env Vars Consulted
+
+- `CORS_ORIGINS` – comma-separated allowlist
+- `PROVIDER_URL`, `PROVIDER_MODEL` – Groq endpoint & model
+- `PROVIDER_KEYS`, `PROVIDER_KEY`, `PROVIDER_KEY_#`, `GROQ_API_KEY[_#]`, `GROQ_KEY_#` – rotation pool
+- `RATELIMIT_RATE`, `RATELIMIT_BURST`, `RATELIMIT_RETRY_AFTER` – rate limiting config
+- `PROVIDER_ROTATION_STRATEGY` – (optional) `session` (default) or `seq`
+- `DEBUG_MODE` – when `"true"`, logs detailed format/validation checks
+
+## Deployment Checklist
+
+- [ ] Verify `GROQ_API_KEY`, `GROQ_API_KEY_2`, `GROQ_API_KEY_3` are set in Cloudflare secrets
+- [ ] Confirm `CORS_ORIGINS` includes all required domains (reflectivei.github.io, tonyabdelmalak.*)
+- [ ] Set `RATELIMIT_RATE` and `RATELIMIT_BURST` appropriate for production load
+- [ ] Deploy worker via `wrangler deploy` (or dashboard)
+- [ ] Test `/health?deep=1` to confirm provider connectivity and key pool count
+- [ ] Run mode isolation tests against live endpoint
+- [ ] Validate sales-simulation formatting includes all 4 sections (especially "Suggested Phrasing")
+- [ ] Monitor logs for `leak_violation` events in first week
+
+## Future Enhancements (Not Included)
+
+- SSE streaming for non-role-play modes
+- Seq-based rotation with KV-enforced monotonic counter
+- XML retry loop for role-play with stricter schema validation
+- Request logging to KV or analytics endpoint
+- API key usage tracking per key in pool
+
 
 ## Change 3: Added /version Endpoint
 

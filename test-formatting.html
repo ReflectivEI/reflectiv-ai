@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Coach Formatting Test</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; background: #f5f5f5; }
+    .coach-panel { background: #fffbe8; padding: 20px; border-radius: 12px; max-width: 700px; margin: 20px auto; }
+  </style>
+</head>
+<body>
+  <div class="coach-panel" id="output"></div>
+  
+  <script>
+    // Simulated raw feedback text (what the worker sends)
+    const rawFeedback = `Challenge: The HCP may not be prioritizing PrEP prescriptions due to lack of awareness about the substantial risk of HIV in certain patient populations. Rep Approach: • Discuss the importance of assessing sexual and injection risk factors to identify individuals at substantial risk of HIV, as recommended for PrEP eligibility [HIV-PREP-ELIG-001]. • Highlight the efficacy and safety profile of Descovy (emtricitabine/tenofovir alafenamide) for PrEP, excluding receptive vaginal sex, as indicated in the FDA label [HIV-PREP-TAF-002]. • Emphasize the need for renal function assessment before and during PrEP, considering eGFR thresholds per the FDA label, to ensure safe prescribing practices [HIV-PREP-SAFETY-003]. Impact: By emphasizing the importance of risk assessment, the benefits of Descovy for PrEP, and the need for renal function monitoring, the HCP will be more likely to prioritize PrEP prescriptions for at-risk patients and commit to proactive Descovy prescribing. Suggested Phrasing: "Given the substantial risk of HIV in certain patient populations, I recommend we discuss how to identify and assess these individuals for PrEP eligibility, and consider Descovy as a safe and effective option."`;
+    
+    function esc(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+    
+    // Format the sections
+    const sections = [];
+    const text = String(rawFeedback);
+    
+    // Extract Challenge
+    const challengeMatch = text.match(/Challenge:\s*(.+?)(?=\s*Rep Approach:|$)/is);
+    if (challengeMatch) {
+      sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Challenge:</strong><div style="line-height:1.6">${esc(challengeMatch[1].trim())}</div></div>`);
+    }
+    
+    // Extract Rep Approach
+    const repMatch = text.match(/Rep Approach:\s*(.+?)(?=\s*Impact:|$)/is);
+    if (repMatch) {
+      const repText = repMatch[1].trim();
+      const bullets = repText.split(/\s*•\s*/).filter(Boolean).map(b => `<li style="margin:4px 0">${esc(b.trim())}</li>`).join('');
+      sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Rep Approach:</strong><ul style="margin:0;padding-left:20px;line-height:1.6">${bullets}</ul></div>`);
+    }
+    
+    // Extract Impact
+    const impactMatch = text.match(/Impact:\s*(.+?)(?=\s*Suggested Phrasing:|$)/is);
+    if (impactMatch) {
+      sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Impact:</strong><div style="line-height:1.6">${esc(impactMatch[1].trim())}</div></div>`);
+    }
+    
+    // Extract Suggested Phrasing
+    const phrasingMatch = text.match(/Suggested Phrasing:\s*(.+)/is);
+    if (phrasingMatch) {
+      const phrase = phrasingMatch[1].trim().replace(/^["']|["']$/g, '');
+      sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Suggested Phrasing:</strong><div style="line-height:1.6;font-style:italic;color:#1e2a3a">"${esc(phrase)}"</div></div>`);
+    }
+    
+    document.getElementById('output').innerHTML = sections.join('');
+  </script>
+</body>
+</html>
