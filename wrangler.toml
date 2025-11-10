@@ -1,26 +1,68 @@
+# name must match your worker name in Cloudflare dashboard
 name = "my-chat-agent-v2"
-main = "worker.js"
+main = "worker-r9.js"  # Using the new r9 worker
 compatibility_date = "2024-11-12"
 workers_dev = true
 
-# If you want a custom domain/route later, add:
+# Production routes (uncomment when ready to deploy to custom domain)
 # routes = [
 #   { pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "" }
 # ]
 
 [vars]
-PROVIDER = "groq"
+# Provider configuration
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
-PROVIDER_MODEL = "llama-3.1-70b-versatile"
-MAX_OUTPUT_TOKENS = "1400"
-CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com"
+PROVIDER_MODEL_HCP = "llama-3.1-70b-versatile"
+PROVIDER_MODEL_COACH = "llama-3.1-70b-versatile"
+PROVIDER_SIG = "groq:llama-3.1-70b-versatile"
 
-# PROVIDER_KEY must be set as a secret using:
-# wrangler secret put PROVIDER_KEY
-# The secret value should be your GROQ API key starting with "gsk_..."
+# Context and response limits
+MAX_CHARS_CONTEXT = "12000"
+RESPONSE_TTL_SECONDS = "86400"
 
+# CORS Origins - All allowed domains
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com"
+
+# Rate limiting configuration
+RATELIMIT_RATE = "10"
+RATELIMIT_BURST = "4"
+RATELIMIT_RATE_TONY = "10"
+RATELIMIT_BURST_TONY = "4"
+RATELIMIT_RATE_REFLECTIVAI = "10"
+RATELIMIT_BURST_REFLECTIVAI = "4"
+RATELIMIT_RETRY_AFTER = "2"
+
+# Remote content URLs (optional)
+TONY_SYSTEM_URL = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/system.md"
+TONY_KB_URL = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/about-tony.md"
+TONY_PERSONA_URL = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/persona.json"
+
+# KV Namespace for session storage (REQUIRED)
 [[kv_namespaces]]
 binding = "SESS"
 id = "dev-sess-kv"
-# preview_id can repeat id for dev
 preview_id = "dev-sess-kv"
+
+# Optional: Metrics KV namespace
+# [[kv_namespaces]]
+# binding = "METRICS_KV"
+# id = "metrics-kv"
+# preview_id = "metrics-kv"
+
+# =============================================================================
+# SECRETS (Must be set via wrangler CLI - NOT stored in this file)
+# =============================================================================
+# These must be configured using: wrangler secret put SECRET_NAME
+#
+# Required secrets:
+# - GROQ_KEY_1 (or GROQ_API_KEY) - Primary Groq API key
+# - GROQ_KEY_2 (or GROQ_API_KEY_2) - Secondary Groq API key (optional, for rotation)
+# - GROQ_KEY_3 (or GROQ_API_KEY_3) - Tertiary Groq API key (optional, for rotation)
+#
+# To set secrets:
+#   wrangler secret put GROQ_KEY_1
+#   wrangler secret put GROQ_KEY_2
+#   wrangler secret put GROQ_KEY_3
+#
+# Get your Groq API keys from: https://console.groq.com/keys
+# =============================================================================
