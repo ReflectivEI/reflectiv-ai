@@ -50,12 +50,13 @@
   }
 
   // ---------- config/state ----------
-  const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play"];
+  const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play", "General Assistant"];
   const LC_TO_INTERNAL = {
     "Emotional Intelligence": "emotional-assessment",
     "Product Knowledge": "product-knowledge",
     "Sales Simulation": "sales-simulation",
-    "Role Play": "role-play"
+    "Role Play": "role-play",
+    "General Assistant": "general-knowledge"
   };
 
   // ---------- SSE Configuration ----------
@@ -121,18 +122,18 @@
 
   function updateDebugFooter() {
     if (!debugMode || !telemetryFooter || !currentTelemetry) return;
-    
+
     const t = currentTelemetry;
     const ttfb = t.t_first_byte > 0 ? ((t.t_first_byte - t.t_open) / 1000).toFixed(1) : "–.–";
     const firstChunk = t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "–.–";
     const done = t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "–.–";
-    
+
     telemetryFooter.textContent = `TTFB/FirstChunk/Done: ${ttfb}s / ${firstChunk}s / ${done}s • retries:${t.retries} • ${t.httpStatus || "—"}`;
   }
 
   function logTelemetry() {
     if (!currentTelemetry || currentTelemetry.t_open === 0) return;
-    
+
     const t = currentTelemetry;
     const row = {
       mode: t.mode,
@@ -164,10 +165,10 @@
   // ---------- utils ----------
   const STUB_MODE = new URLSearchParams(location.search).has('stub');
   const IS_GITHUB_IO = /github\.io/i.test(location.hostname);
-  
+
   async function fetchLocal(path) {
     const r = await fetch(path, { cache: "no-store" });
-    
+
     // 404 handling with stub mode guard
     if (!r.ok) {
       if (r.status === 404 && IS_GITHUB_IO && STUB_MODE) {
@@ -176,7 +177,7 @@
       }
       throw new Error(`Failed to load ${path} (${r.status})`);
     }
-    
+
     const ct = r.headers.get("content-type") || "";
     return ct.includes("application/json") ? r.json() : r.text();
   }
@@ -212,7 +213,7 @@
    */
   function convertCitations(text) {
     if (!text) return text;
-    
+
     // Match citation codes like [HIV-PREP-001] or [HIV-TREAT-TAF-001]
     return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9]{3,})\]/g, (match, code) => {
       const citation = citationsDb[code];
@@ -220,7 +221,7 @@
         // Unknown code - show as-is but styled
         return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${match}</span>`;
       }
-      
+
       // Create clickable footnote link
       const tooltip = citation.apa || `${citation.source}, ${citation.year}`;
       return `<a href="${citation.url}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${code.split('-').pop()}]</a>`;
@@ -234,14 +235,14 @@
     const healthUrl = `${baseUrl}/health`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1500);
-    
+
     try {
       const response = await fetch(healthUrl, {
         method: "GET",
         signal: controller.signal
       });
       clearTimeout(timeout);
-      
+
       if (response.ok) {
         isHealthy = true;
         hideHealthBanner();
@@ -252,7 +253,7 @@
         }
         return true;
       }
-      
+
       isHealthy = false;
       showHealthBanner();
       disableSendButton();
@@ -268,13 +269,13 @@
 
   function showHealthBanner() {
     if (!mount) return;
-    
+
     if (!healthBanner) {
       healthBanner = document.createElement("div");
       healthBanner.style.cssText = "background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin:8px 0;color:#856404;font-size:14px;font-weight:600;text-align:center;";
       healthBanner.textContent = "⚠️ Backend unavailable. Trying again…";
     }
-    
+
     const shell = mount.querySelector(".reflectiv-chat");
     if (shell && !shell.contains(healthBanner)) {
       shell.insertBefore(healthBanner, shell.firstChild);
@@ -305,7 +306,7 @@
 
   function startHealthRetry() {
     if (healthCheckInterval) return;
-    
+
     healthCheckInterval = setInterval(async () => {
       await checkHealth();
     }, 20000); // 20 seconds
@@ -329,7 +330,7 @@
       ${type === "error" ? "background:#fee;border:1px solid #f5c2c2;color:#991b1b;" : "background:#e8f6ee;border:1px solid #bfe7cf;color:#0b5a2a;"}
     `;
     toast.textContent = message;
-    
+
     // Add animation
     const style = document.createElement("style");
     style.textContent = `@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
@@ -337,9 +338,9 @@
       style.setAttribute('data-toast-anim', 'true');
       document.head.appendChild(style);
     }
-    
+
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
       toast.style.transition = "opacity 0.3s ease-out";
       toast.style.opacity = "0";
@@ -352,18 +353,18 @@
   }
 
   // === EI summary renderer for yellow panel ===
-  function renderEiPanel(msg){
+  function renderEiPanel(msg) {
     const ei = msg && msg._coach && msg._coach.ei;
     if (!ei || !ei.scores) return "";
 
     const S = ei.scores || {};
     const R = ei.rationales || {};
-    const tips = Array.isArray(ei.tips) ? ei.tips.slice(0,3) : [];
+    const tips = Array.isArray(ei.tips) ? ei.tips.slice(0, 3) : [];
     const rubver = ei.rubric_version || "v1";
 
-    const mk = (k,label) => {
+    const mk = (k, label) => {
       const v = Number(S[k] ?? 0);
-      const cls = v>=4 ? "good" : v===3 ? "ok" : "bad";
+      const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
       const val = (v || v === 0) ? String(v) : "–";
       const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
       return `<span class="ei-pill ${cls}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
@@ -373,13 +374,13 @@
   <div class="ei-wrap">
     <div class="ei-h">Emotional Intelligence Summary</div>
     <div class="ei-row">
-      ${mk("empathy","Empathy")}
-      ${mk("discovery","Discovery")}
-      ${mk("compliance","Compliance")}
-      ${mk("clarity","Clarity")}
-      ${mk("accuracy","Accuracy")}
+      ${mk("empathy", "Empathy")}
+      ${mk("discovery", "Discovery")}
+      ${mk("compliance", "Compliance")}
+      ${mk("clarity", "Clarity")}
+      ${mk("accuracy", "Accuracy")}
     </div>
-    ${tips.length ? `<ul class="ei-tips">${tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+    ${tips.length ? `<ul class="ei-tips">${tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
     <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
   </div>`;
   }
@@ -411,15 +412,15 @@
     const base = getWorkerBase();
     if (!base) throw new Error("worker_base_missing");
     const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-    
+
     // Retry logic with exponential backoff for 429/5xx errors
     const delays = [300, 800, 1500];
     let lastError = null;
-    
+
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
-      
+
       try {
         const r = await fetch(url, {
           method: "POST",
@@ -427,47 +428,47 @@
           body: JSON.stringify(payload || {}),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeout);
-        
+
         if (r.ok) {
           return await r.json();
         }
-        
+
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
           lastError = new Error(`${path}_http_${r.status}`);
           await new Promise(resolve => setTimeout(resolve, delays[attempt]));
           continue;
         }
-        
+
         throw new Error(`${path}_http_${r.status}`);
       } catch (e) {
         clearTimeout(timeout);
-        
+
         // Retry on timeout or network errors
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
           await new Promise(resolve => setTimeout(resolve, delays[attempt]));
           continue;
         }
-        
+
         throw e;
       }
     }
-    
+
     throw lastError || new Error(`${path}_failed_after_retries`);
   }
 
   // mode-aware fallback lines
-  function fallbackText(mode){
-    if(mode === "sales-simulation"){
+  function fallbackText(mode) {
+    if (mode === "sales-simulation") {
       return "Keep it concise. Acknowledge the HCP’s context, give one actionable tip, then end with a single discovery question.";
     }
-    if(mode === "product-knowledge"){
+    if (mode === "product-knowledge") {
       return "Brief overview: indication, one efficacy point, one safety consideration. Cite label or guideline.";
     }
-    if(mode === "role-play"){
+    if (mode === "role-play") {
       return "In my clinic, we review histories, behaviors, and adherence to guide decisions.";
     }
     // emotional-assessment
@@ -645,7 +646,7 @@
       const r1 = await callModelFn(rewriteMsgs);
       out = sanitizeRolePlayOnly(r1);
       if (!isGuidanceLeak(out)) return out;
-    } catch (_) {}
+    } catch (_) { }
 
     // Pass 2: fresh completion with corrective rails prepended to original convo
     try {
@@ -653,7 +654,7 @@
       const r2 = await callModelFn(hardened);
       out = sanitizeRolePlayOnly(r2);
       if (!isGuidanceLeak(out)) return out;
-    } catch (_) {}
+    } catch (_) { }
 
     // Pass 3: last-ditch strip + diversified variants (PATCH D)
     out = out.replace(
@@ -694,27 +695,27 @@
    * formatSalesSimulationReply - Format sales-simulation responses with proper structure
    * Expected format:
    * Challenge: [text]
-   * 
+   *
    * Rep Approach:
    * • [bullet]
    * • [bullet]
-   * 
+   *
    * Impact: [text]
-   * 
+   *
    * Suggested Phrasing: "[text]"
    */
   function formatSalesSimulationReply(text) {
     if (!text) return "";
-    
+
     let html = "";
     const sections = [];
-    
+
     // Split by major sections
     const challengeMatch = text.match(/Challenge:\s*(.+?)(?=\n\s*Rep Approach:|$)/is);
     const repApproachMatch = text.match(/Rep Approach:\s*(.+?)(?=\n\s*Impact:|$)/is);
     const impactMatch = text.match(/Impact:\s*(.+?)(?=\n\s*Suggested Phrasing:|$)/is);
     const phrasingMatch = text.match(/Suggested Phrasing:\s*(.+?)(?=\n\s*<coach>|$)/is);
-    
+
     // Challenge section
     if (challengeMatch) {
       const challengeText = challengeMatch[1].trim();
@@ -723,28 +724,28 @@
       html += `<div class="section-content">${esc(challengeText)}</div>`;
       html += `</div>\n\n`;
     }
-    
+
     // Rep Approach section
     if (repApproachMatch) {
       const repText = repApproachMatch[1].trim();
       html += `<div class="sales-sim-section">`;
       html += `<div class="section-header"><strong>Rep Approach:</strong></div>`;
       html += `<ul class="section-bullets">`;
-      
+
       // Extract bullets
       const bullets = repText.split(/\n/).map(line => {
         // Remove bullet markers (•, *, -, etc.)
         return line.trim().replace(/^[•\*\-\+]\s*/, '');
       }).filter(line => line.length > 0);
-      
+
       bullets.forEach(bullet => {
         html += `<li>${esc(bullet)}</li>`;
       });
-      
+
       html += `</ul>`;
       html += `</div>\n\n`;
     }
-    
+
     // Impact section
     if (impactMatch) {
       const impactText = impactMatch[1].trim();
@@ -753,7 +754,7 @@
       html += `<div class="section-content">${esc(impactText)}</div>`;
       html += `</div>\n\n`;
     }
-    
+
     // Suggested Phrasing section
     if (phrasingMatch) {
       const phrasingText = phrasingMatch[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
@@ -762,7 +763,7 @@
       html += `<div class="section-quote">"${esc(phrasingText)}"</div>`;
       html += `</div>`;
     }
-    
+
     return html || md(text); // Fallback to regular markdown if parsing fails
   }
 
@@ -857,11 +858,11 @@
     if (!s) return null;
 
     const parsed = {};
-    
+
     // Try to extract Challenge
     const challengeMatch = s.match(/(?:^|\n)\s*Challenge\s*:\s*(.+?)(?=\n\s*(?:Rep Approach|Impact|Suggested Phrasing):|$)/is);
     if (challengeMatch) parsed.challenge = challengeMatch[1].trim();
-    
+
     // Try to extract Rep Approach (as array of items)
     const repApproachMatch = s.match(/(?:^|\n)\s*Rep Approach\s*:\s*(.+?)(?=\n\s*(?:Impact|Suggested Phrasing):|$)/is);
     if (repApproachMatch) {
@@ -871,7 +872,7 @@
         .filter(Boolean);
       parsed.rep_approach = items.length > 0 ? items : [repApproachMatch[1].trim().replace(/\n/g, ' ')];
     }
-    
+
     // Try to extract Impact (as array of items)
     const impactMatch = s.match(/(?:^|\n)\s*Impact\s*:\s*(.+?)(?=\n\s*Suggested Phrasing:|$)/is);
     if (impactMatch) {
@@ -881,20 +882,20 @@
         .filter(Boolean);
       parsed.impact = items.length > 0 ? items : [impactMatch[1].trim().replace(/\n/g, ' ')];
     }
-    
+
     // Try to extract Suggested Phrasing (may span multiple lines)
     const phrasingMatch = s.match(/(?:^|\n)\s*Suggested Phrasing\s*:\s*(.+?)(?=\n\s*(?:Challenge|Rep Approach|Impact):|$)/is);
     if (phrasingMatch) parsed.suggested_phrasing = phrasingMatch[1].trim().replace(/^["']|["']$/g, '').replace(/\n/g, ' ');
-    
+
     return Object.keys(parsed).length > 0 ? parsed : null;
   }
 
   // --- Normalize coach data from different formats
   function normalizeCoachData(coach) {
     if (!coach) return null;
-    
+
     const normalized = { ...coach };
-    
+
     // Map alternative field names to standard names
     if (coach.challenge && !coach.feedback) {
       normalized.feedback = coach.challenge;
@@ -908,7 +909,7 @@
     if (coach.suggested_phrasing && !coach.phrasing) {
       normalized.phrasing = coach.suggested_phrasing;
     }
-    
+
     return normalized;
   }
 
@@ -1055,7 +1056,7 @@
       case "indifferent": score = 3; break;
       default: score = 3;
     }
-    ["understand","appreciate","concern","feel","sorry","hear","sounds like","empathize","thanks","acknowledge"].forEach((kw)=>{ if(text.includes(kw)) score++; });
+    ["understand", "appreciate", "concern", "feel", "sorry", "hear", "sounds like", "empathize", "thanks", "acknowledge"].forEach((kw) => { if (text.includes(kw)) score++; });
     return Math.min(5, score);
   }
 
@@ -1070,7 +1071,7 @@
       case "indifferent": score = 3; break;
       default: score = 3;
     }
-    ["stress","busy","overwhelmed","frustrated","tired","pressure","deadline"].forEach((kw)=>{ if(text.includes(kw)) score++; });
+    ["stress", "busy", "overwhelmed", "frustrated", "tired", "pressure", "deadline"].forEach((kw) => { if (text.includes(kw)) score++; });
     return Math.min(5, score);
   }
 
@@ -1173,16 +1174,15 @@ You are a virtual pharma coach. Be direct, label-aligned, and safe.
 
 # Scenario
 ${personaLine}
-${
-  sc
-    ? [
-        `Therapeutic Area: ${sc.therapeuticArea || "—"}`,
-        `HCP Role: ${sc.hcpRole || "—"}`,
-        `Background: ${sc.background || "—"}`,
-        `Today’s Goal: ${sc.goal || "—"}`
-      ].join("\n")
-    : ""
-}
+${sc
+          ? [
+            `Therapeutic Area: ${sc.therapeuticArea || "—"}`,
+            `HCP Role: ${sc.hcpRole || "—"}`,
+            `Background: ${sc.background || "—"}`,
+            `Today’s Goal: ${sc.goal || "—"}`
+          ].join("\n")
+          : ""
+        }
 
 # Style
 - 3–4 sentences and one closing question. No lists longer than 2 bullets.
@@ -1304,7 +1304,7 @@ ${COMMON}`
       </div>
     `;
     mount.appendChild(shell);
-    
+
     // Add debug footer if ?debug=1
     if (isDebugMode()) {
       telemetryFooter = el("div", "telemetry-footer");
@@ -1548,7 +1548,7 @@ ${COMMON}`
         diseaseSelect.disabled = true;
         hcpSelect.disabled = true;
         setSelectOptions(hcpSelect, [{ value: "", label: "—" }], true);
-        
+
         // Show inline error message in meta area if available
         const metaEl = mount.querySelector(".scenario-meta");
         if (metaEl) {
@@ -1558,10 +1558,10 @@ ${COMMON}`
         }
         return;
       }
-      
+
       const ds = getDiseaseStates();
       setSelectOptions(diseaseSelect, ds, true);
-      
+
       // Enable if we have scenarios
       if (scenarios.length > 0) {
         diseaseSelect.disabled = false;
@@ -1624,14 +1624,14 @@ ${COMMON}`
 
         const body = el("div");
         const normalized = normalizeGuidanceLabels(m.content);
-        
+
         // Use special formatting for sales-simulation mode
         if (currentMode === "sales-simulation" && m.role === "assistant") {
           body.innerHTML = formatSalesSimulationReply(normalized);
         } else {
           body.innerHTML = md(normalized);
         }
-        
+
         c.appendChild(body);
 
         row.appendChild(c);
@@ -1681,31 +1681,31 @@ ${COMMON}`
         // Optional dev shim (guarded)
         if (DEBUG_EI_SHIM && last && last._coach && !last._coach.ei) {
           last._coach.ei = {
-            scores:{ empathy:4, discovery:3, compliance:5, clarity:4, accuracy:4 },
-            rationales:{
-              empathy:"Validated HCP constraints and reframed",
-              discovery:"Asked one focused question",
-              compliance:"On-label; AE capture ready",
-              clarity:"Concise, one idea per sentence",
-              accuracy:"Claims match label"
+            scores: { empathy: 4, discovery: 3, compliance: 5, clarity: 4, accuracy: 4 },
+            rationales: {
+              empathy: "Validated HCP constraints and reframed",
+              discovery: "Asked one focused question",
+              compliance: "On-label; AE capture ready",
+              clarity: "Concise, one idea per sentence",
+              accuracy: "Claims match label"
             },
-            tips:[
+            tips: [
               "Open with HCP context then one ask",
               "Anchor claims to label/guideline",
               "Close with one specific next step"
             ],
-            rubric_version:"v1.2"
+            rubric_version: "v1.2"
           };
         }
 
         const eiHTML = renderEiPanel(last);
-        
+
         // Fallback to old yellow panel HTML if no EI data
         const oldYellowHTML = (() => {
-          const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
-          const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
+          const workedStr = fb.worked && fb.worked.length ? `<ul>${fb.worked.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+          const improveStr = fb.improve && fb.improve.length ? `<ul>${fb.improve.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
           const phrasingStr = fb.phrasing || "";
-          
+
           // If parsed fields exist, use structured format
           if (workedStr || improveStr || phrasingStr) {
             return `
@@ -1717,7 +1717,7 @@ ${COMMON}`
             </ul>
             ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
           }
-          
+
           // Otherwise display raw feedback text with formatted labels + COMPLIANCE FLAGS
           const rawText = fb.feedback || fb.comment || "";
           if (rawText) {
@@ -1725,12 +1725,12 @@ ${COMMON}`
             const sections = [];
             const text = String(rawText);
             const complianceFlags = [];
-            
+
             // Check for compliance issues
             const offLabelTerms = /\b(off-label|unapproved|investigational|experimental)\b/gi;
             const missingCitations = !text.match(/\[[\w-]+\]/g);
             const comparativeClaims = /\b(better than|superior to|more effective than|outperforms)\b/gi;
-            
+
             if (offLabelTerms.test(text)) {
               complianceFlags.push('⚠️ Off-label language detected');
             }
@@ -1740,18 +1740,18 @@ ${COMMON}`
             if (comparativeClaims.test(text)) {
               complianceFlags.push('⚠️ Comparative claim requires data');
             }
-            
+
             // Show compliance alerts at top if any
             if (complianceFlags.length > 0) {
               sections.push(`<div style="margin-bottom:16px;padding:12px;background:#fff7e6;border:1px solid:#fbbf24;border-radius:8px"><strong style="color:#92400e;display:block;margin-bottom:4px">⚠️ Compliance Review Needed:</strong><ul style="margin:4px 0;padding-left:20px;color:#92400e">${complianceFlags.map(f => `<li>${f}</li>`).join('')}</ul></div>`);
             }
-            
+
             // Extract Challenge
             const challengeMatch = text.match(/Challenge:\s*(.+?)(?=\s*Rep Approach:|$)/is);
             if (challengeMatch) {
               sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Challenge:</strong><div style="line-height:1.6">${esc(challengeMatch[1].trim())}</div></div>`);
             }
-            
+
             // Extract Rep Approach
             const repMatch = text.match(/Rep Approach:\s*(.+?)(?=\s*Impact:|$)/is);
             if (repMatch) {
@@ -1762,23 +1762,23 @@ ${COMMON}`
               }).join('');
               sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Rep Approach:</strong><ul style="margin:0;padding-left:20px;line-height:1.8;list-style-type:disc">${bullets}</ul></div>`);
             }
-            
+
             // Extract Impact
             const impactMatch = text.match(/Impact:\s*(.+?)(?=\s*Suggested Phrasing:|$)/is);
             if (impactMatch) {
               sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Impact:</strong><div style="line-height:1.6">${esc(impactMatch[1].trim())}</div></div>`);
             }
-            
+
             // Extract Suggested Phrasing
             const phrasingMatch = text.match(/Suggested Phrasing:\s*(.+)/is);
             if (phrasingMatch) {
               const phrase = phrasingMatch[1].trim().replace(/^["']|["']$/g, '');
               sections.push(`<div style="margin-bottom:16px"><strong style="display:block;margin-bottom:8px;color:#2f3a4f;font-size:15px">Suggested Phrasing:</strong><div style="line-height:1.6;font-style:italic;padding:12px;background:#f0fdf4;border-left:3px solid:#22c55e;color:#1e2a3a">"${esc(phrase)}"</div></div>`);
             }
-            
+
             return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div>${sections.join('')}</div>`;
           }
-          
+
           return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div class="muted">No coach feedback available</div>`;
         })();
 
@@ -1788,16 +1788,16 @@ ${COMMON}`
 
       // Emotional-assessment and Role Play final eval - Use EI 5-point scale
       const eiScores = scores || {};
-      const eiPills = Object.keys(eiScores).slice(0,5).map(k => {
+      const eiPills = Object.keys(eiScores).slice(0, 5).map(k => {
         const v = Number(eiScores[k] ?? 0);
-        const cls = v>=4 ? "good" : v===3 ? "ok" : "bad";
+        const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
         const label = k.charAt(0).toUpperCase() + k.slice(1);
         return `<span class="ei-pill ${cls}"><span class="k">${esc(label)}</span>${v}/5</span>`;
       }).join('');
-      
+
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
       const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
-      
+
       body.innerHTML = `
         <div class="ei-wrap">
           <div class="ei-h">Performance Metrics (5-Point Scale)</div>
@@ -1813,8 +1813,17 @@ ${COMMON}`
 
     function applyModeVisibility() {
       const lc = modeSel.value;
+      const previousMode = currentMode;
       currentMode = LC_TO_INTERNAL[lc];
       const pk = currentMode === "product-knowledge";
+
+      // CRITICAL FIX: Always clear conversation and reset state when mode changes
+      if (previousMode !== currentMode) {
+        currentScenarioId = null;
+        conversation = [];
+        repOnlyPanelHTML = "";
+        feedbackDisplayElem.innerHTML = "";
+      }
 
       coachLabel.classList.toggle("hidden", pk);
       coachSel.classList.toggle("hidden", pk);
@@ -1860,9 +1869,20 @@ ${COMMON}`
           </div>`;
         populateDiseases();
         if (diseaseSelect.value) populateHcpForDisease(diseaseSelect.value);
-        renderMessages();
-        renderCoach();
-        renderMeta();
+      } else if (currentMode === "general-knowledge") {
+        // NEW: General Assistant mode - no disease/HCP/persona selectors needed
+        diseaseLabel.classList.add("hidden");
+        diseaseSelect.classList.add("hidden");
+        hcpLabel.classList.add("hidden");
+        hcpSelect.classList.add("hidden");
+        personaLabelElem.classList.add("hidden");
+        personaSelectElem.classList.add("hidden");
+        featureLabelElem.classList.add("hidden");
+        eiFeatureSelectElem.classList.add("hidden");
+        feedbackDisplayElem.innerHTML = `
+          <div class="coach-note">
+            <strong>General Assistant Mode:</strong> Ask me anything! I can help with life sciences, business, technology, general knowledge, or any other topic.
+          </div>`;
       } else {
         // emotional-assessment
         diseaseLabel.classList.add("hidden");
@@ -1873,22 +1893,12 @@ ${COMMON}`
         personaSelectElem.classList.remove("hidden");
         featureLabelElem.classList.remove("hidden");
         eiFeatureSelectElem.classList.remove("hidden");
-        feedbackDisplayElem.innerHTML = "";
-        repOnlyPanelHTML = "";
-        currentScenarioId = null;
-        conversation = [];
-        renderMessages();
-        renderCoach();
-        renderMeta();
       }
 
-      if (currentMode === "product-knowledge" || currentMode === "emotional-assessment") {
-        currentScenarioId = null;
-        conversation = [];
-        renderMessages();
-        renderCoach();
-        renderMeta();
-      }
+      // CRITICAL FIX: Always render after mode change to reflect cleared state
+      renderMessages();
+      renderCoach();
+      renderMeta();
     }
 
     modeSel.addEventListener("change", applyModeVisibility);
@@ -1938,17 +1948,17 @@ ${COMMON}`
     const shellEl = mount.querySelector(".reflectiv-chat");
     const msgsEl = shellEl?.querySelector(".chat-messages");
     if (!msgsEl) return null;
-    
+
     const typingRow = el("div", "message assistant typing-indicator");
     const typingContent = el("div", "content");
     typingContent.innerHTML = '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>';
     typingRow.appendChild(typingContent);
     msgsEl.appendChild(typingRow);
     msgsEl.scrollTop = msgsEl.scrollHeight;
-    
+
     return typingRow;
   }
-  
+
   // Helper to remove typing indicator
   function removeTypingIndicator(indicator) {
     if (indicator && indicator.parentNode) {
@@ -1963,23 +1973,23 @@ ${COMMON}`
       let pendingUpdate = false;
       let updateScheduled = false;
       let firstByteRecorded = false;
-      
+
       // Validate payload size to prevent URL length issues
       const payloadStr = JSON.stringify(payload);
       if (payloadStr.length > 8000) {
         reject(new Error("payload_too_large_for_sse"));
         return;
       }
-      
+
       // Create EventSource URL with payload as query params
       const sseUrl = new URL(url);
       sseUrl.searchParams.set("stream", "true");
       sseUrl.searchParams.set("data", btoa(payloadStr));
-      
+
       const eventSource = new EventSource(sseUrl.toString());
       const startTime = Date.now();
       let lastTokenTime = Date.now();
-      
+
       // 8s total timeout from start (not reset per message)
       const failTimeout = setTimeout(() => {
         cleanup();
@@ -1989,7 +1999,7 @@ ${COMMON}`
           reject(new Error("stream_timeout_8s"));
         }
       }, 8000);
-      
+
       // Heartbeat check - if no data for 8s, fail
       const heartbeat = setInterval(() => {
         if (Date.now() - lastTokenTime > 8000) {
@@ -2001,19 +2011,19 @@ ${COMMON}`
           }
         }
       }, 1000);
-      
+
       // Cleanup function to clear all timers and close connection
       const cleanup = () => {
         clearTimeout(failTimeout);
         clearInterval(heartbeat);
         eventSource.close();
       };
-      
+
       // Batched DOM update using requestAnimationFrame
       const scheduleDOMUpdate = () => {
         if (updateScheduled) return;
         updateScheduled = true;
-        
+
         requestAnimationFrame(() => {
           if (pendingUpdate && accumulated) {
             onToken(accumulated);
@@ -2022,10 +2032,10 @@ ${COMMON}`
           updateScheduled = false;
         });
       };
-      
+
       eventSource.onmessage = (event) => {
         lastTokenTime = Date.now();
-        
+
         // Record first byte on first message
         if (!firstByteRecorded) {
           firstByteRecorded = true;
@@ -2036,17 +2046,17 @@ ${COMMON}`
             onFirstByte();
           }
         }
-        
+
         try {
           const data = JSON.parse(event.data);
           const token = data.token || data.content || data.delta || "";
-          
+
           if (token) {
             accumulated += token;
             pendingUpdate = true;
             scheduleDOMUpdate();
           }
-          
+
           if (data.done) {
             cleanup();
             // Final update
@@ -2059,10 +2069,10 @@ ${COMMON}`
           console.warn("SSE parse error:", e);
         }
       };
-      
+
       eventSource.onerror = (err) => {
         cleanup();
-        
+
         if (accumulated) {
           resolve(accumulated);
         } else {
@@ -2082,34 +2092,34 @@ ${COMMON}`
       showToast("Configuration error. Please contact support.", "error");
       throw new Error(msg);
     }
-    
+
     const url = `${baseUrl}/chat`;
     // Check both cfg.stream and USE_SSE flag
     const useStreaming = USE_SSE && cfg?.stream === true;
-    
+
     // Initialize telemetry
     initTelemetry();
     currentTelemetry.t_open = Date.now();
     currentTelemetry.mode = currentMode;
     currentTelemetry.retries = 0;
     updateDebugFooter();
-    
+
     // Show typing indicator within 100ms
     const typingIndicator = showTypingIndicator();
-    
+
     // Extract scenario information if available
     const disease = scenarioContext?.therapeuticArea || scenarioContext?.diseaseState || "";
     const persona = scenarioContext?.hcpRole || scenarioContext?.label || "";
     const goal = scenarioContext?.goal || "";
-    
+
     // Build ReflectivAI-compatible payload
     // Extract history from messages (exclude system and last user message)
     const history = messages
       .filter(m => m.role !== "system")
       .slice(0, -1); // exclude the last user message
-    
+
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
-    
+
     const payload = {
       mode: currentMode,
       user: lastUserMsg?.content || "",
@@ -2127,50 +2137,50 @@ ${COMMON}`
         let firstChunkRecorded = false;
         const shellEl = mount.querySelector(".reflectiv-chat");
         const msgsEl = shellEl?.querySelector(".chat-messages");
-        
+
         // Create a temporary message element for streaming updates
         const streamRow = el("div", "message assistant streaming");
         const streamContent = el("div", "content");
         const streamBody = el("div");
         streamContent.appendChild(streamBody);
         streamRow.appendChild(streamContent);
-        
+
         // Remove typing indicator and add stream element
         removeTypingIndicator(typingIndicator);
         msgsEl?.appendChild(streamRow);
-        
+
         const result = await streamWithSSE(url, payload, (content) => {
           streamedContent = content;
-          
+
           // Record first chunk with actual content
           if (!firstChunkRecorded && content && content.trim().length > 0) {
             currentTelemetry.t_first_chunk = Date.now();
             firstChunkRecorded = true;
             updateDebugFooter();
           }
-          
+
           streamBody.innerHTML = md(sanitizeLLM(content));
           if (msgsEl) {
             msgsEl.scrollTop = msgsEl.scrollHeight;
           }
-          
+
           // Approximate bytes received
           currentTelemetry.bytes_rx = textEncoder.encode(content).length;
         }, currentTelemetry, () => {
           // onFirstByte callback
           updateDebugFooter();
         });
-        
+
         // Mark done
         currentTelemetry.t_done = Date.now();
         currentTelemetry.httpStatus = "stream";
         updateDebugFooter();
-        
+
         // Remove streaming element - the actual message will be added by sendMessage
         if (streamRow.parentNode) {
           streamRow.parentNode.removeChild(streamRow);
         }
-        
+
         return result || streamedContent;
       } catch (e) {
         removeTypingIndicator(typingIndicator);
@@ -2186,16 +2196,16 @@ ${COMMON}`
     // Regular fetch with exponential backoff retries (300ms → 800ms → 1.5s)
     const delays = [300, 800, 1500];
     let lastError = null;
-    
+
     for (let attempt = 0; attempt < delays.length + 1; attempt++) {
       if (attempt > 0) {
         currentTelemetry.retries = attempt;
         updateDebugFooter();
       }
-      
+
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
-      
+
       try {
         const r = await fetch(url, {
           method: "POST",
@@ -2208,13 +2218,13 @@ ${COMMON}`
         });
 
         clearTimeout(timeout);
-        
+
         // Record first byte (HTTP headers received)
         if (currentTelemetry.t_first_byte === 0) {
           currentTelemetry.t_first_byte = Date.now();
           updateDebugFooter();
         }
-        
+
         removeTypingIndicator(typingIndicator);
 
         if (r.ok) {
@@ -2222,24 +2232,24 @@ ${COMMON}`
             const bodyText = await r.text();
             currentTelemetry.bytes_rx = textEncoder.encode(bodyText).length;
             currentTelemetry.httpStatus = r.status.toString();
-            
+
             const data = JSON.parse(bodyText);
-            
+
             // Extract tokens if available (prefer completion_tokens for accuracy)
             if (data.usage?.completion_tokens) {
               currentTelemetry.tokens_rx = data.usage.completion_tokens;
             }
-            
+
             const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
-            
+
             // Record first chunk (first response data)
             if (currentTelemetry.t_first_chunk === 0 && content) {
               currentTelemetry.t_first_chunk = Date.now();
             }
-            
+
             currentTelemetry.t_done = Date.now();
             updateDebugFooter();
-            
+
             return content;
           } catch (jsonErr) {
             // JSON parse error
@@ -2248,27 +2258,27 @@ ${COMMON}`
             throw new Error("JSON parse error");
           }
         }
-        
+
         // Record status even on error
         currentTelemetry.httpStatus = r.status.toString();
         updateDebugFooter();
-        
+
         // Log error with status
         console.error(`[chat] status=${r.status} path=/chat`);
-        
+
         // Check if we should retry (429 or 5xx errors)
         if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
           lastError = new Error("HTTP " + r.status);
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
-        
+
         // Show toast for non-retryable errors
         showToast(`Request failed (status ${r.status}). Please retry.`, "error");
         throw new Error("HTTP " + r.status);
       } catch (e) {
         clearTimeout(timeout);
-        
+
         // Retry on timeout or network errors
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
@@ -2278,22 +2288,22 @@ ${COMMON}`
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
         }
-        
+
         removeTypingIndicator(typingIndicator);
         currentTelemetry.httpStatus = e.message || "error";
         currentTelemetry.t_done = Date.now();
         updateDebugFooter();
-        
+
         // Log network error
         console.error(`[chat] status=network_error path=/chat error=${e.message || "unknown"}`);
         showToast(`Network error. Please check your connection and retry.`, "error");
-        
+
         // Show retry UI if we've exhausted all retries and taken >= 8s total
         const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
         if (totalElapsed >= 8000) {
           showRetryUI();
         }
-        
+
         return "";
       }
     }
@@ -2302,22 +2312,22 @@ ${COMMON}`
     currentTelemetry.httpStatus = lastError?.message || "failed";
     currentTelemetry.t_done = Date.now();
     updateDebugFooter();
-    
+
     console.error(`[chat] status=all_retries_failed path=/chat`);
     showToast(`Request failed after retries. Please try again.`, "error");
     showRetryUI();
     return "";
   }
-  
+
   // Show retry button UI
   function showRetryUI() {
     const shellEl = mount.querySelector(".reflectiv-chat");
     const msgsEl = shellEl?.querySelector(".chat-messages");
     if (!msgsEl) return;
-    
+
     // Check if retry UI already exists
     if (msgsEl.querySelector(".retry-ui")) return;
-    
+
     const retryRow = el("div", "message assistant retry-ui");
     const retryContent = el("div", "content");
     retryContent.style.background = "#fff3cd";
@@ -2330,7 +2340,7 @@ ${COMMON}`
     retryRow.appendChild(retryContent);
     msgsEl.appendChild(retryRow);
     msgsEl.scrollTop = msgsEl.scrollHeight;
-    
+
     // Add retry click handler
     const retryBtn = retryContent.querySelector(".retry-btn");
     if (retryBtn) {
@@ -2410,7 +2420,7 @@ ${COMMON}`
     }
 
     let data = null;
-    try { data = JSON.parse(raw); } catch (_) {}
+    try { data = JSON.parse(raw); } catch (_) { }
 
     if (!data || !data.scores) {
       const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
@@ -2418,7 +2428,7 @@ ${COMMON}`
     }
 
     const s = data.scores || {};
-    const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+    const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "—";
     const html = `
       <div class="coach-panel">
         <h4>Rep-only Evaluation</h4>
@@ -2439,28 +2449,28 @@ ${COMMON}`
   }
 
   // ---------- send ----------
-  function norm(txt){return String(txt||"").toLowerCase().replace(/\s+/g," ").trim();}
+  function norm(txt) { return String(txt || "").toLowerCase().replace(/\s+/g, " ").trim(); }
 
   // PATCH B: semantic duplicate detection (4-gram Jaccard)
-  function jaccard4gram(a,b){
+  function jaccard4gram(a, b) {
     const grams = s => {
-      const t = String(s||"").toLowerCase().replace(/\s+/g," ").trim();
+      const t = String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
       if (t.length < 4) return new Set([t]);
       const g = new Set();
-      for (let i=0;i<=t.length-4;i++) g.add(t.slice(i,i+4));
+      for (let i = 0; i <= t.length - 4; i++) g.add(t.slice(i, i + 4));
       return g;
     };
     const A = grams(a), B = grams(b);
-    let inter=0; for (const x of A) if (B.has(x)) inter++;
+    let inter = 0; for (const x of A) if (B.has(x)) inter++;
     const union = A.size + B.size - inter;
-    return union ? inter/union : 0;
+    return union ? inter / union : 0;
   }
 
   let lastAssistantNorm = "";
   let recentAssistantNorms = [];
-  function pushRecent(n){ recentAssistantNorms.push(n); if(recentAssistantNorms.length>6) recentAssistantNorms.shift(); }
-  function isRecent(n){ return recentAssistantNorms.includes(n); }
-  function isTooSimilar(n){ return recentAssistantNorms.some(p => jaccard4gram(p,n) >= 0.88); }
+  function pushRecent(n) { recentAssistantNorms.push(n); if (recentAssistantNorms.length > 6) recentAssistantNorms.shift(); }
+  function isRecent(n) { return recentAssistantNorms.includes(n); }
+  function isTooSimilar(n) { return recentAssistantNorms.some(p => jaccard4gram(p, n) >= 0.88); }
 
   let isSending = false;
 
@@ -2471,15 +2481,15 @@ ${COMMON}`
 
   async function sendMessage(userText) {
     if (isSending) return;
-    
+
     // Health gate: block sends when unhealthy
     if (!isHealthy) {
       showToast("Backend unavailable. Please wait...", "error");
       return;
     }
-    
+
     isSending = true;
-    
+
     // Track timing for auto-fail feature
     window._lastCallModelAttempt = Date.now();
 
@@ -2497,11 +2507,11 @@ ${COMMON}`
       lastUserMessage = userText;
 
       // INTELLIGENT MODE AUTO-DETECTION
-      // If user asks a general knowledge question (What/How/Why/Explain) 
+      // If user asks a general knowledge question (What/How/Why/Explain)
       // without HCP simulation context, auto-switch to Product Knowledge
       const generalQuestionPatterns = /^(what|how|why|explain|tell me|describe|define|compare|list|when)/i;
       const simulationContextWords = /(hcp|doctor|physician|clinician|rep|objection|customer|prescriber)/i;
-      
+
       if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
         // This looks like a general knowledge question - use Product Knowledge mode
         const prevMode = currentMode;
@@ -2552,9 +2562,8 @@ ${COMMON}`
       if (currentMode === "role-play") {
         const personaLine = currentPersonaHint();
         const detail = sc
-          ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${sc.hcpRole || "—"}. ${
-              sc.background ? `Background: ${sc.background}. ` : ""
-            }${sc.goal ? `Today’s Goal: ${sc.goal}.` : ""}`
+          ? `Therapeutic Area: ${sc.therapeuticArea || sc.diseaseState || "—"}. HCP Role: ${sc.hcpRole || "—"}. ${sc.background ? `Background: ${sc.background}. ` : ""
+          }${sc.goal ? `Today’s Goal: ${sc.goal}.` : ""}`
           : "";
         const roleplayRails = buildPreface("role-play", sc) + `
 
@@ -2584,7 +2593,7 @@ ${detail}`;
         }
 
         let { coach, clean } = extractCoach(raw);
-        
+
         // Re-ask once if phrasing is missing in sales-simulation mode
         const phrasing = coach?.phrasing;
         if (currentMode === "sales-simulation" && coach && (!phrasing || !phrasing.trim())) {
@@ -2593,13 +2602,13 @@ IMPORTANT: The response must include a "phrasing" field in the <coach> JSON bloc
 The phrasing should be a concrete, actionable question or statement the rep can use with the HCP.
 Example: "Given your criteria, which patients would be the best fit to start, and what would help you try one this month?"
 Please provide your response again with all required fields including phrasing.`;
-          
+
           const retryMessages = [
             ...messages,
             { role: "assistant", content: raw },
             { role: "system", content: correctiveHint }
           ];
-          
+
           try {
             const retryRaw = await callModel(retryMessages, sc);
             if (retryRaw) {
@@ -2614,44 +2623,44 @@ Please provide your response again with all required fields including phrasing.`
             console.warn("Retry for missing phrasing failed:", retryErr);
           }
         }
-        
-let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
 
-// Mid-sentence cut-off guard + one-pass auto-continue
-const cutOff = (t) => {
-  const s = String(t || "").trim();
-  return s.length > 200 && !/[.!?]"?\s*$/.test(s);
-};
-if (cutOff(replyText)) {
-  const contMsgs = [
-    ...messages,
-    { role: "assistant", content: replyText },
-    { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
-  ];
-  try {
-    let contRaw = await callModel(contMsgs, sc);
-    let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
-    if (contClean) replyText = (replyText + " " + contClean).trim();
-  } catch (_) { /* no-op */ }
-}
+        let replyText = currentMode === "role-play" ? sanitizeRolePlayOnly(clean) : sanitizeLLM(clean);
 
-if (currentMode === "role-play") {
-  // Create a wrapper that passes scenario context to callModel
-  const callModelWithContext = (msgs) => callModel(msgs, sc);
-  replyText = await enforceHcpOnly(replyText, sc, messages, callModelWithContext);
-}
+        // Mid-sentence cut-off guard + one-pass auto-continue
+        const cutOff = (t) => {
+          const s = String(t || "").trim();
+          return s.length > 200 && !/[.!?]"?\s*$/.test(s);
+        };
+        if (cutOff(replyText)) {
+          const contMsgs = [
+            ...messages,
+            { role: "assistant", content: replyText },
+            { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
+          ];
+          try {
+            let contRaw = await callModel(contMsgs, sc);
+            let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
+            if (contClean) replyText = (replyText + " " + contClean).trim();
+          } catch (_) { /* no-op */ }
+        }
 
-if (norm(replyText) === norm(userText)) {
-  replyText = fallbackText(currentMode);
-}
+        if (currentMode === "role-play") {
+          // Create a wrapper that passes scenario context to callModel
+          const callModelWithContext = (msgs) => callModel(msgs, sc);
+          replyText = await enforceHcpOnly(replyText, sc, messages, callModelWithContext);
+        }
+
+        if (norm(replyText) === norm(userText)) {
+          replyText = fallbackText(currentMode);
+        }
 
         // PATCH B: semantic duplicate handling with vary pass
         let candidate = norm(replyText);
         if (candidate && (candidate === lastAssistantNorm || isRecent(candidate) || isTooSimilar(candidate))) {
           const varyMsgs = [
-            ...messages.slice(0,-1),
-            { role:"system", content:"Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
-            messages[messages.length-1]
+            ...messages.slice(0, -1),
+            { role: "system", content: "Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
+            messages[messages.length - 1]
           ];
           let varied = await callModel(varyMsgs, sc);
           varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
@@ -2702,7 +2711,7 @@ if (norm(replyText) === norm(userText)) {
         trimConversationIfNeeded();
         renderMessages();
         renderCoach();
-        
+
         // Log telemetry after assistant reply completes
         logTelemetry();
 
@@ -2722,7 +2731,7 @@ if (norm(replyText) === norm(userText)) {
               overall: finalCoach.overall,
               scores: finalCoach.scores
             })
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (e) {
         console.error("[coach] degrade-to-legacy - Error in sendMessage:", e);
@@ -2742,7 +2751,7 @@ if (norm(replyText) === norm(userText)) {
 
   // ---------- scenarios loader ----------
   let scenariosLoadError = null;
-  
+
   async function loadScenarios() {
     try {
       scenariosLoadError = null;
@@ -2819,7 +2828,7 @@ if (norm(replyText) === norm(userText)) {
     await loadScenarios();
     await loadCitations(); // Load citation database
     buildUI();
-    
+
     // Health gate: check on init
     const healthy = await checkHealth();
     if (!healthy) {
