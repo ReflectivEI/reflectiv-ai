@@ -12,10 +12,10 @@ workers_dev = true
 [vars]
 # Provider configuration
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
-PROVIDER_MODEL = "llama-3.1-70b-versatile"
-PROVIDER_MODEL_HCP = "llama-3.1-70b-versatile"
-PROVIDER_MODEL_COACH = "llama-3.1-70b-versatile"
-PROVIDER_SIG = "groq:llama-3.1-70b-versatile"
+PROVIDER_MODEL = "llama-3.3-70b-versatile"
+PROVIDER_MODEL_HCP = "llama-3.3-70b-versatile"
+PROVIDER_MODEL_COACH = "llama-3.3-70b-versatile"
+PROVIDER_SIG = "groq:llama-3.3-70b-versatile"
 
 # Context and response limits
 MAX_CHARS_CONTEXT = "12000"

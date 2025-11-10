@@ -269,7 +269,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2 
     body: JSON.stringify({
       model: env.PROVIDER_MODEL,
       temperature,
-      max_output_tokens: finalMax,
+      max_tokens: finalMax,
       messages
     })
   });
