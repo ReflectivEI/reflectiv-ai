@@ -803,8 +803,21 @@
     }
 
     if (!html) {
-      console.log('[Sales Coach Format] No sections matched - falling back to md()');
-      return md(text);
+      console.error('[Sales Coach Format] CRITICAL: No sections matched - text may be malformed');
+      console.error('[Sales Coach Format] Text preview:', text.substring(0, 500));
+      // DO NOT fall back to md() - return a warning instead to preserve structure
+      return `<div class="sales-sim-section" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
+        <strong style="color:#c00">⚠️ Format Error:</strong> Unable to parse Sales Coach response. Expected format:
+        <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">Challenge: [text]
+Rep Approach:
+• [bullet]
+Impact: [text]
+Suggested Phrasing: "[text]"</pre>
+        <details style="margin-top:8px">
+          <summary style="cursor:pointer;color:#666">Show raw response</summary>
+          <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px">${esc(text)}</div>
+        </details>
+      </div>`;
     }
 
     console.log('[Sales Coach Format] Successfully formatted', html.length, 'chars');
@@ -1792,18 +1805,27 @@ ${COMMON}`
         }
 
         const body = el("div");
-        const normalized = normalizeGuidanceLabels(m.content);
+        // CRITICAL: Clone content to prevent mutation
+        const rawContent = String(m.content || '');
+        const normalized = normalizeGuidanceLabels(rawContent);
 
         // Use special formatting for sales-simulation mode
         if (currentMode === "sales-simulation" && m.role === "assistant") {
-          console.log('[renderMessages] Formatting assistant message in sales-simulation mode');
+          console.log('[renderMessages] ========== SALES COACH MESSAGE ==========');
           console.log('[renderMessages] currentMode:', currentMode);
           console.log('[renderMessages] m.role:', m.role);
-          console.log('[renderMessages] normalized length:', normalized.length);
+          console.log('[renderMessages] Has cached HTML?', !!m._formattedHTML);
+          console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
+          console.log('[renderMessages] normalized preview:', normalized.substring(0, 200));
           
           // Cache formatted HTML to avoid re-parsing on every render
           if (!m._formattedHTML) {
+            console.log('[renderMessages] NO CACHE - Formatting now...');
             m._formattedHTML = formatSalesSimulationReply(normalized);
+            console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
+            console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
+          } else {
+            console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
           }
           body.innerHTML = m._formattedHTML;
         } else {
