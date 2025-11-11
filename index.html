@@ -317,27 +317,42 @@
       justify-content: space-between;
       background: #0f2747;
       color: #fff;
-      padding: 12px 16px
+      padding: 16px 32px;
+      max-width: 1400px;
+      margin: 0 auto
     }
 
     .site_header .brand {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
       color: #fff;
       text-decoration: none;
-      font-weight: 800
+      font-weight: 800;
+      font-size: 1.25rem
+    }
+
+    .site_header .brand img {
+      width: 42px;
+      height: 42px
     }
 
     .site_header .nav-links {
       display: flex;
-      gap: 18px;
+      gap: 28px;
       align-items: center
     }
 
     .site_header .nav-links a {
       color: #fff;
-      text-decoration: none
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: color 0.2s
+    }
+
+    .site_header .nav-links a:hover {
+      color: #20bfa9
     }
 
     .site_header .dropdown {
@@ -369,12 +384,21 @@
     }
 
     .site_header .btn-demo {
-      padding: 8px 14px;
+      padding: 10px 20px;
       border: 2px solid #20bfa9;
       border-radius: 999px;
       background: #20bfa9;
       color: #083344;
-      font-weight: 800
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all 0.2s
+    }
+
+    .site_header .btn-demo:hover {
+      background: #1aa896;
+      border-color: #1aa896;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(32, 191, 169, 0.3)
     }
 
     .hamburger {
@@ -603,14 +627,9 @@
             class="px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.02] text-center">Request
             a Demo</a>
           <a id="openCoach" href="#simulations"
-            class="px-8 py-3 rounded-full bg-white text-primary-dark border-2 border-primary-dark font-bold hover:bg-gray-50 transition text-center">Try
-            a Simulation</a>
+            class="px-8 py-3 rounded-full bg-white text-primary-dark border-2 border-primary-dark font-bold hover:bg-gray-50 transition text-center">Explore
+            Platform</a>
         </div>
-        <ul class="mt-6 space-y-2 text-gray-700">
-          <li>Scenario library by disease state</li>
-          <li>Compliance guardrails built in</li>
-          <li>Manager dashboards and certification</li>
-        </ul>
       </div>
       <div class="rounded-xl overflow-hidden shadow-2xl mt-8 md:mt-0" aria-hidden="true">
         <img src="assets/hero-image.png" alt="HCP conversation with analytics overlay"
@@ -722,7 +741,7 @@
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
               </svg>
-              <span><strong>EI scoring</strong> on empathy, clarity, and active listening</span>
+              <span><strong>EI metrics</strong> that translate scores into coaching steps</span>
             </li>
             <li class="flex items-start">
               <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
@@ -760,7 +779,7 @@
 
       <!-- Three primary modules -->
       <div class="grid md:grid-cols-3 gap-8">
-        <!-- Sales Simulation Card -->
+        <!-- Sales Coach Card -->
         <div
           class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
@@ -770,7 +789,7 @@
               <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Simulation</h3>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Coach</h3>
           <p class="text-gray-600 mb-4">
             Practice high-stakes calls in oncology, vaccines, and other therapeutic areas with adaptive AI personas.
             Each simulation tracks not just what you say, but how you say it—measuring empathy, tone, and active
@@ -988,19 +1007,10 @@
         <div>
           <h3 class="text-2xl font-bold text-gray-900 mb-4">How the Coach Works</h3>
           <p class="text-gray-700 mb-4">
-            Each simulation exchange is analyzed across six critical dimensions:
-            <strong>Accuracy</strong> (clinical correctness),
-            <strong>Empathy</strong> (emotional resonance),
-            <strong>Clarity</strong> (message simplicity),
-            <strong>Compliance</strong> (label adherence),
-            <strong>Discovery</strong> (uncovering needs), and
-            <strong>Objection Handling</strong> (navigating resistance).
+            Every conversation flows through a real-time EI engine that scores performance across ten critical dimensions: <strong>Accuracy, Empathy, Clarity, Compliance, Discovery, Objection Handling, Active Listening, Emotional Adaptability, Confidence, and Rapport</strong>. The moment you hit "Send," the system evaluates clinical precision, emotional resonance, regulatory alignment, and conversational strategy—assigning each dimension a score out of 10 and mapping it to a color-coded coaching signal.
           </p>
           <p class="text-gray-700 mb-4">
-            After every rep response, the Coach provides <strong>Suggested Phrasing</strong>—alternative ways to express
-            the same idea with better tone, empathy, or precision. The <strong>What Worked / What to Improve</strong>
-            panel breaks down strengths and growth areas, helping reps practice EI-driven conversations that build trust
-            and drive action.
+            These scores appear as live coaching cards in the <strong>Coach Feedback panel</strong>. Each card pairs a metric name, a numeric score, a gradient-coded visual indicator, and a detailed coaching note that explains why the score landed where it did—and exactly what to adjust to improve it. For example, if Clarity scores 6.8/10, the card might highlight a confusing phrase and suggest more patient-friendly phrasing; if Compliance flags 4.2/10, it will cite the specific label constraint you crossed and offer corrective language.
           </p>
           <p class="text-gray-700 mb-4">
             This isn’t generic feedback. Every coaching moment ties back to emotional intelligence principles, teaching
@@ -1082,6 +1092,15 @@
         <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes.</p>
         <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with
           EI-driven metrics.</p>
+        <div class="mt-6">
+          <a href="analytics.html" target="_blank" 
+            class="inline-flex items-center px-6 py-3 rounded-full bg-accent-teal text-white font-semibold hover:bg-teal-600 transition shadow-lg">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Export Sample Analytics Report (PDF)
+          </a>
+        </div>
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
@@ -1577,8 +1596,8 @@
           parts.push(sectionDump('contact', 'Contact'));
           const w = document.getElementById('reflectiv-widget');
           if (w) {
-            parts.push('[COACH UI] Modes: Product Knowledge, Sales Simulation, Role Play, Emotional Assessment.');
-            parts.push('[COACH UI] Sales Simulation shows Focus/Strategy; Role Play supports "Evaluate this exchange".');
+            parts.push('[COACH UI] Modes: Product Knowledge, Sales Coach, Role Play, Emotional Assessment.');
+            parts.push('[COACH UI] Sales Coach shows Focus/Strategy; Role Play supports "Evaluate this exchange".');
           }
           return parts.filter(Boolean).join('\n').slice(0, 24000);
         }
@@ -1643,7 +1662,7 @@
 
           if (/\b(platform|modules?|features?|tools?)\b/.test(s))
             return {
-              text: "The ReflectivAI platform blends Product Knowledge, Sales Simulation, Role Play, and Relationship Intelligence modules—all designed for life-sciences compliance and coaching.",
+              text: "The ReflectivAI platform blends Product Knowledge, Sales Coach, Role Play, and Relationship Intelligence modules—all designed for life-sciences compliance and coaching.",
               action: 'see-platform',
               chips: [['See Platform', 'see-platform'], ['Open Coach', 'open-coach']]
             };
@@ -1657,7 +1676,7 @@
 
           if (/\b(coach|simulation|simulator|practice|training)\b/.test(s))
             return {
-              text: "Opening the AI Coach. Choose Product Knowledge, Sales Simulation, or Role Play to start interactive training.",
+              text: "Opening the AI Coach. Choose Product Knowledge, Sales Coach, or Role Play to start interactive training.",
               action: 'open-coach',
               chips: CHIPS_BASE
             };
