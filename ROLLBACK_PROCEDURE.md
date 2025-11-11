@@ -72,7 +72,7 @@ wrangler tail --status error
 ## Failure Scenarios & Fixes
 
 ### Scenario 1: Rate Limiting Too Aggressive (429 errors)
-**Symptoms:** Users blocked after 4-10 requests  
+**Symptoms:** Users blocked after 4-10 requests
 **Diagnosis:**
 ```bash
 curl -v "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health?deep=1" 2>&1 | grep -i rate
@@ -87,7 +87,7 @@ wrangler deploy
 ```
 
 ### Scenario 2: CORS Blocking Requests
-**Symptoms:** Browser console: "No 'Access-Control-Allow-Origin' header"  
+**Symptoms:** Browser console: "No 'Access-Control-Allow-Origin' header"
 **Diagnosis:**
 ```bash
 curl -s -I -X OPTIONS https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat \
@@ -102,7 +102,7 @@ curl https://my-chat-agent-v2.tonyabdelmalak.workers.dev/debug/ei | jq .cors_ori
 ```
 
 ### Scenario 3: Provider API Keys Not Working
-**Symptoms:** 502 errors, "No completion from providers"  
+**Symptoms:** 502 errors, "No completion from providers"
 **Diagnosis:**
 ```bash
 curl "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health?deep=1" | jq .
@@ -120,7 +120,7 @@ wrangler secret put GROQ_API_KEY_3
 ```
 
 ### Scenario 4: Mode Leakage / Wrong Formatting
-**Symptoms:** Sales-simulation missing "Suggested Phrasing", role-play bleeding into product-knowledge  
+**Symptoms:** Sales-simulation missing "Suggested Phrasing", role-play bleeding into product-knowledge
 **Diagnosis:** Check validation logs:
 ```bash
 wrangler tail --status ok | grep -i violation
@@ -236,5 +236,5 @@ node test-formatting.js
 
 ---
 
-**Last Updated:** 2025-11-10  
+**Last Updated:** 2025-11-10
 **Maintained By:** Tony Abdelmalak / GitHub Copilot

@@ -140,23 +140,23 @@ const FACTS_DB = [
 // Finite State Machines per mode (5 modes total)
 const FSM = {
   "sales-simulation": {
-    states: { START: { capSentences: 12, next: "COACH" }, COACH: { capSentences: 12, next: "COACH" } },
+    states: { START: { capSentences: 16, next: "COACH" }, COACH: { capSentences: 16, next: "COACH" } },
     start: "START"
   },
   "role-play": {
-    states: { START: { capSentences: 4, next: "HCP" }, HCP: { capSentences: 4, next: "HCP" } },
+    states: { START: { capSentences: 6, next: "HCP" }, HCP: { capSentences: 6, next: "HCP" } },
     start: "START"
   },
   "emotional-assessment": {
-    states: { START: { capSentences: 6, next: "EI" }, EI: { capSentences: 6, next: "EI" } },
+    states: { START: { capSentences: 10, next: "EI" }, EI: { capSentences: 10, next: "EI" } },
     start: "START"
   },
   "product-knowledge": {
-    states: { START: { capSentences: 5, next: "PK" }, PK: { capSentences: 5, next: "PK" } },
+    states: { START: { capSentences: 10, next: "PK" }, PK: { capSentences: 10, next: "PK" } },
     start: "START"
   },
   "general-knowledge": {
-    states: { START: { capSentences: 8, next: "GENERAL" }, GENERAL: { capSentences: 8, next: "GENERAL" } },
+    states: { START: { capSentences: 12, next: "GENERAL" }, GENERAL: { capSentences: 12, next: "GENERAL" } },
     start: "START"
   }
 };
@@ -575,6 +575,75 @@ function validateCoachSchema(coach, mode) {
   return { valid: missing.length === 0, missing };
 }
 
+/* ------------------------------ Alora Site Assistant ----------------------- */
+async function handleAloraChat(body, env, req) {
+  // Alora payload: { role: 'alora', site: 'reflectivai', persona, site_context, message }
+  const message = body.message || "";
+  const siteContext = body.site_context || "";
+  const persona = body.persona || "You are Alora, a friendly and professional site assistant for ReflectivAI.";
+
+  // Build concise system prompt for Alora
+  const systemPrompt = `${persona}
+
+You answer questions about ReflectivAI's platform, features, emotional intelligence framework, simulations, analytics, pricing, and integrations.
+
+RESPONSE RULES:
+- Keep answers SHORT (2-4 sentences max)
+- Be friendly, conversational, and helpful
+- DO NOT use coaching format (no "Challenge:", "Rep Approach:", etc.)
+- DO NOT use numbered lists or bullet points unless absolutely necessary
+- Focus on direct, clear answers
+- If you don't know something from the context, suggest they request a demo or contact the team
+
+SITE CONTEXT:
+${siteContext.slice(0, 12000)}`;
+
+  try {
+    const key = selectProviderKey(env, "alora-" + cryptoRandomId());
+    if (!key) throw new Error("NO_PROVIDER_KEY");
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: message }
+    ];
+
+    const payload = {
+      model: env.PROVIDER_MODEL || "llama-3.1-8b-instant",
+      messages,
+      temperature: 0.7,
+      max_tokens: 200, // Keep Alora responses short
+      stream: false
+    };
+
+    const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${key}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!providerResp.ok) {
+      const errText = await providerResp.text();
+      console.error("alora_provider_error", { status: providerResp.status, error: errText });
+      throw new Error(`Provider error: ${providerResp.status}`);
+    }
+
+    const data = await providerResp.json();
+    const reply = data.choices?.[0]?.message?.content || "I'm having trouble responding right now. Please try again or contact our team.";
+
+    return json({ reply: reply.trim() }, 200, env, req);
+  } catch (e) {
+    console.error("alora_chat_error", { message: e.message, stack: e.stack });
+    return json({ 
+      error: "alora_error", 
+      message: "Unable to process request",
+      reply: "I'm having trouble right now. You can still explore the Coach, view Platform modules, or request a demo."
+    }, 500, env, req);
+  }
+}
+
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
   try {
@@ -586,6 +655,11 @@ async function postChat(req, env) {
     }
 
     const body = await readJson(req);
+
+    // Handle Alora site assistant separately - it needs concise, helpful answers, not coaching format
+    if (body.role === 'alora') {
+      return handleAloraChat(body, env, req);
+    }
 
     // Handle both payload formats:
     // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
@@ -891,6 +965,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- **Evidence-based:** Reference sources for factual claims when possible`,
       `- **Engaging:** Maintain a friendly, professional tone`,
       `- **Helpful:** Anticipate follow-up questions and offer related insights`,
+      ``,
+      `CRITICAL FORMATTING RULES:`,
+      `- Put each numbered item on a NEW LINE (1. First item\\n2. Second item)`,
+      `- Put each bullet point on a NEW LINE (- Bullet one\\n- Bullet two)`,
+      `- Use proper markdown syntax with line breaks between list items`,
+      `- DO NOT write inline lists like "1. First - sub - sub 2. Second"`,
+      `- DO NOT put bullets in the middle of sentences`,
+      `- Lists must have each item on its own line`,
       ``,
       `RESPONSE STRUCTURE:`,
       ``,

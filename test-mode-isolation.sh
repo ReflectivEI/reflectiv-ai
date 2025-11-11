@@ -60,11 +60,11 @@ fi
 COACH1=$(echo "$RESP1" | jq -r '.coach')
 if [ "$COACH1" != "null" ]; then
   echo "✅ PASS - Coach object present"
-  
+
   ACCURACY=$(echo "$COACH1" | jq -r '.scores.accuracy')
   COMPLIANCE=$(echo "$COACH1" | jq -r '.scores.compliance')
   DISCOVERY=$(echo "$COACH1" | jq -r '.scores.discovery')
-  
+
   if [ "$ACCURACY" != "null" ] && [ "$COMPLIANCE" != "null" ] && [ "$DISCOVERY" != "null" ]; then
     echo "✅ PASS - All 6 EI metrics present"
     echo "   Accuracy: $ACCURACY | Compliance: $COMPLIANCE | Discovery: $DISCOVERY"

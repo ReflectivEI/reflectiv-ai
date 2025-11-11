@@ -9,7 +9,6 @@
     "debug.javascript.breakOnConditionalError": true,
     "debug.inlineValues": "on",
     "debug.showBreakpointsInOverviewRuler": true,
-    
     // ═══════════════════════════════════════════════════════════════════
     // FILE MANAGEMENT
     // ═══════════════════════════════════════════════════════════════════
@@ -22,14 +21,12 @@
         "**/.vscode/edge-debug": true,
         "**/.wrangler": true
     },
-
     // ═══════════════════════════════════════════════════════════════════
     // JAVASCRIPT/TYPESCRIPT
     // ═══════════════════════════════════════════════════════════════════
     "javascript.validate.enable": true,
     "javascript.suggest.autoImports": true,
     "javascript.preferences.quoteStyle": "double",
-    
     // ═══════════════════════════════════════════════════════════════════
     // EDITOR ENHANCEMENTS
     // ═══════════════════════════════════════════════════════════════════
@@ -41,7 +38,6 @@
     "editor.guides.bracketPairs": true,
     "editor.minimap.enabled": true,
     "editor.suggest.snippetsPreventQuickSuggestions": false,
-
     // ═══════════════════════════════════════════════════════════════════
     // SEARCH EXCLUSIONS
     // ═══════════════════════════════════════════════════════════════════

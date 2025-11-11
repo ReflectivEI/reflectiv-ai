@@ -1,7 +1,7 @@
 # ReflectivAI Architecture Analysis & Recommendations
 
-**Generated**: 2025-11-10  
-**Worker Version**: r10.1 (llama-3.3-70b-versatile)  
+**Generated**: 2025-11-10
+**Worker Version**: r10.1 (llama-3.3-70b-versatile)
 **Purpose**: Comprehensive audit per mega-prompt requirements
 
 ---
@@ -251,7 +251,7 @@
 ```javascript
 function validateModeResponse(mode, reply, coach) {
   const violations = [];
-  
+
   // Role-play: NO coaching language
   if (mode === "role-play") {
     if (/challenge:|rep approach:|coach guidance:|suggested phrasing:/i.test(reply)) {
@@ -260,14 +260,14 @@ function validateModeResponse(mode, reply, coach) {
       reply = reply.replace(/(?:challenge:|rep approach:|impact:|suggested phrasing:)[\s\S]*$/gi, '');
     }
   }
-  
+
   // Sales-simulation: NO HCP voice
   if (mode === "sales-simulation") {
     if (/^(I'm|I think|From my perspective|We evaluate)/i.test(reply)) {
       violations.push("hcp_voice_leak");
     }
   }
-  
+
   // Product-knowledge: Check compliance
   if (mode === "product-knowledge") {
     const offLabelKeywords = /off-label|unapproved|not indicated for/i;
@@ -275,7 +275,7 @@ function validateModeResponse(mode, reply, coach) {
       violations.push("potential_off_label");
     }
   }
-  
+
   return { violations, cleanedReply: reply };
 }
 ```
@@ -284,10 +284,10 @@ function validateModeResponse(mode, reply, coach) {
 ```javascript
 // In rolePlayPrompt, add explicit validation
 const personaLock = `
-CRITICAL: You are ${persona || "the HCP"}. 
+CRITICAL: You are ${persona || "the HCP"}.
 EVERY response MUST be in first person as this specific HCP.
 NEVER break character to provide coaching.
-If asked to evaluate or coach, respond as the HCP would: 
+If asked to evaluate or coach, respond as the HCP would:
 "I'm here to discuss clinical matters, not provide sales coaching."
 `;
 ```
@@ -301,7 +301,7 @@ function validateCoachSchema(coach, mode) {
     "product-knowledge": [],
     "role-play": [] // Should be empty
   };
-  
+
   const missing = required[mode]?.filter(key => !(key in coach)) || [];
   return { valid: missing.length === 0, missing };
 }
@@ -313,7 +313,7 @@ function validateCoachSchema(coach, mode) {
 
 ### Frontend → Worker Payload
 
-**Location**: `widget.js` line 1914  
+**Location**: `widget.js` line 1914
 **Structure**:
 ```javascript
 {
@@ -333,7 +333,7 @@ function validateCoachSchema(coach, mode) {
 
 ### Worker → Frontend Response
 
-**Location**: `worker.js` line 700+  
+**Location**: `worker.js` line 700+
 **Structure**:
 ```javascript
 {
@@ -399,7 +399,7 @@ if (mode === "sales-simulation" && !/Suggested Phrasing:/i.test(reply)) {
 function validateAndCleanResponse(mode, reply, coach) {
   let cleaned = reply;
   const warnings = [];
-  
+
   // Role-play: Strip any coaching leakage
   if (mode === "role-play") {
     const coachingPatterns = /(?:challenge|rep approach|impact|suggested phrasing|coach guidance):\s*[\s\S]*$/gi;
@@ -408,14 +408,14 @@ function validateAndCleanResponse(mode, reply, coach) {
       warnings.push("stripped_coaching_from_roleplay");
     }
   }
-  
+
   // Sales-simulation: Detect HCP voice
   if (mode === "sales-simulation") {
     if (/^(I'm |I think |From my perspective|We evaluate)/im.test(cleaned)) {
       warnings.push("hcp_voice_detected_in_sales_sim");
     }
   }
-  
+
   return { reply: cleaned, warnings };
 }
 ```

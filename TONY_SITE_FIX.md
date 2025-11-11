@@ -116,13 +116,13 @@ Add this logic to `worker.js` at the `/chat` handler:
 // In worker.js, around line 92 (before postChat)
 if (url.pathname === "/chat" && req.method === "POST") {
   const body = await req.clone().json().catch(() => ({}));
-  
+
   // Detect Tony widget request format (has messages[] + systemUrl)
   if (Array.isArray(body.messages) && body.systemUrl) {
     // Forward to Tony-specific handler
     return await handleTonyChatRequest(req, env, body);
   }
-  
+
   // Otherwise, handle as ReflectivAI request (has mode + disease)
   // ... existing postChat logic
 }
@@ -134,24 +134,24 @@ async function handleTonyChatRequest(req, env, body) {
   const model = body.model || "llama-3.1-8b-instant";
   const temperature = body.temperature || 0.25;
   const messages = body.messages || [];
-  
+
   // Fetch Tony's system.md + about-tony.md (with caching)
   const systemUrl = body.systemUrl || "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/system.md";
   const kbUrl = body.kbUrl || "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/about-tony.md";
-  
+
   const [systemMd, kbMd] = await Promise.all([
     fetch(systemUrl).then(r => r.text()),
     fetch(kbUrl).then(r => r.text())
   ]);
-  
+
   // Build unified system prompt
   const unifiedSystem = `## Role & Voice\nYou are Tony. Speak in first person as Tony.\n\n## System Rules\n${systemMd}\n\n## Knowledge Base\n${kbMd}`;
-  
+
   const finalMessages = [
     { role: "system", content: unifiedSystem },
     ...messages.filter(m => m.role !== "system")
   ];
-  
+
   // Call Groq
   const providerResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -166,10 +166,10 @@ async function handleTonyChatRequest(req, env, body) {
       max_tokens: 1024
     })
   });
-  
+
   const data = await providerResp.json();
   const content = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a reply.";
-  
+
   return json({
     role: "assistant",
     content,
@@ -346,7 +346,7 @@ open https://reflectivei.github.io
 async function sendToWorker(userText) {
   // TEMPORARY: Worker offline, show cached response
   return "Thanks for your message! The chat widget is temporarily offline. Please email tony.abdelmalak@yahoo.com";
-  
+
   // ... (rest of function commented out)
 }
 
@@ -375,6 +375,6 @@ git push origin main
 
 ---
 
-**Last Updated:** 2025-11-10  
-**Status:** Ready to implement when ReflectivAI deployment validated  
+**Last Updated:** 2025-11-10
+**Status:** Ready to implement when ReflectivAI deployment validated
 **Owner:** Tony Abdelmalak

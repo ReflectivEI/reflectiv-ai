@@ -72,7 +72,7 @@ COACH=$(echo "$RESPONSE" | jq -r '.coach')
 
 if [ "$COACH" != "null" ]; then
   echo "✅ PASS - Coach object present"
-  
+
   # Check for required scores
   ACCURACY=$(echo "$COACH" | jq -r '.scores.accuracy')
   COMPLIANCE=$(echo "$COACH" | jq -r '.scores.compliance')
@@ -80,7 +80,7 @@ if [ "$COACH" != "null" ]; then
   CLARITY=$(echo "$COACH" | jq -r '.scores.clarity')
   OBJECTION=$(echo "$COACH" | jq -r '.scores.objection_handling')
   EMPATHY=$(echo "$COACH" | jq -r '.scores.empathy')
-  
+
   echo "   Scores:"
   echo "   - Accuracy: $ACCURACY"
   echo "   - Compliance: $COMPLIANCE"
@@ -88,7 +88,7 @@ if [ "$COACH" != "null" ]; then
   echo "   - Clarity: $CLARITY"
   echo "   - Objection Handling: $OBJECTION"
   echo "   - Empathy: $EMPATHY"
-  
+
   if [ "$ACCURACY" != "null" ] && [ "$COMPLIANCE" != "null" ]; then
     echo "✅ PASS - All 6 EI metrics present"
   else

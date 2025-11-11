@@ -771,6 +771,15 @@
     if (!text) return "";
     let s = esc(String(text)).replace(/\r\n?/g, "\n");
     
+    // Pre-process: Force line breaks BEFORE numbered items and bullets that appear inline
+    // This handles: "text 1. Item" -> "text\n1. Item"
+    s = s.replace(/([.!?])\s+(\d+\.)\s+/g, "$1\n$2 ");
+    s = s.replace(/([a-z])\s+(\d+\.)\s+([A-Z])/g, "$1\n$2 $3");
+    
+    // Force line breaks before inline bullets/dashes (but not hyphens in words)
+    s = s.replace(/([.:])\s+(-\s+[A-Z])/g, "$1\n$2");
+    s = s.replace(/([a-z])\.\s+(-\s+)/g, "$1.\n$2");
+    
     // Code blocks FIRST (before other processing): ```code``` -> <pre><code>code</code></pre>
     s = s.replace(/```([^`]+)```/g, "<pre><code>$1</code></pre>");
     
@@ -793,6 +802,17 @@
               content = content.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
               content = content.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
               content = content.replace(/`([^`]+)`/g, "<code>$1</code>");
+              
+              // Handle nested bullets INSIDE numbered items (e.g., "1. Item - sub" -> includes sub-bullets)
+              if (content.includes(" - ")) {
+                const parts = content.split(/\s+-\s+/);
+                const main = parts[0];
+                const subs = parts.slice(1);
+                if (subs.length > 0) {
+                  return `<li>${main}<ul>${subs.map(sub => `<li>${sub}</li>`).join('')}</ul></li>`;
+                }
+              }
+              
               return `<li>${content}</li>`;
             }
             return "";

@@ -1,37 +1,37 @@
 {
-  "HIV-PREP-ELIG-001": {
-    "title": "CDC PrEP Clinical Practice Guidelines",
-    "source": "Centers for Disease Control and Prevention",
-    "year": "2021",
-    "url": "https://www.cdc.gov/hiv/guidelines/preventing.html",
-    "apa": "Centers for Disease Control and Prevention. (2021). Preexposure prophylaxis for the prevention of HIV infection in the United States—2021 Update: A clinical practice guideline."
-  },
-  "HIV-PREP-TAF-002": {
-    "title": "Descovy (Emtricitabine/Tenofovir Alafenamide) Prescribing Information",
-    "source": "FDA-Approved Labeling",
-    "year": "2024",
-    "url": "https://www.accessdata.fda.gov/drugsatfda_docs/label/2024/208215s022lbl.pdf",
-    "apa": "Gilead Sciences, Inc. (2024). Descovy (emtricitabine and tenofovir alafenamide) tablets prescribing information. U.S. Food and Drug Administration."
-  },
-  "HIV-PREP-SAFETY-003": {
-    "title": "Renal Function Monitoring in PrEP: Safety Guidelines",
-    "source": "CDC and FDA Safety Guidance",
-    "year": "2021",
-    "url": "https://www.cdc.gov/hiv/pdf/risk/prep/cdc-hiv-prep-guidelines-2021.pdf",
-    "apa": "Centers for Disease Control and Prevention. (2021). Monitoring and safety guidance for PrEP administration. Clinical Practice Guidelines for HIV Prevention."
-  },
-  "HIV-TREAT-TAF-001": {
-    "title": "Tenofovir Alafenamide vs Tenofovir Disoproxil Fumarate Safety Profile",
-    "source": "FDA Comparative Review",
-    "year": "2023",
-    "url": "https://www.fda.gov/drugs/postmarket-drug-safety-information-patients-and-providers",
-    "apa": "U.S. Food and Drug Administration. (2023). Tenofovir alafenamide: Renal and bone safety profile compared to tenofovir disoproxil fumarate."
-  },
-  "HIV-ADHERENCE-001": {
-    "title": "PrEP Adherence and Effectiveness: Clinical Evidence",
-    "source": "Journal of Acquired Immune Deficiency Syndromes",
-    "year": "2022",
-    "url": "https://journals.lww.com/jaids",
-    "apa": "Grant, R. M., et al. (2022). Adherence patterns and effectiveness of daily oral PrEP: Systematic review and meta-analysis. Journal of Acquired Immune Deficiency Syndromes, 89(3), 245-256."
-  }
+    "HIV-PREP-ELIG-001": {
+        "title": "CDC PrEP Clinical Practice Guidelines",
+        "source": "Centers for Disease Control and Prevention",
+        "year": "2021",
+        "url": "https://www.cdc.gov/hiv/guidelines/preventing.html",
+        "apa": "Centers for Disease Control and Prevention. (2021). Preexposure prophylaxis for the prevention of HIV infection in the United States—2021 Update: A clinical practice guideline."
+    },
+    "HIV-PREP-TAF-002": {
+        "title": "Descovy (Emtricitabine/Tenofovir Alafenamide) Prescribing Information",
+        "source": "FDA-Approved Labeling",
+        "year": "2024",
+        "url": "https://www.accessdata.fda.gov/drugsatfda_docs/label/2024/208215s022lbl.pdf",
+        "apa": "Gilead Sciences, Inc. (2024). Descovy (emtricitabine and tenofovir alafenamide) tablets prescribing information. U.S. Food and Drug Administration."
+    },
+    "HIV-PREP-SAFETY-003": {
+        "title": "Renal Function Monitoring in PrEP: Safety Guidelines",
+        "source": "CDC and FDA Safety Guidance",
+        "year": "2021",
+        "url": "https://www.cdc.gov/hiv/pdf/risk/prep/cdc-hiv-prep-guidelines-2021.pdf",
+        "apa": "Centers for Disease Control and Prevention. (2021). Monitoring and safety guidance for PrEP administration. Clinical Practice Guidelines for HIV Prevention."
+    },
+    "HIV-TREAT-TAF-001": {
+        "title": "Tenofovir Alafenamide vs Tenofovir Disoproxil Fumarate Safety Profile",
+        "source": "FDA Comparative Review",
+        "year": "2023",
+        "url": "https://www.fda.gov/drugs/postmarket-drug-safety-information-patients-and-providers",
+        "apa": "U.S. Food and Drug Administration. (2023). Tenofovir alafenamide: Renal and bone safety profile compared to tenofovir disoproxil fumarate."
+    },
+    "HIV-ADHERENCE-001": {
+        "title": "PrEP Adherence and Effectiveness: Clinical Evidence",
+        "source": "Journal of Acquired Immune Deficiency Syndromes",
+        "year": "2022",
+        "url": "https://journals.lww.com/jaids",
+        "apa": "Grant, R. M., et al. (2022). Adherence patterns and effectiveness of daily oral PrEP: Systematic review and meta-analysis. Journal of Acquired Immune Deficiency Syndromes, 89(3), 245-256."
+    }
 }

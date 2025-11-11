@@ -62,10 +62,10 @@ const RETRY_STATUSES = new Set([408, 429, 500, 502, 503, 522, 524, 529]);
 
 const _buckets = new Map(); // key -> { tokens, ts }
 function rateLimit(key, env, site) {
-  const gRate  = Number(env.RATELIMIT_RATE  || 10);
+  const gRate = Number(env.RATELIMIT_RATE || 10);
   const gBurst = Number(env.RATELIMIT_BURST || 4);
   const s = String(site || "tony").toUpperCase();
-  const sRate  = Number(env[`RATELIMIT_RATE_${s}`]  || gRate);
+  const sRate = Number(env[`RATELIMIT_RATE_${s}`] || gRate);
   const sBurst = Number(env[`RATELIMIT_BURST_${s}`] || gBurst);
 
   const now = Date.now();
@@ -73,9 +73,9 @@ function rateLimit(key, env, site) {
   const elapsed = (now - b.ts) / 60000;
   b.tokens = Math.min(sBurst, b.tokens + elapsed * sRate);
   b.ts = now;
-  if (b.tokens < 1) { _buckets.set(key, b); return { ok:false, limit:sRate, remaining:0 }; }
+  if (b.tokens < 1) { _buckets.set(key, b); return { ok: false, limit: sRate, remaining: 0 }; }
   b.tokens -= 1; _buckets.set(key, b);
-  return { ok:true, limit:sRate, remaining:Math.max(0, Math.floor(b.tokens)) };
+  return { ok: true, limit: sRate, remaining: Math.max(0, Math.floor(b.tokens)) };
 }
 __name(rateLimit, "rateLimit");
 
@@ -117,7 +117,7 @@ function originAllowed(origin, allowlist) {
   try {
     const u = new URL(origin);
     if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
-  } catch {}
+  } catch { }
   return false;
 }
 __name(originAllowed, "originAllowed");
@@ -146,7 +146,7 @@ __name(siteFromOrigin, "siteFromOrigin");
 
 /* ------------------------------ Utilities ---------------------------- */
 
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 __name(sleep, "sleep");
 
 async function safeJson(req) { try { return await req.json(); } catch { return {}; } }
@@ -189,8 +189,10 @@ __name(softGate, "softGate");
 class LruMemo {
   constructor(max = 128) { this.max = max; this.map = new Map(); }
   get(k) { const v = this.map.get(k); if (v) { this.map.delete(k); this.map.set(k, v); } return v; }
-  set(k, v) { if (this.map.has(k)) this.map.delete(k); this.map.set(k, v);
-    if (this.map.size > this.max) { const f = this.map.keys().next().value; this.map.delete(f); } }
+  set(k, v) {
+    if (this.map.has(k)) this.map.delete(k); this.map.set(k, v);
+    if (this.map.size > this.max) { const f = this.map.keys().next().value; this.map.delete(f); }
+  }
 }
 __name(LruMemo, "LruMemo");
 
@@ -267,7 +269,7 @@ function ttl(env) {
   const d = parseInt(env.RESPONSE_TTL_SECONDS || '86400', 10);
   return Number.isFinite(d) ? d : 86400;
 }
-__name(ttl,"ttl");
+__name(ttl, "ttl");
 
 function capChars(env, requested) {
   const def = parseInt(env.MAX_CHARS_CONTEXT || '12000', 10);
@@ -275,7 +277,7 @@ function capChars(env, requested) {
   if (!requested || !Number.isFinite(requested)) return max;
   return Math.max(4000, Math.min(max, requested));
 }
-__name(capChars,"capChars");
+__name(capChars, "capChars");
 
 function normalizeMode(mode, forceCoach = false) {
   const m = String(mode || '').toLowerCase();
@@ -287,21 +289,21 @@ function normalizeMode(mode, forceCoach = false) {
   if (m === 'coach' || m === 'evaluation' || m === 'feedback') return 'coach';
   return 'role-play';
 }
-__name(normalizeMode,"normalizeMode");
+__name(normalizeMode, "normalizeMode");
 
 function defaultModeVersion(mode) {
   if (mode === 'role-play') return 'rp-v2';
   if (mode === 'coach') return 'coach-v2';
   return 'v1';
 }
-__name(defaultModeVersion,"defaultModeVersion");
+__name(defaultModeVersion, "defaultModeVersion");
 
 function parseXMLRoleContent(t) {
   const role = (t.match(/<role>(.*?)<\/role>/is) || [])[1]?.trim();
   const content = (t.match(/<content>([\s\S]*?)<\/content>/i) || [])[1]?.trim();
   return { role, content };
 }
-__name(parseXMLRoleContent,"parseXMLRoleContent");
+__name(parseXMLRoleContent, "parseXMLRoleContent");
 
 function trimChars(messages, maxChars) {
   if (!maxChars || maxChars <= 0) return messages;
@@ -317,7 +319,7 @@ function trimChars(messages, maxChars) {
   }
   return out;
 }
-__name(trimChars,"trimChars");
+__name(trimChars, "trimChars");
 
 function persistTurn(thread, lastUser, assistantBlob) {
   const out = Array.isArray(thread) ? thread.slice() : [];
@@ -327,7 +329,7 @@ function persistTurn(thread, lastUser, assistantBlob) {
   if (out.length > MAX_TURNS) return out.slice(out.length - MAX_TURNS);
   return out;
 }
-__name(persistTurn,"persistTurn");
+__name(persistTurn, "persistTurn");
 
 function buildHistory({ anchors, thread, lastUser, clientMsgs, maxChars }) {
   const sysA = Array.isArray(anchors) ? anchors.map(a => typeof a === 'string' ? { role: 'system', content: a } : a) : [{ role: 'system', content: String(anchors || '') }];
@@ -349,7 +351,7 @@ function buildHistory({ anchors, thread, lastUser, clientMsgs, maxChars }) {
 
   return trimChars([...base, ...turns], maxChars);
 }
-__name(buildHistory,"buildHistory");
+__name(buildHistory, "buildHistory");
 
 /* ------------------------------- GROQ ------------------------------- */
 
@@ -361,7 +363,7 @@ function selectGroqKeys(env) {
   ].filter(Boolean);
   return keys;
 }
-__name(selectGroqKeys,"selectGroqKeys");
+__name(selectGroqKeys, "selectGroqKeys");
 
 function selectGroqKeyDeterministic(env, seq) {
   const keys = selectGroqKeys(env);
@@ -369,7 +371,7 @@ function selectGroqKeyDeterministic(env, seq) {
   const idx = Math.abs(seq || 0) % keys.length;
   return keys[idx];
 }
-__name(selectGroqKeyDeterministic,"selectGroqKeyDeterministic");
+__name(selectGroqKeyDeterministic, "selectGroqKeyDeterministic");
 
 async function groqChat({ apiKey, model, temperature, top_p, messages, max_tokens }) {
   const url = "https://api.groq.com/openai/v1/chat/completions";
@@ -385,7 +387,7 @@ async function groqChat({ apiKey, model, temperature, top_p, messages, max_token
   const finish_reason = j.choices?.[0]?.finish_reason || "stop";
   return { text, model_used: model, finish_reason };
 }
-__name(groqChat,"groqChat");
+__name(groqChat, "groqChat");
 
 async function groqStream({ apiKey, model, temperature, top_p, messages, max_tokens, env, origin }) {
   const url = "https://api.groq.com/openai/v1/chat/completions";
@@ -421,11 +423,11 @@ async function groqStream({ apiKey, model, temperature, top_p, messages, max_tok
       }
       controller.enqueue(value);
     },
-    cancel() { try { reader.cancel(); } catch {} }
+    cancel() { try { reader.cancel(); } catch { } }
   });
   return new Response(stream, { status: 200, headers });
 }
-__name(groqStream,"groqStream");
+__name(groqStream, "groqStream");
 
 /* ----------------------------- Health/metrics ------------------------- */
 
@@ -446,23 +448,23 @@ async function deepHealth(env) {
   }
   return out;
 }
-__name(deepHealth,"deepHealth");
+__name(deepHealth, "deepHealth");
 
-function validateCoachV2(rec){
+function validateCoachV2(rec) {
   if (!rec || typeof rec !== "object") return "payload not object";
   if (!Number.isInteger(rec.ts)) return "ts missing";
   if (!rec.schema) return "schema missing";
   if (!rec.mode) return "mode missing";
   if (typeof rec.overall !== "number") return "overall missing";
   if (!rec.scores || typeof rec.scores !== "object") return "scores missing";
-  const keys = ["accuracy","empathy","clarity","compliance","discovery","objection_handling"];
+  const keys = ["accuracy", "empathy", "clarity", "compliance", "discovery", "objection_handling"];
   for (const k of keys) if (!(k in rec.scores)) return `score ${k} missing`;
   if (!rec.context || typeof rec.context !== "object") return "context missing";
   if (typeof rec.context.rep_question !== "string") return "rep_question missing";
   if (typeof rec.context.hcp_reply !== "string") return "hcp_reply missing";
   return null;
 }
-__name(validateCoachV2,"validateCoachV2");
+__name(validateCoachV2, "validateCoachV2");
 
 /* ----------------------------- Core handler --------------------------- */
 
@@ -498,16 +500,16 @@ export default {
       try {
         const rec = await safeJson(request);
         const err = validateCoachV2(rec);
-        if (err) return json({ ok:false, error:`bad_request: ${err}` }, 400, env, origin);
+        if (err) return json({ ok: false, error: `bad_request: ${err}` }, 400, env, origin);
         try {
           if (env.METRICS_KV) {
             const key = `m:${rec.ts}:${crypto.randomUUID()}`;
-            await env.METRICS_KV.put(key, JSON.stringify(rec), { expirationTtl: 60*60*24*30 });
+            await env.METRICS_KV.put(key, JSON.stringify(rec), { expirationTtl: 60 * 60 * 24 * 30 });
           }
-        } catch (_) {}
-        return json({ ok:true }, 200, env, origin);
+        } catch (_) { }
+        return json({ ok: true }, 200, env, origin);
       } catch {
-        return json({ ok:false, error:"invalid_json" }, 400, env, origin);
+        return json({ ok: false, error: "invalid_json" }, 400, env, origin);
       }
     }
 
@@ -638,8 +640,8 @@ async function handleAgent(body, env, origin, isEvaluatePath) {
   // Build conversation
   const history = buildHistory({
     anchors: [sysAnchors, guardrail,
-      ...(labelText ? [{ role:'system', content: "## Label Excerpts Provided\n" + String(labelText).slice(0, 24000) }] : []),
-      ...(policyText ? [{ role:'system', content: "## Policy Excerpts Provided\n" + String(policyText).slice(0, 16000) }] : [])
+      ...(labelText ? [{ role: 'system', content: "## Label Excerpts Provided\n" + String(labelText).slice(0, 24000) }] : []),
+      ...(policyText ? [{ role: 'system', content: "## Policy Excerpts Provided\n" + String(policyText).slice(0, 16000) }] : [])
     ],
     thread,
     lastUser: input,
@@ -739,7 +741,7 @@ async function handleAgent(body, env, origin, isEvaluatePath) {
     "X-Model-Used": result.model_used || model, "X-Mode": effectiveMode
   });
 }
-__name(handleAgent,"handleAgent");
+__name(handleAgent, "handleAgent");
 
 /* --------------------------- Model params ---------------------------- */
 
@@ -749,10 +751,10 @@ function pickTemp(mode, t) {
   if (mode === 'role-play' || mode === 'sales-simulation') return 0.2;
   return 0.2;
 }
-__name(pickTemp,"pickTemp");
+__name(pickTemp, "pickTemp");
 
 function pickTopP(mode, p) {
   if (typeof p === 'number') return p;
   return 0.8;
 }
-__name(pickTopP,"pickTopP");
+__name(pickTopP, "pickTopP");

@@ -49,8 +49,8 @@ function convertCitations(text) {
   return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9]{3,})\]/g, (match, code) => {
     const citation = citationsDb[code];
     if (!citation) return styled_error_badge;
-    
-    return `<a href="${citation.url}" target="_blank" 
+
+    return `<a href="${citation.url}" target="_blank"
             style="background:#e0f2fe;padding:2px 6px;border-radius:4px;..."
             title="${citation.apa}">[${code.split('-').pop()}]</a>`;
   });

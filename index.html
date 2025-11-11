@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -9,8 +10,7 @@
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
   <!-- Allows Tailwind CDN + Google Fonts + your Worker -->
-  <meta http-equiv="Content-Security-Policy"
-        content="
+  <meta http-equiv="Content-Security-Policy" content="
           default-src 'self';
           img-src 'self' data:;
           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -29,73 +29,389 @@
   <!-- Type + quick utilities -->
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-    :root{
-      --navy:#0f2747; --navy-2:#0b3954; --teal:#20bfa9; --ink:#1e2a3a; --soft:#eef4fa;
-      --card:#ffffff; --line:#d9e3ef; --shadow:0 12px 28px rgba(12,39,64,.14);
+
+    :root {
+      --navy: #0f2747;
+      --navy-2: #0b3954;
+      --teal: #20bfa9;
+      --ink: #1e2a3a;
+      --soft: #eef4fa;
+      --card: #ffffff;
+      --line: #d9e3ef;
+      --shadow: 0 12px 28px rgba(12, 39, 64, .14);
     }
-    html{scroll-behavior:smooth}
-    body{font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f8fafc;color:#0f172a}
-    .primary-dark{background-color:#1E3A8A}
-    .text-primary-dark{color:#1E3A8A}
-    .accent-teal{background-color:#06B6D4}
-    .text-accent-teal{color:#06B6D4}
-    .section-separator{width:80px;height:4px;margin-bottom:24px;border-radius:9999px;background-color:#06B6D4}
-    .sticky-header{transition:all .3s ease-in-out}
-    .grid-mobile-center{text-align:center}
-    @media (min-width:768px){.grid-mobile-center{text-align:left}}
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a
+    }
+
+    .primary-dark {
+      background-color: #1E3A8A
+    }
+
+    .text-primary-dark {
+      color: #1E3A8A
+    }
+
+    .accent-teal {
+      background-color: #06B6D4
+    }
+
+    .text-accent-teal {
+      color: #06B6D4
+    }
+
+    .section-separator {
+      width: 80px;
+      height: 4px;
+      margin-bottom: 24px;
+      border-radius: 9999px;
+      background-color: #06B6D4
+    }
+
+    .sticky-header {
+      transition: all .3s ease-in-out
+    }
+
+    .grid-mobile-center {
+      text-align: center
+    }
+
+    @media (min-width:768px) {
+      .grid-mobile-center {
+        text-align: left
+      }
+    }
 
     /* -------- Modal system (self-contained) -------- */
-    .modal{position:fixed;inset:0;z-index:10000;display:none}
-    .modal.open{display:block}
-    .modal::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.4)}
-    .modal-box{position:relative;background:#fff;border-radius:16px;box-shadow:var(--shadow);width:min(920px,92vw);margin:8vh auto 0;overflow:hidden}
-    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e5e7eb}
-    .modal-title{font-weight:800;color:#0f2747}
-    .modal-close{border:0;background:transparent;padding:6px 10px;border-radius:10px;color:#475569;cursor:pointer}
-    .modal-close:hover{background:#f1f5f9}
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: none
+    }
+
+    .modal.open {
+      display: block
+    }
+
+    .modal::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, .4)
+    }
+
+    .modal-box {
+      position: relative;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      width: min(920px, 92vw);
+      margin: 8vh auto 0;
+      overflow: hidden
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e5e7eb
+    }
+
+    .modal-title {
+      font-weight: 800;
+      color: #0f2747
+    }
+
+    .modal-close {
+      border: 0;
+      background: transparent;
+      padding: 6px 10px;
+      border-radius: 10px;
+      color: #475569;
+      cursor: pointer
+    }
+
+    .modal-close:hover {
+      background: #f1f5f9
+    }
 
     /* -------- Coach container shell -------- */
-    #coachBody{padding:0;background:#fff}
-    #reflectiv-widget{min-height:520px}
+    #coachBody {
+      padding: 0;
+      background: #fff
+    }
+
+    #reflectiv-widget {
+      min-height: 520px
+    }
 
     /* -------- Alora FAB + panel (self-contained) -------- */
-    #aloraFab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:999px;border:none;background:#0f2747;color:#fff;box-shadow:0 12px 24px rgba(15,39,71,.25);cursor:pointer;z-index:10001}
-    #aloraFab svg{width:28px;height:28px}
-    .alora{position:fixed;right:20px;bottom:92px;width:min(380px,92vw);max-height:min(72vh,820px);display:flex;flex-direction:column;border:1px solid #e5e7eb;border-radius:16px;background:#fff;box-shadow:var(--shadow);overflow:hidden;opacity:0;pointer-events:none;transform:translateY(8px);transition:.18s ease-out;z-index:10001}
-    .alora.open{opacity:1;pointer-events:auto;transform:translateY(0)}
-    .alora-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e5e7eb;background:#0f2747;color:#fff}
-    .alora-title{font-weight:700}
-    .alora-close{border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px}
-    .alora-close:hover{background:rgba(255,255,255,.12)}
-    .alora-body{padding:12px;height:340px;overflow:auto;background:#fafbff}
-    .alora-msg{margin:8px 0;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font-size:14px}
-    .alora-msg.user{margin-left:auto;background:#0f2747;color:#fff;border-color:#0f2747}
-    .alora-typing{font-size:12px;color:#475569;margin:6px 2px}
-    .alora-input{display:flex;gap:8px;padding:10px;border-top:1px solid #e5e7eb;background:#fff}
-    .alora-input input{flex:1;border:1px solid #e5e7eb;border-radius:999px;padding:10px 14px;font-size:14px}
-    .alora-input .btn.primary{border:0;border-radius:999px;padding:10px 14px;background:#20bfa9;color:#083344;cursor:pointer;font-weight:700}
-    .alora-input .btn.primary:hover{filter:brightness(.95)}
+    #aloraFab {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      border: none;
+      background: #0f2747;
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(15, 39, 71, .25);
+      cursor: pointer;
+      z-index: 10001
+    }
+
+    #aloraFab svg {
+      width: 28px;
+      height: 28px
+    }
+
+    .alora {
+      position: fixed;
+      right: 20px;
+      bottom: 92px;
+      width: min(380px, 92vw);
+      max-height: min(72vh, 820px);
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px);
+      transition: .18s ease-out;
+      z-index: 10001
+    }
+
+    .alora.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0)
+    }
+
+    .alora-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #0f2747;
+      color: #fff
+    }
+
+    .alora-title {
+      font-weight: 700
+    }
+
+    .alora-close {
+      border: 0;
+      background: transparent;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px
+    }
+
+    .alora-close:hover {
+      background: rgba(255, 255, 255, .12)
+    }
+
+    .alora-body {
+      padding: 12px;
+      height: 340px;
+      overflow: auto;
+      background: #fafbff
+    }
+
+    .alora-msg {
+      margin: 8px 0;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fff;
+      font-size: 14px
+    }
+
+    .alora-msg.user {
+      margin-left: auto;
+      background: #0f2747;
+      color: #fff;
+      border-color: #0f2747
+    }
+
+    .alora-typing {
+      font-size: 12px;
+      color: #475569;
+      margin: 6px 2px
+    }
+
+    .alora-input {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      border-top: 1px solid #e5e7eb;
+      background: #fff
+    }
+
+    .alora-input input {
+      flex: 1;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px
+    }
+
+    .alora-input .btn.primary {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: #20bfa9;
+      color: #083344;
+      cursor: pointer;
+      font-weight: 700
+    }
+
+    .alora-input .btn.primary:hover {
+      filter: brightness(.95)
+    }
+
     /* chips injected by JS */
-    .alora-suggest{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
-    .alora-chip{border:1px solid #0f2747;border-radius:999px;padding:6px 10px;background:#fff;color:#0f2747;font:600 12px/1.1 Inter,system-ui;cursor:pointer}
-    .alora-chip:hover{background:#eef4fa}
+    .alora-suggest {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 0
+    }
+
+    .alora-chip {
+      border: 1px solid #0f2747;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #fff;
+      color: #0f2747;
+      font: 600 12px/1.1 Inter, system-ui;
+      cursor: pointer
+    }
+
+    .alora-chip:hover {
+      background: #eef4fa
+    }
 
     /* Simple nav styles for mobile toggle */
-    .site_header .nav{display:flex;align-items:center;justify-content:space-between;background:#0f2747;color:#fff;padding:12px 16px}
-    .site_header .brand{display:flex;gap:8px;align-items:center;color:#fff;text-decoration:none;font-weight:800}
-    .site_header .nav-links{display:flex;gap:18px;align-items:center}
-    .site_header .nav-links a{color:#fff;text-decoration:none}
-    .site_header .dropdown{position:relative}
-    .site_header .dropdown-menu{display:none;position:absolute;top:100%;left:0;background:#fff;color:#0f2747;border:1px solid #e5e7eb;border-radius:10px;min-width:220px;box-shadow:var(--shadow);padding:8px}
-    .site_header .dropdown:hover .dropdown-menu{display:block}
-    .site_header .dropdown-menu a{display:block;padding:8px 10px;color:#0f2747}
-    .site_header .btn-demo{padding:8px 14px;border:2px solid #20bfa9;border-radius:999px;background:#20bfa9;color:#083344;font-weight:800}
-    .hamburger{display:none;border:0;background:transparent;color:#fff}
-    .hamburger span{display:block;width:22px;height:2px;background:#fff;margin:5px 0}
-    @media (max-width: 900px){
-      .site_header .nav-links{display:none;position:absolute;right:12px;top:56px;flex-direction:column;background:#0f2747;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
-      .site_header .nav-links.open{display:flex}
-      .hamburger{display:block}
+    .site_header .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f2747;
+      color: #fff;
+      padding: 12px 16px
+    }
+
+    .site_header .brand {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 800
+    }
+
+    .site_header .nav-links {
+      display: flex;
+      gap: 18px;
+      align-items: center
+    }
+
+    .site_header .nav-links a {
+      color: #fff;
+      text-decoration: none
+    }
+
+    .site_header .dropdown {
+      position: relative
+    }
+
+    .site_header .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #fff;
+      color: #0f2747;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      min-width: 220px;
+      box-shadow: var(--shadow);
+      padding: 8px
+    }
+
+    .site_header .dropdown:hover .dropdown-menu {
+      display: block
+    }
+
+    .site_header .dropdown-menu a {
+      display: block;
+      padding: 8px 10px;
+      color: #0f2747
+    }
+
+    .site_header .btn-demo {
+      padding: 8px 14px;
+      border: 2px solid #20bfa9;
+      border-radius: 999px;
+      background: #20bfa9;
+      color: #083344;
+      font-weight: 800
+    }
+
+    .hamburger {
+      display: none;
+      border: 0;
+      background: transparent;
+      color: #fff
+    }
+
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #fff;
+      margin: 5px 0
+    }
+
+    @media (max-width: 900px) {
+      .site_header .nav-links {
+        display: none;
+        position: absolute;
+        right: 12px;
+        top: 56px;
+        flex-direction: column;
+        background: #0f2747;
+        border: 1px solid rgba(255, 255, 255, .12);
+        border-radius: 12px;
+        padding: 12px
+      }
+
+      .site_header .nav-links.open {
+        display: flex
+      }
+
+      .hamburger {
+        display: block
+      }
     }
   </style>
 
@@ -106,6 +422,7 @@
       perspective: 1000px;
       height: 200px;
     }
+
     .metric-card-inner {
       position: relative;
       width: 100%;
@@ -113,9 +430,11 @@
       transition: transform 0.6s;
       transform-style: preserve-3d;
     }
+
     .metric-card.is-flipped .metric-card-inner {
       transform: rotateY(180deg);
     }
+
     .metric-card-front,
     .metric-card-back {
       position: absolute;
@@ -127,6 +446,7 @@
       align-items: center;
       justify-content: center;
     }
+
     .metric-card-back {
       transform: rotateY(180deg);
     }
@@ -137,25 +457,42 @@
         opacity: 0;
         transform: translateY(20px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
       }
     }
+
     .animate-fade-in {
       animation: fadeInUp 0.6s ease-out;
     }
-    
+
     /* Stagger animation for children */
-    .stagger-animation > * {
+    .stagger-animation>* {
       opacity: 0;
       animation: fadeInUp 0.6s ease-out forwards;
     }
-    .stagger-animation > *:nth-child(1) { animation-delay: 0.1s; }
-    .stagger-animation > *:nth-child(2) { animation-delay: 0.2s; }
-    .stagger-animation > *:nth-child(3) { animation-delay: 0.3s; }
-    .stagger-animation > *:nth-child(4) { animation-delay: 0.4s; }
-    .stagger-animation > *:nth-child(5) { animation-delay: 0.5s; }
+
+    .stagger-animation>*:nth-child(1) {
+      animation-delay: 0.1s;
+    }
+
+    .stagger-animation>*:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .stagger-animation>*:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    .stagger-animation>*:nth-child(4) {
+      animation-delay: 0.4s;
+    }
+
+    .stagger-animation>*:nth-child(5) {
+      animation-delay: 0.5s;
+    }
   </style>
 
   <!-- Site CSS (keep external if you want broader styles) -->
@@ -167,7 +504,7 @@
   <!-- Endpoints (normalize: provide base and per-feature endpoints) -->
   <script>
     // Base Worker (no trailing /chat). Widget now strips /chat if present.
-    (function(){
+    (function () {
       const BASE = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
       window.WORKER_URL = BASE;
       window.COACH_ENDPOINT = BASE + '/chat';
@@ -187,1079 +524,1200 @@
   <script defer src="widget.js?v=20251110-1243"></script>
 
   <!-- Ensure Alora sits on top -->
-  <style>#aloraFab{z-index:10001;pointer-events:auto}.alora{z-index:10001}</style>
+  <style>
+    #aloraFab {
+      z-index: 10001;
+      pointer-events: auto
+    }
+
+    .alora {
+      z-index: 10001
+    }
+  </style>
 
   <!-- Referrer policy (minor CS hardening) -->
   <meta name="referrer" content="strict-origin-when-cross-origin">
 </head>
 
 <body class="bg-slate-50">
-<noscript>
-  <div style="background:#0f2747;color:#fff;padding:10px 16px;text-align:center">
-    JavaScript is required to use ReflectivAI’s interactive coach and help assistant.
-  </div>
-</noscript>
+  <noscript>
+    <div style="background:#0f2747;color:#fff;padding:10px 16px;text-align:center">
+      JavaScript is required to use ReflectivAI’s interactive coach and help assistant.
+    </div>
+  </noscript>
 
-<!-- Header & Navigation (Navy bg, Teal underline) -->
-<header class="site_header fixed top-0 left-0 w-full z-50">
-  <nav class="nav" aria-label="Primary">
-    <!-- Brand -->
-    <a href="#home" class="brand" aria-label="ReflectivAI home">
-      <img src="logo-modern.png" alt="" width="36" height="36" />
-      <span>ReflectivAI</span>
-    </a>
+  <!-- Header & Navigation (Navy bg, Teal underline) -->
+  <header class="site_header fixed top-0 left-0 w-full z-50">
+    <nav class="nav" aria-label="Primary">
+      <!-- Brand -->
+      <a href="#home" class="brand" aria-label="ReflectivAI home">
+        <img src="logo-modern.png" alt="" width="36" height="36" />
+        <span>ReflectivAI</span>
+      </a>
 
-    <!-- Links + Dropdowns -->
-    <ul class="nav-links" id="navLinks" role="menubar" aria-label="Main menu">
-      <li class="dropdown" role="none">
-        <a href="#platform" role="menuitem" aria-haspopup="true" aria-expanded="false">Platform ▾</a>
-        <ul class="dropdown-menu" role="menu" aria-label="Platform submenu">
-          <li role="none"><a role="menuitem" href="#simulations">Simulations</a></li>
-          <li role="none"><a role="menuitem" href="#coach">AI Coach</a></li>
-          <li role="none"><a role="menuitem" href="#learning">Learning Center</a></li>
-        </ul>
-      </li>
-      <li role="none"><a role="menuitem" href="analytics.html">Analytics</a></li>
-      <li class="dropdown" role="none">
-        <a href="#about-ei" role="menuitem" aria-haspopup="true" aria-expanded="false">About EI ▾</a>
-        <ul class="dropdown-menu" role="menu" aria-label="About EI submenu">
-          <li role="none"><a role="menuitem" href="https://www.eqmentor.com/emotional-intelligence-assessment" target="_blank" rel="noopener">Take EI Assessment</a></li>
-          <li role="none"><a role="menuitem" href="#" onclick="openAboutEI();return false;">EI Overview</a></li>
-          <li role="none"><a role="menuitem" href="ei-score-details.html">EI Score Breakdown</a></li>
-        </ul>
-      </li>
-      <li role="none"><a role="menuitem" href="#ethics">Ethics</a></li>
-      <li role="none"><a role="menuitem" href="#contact" class="btn-demo">Request Demo</a></li>
-    </ul>
-
-    <!-- Mobile hamburger -->
-    <button class="hamburger" id="navHamburger" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-  </nav>
-</header>
-<!-- spacer so content isn't covered -->
-<div style="height:64px"></div>
-
-<!-- ===== Hero ===== -->
-<section class="py-16 md:py-24 bg-white" id="home">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
-    <div class="grid-mobile-center">
-      <span class="text-sm font-semibold uppercase text-accent-teal tracking-widest mb-3 block">AI Sales Enablement for Life Sciences</span>
-      <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">Connect and Convert with Intelligence</h1>
-      <p class="text-lg sm:text-xl text-gray-600 mb-8">ReflectivAI blends clinical accuracy, emotional intelligence, and adaptive AI coaching so every HCP conversation feels authentic, confident, and compliant.</p>
-      <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-        <a href="#contact" class="px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.02] text-center">Request a Demo</a>
-        <a id="openCoach" href="#simulations" class="px-8 py-3 rounded-full bg-white text-primary-dark border-2 border-primary-dark font-bold hover:bg-gray-50 transition text-center">Try a Simulation</a>
-      </div>
-      <ul class="mt-6 space-y-2 text-gray-700">
-        <li>Scenario library by disease state</li>
-        <li>Compliance guardrails built in</li>
-        <li>Manager dashboards and certification</li>
+      <!-- Links + Dropdowns -->
+      <ul class="nav-links" id="navLinks" role="menubar" aria-label="Main menu">
+        <li class="dropdown" role="none">
+          <a href="#platform" role="menuitem" aria-haspopup="true" aria-expanded="false">Platform ▾</a>
+          <ul class="dropdown-menu" role="menu" aria-label="Platform submenu">
+            <li role="none"><a role="menuitem" href="#simulations">Simulations</a></li>
+            <li role="none"><a role="menuitem" href="#coach">AI Coach</a></li>
+            <li role="none"><a role="menuitem" href="#learning">Learning Center</a></li>
+          </ul>
+        </li>
+        <li role="none"><a role="menuitem" href="analytics.html">Analytics</a></li>
+        <li class="dropdown" role="none">
+          <a href="#about-ei" role="menuitem" aria-haspopup="true" aria-expanded="false">About EI ▾</a>
+          <ul class="dropdown-menu" role="menu" aria-label="About EI submenu">
+            <li role="none"><a role="menuitem" href="https://www.eqmentor.com/emotional-intelligence-assessment"
+                target="_blank" rel="noopener">Take EI Assessment</a></li>
+            <li role="none"><a role="menuitem" href="#" onclick="openAboutEI();return false;">EI Overview</a></li>
+            <li role="none"><a role="menuitem" href="ei-score-details.html">EI Score Breakdown</a></li>
+          </ul>
+        </li>
+        <li role="none"><a role="menuitem" href="#ethics">Ethics</a></li>
+        <li role="none"><a role="menuitem" href="#contact" class="btn-demo">Request Demo</a></li>
       </ul>
-    </div>
-    <div class="rounded-xl overflow-hidden shadow-2xl mt-8 md:mt-0" aria-hidden="true">
-      <img src="assets/hero-image.png" alt="HCP conversation with analytics overlay" class="w-full h-auto object-cover"/>
-    </div>
-  </div>
-</section>
 
-<!-- ===== Why ===== -->
-<!-- BEGIN: Traditional Training vs ReflectivAI Impact Infographic Section -->
-<section id="comparison" class="py-16 md:py-20 bg-gray-50 border-t border-gray-200">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-12">
-      <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-        Traditional Training vs ReflectivAI Impact
-      </h2>
-      <div class="w-20 mx-auto section-separator"></div>
-      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-        See how ReflectivAI transforms pharmaceutical sales training from static workshops to dynamic, emotionally intelligent practice.
-      </p>
-    </div>
+      <!-- Mobile hamburger -->
+      <button class="hamburger" id="navHamburger" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+  </header>
+  <!-- spacer so content isn't covered -->
+  <div style="height:64px"></div>
 
-    <!-- 3-column comparison grid -->
-    <div class="grid md:grid-cols-3 gap-8 items-start">
-      <!-- Column 1: Traditional Training -->
-      <div class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
-        <h3 class="text-xl font-bold text-gray-900 mb-4 text-center">Traditional Training</h3>
-        <ul class="space-y-3 text-gray-700">
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
-              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
-            </svg>
-            <span>One-time workshops with limited follow-up</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
-              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
-            </svg>
-            <span>Static role-plays with limited scenarios</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
-              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
-            </svg>
-            <span>Delayed feedback from managers</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
-              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
-            </svg>
-            <span>Minimal focus on emotional intelligence</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
-              <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
-            </svg>
-            <span>Difficult to scale across field force</span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Column 2: Visual/Summary -->
-      <div class="flex flex-col items-center justify-center text-center p-8">
-        <svg class="h-16 w-16 text-accent-teal mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-        </svg>
-        <p class="text-lg font-semibold text-gray-700">
-          Transforming training from static to adaptive, from delayed to instant, from generic to emotionally intelligent.
-        </p>
-      </div>
-
-      <!-- Column 3: ReflectivAI Impact -->
-      <div class="bg-gradient-to-br from-blue-50 to-teal-50 p-8 rounded-xl shadow-md border-2 border-accent-teal">
-        <h3 class="text-xl font-bold text-gray-900 mb-4 text-center">ReflectivAI Impact</h3>
-        <ul class="space-y-3 text-gray-700">
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span><strong>AI HCP role-play</strong> with realistic personas and objections</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span><strong>Instant coach feedback</strong> with suggested phrasing and improvements</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span><strong>EI scoring</strong> on empathy, clarity, and active listening</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span><strong>Compliance protection</strong> with label-only guardrails built in</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span><strong>Scalable practice</strong> anytime, anywhere across your team</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-<!-- END: Traditional Training vs ReflectivAI Impact Infographic Section -->
-
-<!-- BEGIN: Why Emotional Intelligence Matters -->
-
-<!-- ===== Platform Modules ===== -->
-<section id="platform" class="py-16 md:py-24 bg-white">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center md:text-left">
-      Platform Modules
-    </h2>
-    <div class="section-separator mx-auto md:mx-0"></div>
-    <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:text-left mx-auto md:mx-0">
-      Integrated tools designed for high-stakes life science interactions.
-    </p>
-
-    <!-- Three primary modules -->
-    <div class="grid md:grid-cols-3 gap-8">
-      <!-- Sales Simulation Card -->
-      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
-        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
+  <!-- ===== Hero ===== -->
+  <section class="py-16 md:py-24 bg-white" id="home">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
+      <div class="grid-mobile-center">
+        <span class="text-sm font-semibold uppercase text-accent-teal tracking-widest mb-3 block">AI Sales Enablement
+          for Life Sciences</span>
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">Connect and Convert with
+          Intelligence</h1>
+        <p class="text-lg sm:text-xl text-gray-600 mb-8">ReflectivAI blends clinical accuracy, emotional intelligence,
+          and adaptive AI coaching so every HCP conversation feels authentic, confident, and compliant.</p>
+        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+          <a href="#contact"
+            class="px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.02] text-center">Request
+            a Demo</a>
+          <a id="openCoach" href="#simulations"
+            class="px-8 py-3 rounded-full bg-white text-primary-dark border-2 border-primary-dark font-bold hover:bg-gray-50 transition text-center">Try
+            a Simulation</a>
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Simulation</h3>
-        <p class="text-gray-600 mb-4">
-          Practice high-stakes calls in oncology, vaccines, and other therapeutic areas with adaptive AI personas. Each simulation tracks not just what you say, but how you say it—measuring empathy, tone, and active listening alongside clinical accuracy.
-        </p>
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Dynamic HCP personas by specialty</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Real-time objection handling</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>EI assessment on every exchange</span>
-          </li>
+        <ul class="mt-6 space-y-2 text-gray-700">
+          <li>Scenario library by disease state</li>
+          <li>Compliance guardrails built in</li>
+          <li>Manager dashboards and certification</li>
         </ul>
       </div>
-
-      <!-- Product Knowledge Card -->
-      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
-        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
-          </svg>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-3">Product Knowledge</h3>
-        <p class="text-gray-600 mb-4">
-          Train on complex clinical data and regulatory messaging with compliance and real-time correction built in. The Coach evaluates accuracy while simultaneously teaching how to communicate complex science with clarity and empathy.
-        </p>
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Label-compliant messaging only</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Simplify complex science effectively</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Instant correction and guidance</span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- EI Analytics & Relationship Intelligence Card -->
-      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
-        <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 19h16"></path>
-            <path d="M7 15l3-6 4 5 3-9"></path>
-          </svg>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-3">Relationship Intelligence</h3>
-        <p class="text-gray-600 mb-4">
-          Track behavioral blind spots and conversational patterns. Understand empathy, tone calibration, and conversational agility with granular data. ReflectivAI captures EI metrics that traditional training misses, helping reps build authentic connections.
-        </p>
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Empathy &amp; tone scoring</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Active listening analysis</span>
-          </li>
-          <li class="flex items-start">
-            <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>Conversational agility tracking</span>
-          </li>
-        </ul>
+      <div class="rounded-xl overflow-hidden shadow-2xl mt-8 md:mt-0" aria-hidden="true">
+        <img src="assets/hero-image.png" alt="HCP conversation with analytics overlay"
+          class="w-full h-auto object-cover" />
       </div>
     </div>
+  </section>
 
-        <!-- Additional platform feature with logo -->
-    <div class="mt-12 rounded-2xl shadow-lg border border-transparent bg-gradient-to-r from-[#0f2747] via-[#0b2f5c] to-[#0b3954] p-8 md:p-10">
-      <div class="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-10 items-center">
-        
-        <!-- Left: logo + narrative -->
-<div>
-  <div class="flex flex-col md:flex-row md:items-start gap-4 mb-4">
-    <div class="flex-shrink-0 flex items-start">
-      <img
-        src="assets/site_image5_logo.jpeg"
-        alt="ReflectivAI logo"
-        class="w-24 h-24 object-contain"
-        style="background:none !important; border-radius:0; display:block;"
-      />
-    </div>
-    <div>
-      <h3 class="text-2xl font-bold text-white mb-2">The ReflectivAI Difference</h3>
-      <p class="text-sm md:text-base text-indigo-100 mb-3">
-        Our platform doesn’t just teach product knowledge—it transforms how your reps connect
-        with HCPs. By embedding emotional intelligence into every simulation, we help build
-        skills that drive trust, adherence, and long-term relationships.
-      </p>
-      <p class="text-sm md:text-base text-indigo-100">
-        With AI-powered coaching that feels human, compliance guardrails that protect your
-        brand, and analytics that illuminate growth opportunities, ReflectivAI delivers
-        training that actually changes behavior.
-      </p>
-    </div>
-  </div>
-</div>
+  <!-- ===== Why ===== -->
+  <!-- BEGIN: Traditional Training vs ReflectivAI Impact Infographic Section -->
+  <section id="comparison" class="py-16 md:py-20 bg-gray-50 border-t border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+          Traditional Training vs ReflectivAI Impact
+        </h2>
+        <div class="w-20 mx-auto section-separator"></div>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+          See how ReflectivAI transforms pharmaceutical sales training from static workshops to dynamic, emotionally
+          intelligent practice.
+        </p>
+      </div>
 
-
-
-        <!-- Right: clean, aligned benefit column -->
-        <div>
-          <ul class="space-y-4">
-            <li class="flex items-start gap-3">
-              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
-                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <div class="pt-0.5">
-                <h4 class="font-semibold text-white">Always Compliant</h4>
-                <p class="text-xs md:text-sm text-indigo-100">
-                  Label-only content with automated guardrails.
-                </p>
-              </div>
+      <!-- 3-column comparison grid -->
+      <div class="grid md:grid-cols-3 gap-8 items-start">
+        <!-- Column 1: Traditional Training -->
+        <div class="bg-white p-8 rounded-xl shadow-md border border-gray-200">
+          <h3 class="text-xl font-bold text-gray-900 mb-4 text-center">Traditional Training</h3>
+          <ul class="space-y-3 text-gray-700">
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+              </svg>
+              <span>One-time workshops with limited follow-up</span>
             </li>
-
-            <li class="flex items-start gap-3">
-              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
-                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-              </div>
-              <div class="pt-0.5">
-                <h4 class="font-semibold text-white">Instantly Scalable</h4>
-                <p class="text-xs md:text-sm text-indigo-100">
-                  Deploy across your entire field force in days.
-                </p>
-              </div>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+              </svg>
+              <span>Static role-plays with limited scenarios</span>
             </li>
-
-            <li class="flex items-start gap-3">
-              <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
-                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                </svg>
-              </div>
-              <div class="pt-0.5">
-                <h4 class="font-semibold text-white">Measurable Impact</h4>
-                <p class="text-xs md:text-sm text-indigo-100">
-                  Track EI growth and business outcomes together.
-                </p>
-              </div>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+              </svg>
+              <span>Delayed feedback from managers</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+              </svg>
+              <span>Minimal focus on emotional intelligence</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+              </svg>
+              <span>Difficult to scale across field force</span>
             </li>
           </ul>
         </div>
 
-      </div>
-    </div>
+        <!-- Column 2: Visual/Summary -->
+        <div class="flex flex-col items-center justify-center text-center p-8">
+          <svg class="h-16 w-16 text-accent-teal mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+          </svg>
+          <p class="text-lg font-semibold text-gray-700">
+            Transforming training from static to adaptive, from delayed to instant, from generic to emotionally
+            intelligent.
+          </p>
+        </div>
 
-</section>
-  
-<!-- END: Platform Modules Section -->
-
-<!-- BEGIN: EI Coaching Section -->
-<section id="ei-coaching" class="py-16 md:py-24 bg-gray-50 border-t border-gray-200">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-12">
-      <h2 class="text-4xl font-extrabold text-gray-900 mb-4">EI-Driven Coaching</h2>
-      <div class="w-20 mx-auto section-separator"></div>
-      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-        The ReflectivAI Coach evaluates every exchange through an emotional intelligence lens, measuring not just what reps say, but how effectively they connect, listen, and adapt.
-      </p>
-    </div>
-
-    <div class="grid md:grid-cols-2 gap-12 items-center mb-12">
-      <div>
-        <h3 class="text-2xl font-bold text-gray-900 mb-4">How the Coach Works</h3>
-        <p class="text-gray-700 mb-4">
-          Each simulation exchange is analyzed across six critical dimensions:
-          <strong>Accuracy</strong> (clinical correctness),
-          <strong>Empathy</strong> (emotional resonance),
-          <strong>Clarity</strong> (message simplicity),
-          <strong>Compliance</strong> (label adherence),
-          <strong>Discovery</strong> (uncovering needs), and
-          <strong>Objection Handling</strong> (navigating resistance).
-        </p>
-        <p class="text-gray-700 mb-4">
-          After every rep response, the Coach provides <strong>Suggested Phrasing</strong>—alternative ways to express the same idea with better tone, empathy, or precision. The <strong>What Worked / What to Improve</strong> panel breaks down strengths and growth areas, helping reps practice EI-driven conversations that build trust and drive action.
-        </p>
-        <p class="text-gray-700 mb-4">
-          This isn’t generic feedback. Every coaching moment ties back to emotional intelligence principles, teaching reps to regulate tone under pressure, listen for emotional cues, and respond with authentic empathy—all while staying compliant.
-        </p>
-      </div>
-      <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-        <h4 class="text-lg font-bold text-gray-900 mb-4 text-center">EI in Practice</h4>
-        <ul class="space-y-4">
-          <li class="flex items-start">
-            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-              <svg class="h-5 w-5 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        <!-- Column 3: ReflectivAI Impact -->
+        <div class="bg-gradient-to-br from-blue-50 to-teal-50 p-8 rounded-xl shadow-md border-2 border-accent-teal">
+          <h3 class="text-xl font-bold text-gray-900 mb-4 text-center">ReflectivAI Impact</h3>
+          <ul class="space-y-3 text-gray-700">
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
               </svg>
-            </div>
-            <div>
-              <h5 class="font-bold text-gray-900">Regulate Tone Under Pressure</h5>
-              <p class="text-sm text-gray-600">Learn to stay calm and confident when HCPs push back or challenge your message.</p>
-            </div>
-          </li>
-          <li class="flex items-start">
-            <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-              <svg class="h-5 w-5 text-accent-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              <span><strong>AI HCP role-play</strong> with realistic personas and objections</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
               </svg>
-            </div>
-            <div>
-              <h5 class="font-bold text-gray-900">Listen for Emotional Cues</h5>
-              <p class="text-sm text-gray-600">Detect hesitation, skepticism, or interest in HCP responses and adjust your approach.</p>
-            </div>
-          </li>
-          <li class="flex items-start">
-            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-              <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+              <span><strong>Instant coach feedback</strong> with suggested phrasing and improvements</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
               </svg>
-            </div>
-            <div>
-              <h5 class="font-bold text-gray-900">Respond with Label-Aligned Empathy</h5>
-              <p class="text-sm text-gray-600">Show you understand HCP concerns while guiding back to approved, compliant messaging.</p>
-            </div>
-          </li>
-        </ul>
+              <span><strong>EI scoring</strong> on empathy, clarity, and active listening</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span><strong>Compliance protection</strong> with label-only guardrails built in</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-5 w-5 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span><strong>Scalable practice</strong> anytime, anywhere across your team</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
+  </section>
+  <!-- END: Traditional Training vs ReflectivAI Impact Infographic Section -->
 
-        <div class="p-8 rounded-xl border border-transparent" style="background-color:#0f2747;">
-      <h3 class="text-xl font-bold text-white mb-3 text-center">
-        Real-Time, Actionable Coaching
-      </h3>
-      <p class="text-center max-w-3xl mx-auto text-indigo-100">
-        The Coach doesn’t just score you—it teaches you. With every simulation, reps build
-        muscle memory for emotionally intelligent conversations that drive trust, adherence,
-        and long-term HCP relationships.
-      </p>
-    </div>
+  <!-- BEGIN: Why Emotional Intelligence Matters -->
 
-  </div>
-</section>
-<!-- END: EI Coaching Section -->
-  
-<!-- BEGIN: Performance Analytics Section -->
-<section id="analytics" class="py-16 md:py-24 text-white" style="background-color:#0f2747;">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-12">
-      <h2 class="text-4xl font-extrabold mb-4">Performance Analytics & Coaching Intelligence</h2>
-      <div class="w-20 mx-auto section-separator" style="background-color:white"></div>
-      <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes.</p>
-      <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with EI-driven metrics.</p>
-    </div>
-
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
-      <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-        <div class="text-2xl font-bold text-accent-teal mb-2">94%</div>
-        <p class="text-sm font-semibold uppercase text-indigo-100">Accuracy Index</p>
-      </div>
-      <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-        <div class="text-2xl font-bold text-accent-teal mb-2">1.4x</div>
-        <p class="text-sm font-semibold uppercase text-indigo-100">Readiness Velocity</p>
-      </div>
-      <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-        <div class="text-2xl font-bold text-accent-teal mb-2">Empathy</div>
-        <p class="text-sm font-semibold uppercase text-indigo-100">Coaching Index</p>
-      </div>
-      <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-        <div class="text-2xl font-bold text-accent-teal mb-2">Compliance</div>
-        <p class="text-sm font-semibold uppercase text-indigo-100">Guardrails</p>
-      </div>
-      <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-        <div class="text-2xl font-bold text-accent-teal mb-2">Confidence</div>
-        <p class="text-sm font-semibold uppercase text-indigo-100">Delta</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== Therapeutic Areas & Personas ===== -->
-<section id="therapeutic-areas" class="py-16 bg-white">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12">
-    <!-- Areas -->
-    <div class="text-center md:text-left">
-      <h3 class="text-3xl font-bold text-gray-900 mb-3">Train by Therapeutic Area</h3>
-      <div class="w-20 mx-auto md:mx-0 h-1 rounded" style="background-color:#20bfa9;"></div>
-      <div class="mt-6 flex flex-wrap gap-3 md:gap-4 justify-center md:justify-start">
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Oncology" data-challenge="Complex regimens, strict rules" data-objective="Clarify label-compliant points" data-goal="Confident, accurate dialogue">Oncology</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Vaccines" data-challenge="Hesitancy, timing windows" data-objective="Address key objections" data-goal="Improve uptake intent">Vaccines</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="HIV PrEP" data-challenge="Stigma, adherence gaps" data-objective="Navigate eligibility safely" data-goal="Drive appropriate starts">HIV PrEP</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Cardiology" data-challenge="Risk tradeoffs, polypharm" data-objective="Align on risk reduction" data-goal="Guideline-consistent choices">Cardiology</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Pulmonology" data-challenge="Variable control, access" data-objective="Clarify step-up criteria" data-goal="Better control outcomes">Pulmonology</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Hepatitis B" data-challenge="Chronic course, stigma" data-objective="Reinforce monitoring plan" data-goal="Sustained engagement">Hepatitis B</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-gray-400 bg-gray-100 text-gray-800 text-sm font-semibold hover:bg-gray-200 transition" data-title="Custom Scenarios" data-challenge="Org-specific objections" data-objective="Map to your playbook" data-goal="Faster rep readiness">+ Custom Scenarios</button>
-      </div>
-    </div>
-
-    <!-- Personas -->
-    <div class="text-center md:text-left">
-      <h3 class="text-3xl font-bold text-gray-900 mb-3">Practice with Realistic Personas</h3>
-      <div class="w-20 mx-auto md:mx-0 h-1 rounded" style="background-color:#20bfa9;"></div>
-      <div class="mt-6 flex flex-wrap gap-3 md:gap-4 justify-center md:justify-start">
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Internal Medicine MD" data-challenge="Time pressure, breadth" data-objective="Be concise, relevant" data-goal="Earn next minute">Internal Medicine MD</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Oncologist" data-challenge="Evidence depth, safety" data-objective="Lead with outcomes" data-goal="Advance informed choice">Oncologist</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Nurse Practitioner (NP)" data-challenge="Workflow, access paths" data-objective="Simplify next steps" data-goal="Smooth initiation">Nurse Practitioner (NP)</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Infectious Disease Specialist" data-challenge="Resistance, guidelines" data-objective="Anchor to evidence" data-goal="Appropriate selection">Infectious Disease Specialist</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Cardiologist" data-challenge="Risk-benefit nuance" data-objective="Quantify absolute risk" data-goal="Shared decisions">Cardiologist</button>
-        <button type="button" class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition" data-title="Physician Assistant (PA)" data-challenge="Protocol adherence" data-objective="Clarify guardrails" data-goal="Safe, quick actions">Physician Assistant (PA)</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Reusable pill modal -->
-  <div id="pill-modal" class="modal" aria-hidden="true">
-    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pillTitle">
-      <div class="modal-head">
-        <div id="pillTitle" class="modal-title">Details</div>
-        <button class="modal-close" data-close="#pill-modal" aria-label="Close">Close</button>
-      </div>
-      <div class="px-6 py-5">
-        <ul class="space-y-3 text-sm text-gray-800">
-          <li><span class="font-semibold text-[#0f2747]">Challenge:</span> <span id="pill-challenge">—</span></li>
-          <li><span class="font-semibold text-[#0f2747]">Objective:</span> <span id="pill-objective">—</span></li>
-          <li><span class="font-semibold text-[#0f2747]">Goal:</span> <span id="pill-goal">—</span></li>
-        </ul>
-      </div>
-      <div class="px-6 py-4 border-t border-gray-200 text-right">
-        <button class="inline-flex h-10 items-center px-5 rounded-full bg-[#0f2747] text-white text-sm font-semibold hover:opacity-90 transition modal-close" data-close="#pill-modal">OK</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== Ethics ===== -->
-<section id="ethics" class="py-16 md:py-24 bg-gray-50 border-t border-gray-200">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-12">
-      <h2 class="text-4xl font-extrabold text-gray-900 mb-4">Ethics, Privacy &amp; Governance</h2>
-      <div class="w-20 mx-auto section-separator"></div>
-      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-        Compliance and responsible AI built for the rigors of life-sciences training.
-      </p>
-    </div>
-
-    <div class="grid md:grid-cols-2 gap-6">
-
-      <!-- Data Privacy & Security -->
-      <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
-        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg"
-               class="h-6 w-6 text-accent-teal mr-2"
-               viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-          Data Privacy &amp; Security
-        </h4>
-        <p class="text-gray-600 text-sm">
-          PHI is off by default; when enabled, BAA, encryption, and RBAC apply.
-        </p>
-      </div>
-
-      <!-- Algorithmic Bias & Fairness -->
-      <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
-        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg"
-               class="h-6 w-6 text-accent-teal mr-2"
-               viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 6v6l4 2"></path>
-          </svg>
-          Algorithmic Bias &amp; Fairness
-        </h4>
-        <p class="text-gray-600 text-sm">
-          Pre-deployment bias testing with monitoring and remediation steps.
-        </p>
-      </div>
-
-      <!-- Transparency & Explainability -->
-      <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
-        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg"
-               class="h-6 w-6 text-accent-teal mr-2"
-               viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="1" x2="12" y2="23"></line>
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-          </svg>
-          Transparency &amp; Explainability
-        </h4>
-        <p class="text-gray-600 text-sm">
-          Reason codes in-product; model cards document limits and cadence.
-        </p>
-      </div>
-
-      <!-- Human Oversight & Accountability -->
-      <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
-        <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg"
-               class="h-6 w-6 text-accent-teal mr-2"
-               viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2">
-            <path d="M14 9l6-6M20 6l-6 6M10 20l-6-6M4 14l6 6"></path>
-          </svg>
-          Human Oversight &amp; Accountability
-        </h4>
-        <p class="text-gray-600 text-sm">
-          Curated scenarios; MLR versioning for full traceability.
-        </p>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ===== Contact ===== -->
-<section id="contact" class="py-16 md:py-24 bg-white">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-start">
-    <div class="grid-mobile-center">
-      <h2 class="text-4xl font-extrabold text-gray-900 mb-4">Let's Redefine Your Sales Training</h2>
+  <!-- ===== Platform Modules ===== -->
+  <section id="platform" class="py-16 md:py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-4xl font-extrabold text-gray-900 mb-4 text-center md:text-left">
+        Platform Modules
+      </h2>
       <div class="section-separator mx-auto md:mx-0"></div>
-      <p class="text-xl text-gray-600 mb-8">Ready to see how adaptive AI coaching can drive confidence and compliance for your team? Request a personalized demonstration.</p>
-      <div class="space-y-4 text-center md:text-left">
-        <p class="flex items-center justify-center md:justify-start text-gray-700">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-dark mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-          (555) 123-4567
+      <p class="text-xl text-gray-600 mb-12 max-w-3xl text-center md:text-left mx-auto md:mx-0">
+        Integrated tools designed for high-stakes life science interactions.
+      </p>
+
+      <!-- Three primary modules -->
+      <div class="grid md:grid-cols-3 gap-8">
+        <!-- Sales Simulation Card -->
+        <div
+          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+          <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Simulation</h3>
+          <p class="text-gray-600 mb-4">
+            Practice high-stakes calls in oncology, vaccines, and other therapeutic areas with adaptive AI personas.
+            Each simulation tracks not just what you say, but how you say it—measuring empathy, tone, and active
+            listening alongside clinical accuracy.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-700">
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Dynamic HCP personas by specialty</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Real-time objection handling</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>EI assessment on every exchange</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Product Knowledge Card -->
+        <div
+          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+          <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Product Knowledge</h3>
+          <p class="text-gray-600 mb-4">
+            Train on complex clinical data and regulatory messaging with compliance and real-time correction built in.
+            The Coach evaluates accuracy while simultaneously teaching how to communicate complex science with clarity
+            and empathy.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-700">
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Label-compliant messaging only</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Simplify complex science effectively</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Instant correction and guidance</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- EI Analytics & Relationship Intelligence Card -->
+        <div
+          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+          <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path d="M4 19h16"></path>
+              <path d="M7 15l3-6 4 5 3-9"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Relationship Intelligence</h3>
+          <p class="text-gray-600 mb-4">
+            Track behavioral blind spots and conversational patterns. Understand empathy, tone calibration, and
+            conversational agility with granular data. ReflectivAI captures EI metrics that traditional training misses,
+            helping reps build authentic connections.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-700">
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Empathy &amp; tone scoring</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Active listening analysis</span>
+            </li>
+            <li class="flex items-start">
+              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Conversational agility tracking</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Additional platform feature with logo -->
+      <div
+        class="mt-12 rounded-2xl shadow-lg border border-transparent bg-gradient-to-r from-[#0f2747] via-[#0b2f5c] to-[#0b3954] p-8 md:p-10">
+        <div class="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-10 items-center">
+
+          <!-- Left: logo + narrative -->
+          <div>
+            <div class="flex flex-col md:flex-row md:items-start gap-4 mb-4">
+              <div class="flex-shrink-0 flex items-start">
+                <img src="assets/site_image5_logo.jpeg" alt="ReflectivAI logo" class="w-24 h-24 object-contain"
+                  style="background:none !important; border-radius:0; display:block;" />
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-white mb-2">The ReflectivAI Difference</h3>
+                <p class="text-sm md:text-base text-indigo-100 mb-3">
+                  Our platform doesn’t just teach product knowledge—it transforms how your reps connect
+                  with HCPs. By embedding emotional intelligence into every simulation, we help build
+                  skills that drive trust, adherence, and long-term relationships.
+                </p>
+                <p class="text-sm md:text-base text-indigo-100">
+                  With AI-powered coaching that feels human, compliance guardrails that protect your
+                  brand, and analytics that illuminate growth opportunities, ReflectivAI delivers
+                  training that actually changes behavior.
+                </p>
+              </div>
+            </div>
+          </div>
+
+
+
+          <!-- Right: clean, aligned benefit column -->
+          <div>
+            <ul class="space-y-4">
+              <li class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </div>
+                <div class="pt-0.5">
+                  <h4 class="font-semibold text-white">Always Compliant</h4>
+                  <p class="text-xs md:text-sm text-indigo-100">
+                    Label-only content with automated guardrails.
+                  </p>
+                </div>
+              </li>
+
+              <li class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  </svg>
+                </div>
+                <div class="pt-0.5">
+                  <h4 class="font-semibold text-white">Instantly Scalable</h4>
+                  <p class="text-xs md:text-sm text-indigo-100">
+                    Deploy across your entire field force in days.
+                  </p>
+                </div>
+              </li>
+
+              <li class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                    </path>
+                  </svg>
+                </div>
+                <div class="pt-0.5">
+                  <h4 class="font-semibold text-white">Measurable Impact</h4>
+                  <p class="text-xs md:text-sm text-indigo-100">
+                    Track EI growth and business outcomes together.
+                  </p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
+  </section>
+
+  <!-- END: Platform Modules Section -->
+
+  <!-- BEGIN: EI Coaching Section -->
+  <section id="ei-coaching" class="py-16 md:py-24 bg-gray-50 border-t border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-4xl font-extrabold text-gray-900 mb-4">EI-Driven Coaching</h2>
+        <div class="w-20 mx-auto section-separator"></div>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+          The ReflectivAI Coach evaluates every exchange through an emotional intelligence lens, measuring not just what
+          reps say, but how effectively they connect, listen, and adapt.
         </p>
-        <p class="flex items-center justify-center md:justify-start text-gray-700">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-dark mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-          demo@reflectivai.com
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-12 items-center mb-12">
+        <div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-4">How the Coach Works</h3>
+          <p class="text-gray-700 mb-4">
+            Each simulation exchange is analyzed across six critical dimensions:
+            <strong>Accuracy</strong> (clinical correctness),
+            <strong>Empathy</strong> (emotional resonance),
+            <strong>Clarity</strong> (message simplicity),
+            <strong>Compliance</strong> (label adherence),
+            <strong>Discovery</strong> (uncovering needs), and
+            <strong>Objection Handling</strong> (navigating resistance).
+          </p>
+          <p class="text-gray-700 mb-4">
+            After every rep response, the Coach provides <strong>Suggested Phrasing</strong>—alternative ways to express
+            the same idea with better tone, empathy, or precision. The <strong>What Worked / What to Improve</strong>
+            panel breaks down strengths and growth areas, helping reps practice EI-driven conversations that build trust
+            and drive action.
+          </p>
+          <p class="text-gray-700 mb-4">
+            This isn’t generic feedback. Every coaching moment ties back to emotional intelligence principles, teaching
+            reps to regulate tone under pressure, listen for emotional cues, and respond with authentic empathy—all
+            while staying compliant.
+          </p>
+        </div>
+        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+          <h4 class="text-lg font-bold text-gray-900 mb-4 text-center">EI in Practice</h4>
+          <ul class="space-y-4">
+            <li class="flex items-start">
+              <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                <svg class="h-5 w-5 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <div>
+                <h5 class="font-bold text-gray-900">Regulate Tone Under Pressure</h5>
+                <p class="text-sm text-gray-600">Learn to stay calm and confident when HCPs push back or challenge your
+                  message.</p>
+              </div>
+            </li>
+            <li class="flex items-start">
+              <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                <svg class="h-5 w-5 text-accent-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                  </path>
+                </svg>
+              </div>
+              <div>
+                <h5 class="font-bold text-gray-900">Listen for Emotional Cues</h5>
+                <p class="text-sm text-gray-600">Detect hesitation, skepticism, or interest in HCP responses and adjust
+                  your approach.</p>
+              </div>
+            </li>
+            <li class="flex items-start">
+              <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z">
+                  </path>
+                </svg>
+              </div>
+              <div>
+                <h5 class="font-bold text-gray-900">Respond with Label-Aligned Empathy</h5>
+                <p class="text-sm text-gray-600">Show you understand HCP concerns while guiding back to approved,
+                  compliant messaging.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="p-8 rounded-xl border border-transparent" style="background-color:#0f2747;">
+        <h3 class="text-xl font-bold text-white mb-3 text-center">
+          Real-Time, Actionable Coaching
+        </h3>
+        <p class="text-center max-w-3xl mx-auto text-indigo-100">
+          The Coach doesn’t just score you—it teaches you. With every simulation, reps build
+          muscle memory for emotionally intelligent conversations that drive trust, adherence,
+          and long-term HCP relationships.
         </p>
+      </div>
+
+    </div>
+  </section>
+  <!-- END: EI Coaching Section -->
+
+  <!-- BEGIN: Performance Analytics Section -->
+  <section id="analytics" class="py-16 md:py-24 text-white" style="background-color:#0f2747;">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-4xl font-extrabold mb-4">Performance Analytics & Coaching Intelligence</h2>
+        <div class="w-20 mx-auto section-separator" style="background-color:white"></div>
+        <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes.</p>
+        <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with
+          EI-driven metrics.</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
+          <div class="text-2xl font-bold text-accent-teal mb-2">94%</div>
+          <p class="text-sm font-semibold uppercase text-indigo-100">Accuracy Index</p>
+        </div>
+        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
+          <div class="text-2xl font-bold text-accent-teal mb-2">1.4x</div>
+          <p class="text-sm font-semibold uppercase text-indigo-100">Readiness Velocity</p>
+        </div>
+        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
+          <div class="text-2xl font-bold text-accent-teal mb-2">Empathy</div>
+          <p class="text-sm font-semibold uppercase text-indigo-100">Coaching Index</p>
+        </div>
+        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
+          <div class="text-2xl font-bold text-accent-teal mb-2">Compliance</div>
+          <p class="text-sm font-semibold uppercase text-indigo-100">Guardrails</p>
+        </div>
+        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
+          <div class="text-2xl font-bold text-accent-teal mb-2">Confidence</div>
+          <p class="text-sm font-semibold uppercase text-indigo-100">Delta</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Therapeutic Areas & Personas ===== -->
+  <section id="therapeutic-areas" class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12">
+      <!-- Areas -->
+      <div class="text-center md:text-left">
+        <h3 class="text-3xl font-bold text-gray-900 mb-3">Train by Therapeutic Area</h3>
+        <div class="w-20 mx-auto md:mx-0 h-1 rounded" style="background-color:#20bfa9;"></div>
+        <div class="mt-6 flex flex-wrap gap-3 md:gap-4 justify-center md:justify-start">
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Oncology" data-challenge="Complex regimens, strict rules"
+            data-objective="Clarify label-compliant points" data-goal="Confident, accurate dialogue">Oncology</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Vaccines" data-challenge="Hesitancy, timing windows" data-objective="Address key objections"
+            data-goal="Improve uptake intent">Vaccines</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="HIV PrEP" data-challenge="Stigma, adherence gaps" data-objective="Navigate eligibility safely"
+            data-goal="Drive appropriate starts">HIV PrEP</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Cardiology" data-challenge="Risk tradeoffs, polypharm" data-objective="Align on risk reduction"
+            data-goal="Guideline-consistent choices">Cardiology</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Pulmonology" data-challenge="Variable control, access" data-objective="Clarify step-up criteria"
+            data-goal="Better control outcomes">Pulmonology</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Hepatitis B" data-challenge="Chronic course, stigma" data-objective="Reinforce monitoring plan"
+            data-goal="Sustained engagement">Hepatitis B</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-gray-400 bg-gray-100 text-gray-800 text-sm font-semibold hover:bg-gray-200 transition"
+            data-title="Custom Scenarios" data-challenge="Org-specific objections" data-objective="Map to your playbook"
+            data-goal="Faster rep readiness">+ Custom Scenarios</button>
+        </div>
+      </div>
+
+      <!-- Personas -->
+      <div class="text-center md:text-left">
+        <h3 class="text-3xl font-bold text-gray-900 mb-3">Practice with Realistic Personas</h3>
+        <div class="w-20 mx-auto md:mx-0 h-1 rounded" style="background-color:#20bfa9;"></div>
+        <div class="mt-6 flex flex-wrap gap-3 md:gap-4 justify-center md:justify-start">
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Internal Medicine MD" data-challenge="Time pressure, breadth"
+            data-objective="Be concise, relevant" data-goal="Earn next minute">Internal Medicine MD</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Oncologist" data-challenge="Evidence depth, safety" data-objective="Lead with outcomes"
+            data-goal="Advance informed choice">Oncologist</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Nurse Practitioner (NP)" data-challenge="Workflow, access paths"
+            data-objective="Simplify next steps" data-goal="Smooth initiation">Nurse Practitioner (NP)</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Infectious Disease Specialist" data-challenge="Resistance, guidelines"
+            data-objective="Anchor to evidence" data-goal="Appropriate selection">Infectious Disease Specialist</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Cardiologist" data-challenge="Risk-benefit nuance" data-objective="Quantify absolute risk"
+            data-goal="Shared decisions">Cardiologist</button>
+          <button type="button"
+            class="inline-flex h-10 items-center px-5 rounded-full border-2 border-[#0f2747] bg-white text-[#0f2747] text-sm font-semibold hover:bg-[#0f2747] hover:text-white transition"
+            data-title="Physician Assistant (PA)" data-challenge="Protocol adherence"
+            data-objective="Clarify guardrails" data-goal="Safe, quick actions">Physician Assistant (PA)</button>
+        </div>
       </div>
     </div>
 
-    <form class="bg-white p-8 rounded-xl shadow-2xl border border-gray-100 w-full"
-          action="https://formspree.io/f/reflectiv-demo" method="POST">
-      <div class="space-y-6">
-        <div>
-          <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-          <input type="text" id="name" name="name" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-accent-teal focus:border-accent-teal transition">
+    <!-- Reusable pill modal -->
+    <div id="pill-modal" class="modal" aria-hidden="true">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pillTitle">
+        <div class="modal-head">
+          <div id="pillTitle" class="modal-title">Details</div>
+          <button class="modal-close" data-close="#pill-modal" aria-label="Close">Close</button>
         </div>
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input type="email" id="email" name="_replyto" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-accent-teal focus:border-accent-teal transition">
+        <div class="px-6 py-5">
+          <ul class="space-y-3 text-sm text-gray-800">
+            <li><span class="font-semibold text-[#0f2747]">Challenge:</span> <span id="pill-challenge">—</span></li>
+            <li><span class="font-semibold text-[#0f2747]">Objective:</span> <span id="pill-objective">—</span></li>
+            <li><span class="font-semibold text-[#0f2747]">Goal:</span> <span id="pill-goal">—</span></li>
+          </ul>
         </div>
-        <div>
-          <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
-          <textarea id="message" name="message" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-accent-teal focus:border-accent-teal transition"></textarea>
+        <div class="px-6 py-4 border-t border-gray-200 text-right">
+          <button
+            class="inline-flex h-10 items-center px-5 rounded-full bg-[#0f2747] text-white text-sm font-semibold hover:opacity-90 transition modal-close"
+            data-close="#pill-modal">OK</button>
         </div>
-        <input type="hidden" name="_subject" value="ReflectivAI Demo Request">
-        <button type="submit" class="w-full px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.01]">
-          Request Demo
-        </button>
       </div>
+    </div>
+  </section>
+
+  <!-- ===== Ethics ===== -->
+  <section id="ethics" class="py-16 md:py-24 bg-gray-50 border-t border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-4xl font-extrabold text-gray-900 mb-4">Ethics, Privacy &amp; Governance</h2>
+        <div class="w-20 mx-auto section-separator"></div>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+          Compliance and responsible AI built for the rigors of life-sciences training.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+
+        <!-- Data Privacy & Security -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
+          <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-teal mr-2" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Data Privacy &amp; Security
+          </h4>
+          <p class="text-gray-600 text-sm">
+            PHI is off by default; when enabled, BAA, encryption, and RBAC apply.
+          </p>
+        </div>
+
+        <!-- Algorithmic Bias & Fairness -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
+          <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-teal mr-2" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+            Algorithmic Bias &amp; Fairness
+          </h4>
+          <p class="text-gray-600 text-sm">
+            Pre-deployment bias testing with monitoring and remediation steps.
+          </p>
+        </div>
+
+        <!-- Transparency & Explainability -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
+          <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-teal mr-2" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            Transparency &amp; Explainability
+          </h4>
+          <p class="text-gray-600 text-sm">
+            Reason codes in-product; model cards document limits and cadence.
+          </p>
+        </div>
+
+        <!-- Human Oversight & Accountability -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4" style="border-color:#20bfa9">
+          <h4 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-teal mr-2" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 9l6-6M20 6l-6 6M10 20l-6-6M4 14l6 6"></path>
+            </svg>
+            Human Oversight &amp; Accountability
+          </h4>
+          <p class="text-gray-600 text-sm">
+            Curated scenarios; MLR versioning for full traceability.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Contact ===== -->
+  <section id="contact" class="py-16 md:py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-start">
+      <div class="grid-mobile-center">
+        <h2 class="text-4xl font-extrabold text-gray-900 mb-4">Let's Redefine Your Sales Training</h2>
+        <div class="section-separator mx-auto md:mx-0"></div>
+        <p class="text-xl text-gray-600 mb-8">Ready to see how adaptive AI coaching can drive confidence and compliance
+          for your team? Request a personalized demonstration.</p>
+        <div class="space-y-4 text-center md:text-left">
+          <p class="flex items-center justify-center md:justify-start text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-dark mr-3" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+              </path>
+            </svg>
+            (555) 123-4567
+          </p>
+          <p class="flex items-center justify-center md:justify-start text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-dark mr-3" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            demo@reflectivai.com
+          </p>
+        </div>
+      </div>
+
+      <form class="bg-white p-8 rounded-xl shadow-2xl border border-gray-100 w-full"
+        action="https://formspree.io/f/reflectiv-demo" method="POST">
+        <div class="space-y-6">
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" id="name" name="name" required
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-accent-teal focus:border-accent-teal transition">
+          </div>
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" id="email" name="_replyto" required
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-accent-teal focus:border-accent-teal transition">
+          </div>
+          <div>
+            <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <textarea id="message" name="message" rows="4"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-accent-teal focus:border-accent-teal transition"></textarea>
+          </div>
+          <input type="hidden" name="_subject" value="ReflectivAI Demo Request">
+          <button type="submit"
+            class="w-full px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.01]">
+            Request Demo
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <footer class="py-8 bg-gray-800 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm">
+      <p>© 2025 ReflectivAI. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- ===== Card Modal kept (info cards) ===== -->
+  <div id="cardModal" class="modal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
+      <div class="modal-head">
+        <div id="cardTitle" class="modal-title">Details</div>
+        <button class="modal-close" data-close="#cardModal" aria-label="Close">Close</button>
+      </div>
+      <div id="cardBody" style="padding:14px"></div>
+    </div>
+  </div>
+
+  <!-- ===== Coach Modal ===== -->
+  <div id="coachModal" class="modal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="coachTitle">
+      <div class="modal-head">
+        <div id="coachTitle" class="modal-title">Reflectiv Coach</div>
+        <button class="modal-close" data-close="#coachModal" aria-label="Close">Close</button>
+      </div>
+      <div id="coachBody">
+        <div id="reflectiv-widget" class="reflectiv-widget"><noscript>You need JavaScript to use the ReflectivAI
+            Coach.</noscript></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Alora FAB + panel ===== -->
+  <button id="aloraFab" aria-label="Open Alora chat" title="Open Alora">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path fill="#fff" d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.4L5 19.9V16H5a2 2 0 0 1-2-2V5z" />
+    </svg>
+  </button>
+  <div id="alora" class="alora" aria-live="polite" aria-hidden="true">
+    <div class="alora-head">
+      <div class="alora-title">Alora — ReflectivAI Help</div><button id="aloraClose" class="alora-close"
+        aria-label="Close Alora chat" title="Close">×</button>
+    </div>
+    <div id="aloraBody" class="alora-body"></div>
+    <form id="aloraForm" class="alora-input" autocomplete="off" aria-label="Alora chat input">
+      <input id="aloraInput" placeholder="Ask about ReflectivAI…" aria-label="Type your message">
+      <button class="btn primary" type="submit">Send</button>
     </form>
   </div>
-</section>
 
-<!-- ===== Footer ===== -->
-<footer class="py-8 bg-gray-800 text-white">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm">
-    <p>© 2025 ReflectivAI. All rights reserved.</p>
-  </div>
-</footer>
+  <!-- ===== Bootstrap JS for modals, pills, coach trigger, Alora persona v4 ===== -->
+  <script>
+    (function () {
+      const onReady = (fn) => { document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn, { once: true }); };
+      onReady(() => {
 
-<!-- ===== Card Modal kept (info cards) ===== -->
-<div id="cardModal" class="modal" aria-hidden="true">
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
-    <div class="modal-head">
-      <div id="cardTitle" class="modal-title">Details</div>
-      <button class="modal-close" data-close="#cardModal" aria-label="Close">Close</button>
-    </div>
-    <div id="cardBody" style="padding:14px"></div>
-  </div>
-</div>
+        /* ---------- Generic modal controls ---------- */
+        function openModal(sel) {
+          const el = document.querySelector(sel);
+          if (!el) return;
+          el.classList.add('open');
+          el.setAttribute('aria-hidden', 'false');
 
-<!-- ===== Coach Modal ===== -->
-<div id="coachModal" class="modal" aria-hidden="true">
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="coachTitle">
-    <div class="modal-head">
-      <div id="coachTitle" class="modal-title">Reflectiv Coach</div>
-      <button class="modal-close" data-close="#coachModal" aria-label="Close">Close</button>
-    </div>
-    <div id="coachBody"><div id="reflectiv-widget" class="reflectiv-widget"><noscript>You need JavaScript to use the ReflectivAI Coach.</noscript></div></div>
-  </div>
-</div>
-
-<!-- ===== Alora FAB + panel ===== -->
-<button id="aloraFab" aria-label="Open Alora chat" title="Open Alora">
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="#fff" d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.4L5 19.9V16H5a2 2 0 0 1-2-2V5z"/></svg>
-</button>
-<div id="alora" class="alora" aria-live="polite" aria-hidden="true">
-  <div class="alora-head"><div class="alora-title">Alora — ReflectivAI Help</div><button id="aloraClose" class="alora-close" aria-label="Close Alora chat" title="Close">×</button></div>
-  <div id="aloraBody" class="alora-body"></div>
-  <form id="aloraForm" class="alora-input" autocomplete="off" aria-label="Alora chat input">
-    <input id="aloraInput" placeholder="Ask about ReflectivAI…" aria-label="Type your message">
-    <button class="btn primary" type="submit">Send</button>
-  </form>
-</div>
-
-<!-- ===== Bootstrap JS for modals, pills, coach trigger, Alora persona v4 ===== -->
-<script>
-(function(){
-  const onReady=(fn)=>{document.readyState!=='loading'?fn():document.addEventListener('DOMContentLoaded',fn,{once:true});};
-  onReady(()=>{
-
-    /* ---------- Generic modal controls ---------- */
-    function openModal(sel){
-      const el=document.querySelector(sel);
-      if(!el) return;
-      el.classList.add('open');
-      el.setAttribute('aria-hidden','false');
-
-      // Reset coach modal position on each open so it recenters
-      if(sel==='#coachModal'){
-        const box=el.querySelector('.modal-box');
-        if(box){
-          box.style.position='';
-          box.style.margin='';
-          box.style.top='';
-          box.style.left='';
-          box.style.transform='';
+          // Reset coach modal position on each open so it recenters
+          if (sel === '#coachModal') {
+            const box = el.querySelector('.modal-box');
+            if (box) {
+              box.style.position = '';
+              box.style.margin = '';
+              box.style.top = '';
+              box.style.left = '';
+              box.style.transform = '';
+            }
+          }
         }
-      }
-    }
-    function closeModal(sel){
-      const el=document.querySelector(sel);
-      if(el){
-        el.classList.remove('open');
-        el.setAttribute('aria-hidden','true');
-      }
-    }
-    window.openModal = openModal; // expose for About EI link
+        function closeModal(sel) {
+          const el = document.querySelector(sel);
+          if (el) {
+            el.classList.remove('open');
+            el.setAttribute('aria-hidden', 'true');
+          }
+        }
+        window.openModal = openModal; // expose for About EI link
 
-    document.querySelectorAll('.modal-close').forEach(b=>
-      b.addEventListener('click',()=>closeModal(b.getAttribute('data-close')))
-    );
-    document.querySelectorAll('.modal').forEach(m=>
-      m.addEventListener('click',e=>{if(e.target===m)closeModal('#'+m.id)})
-    );
-    document.addEventListener('keydown',e=>{
-      if(e.key==='Escape')
-        document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id));
-    });
-
-    /* ---------- Coach modal drag (mouse) ---------- */
-    (function(){
-      const coachModal=document.getElementById('coachModal');
-      if(!coachModal) return;
-      const box=coachModal.querySelector('.modal-box');
-      const head=coachModal.querySelector('.modal-head');
-      if(!box || !head) return;
-
-      let dragging=false, offsetX=0, offsetY=0;
-
-      function moveAt(clientX,clientY){
-        const padding=12;
-        const w=box.offsetWidth;
-        const h=box.offsetHeight;
-        let x=clientX-offsetX;
-        let y=clientY-offsetY;
-        const maxX=window.innerWidth-padding-w;
-        const maxY=window.innerHeight-padding-h;
-        if(x<padding) x=padding;
-        if(y<padding) y=padding;
-        if(x>maxX) x=maxX;
-        if(y>maxY) y=maxY;
-        box.style.left=x+'px';
-        box.style.top=y+'px';
-      }
-
-      function onMouseMove(e){
-        if(!dragging) return;
-        moveAt(e.clientX,e.clientY);
-      }
-
-      function onMouseUp(){
-        dragging=false;
-        document.removeEventListener('mousemove',onMouseMove);
-        document.removeEventListener('mouseup',onMouseUp);
-      }
-
-      function onMouseDown(e){
-        if(e.button!==0) return;
-        // Don't start drag from the Close button
-        if(e.target.closest('.modal-close')) return;
-
-        dragging=true;
-        const rect=box.getBoundingClientRect();
-        offsetX=e.clientX-rect.left;
-        offsetY=e.clientY-rect.top;
-
-        box.style.position='absolute';
-        box.style.margin='0';
-        box.style.transform='none';
-
-        moveAt(e.clientX,e.clientY);
-        document.addEventListener('mousemove',onMouseMove);
-        document.addEventListener('mouseup',onMouseUp);
-      }
-
-      head.addEventListener('mousedown',onMouseDown);
-    })();
-
-    /* ---------- Coach trigger ---------- */
-    document.getElementById('openCoach')?.addEventListener('click',e=>{
-      e.preventDefault();
-      openModal('#coachModal');
-    });
-
-    /* ---------- Pill modal wiring ---------- */
-    (function(){
-      const scope=document.getElementById('therapeutic-areas');
-      if(!scope) return;
-      const modal='#pill-modal';
-      scope.querySelectorAll('button[data-title]').forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          document.getElementById('pillTitle').textContent=btn.dataset.title||'';
-          document.getElementById('pill-challenge').textContent=btn.dataset.challenge||'';
-          document.getElementById('pill-objective').textContent=btn.dataset.objective||'';
-          document.getElementById('pill-goal').textContent=btn.dataset.goal||'';
-          openModal(modal);
+        document.querySelectorAll('.modal-close').forEach(b =>
+          b.addEventListener('click', () => closeModal(b.getAttribute('data-close')))
+        );
+        document.querySelectorAll('.modal').forEach(m =>
+          m.addEventListener('click', e => { if (e.target === m) closeModal('#' + m.id) })
+        );
+        document.addEventListener('keydown', e => {
+          if (e.key === 'Escape')
+            document.querySelectorAll('.modal.open').forEach(m => closeModal('#' + m.id));
         });
+
+        /* ---------- Coach modal drag (mouse) ---------- */
+        (function () {
+          const coachModal = document.getElementById('coachModal');
+          if (!coachModal) return;
+          const box = coachModal.querySelector('.modal-box');
+          const head = coachModal.querySelector('.modal-head');
+          if (!box || !head) return;
+
+          let dragging = false, offsetX = 0, offsetY = 0;
+
+          function moveAt(clientX, clientY) {
+            const padding = 12;
+            const w = box.offsetWidth;
+            const h = box.offsetHeight;
+            let x = clientX - offsetX;
+            let y = clientY - offsetY;
+            const maxX = window.innerWidth - padding - w;
+            const maxY = window.innerHeight - padding - h;
+            if (x < padding) x = padding;
+            if (y < padding) y = padding;
+            if (x > maxX) x = maxX;
+            if (y > maxY) y = maxY;
+            box.style.left = x + 'px';
+            box.style.top = y + 'px';
+          }
+
+          function onMouseMove(e) {
+            if (!dragging) return;
+            moveAt(e.clientX, e.clientY);
+          }
+
+          function onMouseUp() {
+            dragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+          }
+
+          function onMouseDown(e) {
+            if (e.button !== 0) return;
+            // Don't start drag from the Close button
+            if (e.target.closest('.modal-close')) return;
+
+            dragging = true;
+            const rect = box.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+
+            box.style.position = 'absolute';
+            box.style.margin = '0';
+            box.style.transform = 'none';
+
+            moveAt(e.clientX, e.clientY);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+          }
+
+          head.addEventListener('mousedown', onMouseDown);
+        })();
+
+        /* ---------- Coach trigger ---------- */
+        document.getElementById('openCoach')?.addEventListener('click', e => {
+          e.preventDefault();
+          openModal('#coachModal');
+        });
+
+        /* ---------- Pill modal wiring ---------- */
+        (function () {
+          const scope = document.getElementById('therapeutic-areas');
+          if (!scope) return;
+          const modal = '#pill-modal';
+          scope.querySelectorAll('button[data-title]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              document.getElementById('pillTitle').textContent = btn.dataset.title || '';
+              document.getElementById('pill-challenge').textContent = btn.dataset.challenge || '';
+              document.getElementById('pill-objective').textContent = btn.dataset.objective || '';
+              document.getElementById('pill-goal').textContent = btn.dataset.goal || '';
+              openModal(modal);
+            });
+          });
+        })();
+
+        /* ---------- Alora wiring (remote-first, DOM context, low hard-code) ---------- */
+        const aloraFab = document.getElementById('aloraFab');
+        const alora = document.getElementById('alora');
+        const aloraClose = document.getElementById('aloraClose');
+        const aloraBody = document.getElementById('aloraBody');
+        const aloraForm = document.getElementById('aloraForm');
+        const aloraInput = document.getElementById('aloraInput');
+
+        function bot(t) { const d = document.createElement('div'); d.className = 'alora-msg bot'; d.textContent = t; aloraBody.appendChild(d); aloraBody.scrollTop = aloraBody.scrollHeight }
+        function user(t) { const d = document.createElement('div'); d.className = 'alora-msg user'; d.textContent = t; aloraBody.appendChild(d); aloraBody.scrollTop = aloraBody.scrollHeight }
+        function typing(show) { if (show) { const t = document.createElement('div'); t.className = 'alora-typing'; t.id = 'aloraTyping'; let i = 0; t.textContent = 'Alora is typing'; aloraBody.appendChild(t); t._timer = setInterval(() => { i = (i + 1) % 4; t.textContent = 'Alora is typing' + '.'.repeat(i) }, 300); aloraBody.scrollTop = aloraBody.scrollHeight } else { const t = document.getElementById('aloraTyping'); if (t) { clearInterval(t._timer); t.remove() } } }
+
+        function scrollToId(id) {
+          const el = document.getElementById(id) || document.querySelector(`[data-anchor='${id}']`) || document.querySelector(`[href='#${id}']`);
+          if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return true }
+          return false;
+        }
+
+        const ACTIONS = {
+          'open-coach': () => openModal('#coachModal'),
+          'request-demo': () => scrollToId('contact'),
+          'see-platform': () => scrollToId('platform'),
+          'see-analytics': () => scrollToId('analytics'),
+          'see-ei': () => scrollToId('why-it-matters'),
+          'see-personas': () => scrollToId('therapeutic-areas')
+        };
+
+        const CHIPS_BASE = [['Open Coach', 'open-coach'], ['Request Demo', 'request-demo'], ['See Personas', 'see-personas'], ['Why EI', 'see-ei']];
+
+        function renderChips(pairs) {
+          let wrap = aloraBody.querySelector('.alora-suggest');
+          if (!wrap) { wrap = document.createElement('div'); wrap.className = 'alora-suggest'; aloraBody.appendChild(wrap) }
+          wrap.innerHTML = '';
+          (pairs || []).forEach(([label, cmd]) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'alora-chip'; b.textContent = label;
+            b.onclick = () => ACTIONS[cmd]?.();
+            wrap.appendChild(b);
+          });
+        }
+
+        /* ------------ Live site knowledge harvest ------------ */
+        function textOf(sel) {
+          const el = document.querySelector(sel); if (!el) return "";
+          return (el.innerText || "").replace(/\s+/g, ' ').trim();
+        }
+        function sectionDump(id, label) {
+          const el = document.getElementById(id); if (!el) return "";
+          const head = el.querySelector('h1,h2,h3,h4');
+          const txt = (el.innerText || "").replace(/\s+/g, ' ').trim();
+          return `[SECTION ${label || ('#' + id)}] ${head ? head.innerText + ' — ' : ''}${txt}`.slice(0, 4000);
+        }
+        function harvestSiteContext() {
+          const parts = [];
+          parts.push(`[TITLE] ${document.title || ''}`);
+          parts.push(`[BRAND] ${textOf('header .brand')}`);
+          parts.push(sectionDump('platform', 'Platform'));
+          parts.push(sectionDump('analytics', 'Analytics'));
+          parts.push(sectionDump('therapeutic-areas', 'Therapeutic Areas & Personas'));
+          parts.push(sectionDump('why-it-matters', 'Why EI'));
+          parts.push(sectionDump('ethics', 'Ethics/Privacy/Governance'));
+          parts.push(sectionDump('contact', 'Contact'));
+          const w = document.getElementById('reflectiv-widget');
+          if (w) {
+            parts.push('[COACH UI] Modes: Product Knowledge, Sales Simulation, Role Play, Emotional Assessment.');
+            parts.push('[COACH UI] Sales Simulation shows Focus/Strategy; Role Play supports "Evaluate this exchange".');
+          }
+          return parts.filter(Boolean).join('\n').slice(0, 24000);
+        }
+
+        /* ------------ Remote call with persona + DOM context ------------ */
+        async function askRemote(q) {
+          const body = {
+            role: 'alora',
+            site: 'reflectivai',
+            persona: (window.ALORA_PERSONA && window.ALORA_PERSONA.system) || '',
+            site_context: harvestSiteContext(),
+            message: q
+          };
+          const doFetch = async (timeoutMs) => {
+            const ctl = new AbortController(); const t = setTimeout(() => ctl.abort('timeout'), timeoutMs);
+            try {
+              const r = await fetch((window.ALORA_ENDPOINT || ''), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: ctl.signal
+              });
+              clearTimeout(t);
+              if (!r.ok) { if (r.status >= 500) throw new Error('server'); return null; }
+              const j = await r.json().catch(() => null);
+              return j && j.reply || null;
+            } catch (e) { clearTimeout(t); throw e; }
+          };
+          try { return await doFetch(45000); }
+          catch (e) { try { await new Promise(res => setTimeout(res, 600)); return await doFetch(45000); } catch (_) { return null; } }
+        }
+
+        /* ------------ Minimal local routing fallback (no hard copy) ------------ */
+        function localRoute(q) {
+          const s = String(q || '').toLowerCase();
+
+          if (/^(hi|hello|hey)\b/.test(s))
+            return {
+              text: "Hi, I’m Alora. Ask about the platform, Emotional Intelligence, simulations, analytics, or how the Coach works.",
+              chips: CHIPS_BASE
+            };
+
+          if (/\b(pricing|price|cost)\b/.test(s))
+            return {
+              text: "Pricing details are shared during a brief demo with our partnerships team.",
+              chips: [['Request Demo', 'request-demo']]
+            };
+
+          if (/\b(analytics|dashboard|metrics|report|insight|data)\b/.test(s))
+            return {
+              text: "ReflectivAI’s analytics include Accuracy Index, Readiness Velocity, Empathy Index, Compliance Guardrails, and Confidence Delta—turning behavioral data into performance insight.",
+              action: 'see-analytics',
+              chips: [['See Analytics', 'see-analytics'], ['Request Demo', 'request-demo']]
+            };
+
+          if (/\b(emotional intelligence|ei|empathy|tone|listening|self-awareness)\b/.test(s))
+            return {
+              text: "ReflectivAI’s EI framework measures empathy, listening, tone, and clarity—coaching reps to build trust and confidence with HCPs. Explore Why EI to learn more.",
+              action: 'see-ei',
+              chips: [['Why EI', 'see-ei'], ['Open Coach', 'open-coach']]
+            };
+
+          if (/\b(platform|modules?|features?|tools?)\b/.test(s))
+            return {
+              text: "The ReflectivAI platform blends Product Knowledge, Sales Simulation, Role Play, and Relationship Intelligence modules—all designed for life-sciences compliance and coaching.",
+              action: 'see-platform',
+              chips: [['See Platform', 'see-platform'], ['Open Coach', 'open-coach']]
+            };
+
+          if (/\b(personas?|hcp|roleplay|scenarios?)\b/.test(s))
+            return {
+              text: "You can practice with realistic HCP personas by specialty—Oncologists, NPs, PAs, and more—across disease states like Oncology, Cardiology, and Vaccines.",
+              action: 'see-personas',
+              chips: [['See Personas', 'see-personas'], ['Try Simulation', 'open-coach']]
+            };
+
+          if (/\b(coach|simulation|simulator|practice|training)\b/.test(s))
+            return {
+              text: "Opening the AI Coach. Choose Product Knowledge, Sales Simulation, or Role Play to start interactive training.",
+              action: 'open-coach',
+              chips: CHIPS_BASE
+            };
+
+          return null;
+        }
+
+        /* ------------ Open/close ------------ */
+        function aloraOpen() {
+          alora.classList.add('open'); alora.setAttribute('aria-hidden', 'false');
+          if (!aloraBody.dataset.greeted) {
+            bot("Hi, I’m Alora. I can explain features, EI, simulations, analytics, and usage. Ask a question.");
+            renderChips([['Open Coach', 'open-coach'], ['See Platform', 'see-platform'], ['Why EI', 'see-ei'], ['Request Demo', 'request-demo']]);
+            aloraBody.dataset.greeted = '1';
+          }
+        }
+        function aloraHide() { alora.classList.remove('open'); alora.setAttribute('aria-hidden', 'true') }
+        aloraFab.addEventListener('click', aloraOpen);
+        aloraClose.addEventListener('click', aloraHide);
+
+        /* ------------ Submit: remote-first, retry, deterministic fallback ------------ */
+        aloraForm.addEventListener('submit', async e => {
+          e.preventDefault();
+          const q = (aloraInput.value || '').trim(); if (!q) return;
+          aloraInput.value = ''; user(q); typing(true);
+
+          let resp = await askRemote(q).catch(() => null);
+          typing(false);
+
+          if (resp) { bot(resp); renderChips(CHIPS_BASE); return; }
+
+          const local = localRoute(q);
+          if (local) { if (local.action) ACTIONS[local.action]?.(); bot(local.text); renderChips(local.chips || CHIPS_BASE); return; }
+
+          bot("I could not reach the backend. You can still open the Coach, explore the Platform, or request a demo.");
+          renderChips(CHIPS_BASE);
+        });
+
+        /* Avoid white banner on bfcache restore */
+        if ('scrollRestoration' in history) { history.scrollRestoration = 'manual' }
+        window.addEventListener('pageshow', e => { if (e.persisted) window.scrollTo(0, 0) })
+
       });
     })();
+  </script>
 
-    /* ---------- Alora wiring (remote-first, DOM context, low hard-code) ---------- */
-    const aloraFab=document.getElementById('aloraFab');
-    const alora=document.getElementById('alora');
-    const aloraClose=document.getElementById('aloraClose');
-    const aloraBody=document.getElementById('aloraBody');
-    const aloraForm=document.getElementById('aloraForm');
-    const aloraInput=document.getElementById('aloraInput');
+  <script src="assets/chat/about-ei-modal.js?v=1"></script>
 
-    function bot(t){const d=document.createElement('div');d.className='alora-msg bot';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
-    function user(t){const d=document.createElement('div');d.className='alora-msg user';d.textContent=t;aloraBody.appendChild(d);aloraBody.scrollTop=aloraBody.scrollHeight}
-    function typing(show){if(show){const t=document.createElement('div');t.className='alora-typing';t.id='aloraTyping';let i=0;t.textContent='Alora is typing';aloraBody.appendChild(t);t._timer=setInterval(()=>{i=(i+1)%4;t.textContent='Alora is typing'+'.'.repeat(i)},300);aloraBody.scrollTop=aloraBody.scrollHeight}else{const t=document.getElementById('aloraTyping');if(t){clearInterval(t._timer);t.remove()}}}
-
-    function scrollToId(id){
-      const el=document.getElementById(id) || document.querySelector(`[data-anchor='${id}']`) || document.querySelector(`[href='#${id}']`);
-      if(el){el.scrollIntoView({behavior:'smooth',block:'start'});return true}
-      return false;
-    }
-
-    const ACTIONS={
-      'open-coach':()=>openModal('#coachModal'),
-      'request-demo':()=>scrollToId('contact'),
-      'see-platform':()=>scrollToId('platform'),
-      'see-analytics':()=>scrollToId('analytics'),
-      'see-ei':()=>scrollToId('why-it-matters'),
-      'see-personas':()=>scrollToId('therapeutic-areas')
-    };
-
-    const CHIPS_BASE=[['Open Coach','open-coach'],['Request Demo','request-demo'],['See Personas','see-personas'],['Why EI','see-ei']];
-
-    function renderChips(pairs){
-      let wrap=aloraBody.querySelector('.alora-suggest');
-      if(!wrap){wrap=document.createElement('div');wrap.className='alora-suggest';aloraBody.appendChild(wrap)}
-      wrap.innerHTML='';
-      (pairs||[]).forEach(([label,cmd])=>{
-        const b=document.createElement('button');
-        b.type='button'; b.className='alora-chip'; b.textContent=label;
-        b.onclick=()=>ACTIONS[cmd]?.();
-        wrap.appendChild(b);
+  <script>
+    (function () {
+      const btn = document.getElementById('navHamburger');
+      const links = document.getElementById('navLinks');
+      if (!btn || !links) return;
+      btn.addEventListener('click', () => {
+        const open = links.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
-    }
-
-    /* ------------ Live site knowledge harvest ------------ */
-    function textOf(sel){
-      const el=document.querySelector(sel); if(!el) return "";
-      return (el.innerText||"").replace(/\s+/g,' ').trim();
-    }
-    function sectionDump(id,label){
-      const el=document.getElementById(id); if(!el) return "";
-      const head=el.querySelector('h1,h2,h3,h4');
-      const txt=(el.innerText||"").replace(/\s+/g,' ').trim();
-      return `[SECTION ${label||('#'+id)}] ${head?head.innerText+' — ':''}${txt}`.slice(0,4000);
-    }
-    function harvestSiteContext(){
-      const parts=[];
-      parts.push(`[TITLE] ${document.title||''}`);
-      parts.push(`[BRAND] ${textOf('header .brand')}`);
-      parts.push(sectionDump('platform','Platform'));
-      parts.push(sectionDump('analytics','Analytics'));
-      parts.push(sectionDump('therapeutic-areas','Therapeutic Areas & Personas'));
-      parts.push(sectionDump('why-it-matters','Why EI'));
-      parts.push(sectionDump('ethics','Ethics/Privacy/Governance'));
-      parts.push(sectionDump('contact','Contact'));
-      const w=document.getElementById('reflectiv-widget');
-      if(w){
-        parts.push('[COACH UI] Modes: Product Knowledge, Sales Simulation, Role Play, Emotional Assessment.');
-        parts.push('[COACH UI] Sales Simulation shows Focus/Strategy; Role Play supports "Evaluate this exchange".');
-      }
-      return parts.filter(Boolean).join('\n').slice(0,24000);
-    }
-
-    /* ------------ Remote call with persona + DOM context ------------ */
-    async function askRemote(q){
-      const body={
-        role:'alora',
-        site:'reflectivai',
-        persona:(window.ALORA_PERSONA&&window.ALORA_PERSONA.system)||'',
-        site_context:harvestSiteContext(),
-        message:q
-      };
-      const doFetch=async(timeoutMs)=>{
-        const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort('timeout'),timeoutMs);
-        try{
-          const r=await fetch((window.ALORA_ENDPOINT||''),{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify(body),
-            signal:ctl.signal
-          });
-          clearTimeout(t);
-          if(!r.ok){ if(r.status>=500) throw new Error('server'); return null; }
-          const j=await r.json().catch(()=>null);
-          return j&&j.reply||null;
-        }catch(e){ clearTimeout(t); throw e; }
-      };
-      try{ return await doFetch(45000); }
-      catch(e){ try{ await new Promise(res=>setTimeout(res,600)); return await doFetch(45000); } catch(_){ return null; } }
-    }
-
-    /* ------------ Minimal local routing fallback (no hard copy) ------------ */
-    function localRoute(q){
-      const s = String(q || '').toLowerCase();
-
-      if (/^(hi|hello|hey)\b/.test(s))
-        return {
-          text: "Hi, I’m Alora. Ask about the platform, Emotional Intelligence, simulations, analytics, or how the Coach works.",
-          chips: CHIPS_BASE
-        };
-
-      if (/\b(pricing|price|cost)\b/.test(s))
-        return {
-          text: "Pricing details are shared during a brief demo with our partnerships team.",
-          chips: [['Request Demo','request-demo']]
-        };
-
-      if (/\b(analytics|dashboard|metrics|report|insight|data)\b/.test(s))
-        return {
-          text: "ReflectivAI’s analytics include Accuracy Index, Readiness Velocity, Empathy Index, Compliance Guardrails, and Confidence Delta—turning behavioral data into performance insight.",
-          action: 'see-analytics',
-          chips: [['See Analytics','see-analytics'],['Request Demo','request-demo']]
-        };
-
-      if (/\b(emotional intelligence|ei|empathy|tone|listening|self-awareness)\b/.test(s))
-        return {
-          text: "ReflectivAI’s EI framework measures empathy, listening, tone, and clarity—coaching reps to build trust and confidence with HCPs. Explore Why EI to learn more.",
-          action: 'see-ei',
-          chips: [['Why EI','see-ei'],['Open Coach','open-coach']]
-        };
-
-      if (/\b(platform|modules?|features?|tools?)\b/.test(s))
-        return {
-          text: "The ReflectivAI platform blends Product Knowledge, Sales Simulation, Role Play, and Relationship Intelligence modules—all designed for life-sciences compliance and coaching.",
-          action: 'see-platform',
-          chips: [['See Platform','see-platform'],['Open Coach','open-coach']]
-        };
-
-      if (/\b(personas?|hcp|roleplay|scenarios?)\b/.test(s))
-        return {
-          text: "You can practice with realistic HCP personas by specialty—Oncologists, NPs, PAs, and more—across disease states like Oncology, Cardiology, and Vaccines.",
-          action: 'see-personas',
-          chips: [['See Personas','see-personas'],['Try Simulation','open-coach']]
-        };
-
-      if (/\b(coach|simulation|simulator|practice|training)\b/.test(s))
-        return {
-          text: "Opening the AI Coach. Choose Product Knowledge, Sales Simulation, or Role Play to start interactive training.",
-          action: 'open-coach',
-          chips: CHIPS_BASE
-        };
-
-      return null;
-    }
-
-    /* ------------ Open/close ------------ */
-    function aloraOpen(){
-      alora.classList.add('open'); alora.setAttribute('aria-hidden','false');
-      if(!aloraBody.dataset.greeted){
-        bot("Hi, I’m Alora. I can explain features, EI, simulations, analytics, and usage. Ask a question.");
-        renderChips([['Open Coach','open-coach'],['See Platform','see-platform'],['Why EI','see-ei'],['Request Demo','request-demo']]);
-        aloraBody.dataset.greeted='1';
-      }
-    }
-    function aloraHide(){alora.classList.remove('open');alora.setAttribute('aria-hidden','true')}
-    aloraFab.addEventListener('click',aloraOpen);
-    aloraClose.addEventListener('click',aloraHide);
-
-    /* ------------ Submit: remote-first, retry, deterministic fallback ------------ */
-    aloraForm.addEventListener('submit',async e=>{
-      e.preventDefault();
-      const q=(aloraInput.value||'').trim(); if(!q) return;
-      aloraInput.value=''; user(q); typing(true);
-
-      let resp=await askRemote(q).catch(()=>null);
-      typing(false);
-
-      if(resp){ bot(resp); renderChips(CHIPS_BASE); return; }
-
-      const local=localRoute(q);
-      if(local){ if(local.action) ACTIONS[local.action]?.(); bot(local.text); renderChips(local.chips||CHIPS_BASE); return; }
-
-      bot("I could not reach the backend. You can still open the Coach, explore the Platform, or request a demo.");
-      renderChips(CHIPS_BASE);
-    });
-
-    /* Avoid white banner on bfcache restore */
-    if('scrollRestoration' in history){history.scrollRestoration='manual'}
-    window.addEventListener('pageshow',e=>{if(e.persisted)window.scrollTo(0,0)})
-
-  });
-})();
-</script>
-
-<script src="assets/chat/about-ei-modal.js?v=1"></script>
-
-<script>
-(function(){
-  const btn=document.getElementById('navHamburger');
-  const links=document.getElementById('navLinks');
-  if(!btn||!links)return;
-  btn.addEventListener('click',()=>{
-    const open=links.classList.toggle('open');
-    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
-})();
-</script>
+    })();
+  </script>
 
 </body>
+
 </html>

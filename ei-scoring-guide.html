@@ -1,536 +1,553 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ReflectivAI - EI Scoring Guide</title>
-  <style>
-    :root {
-      --navy: #0c2740;
-      --teal: #20bfa9;
-      --ink: #1e2a3a;
-      --soft: #ecf3fb;
-      --line: #d9e3ef;
-    }
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-      line-height: 1.6;
-      color: var(--ink);
-      background: linear-gradient(135deg, #f7f9fc 0%, #ecf3fb 100%);
-      padding: 20px;
-    }
-    
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 12px 48px rgba(12, 39, 64, 0.12);
-      overflow: hidden;
-    }
-    
-    header {
-      background: var(--navy);
-      color: white;
-      padding: 32px 40px;
-      text-align: center;
-    }
-    
-    header h1 {
-      font-size: 32px;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-    
-    header p {
-      font-size: 16px;
-      opacity: 0.9;
-    }
-    
-    .content {
-      padding: 40px;
-    }
-    
-    .intro {
-      background: var(--soft);
-      border-left: 4px solid var(--teal);
-      padding: 20px;
-      border-radius: 8px;
-      margin-bottom: 40px;
-    }
-    
-    .metric {
-      margin-bottom: 40px;
-      padding-bottom: 40px;
-      border-bottom: 1px solid var(--line);
-    }
-    
-    .metric:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-    
-    .metric-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    
-    .metric-icon {
-      width: 48px;
-      height: 48px;
-      background: var(--teal);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 24px;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-    
-    .metric-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--navy);
-    }
-    
-    .metric-description {
-      font-size: 16px;
-      color: var(--ink);
-      margin-bottom: 20px;
-    }
-    
-    .scoring-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-    }
-    
-    .scoring-table th {
-      background: var(--navy);
-      color: white;
-      padding: 12px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 14px;
-    }
-    
-    .scoring-table td {
-      padding: 12px;
-      border-bottom: 1px solid var(--line);
-      font-size: 14px;
-    }
-    
-    .scoring-table tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .score-value {
-      font-weight: 700;
-      color: var(--navy);
-      font-size: 16px;
-      width: 60px;
-    }
-    
-    .examples {
-      background: #f7f9fc;
-      padding: 20px;
-      border-radius: 8px;
-      margin-top: 16px;
-    }
-    
-    .examples h4 {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 12px;
-    }
-    
-    .examples ul {
-      margin-left: 20px;
-    }
-    
-    .examples li {
-      margin-bottom: 8px;
-      color: var(--ink);
-    }
-    
-    .footer {
-      background: var(--soft);
-      padding: 24px 40px;
-      text-align: center;
-      font-size: 14px;
-      color: var(--ink);
-    }
-    
-    .back-link {
-      display: inline-block;
-      margin-top: 16px;
-      padding: 10px 24px;
-      background: var(--teal);
-      color: white;
-      text-decoration: none;
-      border-radius: 999px;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-    
-    .back-link:hover {
-      background: #17a895;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReflectivAI - EI Scoring Guide</title>
+    <style>
+        :root {
+            --navy: #0c2740;
+            --teal: #20bfa9;
+            --ink: #1e2a3a;
+            --soft: #ecf3fb;
+            --line: #d9e3ef;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--ink);
+            background: linear-gradient(135deg, #f7f9fc 0%, #ecf3fb 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 12px 48px rgba(12, 39, 64, 0.12);
+            overflow: hidden;
+        }
+
+        header {
+            background: var(--navy);
+            color: white;
+            padding: 32px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .intro {
+            background: var(--soft);
+            border-left: 4px solid var(--teal);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+
+        .metric {
+            margin-bottom: 40px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--teal);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .metric-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .metric-description {
+            font-size: 16px;
+            color: var(--ink);
+            margin-bottom: 20px;
+        }
+
+        .scoring-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .scoring-table th {
+            background: var(--navy);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .scoring-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--line);
+            font-size: 14px;
+        }
+
+        .scoring-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .score-value {
+            font-weight: 700;
+            color: var(--navy);
+            font-size: 16px;
+            width: 60px;
+        }
+
+        .examples {
+            background: #f7f9fc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .examples h4 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 12px;
+        }
+
+        .examples ul {
+            margin-left: 20px;
+        }
+
+        .examples li {
+            margin-bottom: 8px;
+            color: var(--ink);
+        }
+
+        .footer {
+            background: var(--soft);
+            padding: 24px 40px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--ink);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 10px 24px;
+            background: var(--teal);
+            color: white;
+            text-decoration: none;
+            border-radius: 999px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .back-link:hover {
+            background: #17a895;
+        }
+    </style>
 </head>
+
 <body>
-  <div class="container">
-    <header>
-      <h1>Emotional Intelligence Scoring Guide</h1>
-      <p>Understanding Your Performance Metrics</p>
-    </header>
-    
-    <div class="content">
-      <div class="intro">
-        <h2 style="margin-bottom: 12px; font-size: 20px; color: var(--navy);">How Scores Are Calculated</h2>
-        <p>ReflectivAI evaluates your interactions across six key dimensions of emotional intelligence and sales effectiveness. Each metric is scored on a scale of 0-5, where:</p>
-        <ul style="margin: 12px 0 0 20px;">
-          <li><strong>0-1:</strong> Needs significant improvement</li>
-          <li><strong>2-3:</strong> Developing - on the right track</li>
-          <li><strong>4-5:</strong> Excellent - demonstrating mastery</li>
-        </ul>
-        <p style="margin-top: 12px;">Your composite score combines all six metrics to provide an overall assessment of your conversation quality.</p>
-      </div>
-      
-      <!-- Accuracy -->
-      <div class="metric">
-        <div class="metric-header">
-          <div class="metric-icon">✓</div>
-          <div class="metric-title">Accuracy</div>
+    <div class="container">
+        <header>
+            <h1>Emotional Intelligence Scoring Guide</h1>
+            <p>Understanding Your Performance Metrics</p>
+        </header>
+
+        <div class="content">
+            <div class="intro">
+                <h2 style="margin-bottom: 12px; font-size: 20px; color: var(--navy);">How Scores Are Calculated</h2>
+                <p>ReflectivAI evaluates your interactions across six key dimensions of emotional intelligence and sales
+                    effectiveness. Each metric is scored on a scale of 0-5, where:</p>
+                <ul style="margin: 12px 0 0 20px;">
+                    <li><strong>0-1:</strong> Needs significant improvement</li>
+                    <li><strong>2-3:</strong> Developing - on the right track</li>
+                    <li><strong>4-5:</strong> Excellent - demonstrating mastery</li>
+                </ul>
+                <p style="margin-top: 12px;">Your composite score combines all six metrics to provide an overall
+                    assessment of your conversation quality.</p>
+            </div>
+
+            <!-- Accuracy -->
+            <div class="metric">
+                <div class="metric-header">
+                    <div class="metric-icon">✓</div>
+                    <div class="metric-title">Accuracy</div>
+                </div>
+                <div class="metric-description">
+                    Measures how well your statements align with approved product labeling, clinical guidelines, and
+                    scientific evidence. Accuracy ensures you're providing HCPs with reliable, evidence-based
+                    information.
+                </div>
+
+                <table class="scoring-table">
+                    <thead>
+                        <tr>
+                            <th>Score</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="score-value">5</td>
+                            <td>All claims are label-aligned with appropriate citations. No off-label suggestions.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">4</td>
+                            <td>Claims are mostly accurate with proper context. Minor improvements possible.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">3</td>
+                            <td>Generally accurate but lacks specific citations or contains vague statements.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">2</td>
+                            <td>Contains one or more statements that need verification or clarification.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">0-1</td>
+                            <td>Off-label claims, contradicts guidelines, or contains factual errors.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="examples">
+                    <h4>Best Practices:</h4>
+                    <ul>
+                        <li>Always cite specific studies, guidelines, or label information</li>
+                        <li>Use phrases like "According to the FDA label..." or "The DISCOVER trial showed..."</li>
+                        <li>Avoid making claims beyond approved indications</li>
+                        <li>When unsure, refer to official prescribing information</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Compliance -->
+            <div class="metric">
+                <div class="metric-header">
+                    <div class="metric-icon">⚖</div>
+                    <div class="metric-title">Compliance</div>
+                </div>
+                <div class="metric-description">
+                    Evaluates adherence to regulatory guidelines, ethical standards, and company policies. High
+                    compliance scores reflect professional integrity and risk mitigation.
+                </div>
+
+                <table class="scoring-table">
+                    <thead>
+                        <tr>
+                            <th>Score</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="score-value">5</td>
+                            <td>Fully compliant. All statements on-label. Appropriate disclaimers when needed.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">4</td>
+                            <td>Compliant with minor areas for improvement (e.g., could add safety reminder).</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">3</td>
+                            <td>Generally compliant but lacks complete context or risk disclosure.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">2</td>
+                            <td>Contains borderline statements that approach off-label territory.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">0-1</td>
+                            <td>Violates compliance standards. Off-label promotion or misleading claims.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="examples">
+                    <h4>Key Compliance Principles:</h4>
+                    <ul>
+                        <li>Never promote off-label uses</li>
+                        <li>Balance efficacy claims with safety information</li>
+                        <li>Respect HCP autonomy in clinical decision-making</li>
+                        <li>Document adverse events if reported by HCP</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Discovery -->
+            <div class="metric">
+                <div class="metric-header">
+                    <div class="metric-icon">?</div>
+                    <div class="metric-title">Discovery</div>
+                </div>
+                <div class="metric-description">
+                    Measures your ability to ask thoughtful, open-ended questions that uncover HCP needs, concerns, and
+                    patient populations. Strong discovery leads to more meaningful, personalized conversations.
+                </div>
+
+                <table class="scoring-table">
+                    <thead>
+                        <tr>
+                            <th>Score</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="score-value">5</td>
+                            <td>Asks 2+ targeted, open-ended questions. Uncovers key insights about HCP's practice.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">4</td>
+                            <td>Asks at least one good discovery question. Could probe deeper.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">3</td>
+                            <td>Question is present but closed-ended or not highly relevant.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">2</td>
+                            <td>Limited discovery. Mostly presenting information rather than exploring.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">0-1</td>
+                            <td>No questions asked. Monologue without engagement.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="examples">
+                    <h4>Effective Discovery Questions:</h4>
+                    <ul>
+                        <li>"What factors most influence your treatment decisions for high-risk patients?"</li>
+                        <li>"How do you currently assess adherence challenges with your PrEP patients?"</li>
+                        <li>"Can you walk me through your typical workflow for initiating preventive therapy?"</li>
+                        <li>"What concerns have you heard from patients about once-daily regimens?"</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Clarity -->
+            <div class="metric">
+                <div class="metric-header">
+                    <div class="metric-icon">◆</div>
+                    <div class="metric-title">Clarity</div>
+                </div>
+                <div class="metric-description">
+                    Assesses how concisely and clearly you communicate. High clarity scores mean your messages are easy
+                    to understand, well-organized, and free of unnecessary jargon.
+                </div>
+
+                <table class="scoring-table">
+                    <thead>
+                        <tr>
+                            <th>Score</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="score-value">5</td>
+                            <td>Crystal clear. One idea per sentence. No jargon. Perfectly structured.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">4</td>
+                            <td>Clear and understandable with minor verbose moments.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">3</td>
+                            <td>Mostly clear but could be more concise or better organized.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">2</td>
+                            <td>Somewhat unclear. Multiple ideas per sentence or excessive detail.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">0-1</td>
+                            <td>Confusing or rambling. Hard to follow the main point.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="examples">
+                    <h4>Tips for Clarity:</h4>
+                    <ul>
+                        <li>Use short, declarative sentences (15-20 words max)</li>
+                        <li>Lead with the key point, then add supporting details</li>
+                        <li>Avoid acronyms unless widely known (e.g., FDA, CDC)</li>
+                        <li>Structure your message: problem → solution → benefit</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Objection Handling -->
+            <div class="metric">
+                <div class="metric-header">
+                    <div class="metric-icon">↔</div>
+                    <div class="metric-title">Objection Handling</div>
+                </div>
+                <div class="metric-description">
+                    Evaluates how effectively you address HCP concerns, skepticism, or barriers. Strong objection
+                    handling acknowledges the concern, validates the HCP's perspective, and provides evidence-based
+                    responses.
+                </div>
+
+                <table class="scoring-table">
+                    <thead>
+                        <tr>
+                            <th>Score</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="score-value">5</td>
+                            <td>Acknowledges concern, validates HCP perspective, and offers evidence-based solution.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">4</td>
+                            <td>Addresses the objection well but could validate more or provide stronger evidence.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">3</td>
+                            <td>Responds to objection but doesn't fully address the root concern.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">2</td>
+                            <td>Dismisses or minimizes the concern rather than addressing it thoughtfully.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">0-1</td>
+                            <td>Ignores objection or becomes defensive.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="examples">
+                    <h4>Objection Handling Framework:</h4>
+                    <ul>
+                        <li><strong>Listen:</strong> Let the HCP fully express their concern</li>
+                        <li><strong>Validate:</strong> "I understand why that's important to you..."</li>
+                        <li><strong>Clarify:</strong> "Can you tell me more about..."</li>
+                        <li><strong>Respond:</strong> Provide evidence or perspective that addresses the specific
+                            concern</li>
+                        <li><strong>Confirm:</strong> "Does that address your question?"</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Empathy -->
+            <div class="metric">
+                <div class="metric-header">
+                    <div class="metric-icon">♥</div>
+                    <div class="metric-title">Empathy</div>
+                </div>
+                <div class="metric-description">
+                    Measures your ability to recognize and respond to the HCP's emotional state, priorities, and
+                    constraints. High empathy scores reflect genuine understanding and patient-centered thinking.
+                </div>
+
+                <table class="scoring-table">
+                    <thead>
+                        <tr>
+                            <th>Score</th>
+                            <th>Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="score-value">5</td>
+                            <td>Explicitly acknowledges HCP's context, priorities, or challenges. Patient-centered
+                                language.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">4</td>
+                            <td>Shows empathy but could be more explicit or connect better to patient outcomes.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">3</td>
+                            <td>Some awareness of HCP perspective but focus is more product-centric.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">2</td>
+                            <td>Minimal empathy. Transactional tone without acknowledging HCP's situation.</td>
+                        </tr>
+                        <tr>
+                            <td class="score-value">0-1</td>
+                            <td>No empathy. Pushy or dismissive of HCP concerns.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="examples">
+                    <h4>Empathetic Language Examples:</h4>
+                    <ul>
+                        <li>"I appreciate how busy your clinic is..."</li>
+                        <li>"Given your focus on high-risk populations..."</li>
+                        <li>"I understand the challenge of balancing efficacy with safety..."</li>
+                        <li>"Your patients benefit from your thorough approach to..."</li>
+                        <li>"I know adherence is a top concern for you..."</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="metric-description">
-          Measures how well your statements align with approved product labeling, clinical guidelines, and scientific evidence. Accuracy ensures you're providing HCPs with reliable, evidence-based information.
+
+        <div class="footer">
+            <p><strong>ReflectivAI</strong> - Emotional Intelligence for Life Sciences Sales</p>
+            <p style="margin-top: 8px; font-size: 13px; opacity: 0.8;">
+                These metrics help you develop the emotional intelligence and communication skills needed for
+                high-stakes healthcare conversations.
+            </p>
+            <a href="javascript:window.close()" class="back-link">Close Window</a>
         </div>
-        
-        <table class="scoring-table">
-          <thead>
-            <tr>
-              <th>Score</th>
-              <th>Criteria</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="score-value">5</td>
-              <td>All claims are label-aligned with appropriate citations. No off-label suggestions.</td>
-            </tr>
-            <tr>
-              <td class="score-value">4</td>
-              <td>Claims are mostly accurate with proper context. Minor improvements possible.</td>
-            </tr>
-            <tr>
-              <td class="score-value">3</td>
-              <td>Generally accurate but lacks specific citations or contains vague statements.</td>
-            </tr>
-            <tr>
-              <td class="score-value">2</td>
-              <td>Contains one or more statements that need verification or clarification.</td>
-            </tr>
-            <tr>
-              <td class="score-value">0-1</td>
-              <td>Off-label claims, contradicts guidelines, or contains factual errors.</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="examples">
-          <h4>Best Practices:</h4>
-          <ul>
-            <li>Always cite specific studies, guidelines, or label information</li>
-            <li>Use phrases like "According to the FDA label..." or "The DISCOVER trial showed..."</li>
-            <li>Avoid making claims beyond approved indications</li>
-            <li>When unsure, refer to official prescribing information</li>
-          </ul>
-        </div>
-      </div>
-      
-      <!-- Compliance -->
-      <div class="metric">
-        <div class="metric-header">
-          <div class="metric-icon">⚖</div>
-          <div class="metric-title">Compliance</div>
-        </div>
-        <div class="metric-description">
-          Evaluates adherence to regulatory guidelines, ethical standards, and company policies. High compliance scores reflect professional integrity and risk mitigation.
-        </div>
-        
-        <table class="scoring-table">
-          <thead>
-            <tr>
-              <th>Score</th>
-              <th>Criteria</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="score-value">5</td>
-              <td>Fully compliant. All statements on-label. Appropriate disclaimers when needed.</td>
-            </tr>
-            <tr>
-              <td class="score-value">4</td>
-              <td>Compliant with minor areas for improvement (e.g., could add safety reminder).</td>
-            </tr>
-            <tr>
-              <td class="score-value">3</td>
-              <td>Generally compliant but lacks complete context or risk disclosure.</td>
-            </tr>
-            <tr>
-              <td class="score-value">2</td>
-              <td>Contains borderline statements that approach off-label territory.</td>
-            </tr>
-            <tr>
-              <td class="score-value">0-1</td>
-              <td>Violates compliance standards. Off-label promotion or misleading claims.</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="examples">
-          <h4>Key Compliance Principles:</h4>
-          <ul>
-            <li>Never promote off-label uses</li>
-            <li>Balance efficacy claims with safety information</li>
-            <li>Respect HCP autonomy in clinical decision-making</li>
-            <li>Document adverse events if reported by HCP</li>
-          </ul>
-        </div>
-      </div>
-      
-      <!-- Discovery -->
-      <div class="metric">
-        <div class="metric-header">
-          <div class="metric-icon">?</div>
-          <div class="metric-title">Discovery</div>
-        </div>
-        <div class="metric-description">
-          Measures your ability to ask thoughtful, open-ended questions that uncover HCP needs, concerns, and patient populations. Strong discovery leads to more meaningful, personalized conversations.
-        </div>
-        
-        <table class="scoring-table">
-          <thead>
-            <tr>
-              <th>Score</th>
-              <th>Criteria</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="score-value">5</td>
-              <td>Asks 2+ targeted, open-ended questions. Uncovers key insights about HCP's practice.</td>
-            </tr>
-            <tr>
-              <td class="score-value">4</td>
-              <td>Asks at least one good discovery question. Could probe deeper.</td>
-            </tr>
-            <tr>
-              <td class="score-value">3</td>
-              <td>Question is present but closed-ended or not highly relevant.</td>
-            </tr>
-            <tr>
-              <td class="score-value">2</td>
-              <td>Limited discovery. Mostly presenting information rather than exploring.</td>
-            </tr>
-            <tr>
-              <td class="score-value">0-1</td>
-              <td>No questions asked. Monologue without engagement.</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="examples">
-          <h4>Effective Discovery Questions:</h4>
-          <ul>
-            <li>"What factors most influence your treatment decisions for high-risk patients?"</li>
-            <li>"How do you currently assess adherence challenges with your PrEP patients?"</li>
-            <li>"Can you walk me through your typical workflow for initiating preventive therapy?"</li>
-            <li>"What concerns have you heard from patients about once-daily regimens?"</li>
-          </ul>
-        </div>
-      </div>
-      
-      <!-- Clarity -->
-      <div class="metric">
-        <div class="metric-header">
-          <div class="metric-icon">◆</div>
-          <div class="metric-title">Clarity</div>
-        </div>
-        <div class="metric-description">
-          Assesses how concisely and clearly you communicate. High clarity scores mean your messages are easy to understand, well-organized, and free of unnecessary jargon.
-        </div>
-        
-        <table class="scoring-table">
-          <thead>
-            <tr>
-              <th>Score</th>
-              <th>Criteria</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="score-value">5</td>
-              <td>Crystal clear. One idea per sentence. No jargon. Perfectly structured.</td>
-            </tr>
-            <tr>
-              <td class="score-value">4</td>
-              <td>Clear and understandable with minor verbose moments.</td>
-            </tr>
-            <tr>
-              <td class="score-value">3</td>
-              <td>Mostly clear but could be more concise or better organized.</td>
-            </tr>
-            <tr>
-              <td class="score-value">2</td>
-              <td>Somewhat unclear. Multiple ideas per sentence or excessive detail.</td>
-            </tr>
-            <tr>
-              <td class="score-value">0-1</td>
-              <td>Confusing or rambling. Hard to follow the main point.</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="examples">
-          <h4>Tips for Clarity:</h4>
-          <ul>
-            <li>Use short, declarative sentences (15-20 words max)</li>
-            <li>Lead with the key point, then add supporting details</li>
-            <li>Avoid acronyms unless widely known (e.g., FDA, CDC)</li>
-            <li>Structure your message: problem → solution → benefit</li>
-          </ul>
-        </div>
-      </div>
-      
-      <!-- Objection Handling -->
-      <div class="metric">
-        <div class="metric-header">
-          <div class="metric-icon">↔</div>
-          <div class="metric-title">Objection Handling</div>
-        </div>
-        <div class="metric-description">
-          Evaluates how effectively you address HCP concerns, skepticism, or barriers. Strong objection handling acknowledges the concern, validates the HCP's perspective, and provides evidence-based responses.
-        </div>
-        
-        <table class="scoring-table">
-          <thead>
-            <tr>
-              <th>Score</th>
-              <th>Criteria</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="score-value">5</td>
-              <td>Acknowledges concern, validates HCP perspective, and offers evidence-based solution.</td>
-            </tr>
-            <tr>
-              <td class="score-value">4</td>
-              <td>Addresses the objection well but could validate more or provide stronger evidence.</td>
-            </tr>
-            <tr>
-              <td class="score-value">3</td>
-              <td>Responds to objection but doesn't fully address the root concern.</td>
-            </tr>
-            <tr>
-              <td class="score-value">2</td>
-              <td>Dismisses or minimizes the concern rather than addressing it thoughtfully.</td>
-            </tr>
-            <tr>
-              <td class="score-value">0-1</td>
-              <td>Ignores objection or becomes defensive.</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="examples">
-          <h4>Objection Handling Framework:</h4>
-          <ul>
-            <li><strong>Listen:</strong> Let the HCP fully express their concern</li>
-            <li><strong>Validate:</strong> "I understand why that's important to you..."</li>
-            <li><strong>Clarify:</strong> "Can you tell me more about..."</li>
-            <li><strong>Respond:</strong> Provide evidence or perspective that addresses the specific concern</li>
-            <li><strong>Confirm:</strong> "Does that address your question?"</li>
-          </ul>
-        </div>
-      </div>
-      
-      <!-- Empathy -->
-      <div class="metric">
-        <div class="metric-header">
-          <div class="metric-icon">♥</div>
-          <div class="metric-title">Empathy</div>
-        </div>
-        <div class="metric-description">
-          Measures your ability to recognize and respond to the HCP's emotional state, priorities, and constraints. High empathy scores reflect genuine understanding and patient-centered thinking.
-        </div>
-        
-        <table class="scoring-table">
-          <thead>
-            <tr>
-              <th>Score</th>
-              <th>Criteria</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="score-value">5</td>
-              <td>Explicitly acknowledges HCP's context, priorities, or challenges. Patient-centered language.</td>
-            </tr>
-            <tr>
-              <td class="score-value">4</td>
-              <td>Shows empathy but could be more explicit or connect better to patient outcomes.</td>
-            </tr>
-            <tr>
-              <td class="score-value">3</td>
-              <td>Some awareness of HCP perspective but focus is more product-centric.</td>
-            </tr>
-            <tr>
-              <td class="score-value">2</td>
-              <td>Minimal empathy. Transactional tone without acknowledging HCP's situation.</td>
-            </tr>
-            <tr>
-              <td class="score-value">0-1</td>
-              <td>No empathy. Pushy or dismissive of HCP concerns.</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="examples">
-          <h4>Empathetic Language Examples:</h4>
-          <ul>
-            <li>"I appreciate how busy your clinic is..."</li>
-            <li>"Given your focus on high-risk populations..."</li>
-            <li>"I understand the challenge of balancing efficacy with safety..."</li>
-            <li>"Your patients benefit from your thorough approach to..."</li>
-            <li>"I know adherence is a top concern for you..."</li>
-          </ul>
-        </div>
-      </div>
     </div>
-    
-    <div class="footer">
-      <p><strong>ReflectivAI</strong> - Emotional Intelligence for Life Sciences Sales</p>
-      <p style="margin-top: 8px; font-size: 13px; opacity: 0.8;">
-        These metrics help you develop the emotional intelligence and communication skills needed for high-stakes healthcare conversations.
-      </p>
-      <a href="javascript:window.close()" class="back-link">Close Window</a>
-    </div>
-  </div>
 </body>
+
 </html>
