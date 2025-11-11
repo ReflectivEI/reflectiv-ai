@@ -1787,7 +1787,16 @@ ${COMMON}`
 
         // Use special formatting for sales-simulation mode
         if (currentMode === "sales-simulation" && m.role === "assistant") {
-          body.innerHTML = formatSalesSimulationReply(normalized);
+          console.log('[renderMessages] Formatting assistant message in sales-simulation mode');
+          console.log('[renderMessages] currentMode:', currentMode);
+          console.log('[renderMessages] m.role:', m.role);
+          console.log('[renderMessages] normalized length:', normalized.length);
+          
+          // Cache formatted HTML to avoid re-parsing on every render
+          if (!m._formattedHTML) {
+            m._formattedHTML = formatSalesSimulationReply(normalized);
+          }
+          body.innerHTML = m._formattedHTML;
         } else {
           body.innerHTML = md(normalized);
         }
@@ -1953,12 +1962,15 @@ ${COMMON}`
 
       // Emotional-assessment and Role Play final eval - Use EI 5-point scale
       const eiScores = scores || {};
-      const eiPills = Object.keys(eiScores).slice(0, 5).map(k => {
-        const v = Number(eiScores[k] ?? 0);
-        const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
-        const label = k.charAt(0).toUpperCase() + k.slice(1);
-        return `<span class="ei-pill ${cls}" data-metric="${k}"><span class="k">${esc(label)}</span>${v}/5</span>`;
-      }).join('');
+      const eiMetricOrder = ["empathy", "clarity", "compliance", "discovery", "objection_handling", "confidence", "active_listening", "adaptability", "action_insight", "resilience"];
+      const eiPills = eiMetricOrder
+        .filter(k => k in eiScores)
+        .map(k => {
+          const v = Number(eiScores[k] ?? 0);
+          const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
+          const label = k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          return `<span class="ei-pill ${cls}" data-metric="${k}"><span class="k">${esc(label)}</span>${v}/5</span>`;
+        }).join('');
 
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
       const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
@@ -2274,28 +2286,28 @@ ${COMMON}`
 
     // Create modal HTML with citation link
     const modalHTML = `
-      <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif">
         <div style="background:white;border-radius:12px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
           <div style="padding:24px;border-bottom:1px solid #e5e7eb">
-            <h3 style="margin:0;font-size:20px;font-weight:700;color:#111827">${data.title}</h3>
-            <p style="margin:8px 0 0;color:#6b7280;font-size:14px;line-height:1.6">${data.definition}</p>
-            <p style="margin:12px 0 0;color:#9ca3af;font-size:13px;font-style:italic;background:#f9fafb;padding:8px 12px;border-radius:6px"><strong>Calculation:</strong> ${data.calculation}</p>
+            <h3 style="margin:0;font-size:20px;font-weight:700;color:#111827;font-family:Inter,system-ui,sans-serif">${data.title}</h3>
+            <p style="margin:8px 0 0;color:#6b7280;font-size:14px;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.definition}</p>
+            <p style="margin:12px 0 0;color:#9ca3af;font-size:13px;font-style:italic;background:#f9fafb;padding:8px 12px;border-radius:6px;font-family:Inter,system-ui,sans-serif"><strong>Calculation:</strong> ${data.calculation}</p>
           </div>
           <div style="padding:24px">
-            <h4 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827">Sample Indicators:</h4>
-            <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.8">
+            <h4 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;font-family:Inter,system-ui,sans-serif">Sample Indicators:</h4>
+            <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.8;font-family:Inter,system-ui,sans-serif">
               ${data.tips.map(tip => `<li style="margin:8px 0">${tip}</li>`).join('')}
             </ul>
             <div style="margin-top:20px;padding:12px;background:#f0f9ff;border-left:4px solid #0ea5e9;border-radius:6px">
-              <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6">${data.source}</p>
+              <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.source}</p>
             </div>
           </div>
           <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
-            <p style="margin:0 0 8px;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Learn More:</p>
-            <a href="${data.citation.url}" target="_blank" rel="noopener" style="display:inline-block;font-size:13px;color:#0369a1;text-decoration:none;background:#e0f2fe;padding:6px 12px;border-radius:6px;border:1px solid #bae6fd;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'">${data.citation.text} →</a>
+            <p style="margin:0 0 8px;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-family:Inter,system-ui,sans-serif">Learn More:</p>
+            <a href="${data.citation.url}" target="_blank" rel="noopener" style="display:inline-block;font-size:13px;color:#0369a1;text-decoration:none;background:#e0f2fe;padding:6px 12px;border-radius:6px;border:1px solid #bae6fd;font-weight:500;transition:all 0.2s;font-family:Inter,system-ui,sans-serif" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'">${data.citation.text} →</a>
           </div>
           <div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:right">
-            <button onclick="document.getElementById('metric-modal').remove()" style="padding:10px 20px;background:#ec4899;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s" onmouseover="this.style.background='#db2777'" onmouseout="this.style.background='#ec4899'">Got it!</button>
+            <button onclick="document.getElementById('metric-modal').remove()" style="padding:10px 20px;background:#ec4899;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s;font-family:Inter,system-ui,sans-serif" onmouseover="this.style.background='#db2777'" onmouseout="this.style.background='#ec4899'">Got it!</button>
           </div>
         </div>
       </div>
