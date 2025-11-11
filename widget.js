@@ -1424,8 +1424,10 @@ ${COMMON}`
 #reflectiv-widget .message{margin:8px 0;display:flex;position:relative;z-index:1}
 #reflectiv-widget .message.user{justify-content:flex-end}
 #reflectiv-widget .message.assistant{justify-content:flex-start}
-#reflectiv-widget .message .content{max-width:85%;line-height:1.45;font-size:14px;padding:10px 12px;border-radius:14px;border:1px solid #d6dbe3;color:#0f1522;background:#e9edf3;position:relative;z-index:1}
+#reflectiv-widget .message .content{max-width:85%;line-height:1.6;font-size:14px;padding:12px 14px;border-radius:14px;border:1px solid #d6dbe3;color:#0f1522;background:#e9edf3;position:relative;z-index:1}
 #reflectiv-widget .message.user .content{background:#e0e0e0;color:#000}
+#reflectiv-widget .message .content p{margin:0 0 8px 0;line-height:1.6}
+#reflectiv-widget .message .content p:last-child{margin-bottom:0}
 #reflectiv-widget .chat-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #e1e6ef;background:#fff}
 #reflectiv-widget .chat-input textarea{flex:1;resize:none;min-height:44px;max-height:120px;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;outline:none}
 #reflectiv-widget .chat-input .btn{min-width:86px;border:0;border-radius:999px;background:#2f3a4f;color:#fff;font-weight:600}
@@ -1433,7 +1435,7 @@ ${COMMON}`
 #reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
 #reflectiv-widget .scenario-meta .meta-card{padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:10px}
 #reflectiv-widget .hidden{display:none!important}
-#reflectiv-widget .speaker{display:inline-block;margin:0 0 6px 2px;padding:2px 8px;font-size:11px;font-weight:700;border-radius:999px;border:1px solid #cfd6df}
+#reflectiv-widget .speaker{display:inline-block;margin:0 0 8px 0;padding:4px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border-radius:999px;border:1px solid #cfd6df}
 #reflectiv-widget .speaker.hcp{background:#eef4ff;color:#0f2a6b;border-color:#c9d6ff}
 #reflectiv-widget .speaker.rep{background:#e8fff2;color:#0b5a2a;border-color:#bfeacc}
 #reflectiv-widget .speaker.coach{background:#fff0cc;color:#5a3d00;border-color:#ffe3a1}
@@ -1800,7 +1802,7 @@ ${COMMON}`
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
-        // Speaker chips: Role Play = HCP/Rep. Sales Coach = Coach/Rep.
+        // ALWAYS show speaker chips for clarity
         if (currentMode === "role-play") {
           const chipText =
             m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "HCP" : "Rep";
@@ -1810,6 +1812,12 @@ ${COMMON}`
         } else if (currentMode === "sales-simulation") {
           const isCoach = m.role === "assistant";
           const chip = el("div", isCoach ? "speaker coach" : "speaker rep", isCoach ? "Sales Coach" : "Rep");
+          c.appendChild(chip);
+        } else {
+          // For all other modes (Alora, Product Knowledge, Emotional Assessment), show User/Assistant
+          const chipText = m.role === "assistant" ? "Assistant" : "You";
+          const chipCls = m.role === "assistant" ? "speaker hcp" : "speaker rep";
+          const chip = el("div", chipCls, chipText);
           c.appendChild(chip);
         }
 
