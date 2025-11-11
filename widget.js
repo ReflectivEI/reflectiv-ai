@@ -368,7 +368,10 @@
       const v = Number(S[k] ?? 0);
       const val = (v || v === 0) ? String(v) : "–";
       const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
-      return `<span class="ei-pill" data-metric="${k}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
+      return `<span class="ei-pill" data-metric="${k}" title="${esc(title)}">
+        <span class="k">${esc(label)}</span>
+        <div style="font-size:14px;font-weight:700;margin-top:2px">${esc(val)}/5</div>
+      </span>`;
     };
 
     return `
@@ -1447,10 +1450,10 @@ ${COMMON}`
 /* === EI summary in yellow panel === */
 #reflectiv-widget .ei-wrap{padding:10px 12px}
 #reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
-#reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; cursor:pointer; transition:all 0.2s; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.2)}
+#reflectiv-widget .ei-row{display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:0 0 8px;max-width:100%}
+#reflectiv-widget .ei-pill{font:700 10px/1.2 Inter,system-ui; padding:8px 6px; border-radius:999px; cursor:pointer; transition:all 0.2s; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.2); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 #reflectiv-widget .ei-pill:hover{transform:translateY(-1px); filter:brightness(1.1)}
-#reflectiv-widget .ei-pill .k{opacity:.9; margin-right:6px; font-weight:600}
+#reflectiv-widget .ei-pill .k{opacity:.9; margin-right:4px; font-weight:600; display:block; font-size:9px; text-transform:uppercase; letter-spacing:0.3px}
 
 /* Gradient-coded pills by metric */
 #reflectiv-widget .ei-pill[data-metric="empathy"]{background:linear-gradient(135deg, #10b981 0%, #059669 100%); border:1px solid #059669}
@@ -1463,6 +1466,9 @@ ${COMMON}`
 #reflectiv-widget .ei-pill[data-metric="adaptability"]{background:linear-gradient(135deg, #ec4899 0%, #db2777 100%); border:1px solid #db2777}
 #reflectiv-widget .ei-pill[data-metric="action_insight"]{background:linear-gradient(135deg, #f97316 0%, #ea580c 100%); border:1px solid #ea580c}
 #reflectiv-widget .ei-pill[data-metric="resilience"]{background:linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border:1px solid #4f46e5}
+
+/* Responsive: stack on smaller screens */
+@media (max-width:768px){#reflectiv-widget .ei-row{grid-template-columns:repeat(3, 1fr)}}
 
 #reflectiv-widget .ei-tips{margin:8px 0 0; padding-left:16px}
 #reflectiv-widget .ei-tips li{margin:2px 0}
@@ -1809,7 +1815,7 @@ ${COMMON}`
         const rawContent = String(m.content || '');
         const normalized = normalizeGuidanceLabels(rawContent);
 
-        // Use special formatting for sales-simulation mode
+        // Use special formatting for sales-simulation mode AND role-play HCP responses
         if (currentMode === "sales-simulation" && m.role === "assistant") {
           console.log('[renderMessages] ========== SALES COACH MESSAGE ==========');
           console.log('[renderMessages] currentMode:', currentMode);
@@ -1826,6 +1832,13 @@ ${COMMON}`
             console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
           } else {
             console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
+          }
+          body.innerHTML = m._formattedHTML;
+        } else if (currentMode === "role-play" && (m.role === "assistant" || m._speaker === "hcp")) {
+          // Format HCP responses in Role Play mode with clean structure
+          console.log('[renderMessages] Formatting HCP response in role-play mode');
+          if (!m._formattedHTML) {
+            m._formattedHTML = md(normalized); // Use markdown formatter for clean structure
           }
           body.innerHTML = m._formattedHTML;
         } else {
@@ -1999,7 +2012,10 @@ ${COMMON}`
         .map(k => {
           const v = Number(eiScores[k] ?? 0);
           const label = k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          return `<span class="ei-pill" data-metric="${k}"><span class="k">${esc(label)}</span>${v}/5</span>`;
+          return `<span class="ei-pill" data-metric="${k}">
+            <span class="k">${esc(label)}</span>
+            <div style="font-size:14px;font-weight:700;margin-top:2px">${v}/5</div>
+          </span>`;
         }).join('');
 
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
@@ -2872,7 +2888,10 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
     const pillsHTML = ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience'].map(k => {
       const v = s[k] ?? 0;
       const label = k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      return `<span class="ei-pill" data-metric="${k}"><span class="k">${label}</span>${v}/5</span>`;
+      return `<span class="ei-pill" data-metric="${k}">
+        <span class="k">${label}</span>
+        <div style="font-size:14px;font-weight:700;margin-top:2px">${v}/5</div>
+      </span>`;
     }).join('');
     
     const html = `
