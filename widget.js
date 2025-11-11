@@ -366,10 +366,9 @@
 
     const mk = (k, label) => {
       const v = Number(S[k] ?? 0);
-      const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
       const val = (v || v === 0) ? String(v) : "–";
       const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
-      return `<span class="ei-pill ${cls}" data-metric="${k}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
+      return `<span class="ei-pill" data-metric="${k}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
     };
 
     return `
@@ -1436,12 +1435,22 @@ ${COMMON}`
 #reflectiv-widget .ei-wrap{padding:10px 12px}
 #reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
 #reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; border:1px solid #f9a8d4; background:#fce7f3; cursor:pointer; transition:all 0.2s}
-#reflectiv-widget .ei-pill:hover{background:#fbcfe8; border-color:#f472b6; transform:translateY(-1px)}
-#reflectiv-widget .ei-pill .k{opacity:.75; margin-right:6px; font-weight:600}
-#reflectiv-widget .ei-pill.good{background:#fce7f3;border-color:#f9a8d4}
-#reflectiv-widget .ei-pill.ok{background:#fce7f3;border-color:#f9a8d4}
-#reflectiv-widget .ei-pill.bad{background:#fce7f3;border-color:#f9a8d4}
+#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; cursor:pointer; transition:all 0.2s; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.2)}
+#reflectiv-widget .ei-pill:hover{transform:translateY(-1px); filter:brightness(1.1)}
+#reflectiv-widget .ei-pill .k{opacity:.9; margin-right:6px; font-weight:600}
+
+/* Gradient-coded pills by metric */
+#reflectiv-widget .ei-pill[data-metric="empathy"]{background:linear-gradient(135deg, #10b981 0%, #059669 100%); border:1px solid #059669}
+#reflectiv-widget .ei-pill[data-metric="clarity"]{background:linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border:1px solid #7c3aed}
+#reflectiv-widget .ei-pill[data-metric="compliance"]{background:linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border:1px solid #dc2626}
+#reflectiv-widget .ei-pill[data-metric="discovery"]{background:linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border:1px solid #2563eb}
+#reflectiv-widget .ei-pill[data-metric="objection_handling"]{background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border:1px solid #d97706}
+#reflectiv-widget .ei-pill[data-metric="confidence"]{background:linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border:1px solid #0891b2}
+#reflectiv-widget .ei-pill[data-metric="active_listening"]{background:linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); border:1px solid #0d9488}
+#reflectiv-widget .ei-pill[data-metric="adaptability"]{background:linear-gradient(135deg, #ec4899 0%, #db2777 100%); border:1px solid #db2777}
+#reflectiv-widget .ei-pill[data-metric="action_insight"]{background:linear-gradient(135deg, #f97316 0%, #ea580c 100%); border:1px solid #ea580c}
+#reflectiv-widget .ei-pill[data-metric="resilience"]{background:linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border:1px solid #4f46e5}
+
 #reflectiv-widget .ei-tips{margin:8px 0 0; padding-left:16px}
 #reflectiv-widget .ei-tips li{margin:2px 0}
 #reflectiv-widget .ei-meta{margin-top:8px; font:500 11px/1.3 Inter,system-ui; opacity:.8}
@@ -1967,9 +1976,8 @@ ${COMMON}`
         .filter(k => k in eiScores)
         .map(k => {
           const v = Number(eiScores[k] ?? 0);
-          const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
           const label = k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          return `<span class="ei-pill ${cls}" data-metric="${k}"><span class="k">${esc(label)}</span>${v}/5</span>`;
+          return `<span class="ei-pill" data-metric="${k}"><span class="k">${esc(label)}</span>${v}/5</span>`;
         }).join('');
 
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
@@ -2841,9 +2849,8 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
     // Create clickable pills with ei-pill class and data-metric for all 10 metrics
     const pillsHTML = ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience'].map(k => {
       const v = s[k] ?? 0;
-      const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
       const label = k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      return `<span class="ei-pill ${cls}" data-metric="${k}"><span class="k">${label}</span>${v}/5</span>`;
+      return `<span class="ei-pill" data-metric="${k}"><span class="k">${label}</span>${v}/5</span>`;
     }).join('');
     
     const html = `
