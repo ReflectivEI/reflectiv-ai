@@ -1804,9 +1804,9 @@ ${COMMON}`
 
         // ALWAYS show speaker chips for clarity
         if (currentMode === "role-play") {
-          const chipText =
-            m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "HCP" : "Rep";
-          const chipCls = m._speaker === "hcp" || m.role === "assistant" ? "speaker hcp" : "speaker rep";
+          // Always show 'HCP' for assistant in role-play mode
+          const chipText = m.role === "assistant" ? "HCP" : m._speaker === "rep" ? "Rep" : "You";
+          const chipCls = m.role === "assistant" ? "speaker hcp" : "speaker rep";
           const chip = el("div", chipCls, chipText);
           c.appendChild(chip);
         } else if (currentMode === "sales-simulation") {
@@ -2011,8 +2011,8 @@ ${COMMON}`
           return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div class="muted">No coach feedback available</div>`;
         })();
 
-        body.innerHTML = eiHTML || oldYellowHTML;
-        return;
+    body.innerHTML = `<div class="coach-feedback-block">${eiHTML || oldYellowHTML}</div>`;
+    return;
       }
 
       // Emotional-assessment and Role Play final eval - Use EI 5-point scale
@@ -2033,16 +2033,18 @@ ${COMMON}`
       const improveStr = fb.improve && fb.improve.length ? fb.improve.join(". ") + "." : fb.feedback || "—";
 
       body.innerHTML = `
-        <div class="ei-wrap">
-          <div class="ei-h">Performance Metrics (5-Point Scale)</div>
-          <div class="ei-row">${eiPills || orderedPills(scores)}</div>
+        <div class="coach-feedback-block">
+          <div class="ei-wrap">
+            <div class="ei-h">Performance Metrics (5-Point Scale)</div>
+            <div class="ei-row">${eiPills || orderedPills(scores)}</div>
+          </div>
+          <ul class="coach-list" style="margin-top:12px">
+            <li><strong>What worked:</strong> ${esc(workedStr)}</li>
+            <li><strong>What to improve:</strong> ${esc(improveStr)}</li>
+            <li><strong>Suggested phrasing:</strong> ${esc(fb.phrasing || "—")}</li>
+          </ul>
         </div>
-        <ul class="coach-list" style="margin-top:12px">
-          <li><strong>What worked:</strong> ${esc(workedStr)}</li>
-          <li><strong>What to improve:</strong> ${esc(improveStr)}</li>
-          <li><strong>Suggested phrasing:</strong> ${esc(fb.phrasing || "—")}</li>
-        </ul>
-        ${repOnlyPanelHTML ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e1e6ef">${repOnlyPanelHTML}</div>` : ""}`;
+        ${repOnlyPanelHTML ? `<div class="rep-eval-panel">${repOnlyPanelHTML}</div>` : ""}`;
     }
 
     function applyModeVisibility() {
