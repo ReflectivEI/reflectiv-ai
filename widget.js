@@ -1140,17 +1140,32 @@
     const objection_handling = sig.objection ? (sig.accuracyCue ? 4 : 3) : 2;
     const empathy = sig.empathy ? 3 : 2;
     const clarity = sig.tooLong ? 2 : sig.idealLen ? 4 : 3;
+    
+    // Advanced metrics (defaults for deterministic scoring - LLM will provide real scores)
+    const confidence = sig.accuracyCue && !sig.tooLong ? 4 : 3;
+    const active_listening = sig.empathy ? 3 : 2;
+    const adaptability = sig.objection ? 3 : 2;
+    const action_insight = sig.discovery ? 3 : 2;
+    const resilience = sig.objection && sig.empathy ? 3 : 2;
 
-    const W = { accuracy: 0.26, compliance: 0.22, discovery: 0.16, objection_handling: 0.14, clarity: 0.12, empathy: 0.1 };
+    const W = { 
+      empathy: 0.12, clarity: 0.12, compliance: 0.14, discovery: 0.12, 
+      objection_handling: 0.11, confidence: 0.11, 
+      active_listening: 0.09, adaptability: 0.08, action_insight: 0.06, resilience: 0.05
+    };
     const toPct = (v) => v * 20;
 
     let overall =
-      toPct(accuracy) * W.accuracy +
+      toPct(empathy) * W.empathy +
+      toPct(clarity) * W.clarity +
       toPct(compliance) * W.compliance +
       toPct(discovery) * W.discovery +
       toPct(objection_handling) * W.objection_handling +
-      toPct(clarity) * W.clarity +
-      toPct(empathy) * W.empathy;
+      toPct(confidence) * W.confidence +
+      toPct(active_listening) * W.active_listening +
+      toPct(adaptability) * W.adaptability +
+      toPct(action_insight) * W.action_insight +
+      toPct(resilience) * W.resilience;
     if (sig.idealLen) overall += 3;
     if (endsWithQ) overall += 3;
     if (sig.tooLong) overall -= 6;
@@ -1176,7 +1191,7 @@
 
     return {
       overall,
-      scores: { accuracy, empathy, clarity, compliance, discovery, objection_handling },
+      scores: { empathy, clarity, compliance, discovery, objection_handling, confidence, active_listening, adaptability, action_insight, resilience },
       feedback:
         "Be concise, cite label or guidelines for clinical points, ask one focused discovery question, and propose a concrete next step.",
       worked,
@@ -1184,7 +1199,7 @@
       phrasing,
       context: { rep_question: String(userText || ""), hcp_reply: String(replyText || "") },
       score: overall,
-      subscores: { accuracy, empathy, clarity, compliance, discovery, objection_handling }
+      subscores: { empathy, clarity, compliance, discovery, objection_handling, confidence, active_listening, adaptability, action_insight, resilience }
     };
   }
 
@@ -1301,7 +1316,7 @@ Return exactly two parts. No code blocks. No markdown headings.
 1) Sales Guidance: short, actionable, accurate guidance.
 2) <coach>{
      "overall": 0-100,
-     "scores": { "accuracy":0-5,"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5 },
+     "scores": { "empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5 },
      "worked": ["…"],
      "improve": ["…"],
      "phrasing": "…",
@@ -1786,7 +1801,7 @@ ${COMMON}`
     }
 
     function orderedPills(scores) {
-      const order = ["accuracy", "empathy", "clarity", "compliance", "discovery", "objection_handling"];
+      const order = ["empathy", "clarity", "compliance", "discovery", "objection_handling", "confidence", "active_listening", "adaptability", "action_insight", "resilience"];
       return order
         .filter((k) => k in (scores || {}))
         .map((k) => `<span class="pill">${esc(k)}: ${scores[k]}</span>`)
@@ -1826,13 +1841,18 @@ ${COMMON}`
         // Optional dev shim (guarded)
         if (DEBUG_EI_SHIM && last && last._coach && !last._coach.ei) {
           last._coach.ei = {
-            scores: { empathy: 4, discovery: 3, compliance: 5, clarity: 4, accuracy: 4 },
+            scores: { empathy: 4, clarity: 4, compliance: 5, discovery: 3, objection_handling: 4, confidence: 4, active_listening: 3, adaptability: 3, action_insight: 3, resilience: 3 },
             rationales: {
               empathy: "Validated HCP constraints and reframed",
-              discovery: "Asked one focused question",
-              compliance: "On-label; AE capture ready",
               clarity: "Concise, one idea per sentence",
-              accuracy: "Claims match label"
+              compliance: "On-label; AE capture ready",
+              discovery: "Asked one focused question",
+              objection_handling: "Addressed workflow concern",
+              confidence: "Clear, assured delivery",
+              active_listening: "Paraphrased HCP concern",
+              adaptability: "Adjusted tone to match HCP urgency",
+              action_insight: "Proposed concrete next step",
+              resilience: "Remained composed under objection"
             },
             tips: [
               "Open with HCP context then one ask",
@@ -2098,81 +2118,184 @@ ${COMMON}`
   function showMetricModal(metric, pillText) {
     const definitions = {
       empathy: {
-        title: "Empathy",
-        definition: "Ability to recognize and acknowledge the HCP's concerns, perspectives, and emotional state.",
+        title: "Empathy Score",
+        definition: "Measures how effectively the rep recognizes and appropriately responds to the emotional cues, needs, or concerns of the HCP.",
+        calculation: "Empathy Score = (Number of responses showing acknowledgment of HCP feelings/needs/concerns) / (Total conversational turns) × 100",
         tips: [
-          "Use reflective listening: 'It sounds like you're concerned about...'",
-          "Validate feelings before responding with facts",
-          "Avoid dismissing objections - acknowledge them first",
-          "Mirror the HCP's language and tone",
-          "Ask clarifying questions to show you understand their perspective"
-        ]
-      },
-      discovery: {
-        title: "Discovery",
-        definition: "Skill in asking open-ended questions to uncover HCP needs, priorities, and knowledge gaps.",
-        tips: [
-          "Lead with 'what' and 'how' questions instead of yes/no questions",
-          "Explore patient population specifics before presenting solutions",
-          "Ask about current treatment protocols and challenges",
-          "Listen more than you talk - aim for 70/30 ratio",
-          "Use questions to guide the conversation, not interrogate"
-        ]
-      },
-      compliance: {
-        title: "Compliance",
-        definition: "Adherence to regulatory guidelines, avoiding off-label claims, and staying within approved messaging.",
-        tips: [
-          "Always cite approved sources and clinical data",
-          "Never discuss unapproved indications or populations",
-          "Redirect off-label questions to medical affairs",
-          "Use only approved promotional materials",
-          "Document all interactions according to company policy"
-        ]
+          "Rep acknowledged the HCP's skepticism about new therapies.",
+          "Provided reassurance or validation before describing product benefits.",
+          "Mirrored HCP's emotional language or expressed understanding of patient challenges."
+        ],
+        source: "Empathy reflects the rep's ability to notice and verbally acknowledge emotional states or practical needs expressed by the HCP.",
+        citation: {
+          text: "Empathy in Sales: How Emotional Intelligence Tools Are Improving Sales Performance",
+          url: "https://salestechstar.com/staff-writers/empathy-in-sales-how-emotional-intelligence-tools-are-improving-sales-performance/"
+        }
       },
       clarity: {
-        title: "Clarity",
-        definition: "Ability to communicate complex medical information in clear, concise, and accessible language.",
+        title: "Clarity Index",
+        definition: "Assesses the simplicity and precision of the rep's communication, reducing jargon and making complex concepts understandable.",
+        calculation: "Clarity Index = (Number of concise, jargon-free statements) / (Total statements) × 100",
         tips: [
-          "Use plain language - avoid unnecessary jargon",
-          "Break complex concepts into digestible chunks",
-          "Check for understanding: 'Does that make sense?'",
-          "Use analogies to explain mechanisms of action",
-          "Summarize key points at the end of the conversation"
-        ]
+          "Used simple analogies to explain clinical benefit.",
+          "Avoided unnecessary abbreviations or complex terminology.",
+          "Messages were understood on first reading/listening."
+        ],
+        source: "A low average sentence length and low jargon count produces a higher clarity score.",
+        citation: {
+          text: "From Transcripts to Tone Analysis: The Future of AI in Sales Coaching",
+          url: "https://superagi.com/from-transcripts-to-tone-analysis-the-future-of-ai-in-sales-coaching-and-emotional-intelligence/"
+        }
       },
-      accuracy: {
-        title: "Accuracy",
-        definition: "Precision in presenting clinical data, product information, and evidence-based responses.",
+      compliance: {
+        title: "Compliance Accuracy",
+        definition: "Tracks adherence to approved, label-only product statements and avoidance of off-label or non-compliant messaging.",
+        calculation: "Compliance Accuracy = (Compliant Statements) / (Total Statements) × 100",
         tips: [
-          "Always cite specific studies and data sources",
-          "Know your product's efficacy, safety, and MOA cold",
-          "Admit when you don't know something - offer to follow up",
-          "Double-check dosing, indications, and contraindications",
-          "Keep clinical references handy during calls"
-        ]
+          "Statements matched approved clinical messaging.",
+          "Avoided unapproved claims about outcomes or populations.",
+          "Provided proper safety disclaimers when relevant."
+        ],
+        source: "Automated by evaluating message strings against approved and forbidden phrases.",
+        citation: {
+          text: "How AI Is Transforming Sales Coaching Today",
+          url: "https://spinify.com/blog/how-ai-is-transforming-sales-coaching-today/"
+        }
+      },
+      discovery: {
+        title: "Discovery Effectiveness",
+        definition: "Quantifies the rep's use of open-ended and probing questions to uncover true HCP needs and objections.",
+        calculation: "Discovery Effectiveness = (Number of open-ended or follow-up questions) / (Total rep dialogue count) × 100",
+        tips: [
+          "Asked what's most important to the HCP in treatment decisions.",
+          "Probed for specific pain points or unmet needs.",
+          "Followed up after initial feedback for clarification."
+        ],
+        source: "Open-ended questions identified by sentence structure (who, what, where, when, why, how) and ending with '?'",
+        citation: {
+          text: "Integrating Emotional Intelligence into Sales Coaching",
+          url: "https://getrafiki.ai/sales-coach/integrating-emotional-intelligence-into-sales-coaching/"
+        }
+      },
+      objection_handling: {
+        title: "Objection Handling Score",
+        definition: "Evaluates how effectively objections or concerns are acknowledged, addressed, and reframed with accurate, compliant responses.",
+        calculation: "Objection Handling Score = (Objections acknowledged and answered satisfactorily) / (Total objections raised) × 100",
+        tips: [
+          "Did not ignore user concerns.",
+          "Responded with data or empathy rather than argument.",
+          "Guided HCP back to approved solution/benefits."
+        ],
+        source: "A response is scored if it contains both objection recognition and a compliant fact or empathetic statement.",
+        citation: {
+          text: "AI Sales Coaching: The Playbook for Continuous Skill Development",
+          url: "https://www.valueselling.com/resource-blog/ai-sales-coaching-the-playbook-for-continuous-skill-development"
+        }
+      },
+      confidence: {
+        title: "Confidence/Readiness Index",
+        definition: "Tracks the rep's confidence and fluency, as evidenced by reduced hesitations, directness, and accurate responses under pressure.",
+        calculation: "Confidence/Readiness = (Proportion of prompt, unhesitant, direct responses) / (Total responses) × 100",
+        tips: [
+          "Rarely hesitated or backtracked in responses.",
+          "Maintained composure when challenged.",
+          "Spoke with conviction and knowledge."
+        ],
+        source: "Measured by absence of filler words, reduced latency, and correctness cross-checked by product knowledge.",
+        citation: {
+          text: "Quantified: AI Sales Training for Faster, Effective Results",
+          url: "https://frontbrick.io/ai-sales-tools/quantified"
+        }
+      },
+      active_listening: {
+        title: "Active Listening Ratio",
+        definition: "Measures the proportion of responses where the rep reflects, paraphrases, or meaningfully builds on the HCP's previous statement.",
+        calculation: "Active Listening Ratio = (Responses containing paraphrase/reflective phrases or answering direct HCP concerns) / (Total responses) × 100",
+        tips: [
+          "Confirmed the HCP's stated concern before moving forward.",
+          "Paraphrased HCP feedback to show understanding.",
+          "Responded to the last question, not a previously prepared pitch."
+        ],
+        source: "Use NLP to detect phrases like 'What I'm hearing is...', 'If I understand correctly...'",
+        citation: {
+          text: "Emotional Intelligence in AI Sales Agents",
+          url: "https://www.voxia.ai/blog/emotional-intelligence-in-ai-sales-agents"
+        }
+      },
+      adaptability: {
+        title: "Emotional Adaptability Score",
+        definition: "Rates how well the rep adjusts their tone/emotional approach in response to changing HCP cues (e.g., from skeptical to concerned).",
+        calculation: "Score = (Detected adaptations in tone/style matching HCP sentiment shifts) / (Each instance HCP sentiment shifts) × 100",
+        tips: [
+          "Responded with increased empathy when HCP became hesitant.",
+          "Shifted from data-driven to reassurance as needed.",
+          "Recognized and adjusted tone promptly after a challenging objection."
+        ],
+        source: "Use sentiment/tone analysis to identify shifts in HCP dialogue and test for corresponding change in rep's response.",
+        citation: {
+          text: "Top 7 Essential AI Sales Skills for Modern Sales Teams",
+          url: "https://www.investglass.com/top-7-essential-ai-sales-skills-for-modern-sales-teams/"
+        }
+      },
+      action_insight: {
+        title: "Action/Insight Ratio",
+        definition: "Assesses how often the rep translates insights from the HCP into concrete next steps or shared actions.",
+        calculation: "Action/Insight Ratio = (Action-oriented statements or suggested next steps) / (Total discovery insights identified) × 100",
+        tips: [
+          "Suggested a follow-up action after need discovery.",
+          "Clearly outlined the next step based on dialogue.",
+          "Closed the loop on HCP-stated priority."
+        ],
+        source: "Detect statements using action keywords ('Let's schedule...', 'I'll get you those data', 'Next visit, we'll discuss...')",
+        citation: {
+          text: "Evaluate Sales Training Programs with AI Effectively",
+          url: "https://agentiveaiq.com/blog/how-to-evaluate-sales-training-programs-with-ai"
+        }
+      },
+      resilience: {
+        title: "Resilience/Regulation Index",
+        definition: "Tracks the ability to maintain professionalism and composure in the face of objections or negative feedback.",
+        calculation: "Resilience Index = (Emotionally regulated responses after negative feedback) / (Total negative or challenging turns) × 100",
+        tips: [
+          "Maintained positive tone when challenged.",
+          "Did not get defensive or argumentative.",
+          "Took a brief pause before responding to strong criticism."
+        ],
+        source: "Analyze for continued neutral/positive tone, absence of defensive language, and calm pacing after objections.",
+        citation: {
+          text: "How AI can't replace these 5 soft skills for life sciences sales",
+          url: "https://www.linkedin.com/posts/ligeralde_soft-skills-the-most-critical-skills-to-activity-7356670236508463104-d4Cl"
+        }
       }
     };
 
     const data = definitions[metric];
     if (!data) return;
 
-    // Create modal HTML
+    // Create modal HTML with citation link
     const modalHTML = `
       <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px">
-        <div style="background:white;border-radius:12px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
+        <div style="background:white;border-radius:12px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
           <div style="padding:24px;border-bottom:1px solid #e5e7eb">
             <h3 style="margin:0;font-size:20px;font-weight:700;color:#111827">${data.title}</h3>
-            <p style="margin:8px 0 0;color:#6b7280;font-size:14px">${data.definition}</p>
+            <p style="margin:8px 0 0;color:#6b7280;font-size:14px;line-height:1.6">${data.definition}</p>
+            <p style="margin:12px 0 0;color:#9ca3af;font-size:13px;font-style:italic;background:#f9fafb;padding:8px 12px;border-radius:6px"><strong>Calculation:</strong> ${data.calculation}</p>
           </div>
           <div style="padding:24px">
-            <h4 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827">How to Improve:</h4>
-            <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.6">
+            <h4 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827">Sample Indicators:</h4>
+            <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.8">
               ${data.tips.map(tip => `<li style="margin:8px 0">${tip}</li>`).join('')}
             </ul>
+            <div style="margin-top:20px;padding:12px;background:#f0f9ff;border-left:4px solid #0ea5e9;border-radius:6px">
+              <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6">${data.source}</p>
+            </div>
+          </div>
+          <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
+            <p style="margin:0 0 8px;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Learn More:</p>
+            <a href="${data.citation.url}" target="_blank" rel="noopener" style="display:inline-block;font-size:13px;color:#0369a1;text-decoration:none;background:#e0f2fe;padding:6px 12px;border-radius:6px;border:1px solid #bae6fd;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'">${data.citation.text} →</a>
           </div>
           <div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:right">
-            <button onclick="document.getElementById('metric-modal').remove()" style="padding:8px 16px;background:#ec4899;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px">Got it!</button>
+            <button onclick="document.getElementById('metric-modal').remove()" style="padding:10px 20px;background:#ec4899;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s" onmouseover="this.style.background='#db2777'" onmouseout="this.style.background='#ec4899'">Got it!</button>
           </div>
         </div>
       </div>
@@ -2619,18 +2742,27 @@ ${COMMON}`
       systemPrompt ? { role: "system", content: systemPrompt } : null,
       { 
         role: "system", 
-        content: buildPreface("role-play", sc) + `\n\nEvaluate the whole exchange now using the 5-point scale for these EXACT metrics:
-- Accuracy (1-5): Precision in clinical data and product information
-- Empathy (1-5): Recognition of HCP concerns and emotional state  
-- Clarity (1-5): Clear, concise communication
+        content: buildPreface("role-play", sc) + `\n\nEvaluate the whole exchange now using the 5-point scale for these EXACT 10 metrics:
+
+**Core EI Metrics:**
+- Empathy (1-5): Recognition of HCP concerns and emotional state
+- Clarity (1-5): Clear, concise communication without jargon
 - Compliance (1-5): Adherence to regulatory guidelines
 - Discovery (1-5): Use of open-ended questions to uncover needs
+- Objection Handling (1-5): Effectively addressing HCP concerns
+- Confidence (1-5): Fluency and conviction in responses
 
-Return scores in <coach> JSON with keys: accuracy, empathy, clarity, compliance, discovery (all integers 1-5), plus feedback, worked[], improve[], phrasing.`
+**Advanced EI Metrics:**
+- Active Listening (1-5): Paraphrasing and building on HCP statements
+- Adaptability (1-5): Adjusting tone to match HCP emotional shifts
+- Action/Insight (1-5): Translating insights into concrete next steps
+- Resilience (1-5): Maintaining composure under pressure
+
+Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery, objection_handling, confidence, active_listening, adaptability, action_insight, resilience (all integers 1-5), plus feedback, worked[], improve[], phrasing.`
       },
       {
         role: "user",
-        content: `Evaluate this entire exchange using the 5-point rubric. Provide scores for accuracy, empathy, clarity, compliance, and discovery.\n\nConversation:\n${convoText}`
+        content: `Evaluate this entire exchange using the 10-metric rubric. Provide integer scores (1-5) for all 10 metrics.\n\nConversation:\n${convoText}`
       }
     ].filter(Boolean);
 
@@ -2661,15 +2793,17 @@ Return scores in <coach> JSON with keys: accuracy, empathy, clarity, compliance,
       "Ignore HCP content except as context.",
       `Persona: ${personaLabel || "unspecified persona"}.`,
       `Scenario Goal: ${goal || "unspecified goal"}.`,
-      "Rubric: Use 5-point scale (1-5) for these EXACT metrics: Accuracy, Empathy, Clarity, Compliance, Discovery.",
-      "Return JSON with keys: scores{accuracy,empathy,clarity,compliance,discovery}, summary, strengths[], improvements[], actionable[]. Scores 1-5 integers."
+      "Rubric: Use 5-point scale (1-5) for these EXACT 10 metrics:",
+      "Core: Empathy, Clarity, Compliance, Discovery, Objection Handling, Confidence",
+      "Advanced: Active Listening, Adaptability, Action/Insight, Resilience",
+      "Return JSON with keys: scores{empathy,clarity,compliance,discovery,objection_handling,confidence,active_listening,adaptability,action_insight,resilience}, summary, strengths[], improvements[], actionable[]. Scores 1-5 integers."
     ].join(" ");
 
     const user = {
       role: "user",
       content: JSON.stringify({
         mode: "rep_only",
-        rubric: ["Accuracy", "Empathy", "Clarity", "Compliance", "Discovery"],
+        rubric: ["Empathy", "Clarity", "Compliance", "Discovery", "Objection Handling", "Confidence", "Active Listening", "Adaptability", "Action/Insight", "Resilience"],
         transcript
       })
     };
@@ -2692,18 +2826,18 @@ Return scores in <coach> JSON with keys: accuracy, empathy, clarity, compliance,
     const s = data.scores || {};
     const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "—";
     
-    // Create clickable pills with ei-pill class and data-metric
-    const pillsHTML = ['accuracy', 'empathy', 'clarity', 'compliance', 'discovery'].map(k => {
+    // Create clickable pills with ei-pill class and data-metric for all 10 metrics
+    const pillsHTML = ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience'].map(k => {
       const v = s[k] ?? 0;
       const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
-      const label = k.charAt(0).toUpperCase() + k.slice(1);
+      const label = k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       return `<span class="ei-pill ${cls}" data-metric="${k}"><span class="k">${label}</span>${v}/5</span>`;
     }).join('');
     
     const html = `
       <div class="coach-panel">
         <h4>Rep-only Evaluation</h4>
-        <div class="ei-row" style="margin-bottom:16px">${pillsHTML}</div>
+        <div class="ei-row" style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px">${pillsHTML}</div>
         ${data.summary ? `<p>${esc(data.summary)}</p>` : ""}
         <h5>Strengths</h5>${list(data.strengths)}
         <h5>Improvements</h5>${list(data.improvements)}

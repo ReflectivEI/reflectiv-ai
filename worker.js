@@ -771,10 +771,10 @@ Suggested Phrasing: "Given the substantial risk of HIV in certain patient popula
 
 Then append deterministic EI scoring:
 <coach>{
-  "scores":{"empathy":0-5,"discovery":0-5,"compliance":0-5,"clarity":0-5,"accuracy":0-5},
-  "rationales":{"empathy":"...","discovery":"...","compliance":"...","clarity":"...","accuracy":"..."},
+  "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
+  "rationales":{"empathy":"...","clarity":"...","compliance":"...","discovery":"...","objection_handling":"...","confidence":"...","active_listening":"...","adaptability":"...","action_insight":"...","resilience":"..."},
   "tips":["Tip 1","Tip 2","Tip 3"],
-  "rubric_version":"v1.2"
+  "rubric_version":"v2.0"
 }</coach>
 
 CRITICAL: Use ONLY the provided Facts context when making claims. NO fabricated references or citations.`.trim();
@@ -784,7 +784,7 @@ Return exactly two parts. No code blocks or headings.
 
 1) Sales Guidance: short, accurate, label-aligned guidance (3–5 sentences) and a "Suggested Phrasing:" single-sentence line.
 2) <coach>{
-  "scores":{"accuracy":0-5,"compliance":0-5,"discovery":0-5,"clarity":0-5,"objection_handling":0-5,"empathy":0-5},
+  "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
   "worked":["…"],"improve":["…"],"phrasing":"…","feedback":"…",
   "context":{"rep_question":"...","hcp_reply":"..."}
 }</coach>
@@ -1235,7 +1235,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       const overall = deterministicScore({ reply, usedFactIds });
       coachObj = {
         overall,
-        scores: { accuracy: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, clarity: 4, objection_handling: 3, empathy: 3 },
+        scores: { empathy: 3, clarity: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, objection_handling: 3, confidence: 4, active_listening: 3, adaptability: 3, action_insight: 3, resilience: 3 },
         worked: ["Tied guidance to facts"],
         improve: ["End with one specific discovery question"],
         phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
