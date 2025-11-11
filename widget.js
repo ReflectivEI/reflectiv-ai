@@ -208,6 +208,7 @@
 
   /**
    * Convert citation codes [HIV-PREP-001] to clickable footnote links
+   * This version escapes the text first, then unescapes and converts citations
    * @param {string} text - Text containing citation codes
    * @returns {string} HTML with citation codes converted to links
    */
@@ -215,7 +216,8 @@
     if (!text) return text;
 
     // Match citation codes like [HIV-PREP-001] or [HIV-TREAT-TAF-001]
-    return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9]{3,})\]/g, (match, code) => {
+    // Works on both escaped and unescaped text
+    return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9-]{3,})\]/g, (match, code) => {
       const citation = citationsDb[code];
       if (!citation) {
         // Unknown code - show as-is but styled

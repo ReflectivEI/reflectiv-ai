@@ -732,17 +732,17 @@ async function postChat(req, env) {
     const salesContract = `
 RESPONSE FORMAT (MANDATORY - MUST INCLUDE ALL 4 SECTIONS):
 
-Challenge: [EXACTLY ONE SENTENCE, MAX 80 CHARACTERS - State the core HCP concern or gap]
+Challenge: [ONE SENTENCE describing the HCP's concern, barrier, or knowledge gap - 15-25 words]
 
 Rep Approach:
-• [ACTION 1: Specific tactic - Max 25 words - Include reference code if making clinical claim]
-• [ACTION 2: Supporting strategy - Max 25 words - Include reference code if making clinical claim]
-• [ACTION 3: Patient benefit - Max 25 words - Include reference code if making clinical claim]
+• [BULLET 1: Specific clinical discussion point with full context - Include "as recommended..." or "as indicated..." phrasing - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
+• [BULLET 2: Supporting strategy with rationale - Include contextual phrases like "for PrEP" or "in the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
+• [BULLET 3: Safety/monitoring consideration with clinical detail - Include phrases like "to ensure..." or "per the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
 [EXACTLY 3 BULLETS - NO MORE, NO LESS]
 
-Impact: [EXACTLY ONE SENTENCE, MAX 100 CHARACTERS - Expected outcome]
+Impact: [ONE SENTENCE describing expected outcome - 20-35 words - Connect back to Challenge]
 
-Suggested Phrasing: "[MAX 2 SENTENCES, MAX 120 CHARACTERS TOTAL - Exact words rep should say]"
+Suggested Phrasing: "[EXACT words rep should say - Conversational, professional tone - 25-40 words total - Include key clinical points]"
 
 CRITICAL ANTI-REPETITION RULES:
 - RETURN EACH SECTION EXACTLY ONCE - DO NOT REPEAT ANY SECTION
@@ -750,27 +750,24 @@ CRITICAL ANTI-REPETITION RULES:
 - DO NOT DUPLICATE CONTENT ACROSS SECTIONS
 - IF YOU FIND YOURSELF STARTING TO REPEAT "Challenge:" OR "Rep Approach:" - STOP IMMEDIATELY
 
-STRICT LENGTH RULES:
-- Challenge: 1 sentence, 80 chars max
-- Rep Approach: EXACTLY 3 bullets, 25 words each max
-- Impact: 1 sentence, 100 chars max
-- Suggested Phrasing: 2 sentences max, 120 chars total, QUOTED
-- ANY clinical claim MUST include reference in format: [HIV-PREP-XXX] or [HIV-TREAT-XXX]
-- Use clinical language, avoid jargon
-- NO off-label language
-- NO comparative claims without data
+BULLET WRITING REQUIREMENTS:
+- Include full context phrases: "as recommended for...", "as indicated in the FDA label...", "per the label...", "to ensure..."
+- Make each bullet clinically substantial - don't abbreviate
+- Connect action to outcome (e.g., "to identify individuals at substantial risk")
+- Reference specific clinical guidelines or label language
+- Each bullet should be 20-35 words (NOT the old 25 word max)
 
-EXAMPLE (follow this structure exactly):
-Challenge: HCP questions PrEP adherence in high-risk patients.
+EXAMPLE (follow this detailed style):
+Challenge: The HCP may not be prioritizing PrEP prescriptions due to lack of awareness about the substantial risk of HIV in certain patient populations.
 
 Rep Approach:
-• Discuss CDC adherence counseling protocols for at-risk populations [HIV-PREP-ELIG-001].
-• Highlight once-daily Descovy dosing convenience [HIV-PREP-TAF-002].
-• Address renal monitoring schedules for safety [HIV-PREP-SAFETY-003].
+• Discuss the importance of assessing sexual and injection risk factors to identify individuals at substantial risk of HIV, as recommended for PrEP eligibility [HIV-PREP-ELIG-001].
+• Highlight the efficacy and safety profile of Descovy (emtricitabine/tenofovir alafenamide) for PrEP, excluding receptive vaginal sex, as indicated in the FDA label [HIV-PREP-TAF-002].
+• Emphasize the need for renal function assessment before and during PrEP, considering eGFR thresholds per the FDA label, to ensure safe prescribing practices [HIV-PREP-SAFETY-003].
 
-Impact: Addresses adherence concerns with evidence-based reassurance.
+Impact: By emphasizing the importance of risk assessment, the benefits of Descovy for PrEP, and the need for renal function monitoring, the HCP will be more likely to prioritize PrEP prescriptions for at-risk patients and commit to proactive Descovy prescribing.
 
-Suggested Phrasing: "Descovy's once-daily dosing with regular follow-ups supports strong adherence in at-risk patients."
+Suggested Phrasing: "Given the substantial risk of HIV in certain patient populations, I recommend we discuss how to identify and assess these individuals for PrEP eligibility, and consider Descovy as a safe and effective option."
 
 Then append deterministic EI scoring:
 <coach>{
