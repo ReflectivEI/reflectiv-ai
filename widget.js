@@ -802,7 +802,29 @@
       }
     );
     
-    // Bullet lists: - item or * item -> <ul><li>item</li></ul>
+    // UNICODE bullet lists: • item -> <ul><li>item</li></ul>
+    s = s.replace(
+      /^(?:•\s+|●\s+|○\s+).+(?:\n(?:•\s+|●\s+|○\s+).+)*/gm,
+      (blk) => {
+        const items = blk
+          .split("\n")
+          .map((l) => {
+            const match = l.match(/^(?:•\s+|●\s+|○\s+)(.+)$/);
+            if (match) {
+              let content = match[1];
+              content = content.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+              content = content.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+              content = content.replace(/`([^`]+)`/g, "<code>$1</code>");
+              return `<li>${content}</li>`;
+            }
+            return "";
+          })
+          .join("");
+        return `<ul>${items}</ul>`;
+      }
+    );
+    
+    // Markdown bullet lists: - item or * item -> <ul><li>item</li></ul>
     // Process BEFORE bold so we can apply bold inside list items
     s = s.replace(
       /^(?:-\s+|\*\s+).+(?:\n(?:-\s+|\*\s+).+)*/gm,
@@ -1850,7 +1872,7 @@ ${COMMON}`
         const v = Number(eiScores[k] ?? 0);
         const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
         const label = k.charAt(0).toUpperCase() + k.slice(1);
-        return `<span class="ei-pill ${cls}"><span class="k">${esc(label)}</span>${v}/5</span>`;
+        return `<span class="ei-pill ${cls}" data-metric="${k}"><span class="k">${esc(label)}</span>${v}/5</span>`;
       }).join('');
 
       const workedStr = fb.worked && fb.worked.length ? fb.worked.join(". ") + "." : "—";
@@ -2530,12 +2552,20 @@ ${COMMON}`
 
     const evalMsgs = [
       systemPrompt ? { role: "system", content: systemPrompt } : null,
-      { role: "system", content: buildPreface("role-play", sc) + "\nEvaluate the whole exchange now." },
+      { 
+        role: "system", 
+        content: buildPreface("role-play", sc) + `\n\nEvaluate the whole exchange now using the 5-point scale for these EXACT metrics:
+- Accuracy (1-5): Precision in clinical data and product information
+- Empathy (1-5): Recognition of HCP concerns and emotional state  
+- Clarity (1-5): Clear, concise communication
+- Compliance (1-5): Adherence to regulatory guidelines
+- Discovery (1-5): Use of open-ended questions to uncover needs
+
+Return scores in <coach> JSON with keys: accuracy, empathy, clarity, compliance, discovery (all integers 1-5), plus feedback, worked[], improve[], phrasing.`
+      },
       {
         role: "user",
-        content:
-          `Evaluate this entire exchange for EI, clarity, accuracy, compliance, discovery, and objection handling. ` +
-          `Provide specific, actionable feedback and a 0-100 score.\n\nConversation:\n${convoText}`
+        content: `Evaluate this entire exchange using the 5-point rubric. Provide scores for accuracy, empathy, clarity, compliance, and discovery.\n\nConversation:\n${convoText}`
       }
     ].filter(Boolean);
 
@@ -2566,15 +2596,15 @@ ${COMMON}`
       "Ignore HCP content except as context.",
       `Persona: ${personaLabel || "unspecified persona"}.`,
       `Scenario Goal: ${goal || "unspecified goal"}.`,
-      "Rubric: Accuracy, Compliance, Discovery, Clarity, Objection Handling, Empathy.",
-      "Return JSON with keys: scores{accuracy,compliance,discovery,clarity,objectionHandling,empathy}, summary, strengths[], improvements[], actionable[]. Scores 1–5 integers."
+      "Rubric: Use 5-point scale (1-5) for these EXACT metrics: Accuracy, Empathy, Clarity, Compliance, Discovery.",
+      "Return JSON with keys: scores{accuracy,empathy,clarity,compliance,discovery}, summary, strengths[], improvements[], actionable[]. Scores 1-5 integers."
     ].join(" ");
 
     const user = {
       role: "user",
       content: JSON.stringify({
         mode: "rep_only",
-        rubric: ["Accuracy", "Compliance", "Discovery", "Clarity", "Objection Handling", "Empathy"],
+        rubric: ["Accuracy", "Empathy", "Clarity", "Compliance", "Discovery"],
         transcript
       })
     };
@@ -2596,17 +2626,19 @@ ${COMMON}`
 
     const s = data.scores || {};
     const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+    
+    // Create clickable pills with ei-pill class and data-metric
+    const pillsHTML = ['accuracy', 'empathy', 'clarity', 'compliance', 'discovery'].map(k => {
+      const v = s[k] ?? 0;
+      const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
+      const label = k.charAt(0).toUpperCase() + k.slice(1);
+      return `<span class="ei-pill ${cls}" data-metric="${k}"><span class="k">${label}</span>${v}/5</span>`;
+    }).join('');
+    
     const html = `
       <div class="coach-panel">
         <h4>Rep-only Evaluation</h4>
-        <div class="coach-subs">
-          <span class="pill">Accuracy: ${s.accuracy ?? "—"}</span>
-          <span class="pill">Compliance: ${s.compliance ?? "—"}</span>
-          <span class="pill">Discovery: ${s.discovery ?? "—"}</span>
-          <span class="pill">Clarity: ${s.clarity ?? "—"}</span>
-          <span class="pill">Objection Handling: ${s.objectionHandling ?? "—"}</span>
-          <span class="pill">Empathy: ${s.empathy ?? "—"}</span>
-        </div>
+        <div class="ei-row" style="margin-bottom:16px">${pillsHTML}</div>
         ${data.summary ? `<p>${esc(data.summary)}</p>` : ""}
         <h5>Strengths</h5>${list(data.strengths)}
         <h5>Improvements</h5>${list(data.improvements)}
