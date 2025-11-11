@@ -52,6 +52,14 @@
     <div class="container">
       <h1 style="margin:0;font-size:2rem;">Analytics Dashboard</h1>
       <p style="margin:8px 0 0 0;opacity:0.9;">Track Your Learning Progress and EI Growth</p>
+      <div style="margin-top:16px;">
+        <button onclick="exportToPDF()" style="padding:10px 20px;background:#20bfa9;color:#083344;border:none;border-radius:999px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:0.95rem;transition:all 0.2s;">
+          <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Export Sample Analytics Report (PDF)
+        </button>
+      </div>
     </div>
   </div>
 
@@ -316,6 +324,11 @@
     //   .then(data => {
     //     Plotly.newPlot('volumeByModeChart', data.traces, data.layout, {responsive: true});
     //   });
+
+    // PDF Export Function
+    function exportToPDF() {
+      window.print(); // Opens browser print dialog with "Save as PDF" option
+    }
   </script>
 </body>
 </html>
