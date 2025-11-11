@@ -749,7 +749,7 @@
       const challengeText = challengeMatch[1].trim();
       html += `<div class="sales-sim-section">`;
       html += `<div class="section-header"><strong>Challenge:</strong></div>`;
-      html += `<div class="section-content">${esc(challengeText)}</div>`;
+      html += `<div class="section-content">${convertCitations(esc(challengeText))}</div>`;
       html += `</div>\n\n`;
     }
 
@@ -767,7 +767,7 @@
         .filter(b => b.length > 0 && b.length < 500); // Filter out garbage/duplicates
 
       bullets.forEach(bullet => {
-        html += `<li>${esc(bullet)}</li>`;
+        html += `<li>${convertCitations(esc(bullet))}</li>`;
       });
 
       html += `</ul>`;
@@ -779,7 +779,7 @@
       const impactText = impactMatch[1].trim();
       html += `<div class="sales-sim-section">`;
       html += `<div class="section-header"><strong>Impact:</strong></div>`;
-      html += `<div class="section-content">${esc(impactText)}</div>`;
+      html += `<div class="section-content">${convertCitations(esc(impactText))}</div>`;
       html += `</div>\n\n`;
     }
 
@@ -788,7 +788,7 @@
       const phrasingText = phrasingMatch[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
       html += `<div class="sales-sim-section">`;
       html += `<div class="section-header"><strong>Suggested Phrasing:</strong></div>`;
-      html += `<div class="section-quote">"${esc(phrasingText)}"</div>`;
+      html += `<div class="section-quote">"${convertCitations(esc(phrasingText))}"</div>`;
       html += `</div>`;
     }
 
