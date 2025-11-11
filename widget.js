@@ -50,11 +50,11 @@
   }
 
   // ---------- config/state ----------
-  const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Simulation", "Role Play", "General Assistant"];
+  const LC_OPTIONS = ["Emotional Intelligence", "Product Knowledge", "Sales Coach", "Role Play", "General Assistant"];
   const LC_TO_INTERNAL = {
     "Emotional Intelligence": "emotional-assessment",
     "Product Knowledge": "product-knowledge",
-    "Sales Simulation": "sales-simulation",
+    "Sales Coach": "sales-simulation",
     "Role Play": "role-play",
     "General Assistant": "general-knowledge"
   };
@@ -1473,7 +1473,7 @@ ${COMMON}`
     });
     const initialLc =
       Object.keys(LC_TO_INTERNAL).find((k) => LC_TO_INTERNAL[k] === (cfg?.defaultMode || "sales-simulation")) ||
-      "Sales Simulation";
+      "Sales Coach";
     modeSel.value = initialLc;
     currentMode = LC_TO_INTERNAL[modeSel.value];
 
@@ -1737,7 +1737,7 @@ ${COMMON}`
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
-        // Speaker chips: Role Play = HCP/Rep. Sales Simulation = Sales Coach/Rep.
+        // Speaker chips: Role Play = HCP/Rep. Sales Coach = Coach/Rep.
         if (currentMode === "role-play") {
           const chipText =
             m._speaker === "hcp" ? "HCP" : m._speaker === "rep" ? "Rep" : m.role === "assistant" ? "HCP" : "Rep";
