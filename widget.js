@@ -707,6 +707,8 @@
   function formatSalesSimulationReply(text) {
     if (!text) return "";
 
+    console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
+
     let html = "";
 
     // DEDUPLICATION: LLM sometimes repeats sections 2-3x - remove duplicates first
@@ -743,6 +745,13 @@
     const repApproachMatch = cleanedText.match(/Rep Approach:\s*(.+?)(?=\s+Impact:|$)/is);
     const impactMatch = cleanedText.match(/Impact:\s*(.+?)(?=\s+Suggested Phrasing:|$)/is);
     const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*[""']?(.+?)[""']?\s*(?=\s+Challenge:|<coach>|$)/is);
+
+    console.log('[Sales Coach Format] Matches:', {
+      challenge: !!challengeMatch,
+      repApproach: !!repApproachMatch,
+      impact: !!impactMatch,
+      phrasing: !!phrasingMatch
+    });
 
     // Challenge section
     if (challengeMatch) {
@@ -792,7 +801,13 @@
       html += `</div>`;
     }
 
-    return html || md(text); // Fallback to regular markdown if parsing fails
+    if (!html) {
+      console.log('[Sales Coach Format] No sections matched - falling back to md()');
+      return md(text);
+    }
+
+    console.log('[Sales Coach Format] Successfully formatted', html.length, 'chars');
+    return html;
   }
 
   function md(text) {
