@@ -367,7 +367,7 @@
       const cls = v >= 4 ? "good" : v === 3 ? "ok" : "bad";
       const val = (v || v === 0) ? String(v) : "–";
       const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
-      return `<span class="ei-pill ${cls}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
+      return `<span class="ei-pill ${cls}" data-metric="${k}" title="${esc(title)}"><span class="k">${esc(label)}</span>${esc(val)}/5</span>`;
     };
 
     return `
@@ -1334,11 +1334,12 @@ ${COMMON}`
 #reflectiv-widget .ei-wrap{padding:10px 12px}
 #reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
 #reflectiv-widget .ei-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
-#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; border:1px solid #d9d9d9; background:#fff}
-#reflectiv-widget .ei-pill .k{opacity:.65; margin-right:6px; font-weight:600}
-#reflectiv-widget .ei-pill.good{background:#e8f6ee;border-color:#bfe7cf}
-#reflectiv-widget .ei-pill.ok{background:#fff7e6;border-color:#ffe1a3}
-#reflectiv-widget .ei-pill.bad{background:#fdeaea;border-color:#f5c2c2}
+#reflectiv-widget .ei-pill{font:700 11px/1 Inter,system-ui; padding:6px 8px; border-radius:999px; border:1px solid #f9a8d4; background:#fce7f3; cursor:pointer; transition:all 0.2s}
+#reflectiv-widget .ei-pill:hover{background:#fbcfe8; border-color:#f472b6; transform:translateY(-1px)}
+#reflectiv-widget .ei-pill .k{opacity:.75; margin-right:6px; font-weight:600}
+#reflectiv-widget .ei-pill.good{background:#fce7f3;border-color:#f9a8d4}
+#reflectiv-widget .ei-pill.ok{background:#fce7f3;border-color:#f9a8d4}
+#reflectiv-widget .ei-pill.bad{background:#fce7f3;border-color:#f9a8d4}
 #reflectiv-widget .ei-tips{margin:8px 0 0; padding-left:16px}
 #reflectiv-widget .ei-tips li{margin:2px 0}
 #reflectiv-widget .ei-meta{margin-top:8px; font:500 11px/1.3 Inter,system-ui; opacity:.8}
@@ -1990,9 +1991,118 @@ ${COMMON}`
     shell._sendBtn = send;
     shell._ta = ta;
 
+    // Event delegation for clickable EI pills
+    coach.addEventListener("click", (e) => {
+      const pill = e.target.closest(".ei-pill");
+      if (!pill) return;
+      
+      const metric = pill.getAttribute("data-metric");
+      if (!metric) return;
+      
+      showMetricModal(metric, pill.textContent);
+    });
+
     populateDiseases();
     hydrateEISelects();
     applyModeVisibility();
+  }
+
+  // ---------- Metric definitions modal ----------
+  function showMetricModal(metric, pillText) {
+    const definitions = {
+      empathy: {
+        title: "Empathy",
+        definition: "Ability to recognize and acknowledge the HCP's concerns, perspectives, and emotional state.",
+        tips: [
+          "Use reflective listening: 'It sounds like you're concerned about...'",
+          "Validate feelings before responding with facts",
+          "Avoid dismissing objections - acknowledge them first",
+          "Mirror the HCP's language and tone",
+          "Ask clarifying questions to show you understand their perspective"
+        ]
+      },
+      discovery: {
+        title: "Discovery",
+        definition: "Skill in asking open-ended questions to uncover HCP needs, priorities, and knowledge gaps.",
+        tips: [
+          "Lead with 'what' and 'how' questions instead of yes/no questions",
+          "Explore patient population specifics before presenting solutions",
+          "Ask about current treatment protocols and challenges",
+          "Listen more than you talk - aim for 70/30 ratio",
+          "Use questions to guide the conversation, not interrogate"
+        ]
+      },
+      compliance: {
+        title: "Compliance",
+        definition: "Adherence to regulatory guidelines, avoiding off-label claims, and staying within approved messaging.",
+        tips: [
+          "Always cite approved sources and clinical data",
+          "Never discuss unapproved indications or populations",
+          "Redirect off-label questions to medical affairs",
+          "Use only approved promotional materials",
+          "Document all interactions according to company policy"
+        ]
+      },
+      clarity: {
+        title: "Clarity",
+        definition: "Ability to communicate complex medical information in clear, concise, and accessible language.",
+        tips: [
+          "Use plain language - avoid unnecessary jargon",
+          "Break complex concepts into digestible chunks",
+          "Check for understanding: 'Does that make sense?'",
+          "Use analogies to explain mechanisms of action",
+          "Summarize key points at the end of the conversation"
+        ]
+      },
+      accuracy: {
+        title: "Accuracy",
+        definition: "Precision in presenting clinical data, product information, and evidence-based responses.",
+        tips: [
+          "Always cite specific studies and data sources",
+          "Know your product's efficacy, safety, and MOA cold",
+          "Admit when you don't know something - offer to follow up",
+          "Double-check dosing, indications, and contraindications",
+          "Keep clinical references handy during calls"
+        ]
+      }
+    };
+
+    const data = definitions[metric];
+    if (!data) return;
+
+    // Create modal HTML
+    const modalHTML = `
+      <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px">
+        <div style="background:white;border-radius:12px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
+          <div style="padding:24px;border-bottom:1px solid #e5e7eb">
+            <h3 style="margin:0;font-size:20px;font-weight:700;color:#111827">${data.title}</h3>
+            <p style="margin:8px 0 0;color:#6b7280;font-size:14px">${data.definition}</p>
+          </div>
+          <div style="padding:24px">
+            <h4 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827">How to Improve:</h4>
+            <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.6">
+              ${data.tips.map(tip => `<li style="margin:8px 0">${tip}</li>`).join('')}
+            </ul>
+          </div>
+          <div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:right">
+            <button onclick="document.getElementById('metric-modal').remove()" style="padding:8px 16px;background:#ec4899;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px">Got it!</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if any
+    const existing = document.getElementById("metric-modal");
+    if (existing) existing.remove();
+
+    // Append new modal
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    // Close on backdrop click
+    const modal = document.getElementById("metric-modal");
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.remove();
+    });
   }
 
   // ---------- callModel (hardened with retries, timeout, SSE streaming, and backoff) ----------
