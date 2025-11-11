@@ -1420,16 +1420,16 @@ ${COMMON}`
 #reflectiv-widget .sim-controls{display:grid;grid-template-columns:220px 1fr 220px 1fr;gap:12px 16px;align-items:center}
 #reflectiv-widget .sim-controls label{font-size:13px;font-weight:600;color:#2f3a4f;justify-self:end;white-space:nowrap}
 #reflectiv-widget .sim-controls select{width:100%;height:38px;padding:6px 10px;font-size:14px;border:1px solid #cfd6df;border-radius:8px;background:#fff}
-#reflectiv-widget .chat-messages{min-height:220px;height:auto;max-height:none;overflow:auto;padding:12px 14px;background:#fafbfd}
-#reflectiv-widget .message{margin:8px 0;display:flex}
+#reflectiv-widget .chat-messages{min-height:220px;height:auto;max-height:none;overflow:auto;padding:12px 14px;background:#fafbfd;position:relative;z-index:1}
+#reflectiv-widget .message{margin:8px 0;display:flex;position:relative;z-index:1}
 #reflectiv-widget .message.user{justify-content:flex-end}
 #reflectiv-widget .message.assistant{justify-content:flex-start}
-#reflectiv-widget .message .content{max-width:85%;line-height:1.45;font-size:14px;padding:10px 12px;border-radius:14px;border:1px solid #d6dbe3;color:#0f1522;background:#e9edf3}
+#reflectiv-widget .message .content{max-width:85%;line-height:1.45;font-size:14px;padding:10px 12px;border-radius:14px;border:1px solid #d6dbe3;color:#0f1522;background:#e9edf3;position:relative;z-index:1}
 #reflectiv-widget .message.user .content{background:#e0e0e0;color:#000}
 #reflectiv-widget .chat-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #e1e6ef;background:#fff}
 #reflectiv-widget .chat-input textarea{flex:1;resize:none;min-height:44px;max-height:120px;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;outline:none}
 #reflectiv-widget .chat-input .btn{min-width:86px;border:0;border-radius:999px;background:#2f3a4f;color:#fff;font-weight:600}
-#reflectiv-widget .coach-section{margin-top:0;padding:12px 14px;border:1px solid #e1e6ef;border-radius:12px;background:#fffbe8}
+#reflectiv-widget .coach-section{margin-top:0;padding:12px 14px;border:1px solid #e1e6ef;border-radius:12px;background:#fffbe8;position:relative;z-index:10;clear:both}
 #reflectiv-widget .coach-subs .pill{display:inline-block;padding:2px 8px;margin-right:6px;font-size:12px;background:#f1f3f7;border:1px solid #d6dbe3;border-radius:999px}
 #reflectiv-widget .scenario-meta .meta-card{padding:10px 12px;background:#f7f9fc;border:1px solid #e1e6ef;border-radius:10px}
 #reflectiv-widget .hidden{display:none!important}
@@ -1692,6 +1692,9 @@ ${COMMON}`
     feedbackDisplayElem.style.padding = "8px";
     feedbackDisplayElem.style.borderTop = "1px solid #e1e6ef";
     feedbackDisplayElem.style.fontSize = "14px";
+    feedbackDisplayElem.style.position = "relative";
+    feedbackDisplayElem.style.zIndex = "15";
+    feedbackDisplayElem.style.background = "#fffbe8";
     coach.appendChild(feedbackDisplayElem);
 
     function getDiseaseStates() {
