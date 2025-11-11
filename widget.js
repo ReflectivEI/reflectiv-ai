@@ -770,20 +770,77 @@
   function md(text) {
     if (!text) return "";
     let s = esc(String(text)).replace(/\r\n?/g, "\n");
-    s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    
+    // Code blocks FIRST (before other processing): ```code``` -> <pre><code>code</code></pre>
+    s = s.replace(/```([^`]+)```/g, "<pre><code>$1</code></pre>");
+    
+    // Headers: ## Header -> <h3>Header</h3>, ### Header -> <h4>Header</h4>
+    s = s.replace(/^###\s+(.+)$/gm, "<h4>$1</h4>");
+    s = s.replace(/^##\s+(.+)$/gm, "<h3>$1</h3>");
+    
+    // Numbered lists: 1. item -> <ol><li>item</li></ol>
+    // Process BEFORE bold so we can apply bold inside list items
+    s = s.replace(
+      /^(?:\d+\.\s+).+(?:\n(?:\d+\.\s+).+)*/gm,
+      (blk) => {
+        const items = blk
+          .split("\n")
+          .map((l) => {
+            const match = l.match(/^\d+\.\s+(.+)$/);
+            if (match) {
+              let content = match[1];
+              // Apply bold, italic, inline code to list item content
+              content = content.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+              content = content.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+              content = content.replace(/`([^`]+)`/g, "<code>$1</code>");
+              return `<li>${content}</li>`;
+            }
+            return "";
+          })
+          .join("");
+        return `<ol>${items}</ol>`;
+      }
+    );
+    
+    // Bullet lists: - item or * item -> <ul><li>item</li></ul>
+    // Process BEFORE bold so we can apply bold inside list items
     s = s.replace(
       /^(?:-\s+|\*\s+).+(?:\n(?:-\s+|\*\s+).+)*/gm,
       (blk) => {
         const items = blk
           .split("\n")
-          .map((l) => l.replace(/^(?:-\s+|\*\s+)(.+)$/, "<li>$1</li>"))
+          .map((l) => {
+            const match = l.match(/^(?:-\s+|\*\s+)(.+)$/);
+            if (match) {
+              let content = match[1];
+              // Apply bold, italic, inline code to list item content
+              content = content.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+              content = content.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+              content = content.replace(/`([^`]+)`/g, "<code>$1</code>");
+              return `<li>${content}</li>`;
+            }
+            return "";
+          })
           .join("");
         return `<ul>${items}</ul>`;
       }
     );
+    
+    // Bold, italic, inline code for NON-list text: **text** -> <strong>text</strong>
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+    s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+    
+    // Wrap paragraphs in <p> tags (skip if already wrapped in HTML)
     return s
       .split(/\n{2,}/)
-      .map((p) => (p.startsWith("<ul>") ? p : `<p>${p.replace(/\n/g, "<br>")}</p>`))
+      .map((p) => {
+        if (p.startsWith("<ul>") || p.startsWith("<ol>") || p.startsWith("<h3>") || 
+            p.startsWith("<h4>") || p.startsWith("<pre>")) {
+          return p;
+        }
+        return `<p>${p.replace(/\n/g, "<br>")}</p>`;
+      })
       .join("\n");
   }
 
