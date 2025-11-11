@@ -138,25 +138,26 @@ const FACTS_DB = [
 ];
 
 // Finite State Machines per mode (5 modes total)
+// CAPS INCREASED TO PREVENT CUTOFF - Sales Sim needs room for 4-section format
 const FSM = {
   "sales-simulation": {
-    states: { START: { capSentences: 16, next: "COACH" }, COACH: { capSentences: 16, next: "COACH" } },
+    states: { START: { capSentences: 30, next: "COACH" }, COACH: { capSentences: 30, next: "COACH" } },
     start: "START"
   },
   "role-play": {
-    states: { START: { capSentences: 6, next: "HCP" }, HCP: { capSentences: 6, next: "HCP" } },
+    states: { START: { capSentences: 12, next: "HCP" }, HCP: { capSentences: 12, next: "HCP" } },
     start: "START"
   },
   "emotional-assessment": {
-    states: { START: { capSentences: 10, next: "EI" }, EI: { capSentences: 10, next: "EI" } },
+    states: { START: { capSentences: 20, next: "EI" }, EI: { capSentences: 20, next: "EI" } },
     start: "START"
   },
   "product-knowledge": {
-    states: { START: { capSentences: 10, next: "PK" }, PK: { capSentences: 10, next: "PK" } },
+    states: { START: { capSentences: 20, next: "PK" }, PK: { capSentences: 20, next: "PK" } },
     start: "START"
   },
   "general-knowledge": {
-    states: { START: { capSentences: 12, next: "GENERAL" }, GENERAL: { capSentences: 12, next: "GENERAL" } },
+    states: { START: { capSentences: 20, next: "GENERAL" }, GENERAL: { capSentences: 20, next: "GENERAL" } },
     start: "START"
   }
 };
@@ -743,7 +744,13 @@ Impact: [EXACTLY ONE SENTENCE, MAX 100 CHARACTERS - Expected outcome]
 
 Suggested Phrasing: "[MAX 2 SENTENCES, MAX 120 CHARACTERS TOTAL - Exact words rep should say]"
 
-STRICT RULES:
+CRITICAL ANTI-REPETITION RULES:
+- RETURN EACH SECTION EXACTLY ONCE - DO NOT REPEAT ANY SECTION
+- DO NOT ECHO THE FORMAT TEMPLATE MULTIPLE TIMES
+- DO NOT DUPLICATE CONTENT ACROSS SECTIONS
+- IF YOU FIND YOURSELF STARTING TO REPEAT "Challenge:" OR "Rep Approach:" - STOP IMMEDIATELY
+
+STRICT LENGTH RULES:
 - Challenge: 1 sentence, 80 chars max
 - Rep Approach: EXACTLY 3 bullets, 25 words each max
 - Impact: 1 sentence, 100 chars max

@@ -708,13 +708,41 @@
     if (!text) return "";
 
     let html = "";
-    const sections = [];
 
-    // Split by major sections
-    const challengeMatch = text.match(/Challenge:\s*(.+?)(?=\n\s*Rep Approach:|$)/is);
-    const repApproachMatch = text.match(/Rep Approach:\s*(.+?)(?=\n\s*Impact:|$)/is);
-    const impactMatch = text.match(/Impact:\s*(.+?)(?=\n\s*Suggested Phrasing:|$)/is);
-    const phrasingMatch = text.match(/Suggested Phrasing:\s*(.+?)(?=\n\s*<coach>|$)/is);
+    // DEDUPLICATION: LLM sometimes repeats sections 2-3x - remove duplicates first
+    // Look for patterns like "Challenge: X... Challenge: X..." and keep only first occurrence
+    let cleanedText = text;
+    
+    // Remove duplicate "Challenge:" sections
+    const challengeRegex = /(Challenge:\s*.+?)(\s+Challenge:)/is;
+    while (challengeRegex.test(cleanedText)) {
+      cleanedText = cleanedText.replace(challengeRegex, '$1');
+    }
+    
+    // Remove duplicate "Rep Approach:" sections
+    const repRegex = /(Rep Approach:\s*.+?)(\s+Rep Approach:)/is;
+    while (repRegex.test(cleanedText)) {
+      cleanedText = cleanedText.replace(repRegex, '$1');
+    }
+    
+    // Remove duplicate "Impact:" sections
+    const impactRegex = /(Impact:\s*.+?)(\s+Impact:)/is;
+    while (impactRegex.test(cleanedText)) {
+      cleanedText = cleanedText.replace(impactRegex, '$1');
+    }
+    
+    // Remove duplicate "Suggested Phrasing:" sections
+    const phrasingRegex = /(Suggested Phrasing:\s*.+?)(\s+Suggested Phrasing:)/is;
+    while (phrasingRegex.test(cleanedText)) {
+      cleanedText = cleanedText.replace(phrasingRegex, '$1');
+    }
+
+    // CRITICAL: Stop at first occurrence of each section to avoid duplication
+    // Split by major sections - use NON-GREEDY matching and stop at next section header
+    const challengeMatch = cleanedText.match(/Challenge:\s*(.+?)(?=\s+Rep Approach:|$)/is);
+    const repApproachMatch = cleanedText.match(/Rep Approach:\s*(.+?)(?=\s+Impact:|$)/is);
+    const impactMatch = cleanedText.match(/Impact:\s*(.+?)(?=\s+Suggested Phrasing:|$)/is);
+    const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*[""']?(.+?)[""']?\s*(?=\s+Challenge:|<coach>|$)/is);
 
     // Challenge section
     if (challengeMatch) {
@@ -732,11 +760,11 @@
       html += `<div class="section-header"><strong>Rep Approach:</strong></div>`;
       html += `<ul class="section-bullets">`;
 
-      // Extract bullets
-      const bullets = repText.split(/\n/).map(line => {
-        // Remove bullet markers (•, *, -, etc.)
-        return line.trim().replace(/^[•\*\-\+]\s*/, '');
-      }).filter(line => line.length > 0);
+      // Extract bullets - split on bullet characters (•, ●, ○) since LLM doesn't use newlines
+      const bullets = repText
+        .split(/\s*[•●○]\s*/)
+        .map(b => b.trim())
+        .filter(b => b.length > 0 && b.length < 500); // Filter out garbage/duplicates
 
       bullets.forEach(bullet => {
         html += `<li>${esc(bullet)}</li>`;
