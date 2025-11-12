@@ -80,8 +80,8 @@ Located at widget.js lines 214-233, this function:
 2. **Looks up in citations.json**: Loads metadata (title, URL, APA citation)
 3. **Creates clickable link**:
    ```html
-   <a href="https://www.cdc.gov/hiv/guidelines/preventing.html" 
-      target="_blank" 
+   <a href="https://www.cdc.gov/hiv/guidelines/preventing.html"
+      target="_blank"
       style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1"
       title="Centers for Disease Control and Prevention. (2021). Preexposure prophylaxis...">
      [001]
@@ -116,14 +116,14 @@ Contains metadata for all reference codes:
 
 ### Before (Broken)
 ```
-Emphasize the importance of identifying and engaging high-risk patients, 
+Emphasize the importance of identifying and engaging high-risk patients,
 such as those with multiple sexual partners or injection drug use [HIV-PREP-ELIG-001].
 ```
 - `[HIV-PREP-ELIG-001]` = plain text, not clickable
 
 ### After (Fixed)
 ```
-Emphasize the importance of identifying and engaging high-risk patients, 
+Emphasize the importance of identifying and engaging high-risk patients,
 such as those with multiple sexual partners or injection drug use [001].
 ```
 - `[001]` = blue clickable badge
@@ -173,10 +173,10 @@ From your screenshot, these citations should now be clickable:
 
 1. **[HIV-PREP-ELIG-001]** → Links to CDC PrEP Guidelines
    - "Emphasize the importance of identifying and engaging high-risk patients..."
-   
+
 2. **[HIV-PREP-TAF-002]** → Links to FDA Descovy Label
    - "Highlight Descovy's efficacy in preventing HIV among men who have sex with men..."
-   
+
 3. **[HIV-PREP-SAFETY-003]** → Links to CDC Safety Monitoring
    - "Discuss the need for regular renal function monitoring..."
 
@@ -213,9 +213,9 @@ From your screenshot, these citations should now be clickable:
 
 ## CONCLUSION
 
-✅ **FIXED**: Citations now clickable with proper styling and tooltips  
-✅ **DEPLOYED**: Commit 3d1fc0d pushed to production  
-⏳ **WAITING**: GitHub Pages rebuild (2-5 min)  
-🧪 **NEXT**: User validates fix with hard refresh  
+✅ **FIXED**: Citations now clickable with proper styling and tooltips
+✅ **DEPLOYED**: Commit 3d1fc0d pushed to production
+⏳ **WAITING**: GitHub Pages rebuild (2-5 min)
+🧪 **NEXT**: User validates fix with hard refresh
 
 **Estimated time to see live**: 2-5 minutes from now

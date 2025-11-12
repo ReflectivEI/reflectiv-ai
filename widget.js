@@ -718,25 +718,25 @@
     // DEDUPLICATION: LLM sometimes repeats sections 2-3x - remove duplicates first
     // Look for patterns like "Challenge: X... Challenge: X..." and keep only first occurrence
     let cleanedText = text;
-    
+
     // Remove duplicate "Challenge:" sections
     const challengeRegex = /(Challenge:\s*.+?)(\s+Challenge:)/is;
     while (challengeRegex.test(cleanedText)) {
       cleanedText = cleanedText.replace(challengeRegex, '$1');
     }
-    
+
     // Remove duplicate "Rep Approach:" sections
     const repRegex = /(Rep Approach:\s*.+?)(\s+Rep Approach:)/is;
     while (repRegex.test(cleanedText)) {
       cleanedText = cleanedText.replace(repRegex, '$1');
     }
-    
+
     // Remove duplicate "Impact:" sections
     const impactRegex = /(Impact:\s*.+?)(\s+Impact:)/is;
     while (impactRegex.test(cleanedText)) {
       cleanedText = cleanedText.replace(impactRegex, '$1');
     }
-    
+
     // Remove duplicate "Suggested Phrasing:" sections
     const phrasingRegex = /(Suggested Phrasing:\s*.+?)(\s+Suggested Phrasing:)/is;
     while (phrasingRegex.test(cleanedText)) {
@@ -830,23 +830,23 @@ Suggested Phrasing: "[text]"</pre>
   function md(text) {
     if (!text) return "";
     let s = esc(String(text)).replace(/\r\n?/g, "\n");
-    
+
     // Pre-process: Force line breaks BEFORE numbered items and bullets that appear inline
     // This handles: "text 1. Item" -> "text\n1. Item"
     s = s.replace(/([.!?])\s+(\d+\.)\s+/g, "$1\n$2 ");
     s = s.replace(/([a-z])\s+(\d+\.)\s+([A-Z])/g, "$1\n$2 $3");
-    
+
     // Force line breaks before inline bullets/dashes (but not hyphens in words)
     s = s.replace(/([.:])\s+(-\s+[A-Z])/g, "$1\n$2");
     s = s.replace(/([a-z])\.\s+(-\s+)/g, "$1.\n$2");
-    
+
     // Code blocks FIRST (before other processing): ```code``` -> <pre><code>code</code></pre>
     s = s.replace(/```([^`]+)```/g, "<pre><code>$1</code></pre>");
-    
+
     // Headers: ## Header -> <h3>Header</h3>, ### Header -> <h4>Header</h4>
     s = s.replace(/^###\s+(.+)$/gm, "<h4>$1</h4>");
     s = s.replace(/^##\s+(.+)$/gm, "<h3>$1</h3>");
-    
+
     // Numbered lists: 1. item -> <ol><li>item</li></ol>
     // Process BEFORE bold so we can apply bold inside list items
     s = s.replace(
@@ -862,7 +862,7 @@ Suggested Phrasing: "[text]"</pre>
               content = content.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
               content = content.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
               content = content.replace(/`([^`]+)`/g, "<code>$1</code>");
-              
+
               // Handle nested bullets INSIDE numbered items (e.g., "1. Item - sub" -> includes sub-bullets)
               if (content.includes(" - ")) {
                 const parts = content.split(/\s+-\s+/);
@@ -872,7 +872,7 @@ Suggested Phrasing: "[text]"</pre>
                   return `<li>${main}<ul>${subs.map(sub => `<li>${sub}</li>`).join('')}</ul></li>`;
                 }
               }
-              
+
               return `<li>${content}</li>`;
             }
             return "";
@@ -881,7 +881,7 @@ Suggested Phrasing: "[text]"</pre>
         return `<ol>${items}</ol>`;
       }
     );
-    
+
     // UNICODE bullet lists: • item -> <ul><li>item</li></ul>
     s = s.replace(
       /^(?:•\s+|●\s+|○\s+).+(?:\n(?:•\s+|●\s+|○\s+).+)*/gm,
@@ -903,7 +903,7 @@ Suggested Phrasing: "[text]"</pre>
         return `<ul>${items}</ul>`;
       }
     );
-    
+
     // Markdown bullet lists: - item or * item -> <ul><li>item</li></ul>
     // Process BEFORE bold so we can apply bold inside list items
     s = s.replace(
@@ -927,18 +927,18 @@ Suggested Phrasing: "[text]"</pre>
         return `<ul>${items}</ul>`;
       }
     );
-    
+
     // Bold, italic, inline code for NON-list text: **text** -> <strong>text</strong>
     s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
     s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
     s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
-    
+
     // Wrap paragraphs in <p> tags (skip if already wrapped in HTML)
     return s
       .split(/\n{2,}/)
       .map((p) => {
-        if (p.startsWith("<ul>") || p.startsWith("<ol>") || p.startsWith("<h3>") || 
-            p.startsWith("<h4>") || p.startsWith("<pre>")) {
+        if (p.startsWith("<ul>") || p.startsWith("<ol>") || p.startsWith("<h3>") ||
+          p.startsWith("<h4>") || p.startsWith("<pre>")) {
           return p;
         }
         return `<p>${p.replace(/\n/g, "<br>")}</p>`;
@@ -1155,7 +1155,7 @@ Suggested Phrasing: "[text]"</pre>
     const objection_handling = sig.objection ? (sig.accuracyCue ? 4 : 3) : 2;
     const empathy = sig.empathy ? 3 : 2;
     const clarity = sig.tooLong ? 2 : sig.idealLen ? 4 : 3;
-    
+
     // Advanced metrics (defaults for deterministic scoring - LLM will provide real scores)
     const confidence = sig.accuracyCue && !sig.tooLong ? 4 : 3;
     const active_listening = sig.empathy ? 3 : 2;
@@ -1163,9 +1163,9 @@ Suggested Phrasing: "[text]"</pre>
     const action_insight = sig.discovery ? 3 : 2;
     const resilience = sig.objection && sig.empathy ? 3 : 2;
 
-    const W = { 
-      empathy: 0.12, clarity: 0.12, compliance: 0.14, discovery: 0.12, 
-      objection_handling: 0.11, confidence: 0.11, 
+    const W = {
+      empathy: 0.12, clarity: 0.12, compliance: 0.14, discovery: 0.12,
+      objection_handling: 0.11, confidence: 0.11,
       active_listening: 0.09, adaptability: 0.08, action_insight: 0.06, resilience: 0.05
     };
     const toPct = (v) => v * 20;
@@ -1834,7 +1834,7 @@ ${COMMON}`
           console.log('[renderMessages] Has cached HTML?', !!m._formattedHTML);
           console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
           console.log('[renderMessages] normalized preview:', normalized.substring(0, 200));
-          
+
           // Cache formatted HTML to avoid re-parsing on every render
           if (!m._formattedHTML) {
             console.log('[renderMessages] NO CACHE - Formatting now...');
@@ -2011,8 +2011,8 @@ ${COMMON}`
           return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div class="muted">No coach feedback available</div>`;
         })();
 
-    body.innerHTML = `<div class="coach-feedback-block">${eiHTML || oldYellowHTML}</div>`;
-    return;
+        body.innerHTML = `<div class="coach-feedback-block">${eiHTML || oldYellowHTML}</div>`;
+        return;
       }
 
       // Emotional-assessment and Role Play final eval - Use EI 5-point scale
@@ -2173,10 +2173,10 @@ ${COMMON}`
     coach.addEventListener("click", (e) => {
       const pill = e.target.closest(".ei-pill");
       if (!pill) return;
-      
+
       const metric = pill.getAttribute("data-metric");
       if (!metric) return;
-      
+
       showMetricModal(metric, pill.textContent);
     });
 
@@ -2811,8 +2811,8 @@ ${COMMON}`
 
     const evalMsgs = [
       systemPrompt ? { role: "system", content: systemPrompt } : null,
-      { 
-        role: "system", 
+      {
+        role: "system",
         content: buildPreface("role-play", sc) + `\n\nEvaluate the whole exchange now using the 5-point scale for these EXACT 10 metrics:
 
 **Core EI Metrics:**
@@ -2896,7 +2896,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
 
     const s = data.scores || {};
     const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-    
+
     // Create clickable pills with ei-pill class and data-metric for all 10 metrics
     const pillsHTML = ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience'].map(k => {
       const v = s[k] ?? 0;
@@ -2906,7 +2906,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
         <div style="font-size:14px;font-weight:700;margin-top:2px">${v}/5</div>
       </span>`;
     }).join('');
-    
+
     const html = `
       <div class="coach-panel">
         <h4>Rep-only Evaluation</h4>

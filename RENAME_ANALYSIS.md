@@ -82,7 +82,7 @@ Line 2805: Mode check: currentMode === "sales-simulation"
    - Line 53: `"Sales Simulation"` → `"Sales Coach"`
    - Line 57: `"Sales Simulation": "sales-simulation"` → `"Sales Coach": "sales-simulation"`
    - Line 1476: `"Sales Simulation"` → `"Sales Coach"`
-   
+
 2. **index.html** (if mode selector is there):
    - Any dropdown option text
 
@@ -91,7 +91,7 @@ Line 2805: Mode check: currentMode === "sales-simulation"
    - Line 14: "HCP-voice leakage in Sales Simulation" → "Sales Coach"
    - Line 695: "formatSalesSimulationReply" comment → "formatSalesCoachReply" (optional)
    - Line 1740: "Sales Simulation = Sales Coach/Rep" → "Sales Coach = Coach/Rep"
-   
+
 2. **Documentation**:
    - Update all MD files for consistency
    - Not critical for functionality
@@ -177,7 +177,7 @@ After rename, verify:
 ## RECOMMENDATION
 
 **Approach**: Minimal Change (UI labels only)
-**Rationale**: 
+**Rationale**:
 - Lowest risk
 - Fastest implementation
 - No backend changes needed
@@ -187,10 +187,10 @@ After rename, verify:
 ```javascript
 // widget.js line 53
 const LC_OPTIONS = [
-  "Emotional Intelligence", 
-  "Product Knowledge", 
+  "Emotional Intelligence",
+  "Product Knowledge",
   "Sales Coach",  // WAS: "Sales Simulation"
-  "Role Play", 
+  "Role Play",
   "General Assistant"
 ];
 

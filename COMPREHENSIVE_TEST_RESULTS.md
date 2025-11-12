@@ -96,7 +96,7 @@ CRITICAL ANTI-REPETITION RULES:
 7. "help"
 8. "what can you do?"
 
-**Results**: 
+**Results**:
 - [ ] Test 1: PASS/FAIL - Notes:
 - [ ] Test 2: PASS/FAIL - Notes:
 - [ ] Test 3: PASS/FAIL - Notes:

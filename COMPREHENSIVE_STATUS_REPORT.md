@@ -35,7 +35,7 @@
    - **Issue**: LLM was repeating entire response 2-3 times
    - **Example**: "Challenge: X... Challenge: X... Challenge: X..."
    - **Root Cause**: LLM ignoring format instructions
-   - **Fix Applied**: 
+   - **Fix Applied**:
      - Added deduplication regex loops in `formatSalesCoachReply()` (widget.js lines 711-734)
      - Added anti-repetition rules to `salesContract` prompt (worker.js lines 727-735)
    - **Status**: ✅ CODE FIXED, ⚠️ NOT BROWSER TESTED
@@ -209,7 +209,7 @@ curl -X POST https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat \
 **Description**: LLM repeating entire coaching response 2-3 times
 **Evidence**: User provided raw text showing "Challenge: X... Challenge: X... Challenge: X..."
 **Impact**: Unusable Sales Coach mode, confusing duplicate content
-**Root Cause**: 
+**Root Cause**:
 - LLM ignoring format instructions
 - Parser assuming proper formatting (newlines between sections)
 **Fix Applied**:
@@ -378,7 +378,7 @@ pills.forEach(pill => {
    - Follow COMPREHENSIVE_TEST_RESULTS.md
    - Test each mode 8-10 times
    - Document bugs with screenshots
-   
+
 2. **Alternative: Set up automated testing** (2-3 hours)
    - Install Playwright
    - Write automated test suite
@@ -422,7 +422,7 @@ pills.forEach(pill => {
 - **Frontend**: https://reflectivei.github.io (GitHub Pages)
   - Commit: `3465632`
   - Rebuild: ~2-5 minutes (should be live now)
-  
+
 - **Backend**: https://my-chat-agent-v2.tonyabdelmalak.workers.dev
   - Version: `406dce0f-8354-4ce2-9888-030c3e831fea`
   - Status: Live (instant Cloudflare deployment)
@@ -455,7 +455,7 @@ pills.forEach(pill => {
 ### RECOMMENDATION
 🚦 **YELLOW LIGHT** - Code is ready, but needs validation
 
-**Next Action**: 
+**Next Action**:
 User should manually test following COMPREHENSIVE_TEST_RESULTS.md for 30-60 minutes, focusing on:
 1. Sales Coach mode (10 tests) - verify no duplication/cutoff
 2. General Assistant (3-4 tests) - verify bullet formatting
@@ -469,7 +469,7 @@ If bugs found → 🔧 Fix and iterate
 ## FINAL ANSWER TO YOUR QUESTIONS
 
 ### Q1: "Are you done debugging, formatting, testing?"
-**A**: 
+**A**:
 - **Debugging**: ✅ YES - 9 bugs fixed
 - **Formatting**: ✅ YES - All code changes made
 - **Testing**: ❌ NO - Browser validation required (manual interaction needed)

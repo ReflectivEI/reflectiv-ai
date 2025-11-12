@@ -388,6 +388,7 @@
   color: #0b3954;
   padding: 3px 8px;
   font: 700 15px/1 "Inter";
+
   .coach-feedback-block {
     background: #fffbe6;
     border-radius: 10px;
@@ -397,17 +398,20 @@
     font-size: 1.08rem;
     line-height: 1.6;
   }
+
   .coach-feedback-block strong {
     display: block;
     margin-bottom: 4px;
     font-size: 1.12rem;
     color: #0f2747;
   }
+
   .coach-feedback-block span {
     display: block;
     margin-bottom: 10px;
     color: #1e2a3a;
   }
+
   .rep-eval-panel {
     background: #fff0c4;
     border-radius: 10px;
@@ -417,6 +421,7 @@
     font-size: 1.08rem;
     line-height: 1.6;
   }
+
   border-radius: 999px;
   white-space: nowrap;
 }

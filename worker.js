@@ -637,8 +637,8 @@ ${siteContext.slice(0, 12000)}`;
     return json({ reply: reply.trim() }, 200, env, req);
   } catch (e) {
     console.error("alora_chat_error", { message: e.message, stack: e.stack });
-    return json({ 
-      error: "alora_error", 
+    return json({
+      error: "alora_error",
       message: "Unable to process request",
       reply: "I'm having trouble right now. You can still explore the Coach, view Platform modules, or request a demo."
     }, 500, env, req);
