@@ -235,6 +235,7 @@
     // Normalize base URL to avoid double slashes
     const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
     const healthUrl = `${baseUrl}/health`;
+    console.log('[DEBUG] checkHealth() called, healthUrl:', healthUrl);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1500);
 
@@ -247,6 +248,7 @@
 
       if (response.ok) {
         isHealthy = true;
+        console.log('[DEBUG] Health check PASSED, isHealthy set to TRUE');
         hideHealthBanner();
         enableSendButton();
         if (healthCheckInterval) {
@@ -257,12 +259,14 @@
       }
 
       isHealthy = false;
+      console.log('[DEBUG] Health check FAILED (not ok), isHealthy set to FALSE, status:', response.status);
       showHealthBanner();
       disableSendButton();
       return false;
     } catch (e) {
       clearTimeout(timeout);
       isHealthy = false;
+      console.log('[DEBUG] Health check FAILED (exception), isHealthy set to FALSE, error:', e.message);
       showHealthBanner();
       disableSendButton();
       return false;
@@ -1675,8 +1679,13 @@ ${COMMON}`
     });
     const send = el("button", "btn", "Send");
     send.onclick = () => {
+      console.log('[DEBUG] Send button clicked!');
       const t = ta.value.trim();
-      if (!t) return;
+      console.log('[DEBUG] Message text:', t);
+      if (!t) {
+        console.log('[DEBUG] Empty message, returning');
+        return;
+      }
       sendMessage(t);
       ta.value = "";
     };
@@ -2951,14 +2960,19 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
   }
 
   async function sendMessage(userText) {
+    console.log('[DEBUG] sendMessage() called with text:', userText);
+    console.log('[DEBUG] isSending:', isSending, ', isHealthy:', isHealthy);
+    
     if (isSending) return;
 
     // Health gate: block sends when unhealthy
     if (!isHealthy) {
+      console.log('[DEBUG] BLOCKED BY HEALTH GATE - isHealthy is FALSE');
       showToast("Backend unavailable. Please wait...", "error");
       return;
     }
 
+    console.log('[DEBUG] Passed health gate, proceeding with send');
     isSending = true;
 
     // Track timing for auto-fail feature
@@ -3300,8 +3314,10 @@ Please provide your response again with all required fields including phrasing.`
     await loadCitations(); // Load citation database
     buildUI();
 
+    console.log('[DEBUG] About to run initial health check...');
     // Health gate: check on init
     const healthy = await checkHealth();
+    console.log('[DEBUG] Initial health check complete, result:', healthy, ', isHealthy:', isHealthy);
     if (!healthy) {
       startHealthRetry();
     }
