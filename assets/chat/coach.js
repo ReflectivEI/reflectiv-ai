@@ -168,20 +168,21 @@
       el("div", { id: "modeFields", class: "mode-fields" }, [])
     ]);
 
-    // score pills (placeholders updated by updateScores)
-    const scores = el("div", { class: "scores" }, [
-      el("div", { class: "score" }, [
-        el("div", { class: "score-name" }, "Confidence"),
-        el("div", { "data-score": "confidence", class: "score-val" }, "_")
-      ]),
-      el("div", { class: "score" }, [
-        el("div", { class: "score-name" }, "Compliance"),
-        el("div", { "data-score": "compliance", class: "score-val" }, "_")
-      ]),
-      el("div", { class: "score" }, [
-        el("div", { class: "score-name" }, "Readiness"),
-        el("div", { "data-score": "readiness", class: "score-val" }, "_")
-      ])
+    // Coach Feedback panel with avatar, badges, and micro-prompts
+    const feedbackPanel = el("div", { class: "coach-feedback-panel" }, [
+      // Avatar
+      el("img", {
+        src: "assets/chat/coach-avatar.svg",
+        alt: "Coach Avatar",
+        class: "coach-avatar",
+        style: "width:48px;height:48px;cursor:pointer;vertical-align:middle;"
+      }),
+      // Badges (placeholder, updated by updateBadges)
+      el("div", { class: "coach-badges" }, []),
+      // Feedback text
+      el("div", { class: "coach-feedback-text" }, "Welcome! Your feedback will appear here after each turn."),
+      // Tips with micro-prompts
+      el("div", { class: "coach-tips" }, [])
     ]);
 
     // chat area
@@ -199,13 +200,66 @@
       ])
     ]);
 
-    // assemble
-    root.innerHTML = "";
-    root.appendChild(header);
-    root.appendChild(guidance);
-    root.appendChild(controls);
-    root.appendChild(scores);
-    root.appendChild(body);
+  // assemble
+  root.innerHTML = "";
+  root.appendChild(header);
+  root.appendChild(guidance);
+  root.appendChild(controls);
+  root.appendChild(feedbackPanel);
+  root.appendChild(body);
+  // Update badges based on scoring
+  function updateBadges(scores) {
+    const badgeHost = qs(".coach-badges");
+    if (!badgeHost) return;
+    badgeHost.innerHTML = "";
+    // Example: show badge for empathy, clarity, compliance
+    Object.entries(scores || {}).forEach(([key, val]) => {
+      if (val >= 4) {
+        const badge = el("span", { class: "coach-badge coach-badge-" + key, title: key }, key.charAt(0).toUpperCase() + key.slice(1));
+        badgeHost.appendChild(badge);
+      }
+    });
+  }
+
+  // Update feedback text and tips
+  function updateFeedback(feedback, tips) {
+    const feedbackText = qs(".coach-feedback-text");
+    const tipsHost = qs(".coach-tips");
+    if (feedbackText) feedbackText.textContent = feedback || "";
+    if (tipsHost) {
+      tipsHost.innerHTML = "";
+      (tips || []).forEach(tip => {
+        const tipEl = el("div", { class: "coach-tip" }, [
+          tip.text,
+          tip.source ? el("span", { class: "coach-tip-source", style: "margin-left:8px;cursor:pointer;color:#3b82f6;" }, [
+            "Why this tip?",
+            el("div", { class: "coach-tip-popup", style: "display:none;position:absolute;background:#fff;border:1px solid #ccc;padding:8px;z-index:10;max-width:220px;" }, [tip.source])
+          ]) : null
+        ]);
+        // Micro-prompt logic
+        if (tip.source) {
+          tipEl.querySelector(".coach-tip-source").addEventListener("click", function(e) {
+            const popup = tipEl.querySelector(".coach-tip-popup");
+            popup.style.display = popup.style.display === "none" ? "block" : "none";
+            e.stopPropagation();
+          });
+        }
+        tipsHost.appendChild(tipEl);
+      });
+    }
+  }
+
+  // Avatar click for EI wisdom
+  function setupAvatarWisdom() {
+    const avatar = qs(".coach-avatar");
+    if (!avatar) return;
+    avatar.addEventListener("click", () => {
+      alert("EI Wisdom: Great sales reps listen deeply, reflect before responding, and adapt with empathy. Keep growing your EI!");
+    });
+  }
+
+  // Call after shell build
+  setupAvatarWisdom();
 
     // wire events
     qs('select[name="mode"]', root)?.addEventListener("change", onModeChange);
@@ -384,23 +438,115 @@
     const msg = (inp?.value || "").trim();
     if (!msg || !state.backendMode) return;
     inp.value = "";
+
+    // Validate scenario and persona for selected disease state and HCP persona in Role Play mode
+    let scenario = null;
+    let persona = null;
+    if (state.workflowMode === "role-play") {
+      const disease = state.disease;
+      const hcp = state.hcp;
+      scenario = (state.scenarios || []).find(s =>
+        s.therapeuticArea?.toLowerCase() === (disease || "").toLowerCase() &&
+        (hcp ? s.hcpProfile?.toLowerCase().includes(hcp) : true)
+      );
+      persona = (state.personas || []).find(p =>
+        p.therapeuticAreas?.map(a => a.toLowerCase()).includes((disease || "").toLowerCase()) &&
+        (p.displayName?.toLowerCase().includes(hcp) || p.role?.toLowerCase().includes(hcp) || p.specialty?.toLowerCase().includes(hcp))
+      );
+      if (!scenario || !persona) {
+        push("bot", "No valid scenario or persona found for the selected disease state and HCP persona. Please select valid options.");
+        return;
+      }
+    }
+
     push("user", msg);
 
     // Add to per-mode history
     const history = state.history[state.backendMode] || [];
     history.push({ role: "user", content: msg });
 
+    // Generate plan for Role Play mode
+    let plan = undefined;
+    async function getFacts(disease) {
+      let facts = (window.FACTS_DB || []).filter(f =>
+        f.ta?.toLowerCase() === (disease || "").toLowerCase()
+      );
+      // If no facts loaded, fetch from local file
+      if (!facts.length) {
+        try {
+          const factsData = await fetch('assets/chat/data/facts.json').then(r => r.json());
+          facts = (factsData.facts || []).filter(f =>
+            f.ta?.toLowerCase() === (disease || "").toLowerCase()
+          );
+        } catch (e) {
+          facts = [];
+        }
+      }
+      // Only keep facts with both id and text
+      return facts.filter(f => f.id && f.text);
+    }
+
+    if (state.workflowMode === "role-play" && scenario && persona) {
+      const facts = await getFacts(state.disease);
+      if (!facts.length) {
+        push("bot", "No valid facts found for the selected disease state. Please check your configuration or try another disease.");
+        return;
+      }
+      plan = {
+        mode: state.backendMode,
+        disease: state.disease,
+        persona: persona.displayName || persona.role || "HCP",
+        goal: scenario.goal || "Practice realistic HCP conversation.",
+        facts: facts.slice(0, 1).map(f => ({ id: f.id, text: f.text, cites: f.cites || [] }))
+      };
+    }
+
+    // Log payload for debugging
+    const payload = {
+      mode: state.backendMode,
+      history: history.slice(-10),
+      eiProfile: state.eiProfile,
+      eiFeature: state.eiFeature,
+      disease: state.disease,
+      hcp: state.hcp,
+      message: msg,
+      sessionId: state.sessionId,
+      scenario: scenario ? {
+        id: scenario.id,
+        therapeuticArea: scenario.therapeuticArea,
+        hcpProfile: scenario.hcpProfile
+      } : undefined,
+      persona: persona ? {
+        id: persona.id,
+        displayName: persona.displayName,
+        role: persona.role,
+        specialty: persona.specialty
+      } : undefined,
+      plan: plan
+    };
+    window._lastCoachPayload = payload;
+    console.log('[Coach] Sending payload:', payload);
+
+    // Validate required fields
+    if (!payload.mode || !payload.message || !payload.disease || !payload.hcp || (state.workflowMode === "role-play" && (!scenario || !persona || !plan || !plan.facts || plan.facts.length === 0))) {
+      push("bot", "Please select a valid mode, disease state, HCP persona, and enter a message before sending. (Plan/facts required)");
+      return;
+    }
+
     try {
       const reply = await askCoach(msg, history);
-      push("bot", reply);
-      
+      // Detect fallback or error response
+      if (reply === 'Stub reply: I parsed your intent and will tailor guidance once the worker responds.' || reply === 'OK.') {
+        push("bot", "The coach service could not process your request. Please check your selections and try again.");
+      } else {
+        push("bot", reply);
+      }
       // Add assistant reply to history
       history.push({ role: "assistant", content: reply });
       state.history[state.backendMode] = history;
-      
       if (state.scoring) updateScores();
-    } catch {
-      push("bot", "Temporary issue contacting the coach service.");
+    } catch (e) {
+      push("bot", `Error contacting the coach service: ${e.message || e}`);
     }
   }
 
@@ -414,19 +560,21 @@
 
   async function askCoach(text, history = []) {
     const url = window.COACH_ENDPOINT || "/coach";
+    // Use latest payload from onSend for backend alignment
+    const payload = window._lastCoachPayload || {
+      mode: state.backendMode,
+      history: history.slice(-10),
+      eiProfile: state.eiProfile,
+      eiFeature: state.eiFeature,
+      disease: state.disease,
+      hcp: state.hcp,
+      message: text,
+      sessionId: state.sessionId
+    };
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mode: state.backendMode,  // Use backend mode, not workflow mode
-        history: history.slice(-10),  // Last 10 turns for context
-        eiProfile: state.eiProfile,
-        eiFeature: state.eiFeature,
-        disease: state.disease,
-        hcp: state.hcp,
-        message: text,
-        sessionId: state.sessionId
-      })
+      body: JSON.stringify(payload)
     });
     if (r.ok) {
       const j = await r.json().catch(() => null);
