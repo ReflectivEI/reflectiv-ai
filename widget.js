@@ -408,7 +408,7 @@
       ${mkCard("resilience", "Resilience", 9)}
     </div>
     ${tips.length ? `<ul class="ei-tips">${tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
-    <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
+    <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/ei-scoring-guide.html" target="_blank" rel="noopener">scoring guide</a> · <a href="/ei-score-details.html" target="_blank" rel="noopener">view details</a></div>
   </div>`;
   }
 
