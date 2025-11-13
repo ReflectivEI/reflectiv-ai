@@ -759,7 +759,8 @@
     const challengeMatch = cleanedText.match(/Challenge:\s*(.+?)(?=\s+Rep Approach:|$)/is);
     const repApproachMatch = cleanedText.match(/Rep Approach:\s*(.+?)(?=\s+Impact:|$)/is);
     const impactMatch = cleanedText.match(/Impact:\s*(.+?)(?=\s+Suggested Phrasing:|$)/is);
-    const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*[""']?(.+?)[""']?\s*(?=\s+Challenge:|<coach>|$)/is);
+    // GREEDY match for Suggested Phrasing (last section) to capture full text, not truncate mid-sentence
+    const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*[""']?(.+)[""']?\s*(?=\s*(?:<coach>|$))/is);
 
     console.log('[Sales Coach Format] Matches:', {
       challenge: !!challengeMatch,
@@ -1857,9 +1858,10 @@ ${COMMON}`
         const normalized = normalizeGuidanceLabels(rawContent);
 
         // Use special formatting for sales-coach mode AND role-play HCP responses
-        if (currentMode === "sales-coach" && m.role === "assistant") {
+        // CRITICAL: Check message's own _mode, not global currentMode, to preserve formatting across mode switches
+        if (m._mode === "sales-coach" && m.role === "assistant") {
           console.log('[renderMessages] ========== SALES COACH MESSAGE ==========');
-          console.log('[renderMessages] currentMode:', currentMode);
+          console.log('[renderMessages] m._mode:', m._mode);
           console.log('[renderMessages] m.role:', m.role);
           console.log('[renderMessages] Has cached HTML?', !!m._formattedHTML);
           console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
@@ -1875,7 +1877,7 @@ ${COMMON}`
             console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
           }
           body.innerHTML = m._formattedHTML;
-        } else if (currentMode === "role-play" && (m.role === "assistant" || m._speaker === "hcp")) {
+        } else if (m._mode === "role-play" && (m.role === "assistant" || m._speaker === "hcp")) {
           // Format HCP responses in Role Play mode with clean structure
           console.log('[renderMessages] Formatting HCP response in role-play mode');
           if (!m._formattedHTML) {
@@ -3049,7 +3051,8 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       conversation.push({
         role: "user",
         content: userText,
-        _speaker: currentMode === "role-play" ? "rep" : "user"
+        _speaker: currentMode === "role-play" ? "rep" : "user",
+        _mode: currentMode
       });
       trimConversationIfNeeded();
       renderMessages();
@@ -3187,7 +3190,10 @@ Please provide your response again with all required fields including phrasing.`
         lastAssistantNorm = candidate;
         pushRecent(candidate);
 
-        replyText = clampLen(replyText, currentMode === "sales-coach" ? 1200 : 1400);
+        // CRITICAL: Sales Coach responses have structured format (Challenge, Rep Approach, Impact, Suggested Phrasing)
+        // that must be preserved in full. Clamping at 1200 chars truncates Suggested Phrasing section.
+        // Increased limit to 2500 to accommodate full structured responses without truncation.
+        replyText = clampLen(replyText, currentMode === "sales-coach" ? 2500 : 1400);
 
         const computed = scoreReply(userText, replyText, currentMode);
 
@@ -3215,7 +3221,8 @@ Please provide your response again with all required fields including phrasing.`
           role: "assistant",
           content: replyText,
           _coach: finalCoach,
-          _speaker: currentMode === "role-play" ? "hcp" : "assistant"
+          _speaker: currentMode === "role-play" ? "hcp" : "assistant",
+          _mode: currentMode
         });
         trimConversationIfNeeded();
         renderMessages();
