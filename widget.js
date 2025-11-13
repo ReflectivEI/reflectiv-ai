@@ -2761,6 +2761,21 @@ ${COMMON}`
       session: "widget-" + (Math.random().toString(36).slice(2, 10))
     };
 
+    // For EI mode, load and include EI framework content
+    if (currentMode === "emotional-assessment") {
+      try {
+        if (typeof EIContext !== "undefined" && EIContext?.getSystemExtras) {
+          const eiExtras = await EIContext.getSystemExtras().catch(() => null);
+          if (eiExtras) {
+            payload.eiContext = eiExtras.slice(0, 8000); // Limit to prevent payload bloat
+          }
+        }
+      } catch (e) {
+        console.warn("[chat] Failed to load EI context:", e.message);
+        // Continue without EI context rather than failing the entire request
+      }
+    }
+
     // SSE Streaming branch
     if (useStreaming) {
       try {

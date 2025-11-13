@@ -571,6 +571,22 @@
       message: text,
       sessionId: state.sessionId
     };
+
+    // For EI mode, load and include EI framework context if available
+    if (state.backendMode === "emotional-assessment") {
+      try {
+        if (typeof EIContext !== "undefined" && EIContext?.getSystemExtras) {
+          const eiExtras = await EIContext.getSystemExtras().catch(() => null);
+          if (eiExtras) {
+            payload.eiContext = eiExtras.slice(0, 8000);
+          }
+        }
+      } catch (e) {
+        console.warn("[coach] Failed to load EI context:", e.message);
+        // Continue without EI context rather than failing the request
+      }
+    }
+
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

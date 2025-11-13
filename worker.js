@@ -991,6 +991,12 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `Remember: You are the HCP. Natural, brief, clinical voice only - bullets allowed when clinically appropriate.`
     ].join("\n");
 
+    // Build EI Prompt with framework content if provided in request
+    let eiFrameworkContent = "";
+    if (body.eiContext && typeof body.eiContext === "string") {
+      eiFrameworkContent = `\n\n### EI FRAMEWORK CONTENT (from about-ei.md)\n${body.eiContext.slice(0, 4000)}\n\n`;
+    }
+
     const eiPrompt = [
       `You are Reflectiv Coach in Emotional Intelligence mode.`,
       ``,
@@ -1024,13 +1030,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Reference Triple-Loop Reflection when relevant`,
       `- Model empathy and warmth in your coaching tone`,
       `- End with a reflective question that builds emotional metacognition`,
+      `- If discussing the EI framework itself, ground responses in the actual framework content and domains`,
       ``,
       `DO NOT:`,
       `- Role-play as HCP`,
       `- Provide sales coaching or product info`,
       `- Include coach scores or rubrics`,
       `- Use structured Challenge/Rep Approach format`
-    ].join("\n");
+    ].join("\n") + eiFrameworkContent;
 
     const pkPrompt = [
       `You are ReflectivAI, an advanced AI knowledge partner for life sciences professionals.`,
