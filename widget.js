@@ -1,6 +1,6 @@
 /* widget.js
  * ReflectivAI Chat/Coach — drop-in (coach-v2, deterministic scoring v3) + RP hardening r10
- * Modes: emotional-assessment | product-knowledge | sales-simulation | role-play
+ * Modes: emotional-assessment | product-knowledge | sales-coach | role-play
  *
  * FIXED ROOT CAUSES:
  * 1) HCP-only enforcement in RP (multi-pass rewrite + imperative/pronoun repair + final strip) – only triggers on leak
@@ -11,7 +11,7 @@
  * 6) Scenario cascade (Disease → HCP) with resilient loaders + de-dupe
  * 7) Rep-only evaluation command (“Evaluate Rep”) with side-panel injection
  * 8) EI quick panel (persona/feature → empathy/stress + hints)
- * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Simulation
+ * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Coach
  */
 (function () {
   // ---------- safe bootstrapping ----------
@@ -54,7 +54,7 @@
   const LC_TO_INTERNAL = {
     "Emotional Intelligence": "emotional-assessment",
     "Product Knowledge": "product-knowledge",
-    "Sales Coach": "sales-simulation",
+    "Sales Coach": "sales-coach",
     "Role Play": "role-play",
     "General Assistant": "general-knowledge"
   };
@@ -71,7 +71,7 @@
   let scenariosById = new Map();
   let citationsDb = {}; // Citation reference database
 
-  let currentMode = "sales-simulation";
+  let currentMode = "sales-coach";
   let currentScenarioId = null;
   let conversation = [];
   let coachOn = true;
@@ -96,7 +96,7 @@
   const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
 
   // ---------- Performance telemetry ----------
-  let debugMode = true;
+  let debugMode = false;  // Only shows if ?debug=1 in URL
   let telemetryFooter = null;
   let currentTelemetry = null;
   const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
@@ -360,13 +360,13 @@
 
   // === EI summary renderer for yellow panel ===
   function renderEiPanel(msg) {
-    const ei = msg && msg._coach && msg._coach.ei;
-    if (!ei || !ei.scores) return "";
+    const coach = msg && msg._coach;
+    if (!coach || !coach.scores) return "";
 
-    const S = ei.scores || {};
-    const R = ei.rationales || {};
-    const tips = Array.isArray(ei.tips) ? ei.tips.slice(0, 3) : [];
-    const rubver = ei.rubric_version || "v1";
+    const S = coach.scores || {};
+    const R = coach.rationales || {};
+    const tips = Array.isArray(coach.tips) ? coach.tips.slice(0, 3) : [];
+    const rubver = coach.rubric_version || "v2.0";
 
     const mk = (k, label) => {
       const v = Number(S[k] ?? 0);
@@ -383,10 +383,17 @@
     <div class="ei-h">Emotional Intelligence Summary</div>
     <div class="ei-row">
       ${mk("empathy", "Empathy")}
-      ${mk("discovery", "Discovery")}
-      ${mk("compliance", "Compliance")}
       ${mk("clarity", "Clarity")}
-      ${mk("accuracy", "Accuracy")}
+      ${mk("compliance", "Compliance")}
+      ${mk("discovery", "Discovery")}
+      ${mk("objection_handling", "Objection Handling")}
+    </div>
+    <div class="ei-row">
+      ${mk("confidence", "Confidence")}
+      ${mk("active_listening", "Active Listening")}
+      ${mk("adaptability", "Adaptability")}
+      ${mk("action_insight", "Action Insight")}
+      ${mk("resilience", "Resilience")}
     </div>
     ${tips.length ? `<ul class="ei-tips">${tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
     <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
@@ -470,7 +477,7 @@
 
   // mode-aware fallback lines
   function fallbackText(mode) {
-    if (mode === "sales-simulation") {
+    if (mode === "sales-coach") {
       return "Keep it concise. Acknowledge the HCP’s context, give one actionable tip, then end with a single discovery question.";
     }
     if (mode === "product-knowledge") {
@@ -700,7 +707,7 @@
   }
 
   /**
-   * formatSalesSimulationReply - Format sales-simulation responses with proper structure
+   * formatSalesCoachReply - Format sales-coach responses with proper structure
    * Expected format:
    * Challenge: [text]
    *
@@ -712,7 +719,7 @@
    *
    * Suggested Phrasing: "[text]"
    */
-  function formatSalesSimulationReply(text) {
+  function formatSalesCoachReply(text) {
     if (!text) return "";
 
     console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
@@ -722,25 +729,25 @@
     // DEDUPLICATION: LLM sometimes repeats sections 2-3x - remove duplicates first
     // Look for patterns like "Challenge: X... Challenge: X..." and keep only first occurrence
     let cleanedText = text;
-    
+
     // Remove duplicate "Challenge:" sections
     const challengeRegex = /(Challenge:\s*.+?)(\s+Challenge:)/is;
     while (challengeRegex.test(cleanedText)) {
       cleanedText = cleanedText.replace(challengeRegex, '$1');
     }
-    
+
     // Remove duplicate "Rep Approach:" sections
     const repRegex = /(Rep Approach:\s*.+?)(\s+Rep Approach:)/is;
     while (repRegex.test(cleanedText)) {
       cleanedText = cleanedText.replace(repRegex, '$1');
     }
-    
+
     // Remove duplicate "Impact:" sections
     const impactRegex = /(Impact:\s*.+?)(\s+Impact:)/is;
     while (impactRegex.test(cleanedText)) {
       cleanedText = cleanedText.replace(impactRegex, '$1');
     }
-    
+
     // Remove duplicate "Suggested Phrasing:" sections
     const phrasingRegex = /(Suggested Phrasing:\s*.+?)(\s+Suggested Phrasing:)/is;
     while (phrasingRegex.test(cleanedText)) {
@@ -834,23 +841,23 @@ Suggested Phrasing: "[text]"</pre>
   function md(text) {
     if (!text) return "";
     let s = esc(String(text)).replace(/\r\n?/g, "\n");
-    
+
     // Pre-process: Force line breaks BEFORE numbered items and bullets that appear inline
     // This handles: "text 1. Item" -> "text\n1. Item"
     s = s.replace(/([.!?])\s+(\d+\.)\s+/g, "$1\n$2 ");
     s = s.replace(/([a-z])\s+(\d+\.)\s+([A-Z])/g, "$1\n$2 $3");
-    
+
     // Force line breaks before inline bullets/dashes (but not hyphens in words)
     s = s.replace(/([.:])\s+(-\s+[A-Z])/g, "$1\n$2");
     s = s.replace(/([a-z])\.\s+(-\s+)/g, "$1.\n$2");
-    
+
     // Code blocks FIRST (before other processing): ```code``` -> <pre><code>code</code></pre>
     s = s.replace(/```([^`]+)```/g, "<pre><code>$1</code></pre>");
-    
+
     // Headers: ## Header -> <h3>Header</h3>, ### Header -> <h4>Header</h4>
     s = s.replace(/^###\s+(.+)$/gm, "<h4>$1</h4>");
     s = s.replace(/^##\s+(.+)$/gm, "<h3>$1</h3>");
-    
+
     // Numbered lists: 1. item -> <ol><li>item</li></ol>
     // Process BEFORE bold so we can apply bold inside list items
     s = s.replace(
@@ -866,7 +873,7 @@ Suggested Phrasing: "[text]"</pre>
               content = content.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
               content = content.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
               content = content.replace(/`([^`]+)`/g, "<code>$1</code>");
-              
+
               // Handle nested bullets INSIDE numbered items (e.g., "1. Item - sub" -> includes sub-bullets)
               if (content.includes(" - ")) {
                 const parts = content.split(/\s+-\s+/);
@@ -876,7 +883,7 @@ Suggested Phrasing: "[text]"</pre>
                   return `<li>${main}<ul>${subs.map(sub => `<li>${sub}</li>`).join('')}</ul></li>`;
                 }
               }
-              
+
               return `<li>${content}</li>`;
             }
             return "";
@@ -885,7 +892,7 @@ Suggested Phrasing: "[text]"</pre>
         return `<ol>${items}</ol>`;
       }
     );
-    
+
     // UNICODE bullet lists: • item -> <ul><li>item</li></ul>
     s = s.replace(
       /^(?:•\s+|●\s+|○\s+).+(?:\n(?:•\s+|●\s+|○\s+).+)*/gm,
@@ -907,7 +914,7 @@ Suggested Phrasing: "[text]"</pre>
         return `<ul>${items}</ul>`;
       }
     );
-    
+
     // Markdown bullet lists: - item or * item -> <ul><li>item</li></ul>
     // Process BEFORE bold so we can apply bold inside list items
     s = s.replace(
@@ -931,18 +938,18 @@ Suggested Phrasing: "[text]"</pre>
         return `<ul>${items}</ul>`;
       }
     );
-    
+
     // Bold, italic, inline code for NON-list text: **text** -> <strong>text</strong>
     s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
     s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
     s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
-    
+
     // Wrap paragraphs in <p> tags (skip if already wrapped in HTML)
     return s
       .split(/\n{2,}/)
       .map((p) => {
-        if (p.startsWith("<ul>") || p.startsWith("<ol>") || p.startsWith("<h3>") || 
-            p.startsWith("<h4>") || p.startsWith("<pre>")) {
+        if (p.startsWith("<ul>") || p.startsWith("<ol>") || p.startsWith("<h3>") ||
+          p.startsWith("<h4>") || p.startsWith("<pre>")) {
           return p;
         }
         return `<p>${p.replace(/\n/g, "<br>")}</p>`;
@@ -1159,7 +1166,7 @@ Suggested Phrasing: "[text]"</pre>
     const objection_handling = sig.objection ? (sig.accuracyCue ? 4 : 3) : 2;
     const empathy = sig.empathy ? 3 : 2;
     const clarity = sig.tooLong ? 2 : sig.idealLen ? 4 : 3;
-    
+
     // Advanced metrics (defaults for deterministic scoring - LLM will provide real scores)
     const confidence = sig.accuracyCue && !sig.tooLong ? 4 : 3;
     const active_listening = sig.empathy ? 3 : 2;
@@ -1167,9 +1174,9 @@ Suggested Phrasing: "[text]"</pre>
     const action_insight = sig.discovery ? 3 : 2;
     const resilience = sig.objection && sig.empathy ? 3 : 2;
 
-    const W = { 
-      empathy: 0.12, clarity: 0.12, compliance: 0.14, discovery: 0.12, 
-      objection_handling: 0.11, confidence: 0.11, 
+    const W = {
+      empathy: 0.12, clarity: 0.12, compliance: 0.14, discovery: 0.12,
+      objection_handling: 0.11, confidence: 0.11,
       active_listening: 0.09, adaptability: 0.08, action_insight: 0.06, resilience: 0.05
     };
     const toPct = (v) => v * 20;
@@ -1345,7 +1352,7 @@ Return exactly two parts. No code blocks. No markdown headings.
 
     const personaLine = currentPersonaHint();
 
-    if (mode === "sales-simulation") {
+    if (mode === "sales-coach") {
       return (
         `# Role
 You are a virtual pharma coach. Be direct, label-aligned, and safe.
@@ -1538,7 +1545,7 @@ ${COMMON}`
       modeSel.appendChild(o);
     });
     const initialLc =
-      Object.keys(LC_TO_INTERNAL).find((k) => LC_TO_INTERNAL[k] === (cfg?.defaultMode || "sales-simulation")) ||
+      Object.keys(LC_TO_INTERNAL).find((k) => LC_TO_INTERNAL[k] === (cfg?.defaultMode || "sales-coach")) ||
       "Sales Coach";
     modeSel.value = initialLc;
     currentMode = LC_TO_INTERNAL[modeSel.value];
@@ -1792,7 +1799,7 @@ ${COMMON}`
 
     function renderMeta() {
       const sc = scenariosById.get(currentScenarioId);
-      const showMeta = currentMode === "sales-simulation" || currentMode === "role-play";
+      const showMeta = currentMode === "sales-coach" || currentMode === "role-play";
       if (!sc || !currentScenarioId || !showMeta) {
         meta.innerHTML = "";
         return;
@@ -1813,19 +1820,33 @@ ${COMMON}`
 
         // ALWAYS show speaker chips for clarity
         if (currentMode === "role-play") {
-          // Always show 'HCP' for assistant in role-play mode
-          const chipText = m.role === "assistant" ? "HCP" : m._speaker === "rep" ? "Rep" : "You";
+          // Always show 'HCP' for assistant in role-play mode, 'Rep' for user
+          const chipText = m.role === "assistant" ? "HCP" : "Rep";
           const chipCls = m.role === "assistant" ? "speaker hcp" : "speaker rep";
           const chip = el("div", chipCls, chipText);
           c.appendChild(chip);
-        } else if (currentMode === "sales-simulation") {
-          const isCoach = m.role === "assistant";
-          const chip = el("div", isCoach ? "speaker coach" : "speaker rep", isCoach ? "Sales Coach" : "Rep");
+        } else if (currentMode === "sales-coach") {
+          // Sales Coach shows "Sales Coach" for assistant, "Rep" for user
+          const chipText = m.role === "assistant" ? "Sales Coach" : "Rep";
+          const chipCls = m.role === "assistant" ? "speaker coach" : "speaker rep";
+          const chip = el("div", chipCls, chipText);
+          c.appendChild(chip);
+        } else if (currentMode === "product-knowledge") {
+          // Product Knowledge shows "Coach" for assistant, "User" for user
+          const chipText = m.role === "assistant" ? "Coach" : "User";
+          const chipCls = m.role === "assistant" ? "speaker coach" : "speaker user";
+          const chip = el("div", chipCls, chipText);
+          c.appendChild(chip);
+        } else if (currentMode === "emotional-assessment") {
+          // Emotional Assessment shows "Coach" for assistant, "User" for user
+          const chipText = m.role === "assistant" ? "Coach" : "User";
+          const chipCls = m.role === "assistant" ? "speaker coach" : "speaker user";
+          const chip = el("div", chipCls, chipText);
           c.appendChild(chip);
         } else {
-          // For all other modes (Alora, Product Knowledge, Emotional Assessment), show User/Assistant
+          // Fallback for any other modes (should not happen with validation)
           const chipText = m.role === "assistant" ? "Assistant" : "You";
-          const chipCls = m.role === "assistant" ? "speaker hcp" : "speaker rep";
+          const chipCls = m.role === "assistant" ? "speaker assistant" : "speaker user";
           const chip = el("div", chipCls, chipText);
           c.appendChild(chip);
         }
@@ -1835,19 +1856,19 @@ ${COMMON}`
         const rawContent = String(m.content || '');
         const normalized = normalizeGuidanceLabels(rawContent);
 
-        // Use special formatting for sales-simulation mode AND role-play HCP responses
-        if (currentMode === "sales-simulation" && m.role === "assistant") {
+        // Use special formatting for sales-coach mode AND role-play HCP responses
+        if (currentMode === "sales-coach" && m.role === "assistant") {
           console.log('[renderMessages] ========== SALES COACH MESSAGE ==========');
           console.log('[renderMessages] currentMode:', currentMode);
           console.log('[renderMessages] m.role:', m.role);
           console.log('[renderMessages] Has cached HTML?', !!m._formattedHTML);
           console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
           console.log('[renderMessages] normalized preview:', normalized.substring(0, 200));
-          
+
           // Cache formatted HTML to avoid re-parsing on every render
           if (!m._formattedHTML) {
             console.log('[renderMessages] NO CACHE - Formatting now...');
-            m._formattedHTML = formatSalesSimulationReply(normalized);
+            m._formattedHTML = formatSalesCoachReply(normalized);
             console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
             console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
           } else {
@@ -1909,33 +1930,8 @@ ${COMMON}`
       const fb = last._coach;
       const scores = fb.scores || fb.subscores || {};
 
-      // Sales Simulation yellow panel spec:
-      if (currentMode === "sales-simulation") {
-        // Optional dev shim (guarded)
-        if (DEBUG_EI_SHIM && last && last._coach && !last._coach.ei) {
-          last._coach.ei = {
-            scores: { empathy: 4, clarity: 4, compliance: 5, discovery: 3, objection_handling: 4, confidence: 4, active_listening: 3, adaptability: 3, action_insight: 3, resilience: 3 },
-            rationales: {
-              empathy: "Validated HCP constraints and reframed",
-              clarity: "Concise, one idea per sentence",
-              compliance: "On-label; AE capture ready",
-              discovery: "Asked one focused question",
-              objection_handling: "Addressed workflow concern",
-              confidence: "Clear, assured delivery",
-              active_listening: "Paraphrased HCP concern",
-              adaptability: "Adjusted tone to match HCP urgency",
-              action_insight: "Proposed concrete next step",
-              resilience: "Remained composed under objection"
-            },
-            tips: [
-              "Open with HCP context then one ask",
-              "Anchor claims to label/guideline",
-              "Close with one specific next step"
-            ],
-            rubric_version: "v1.2"
-          };
-        }
-
+      // Sales Coach yellow panel spec:
+      if (currentMode === "sales-coach") {
         const eiHTML = renderEiPanel(last);
 
         // Fallback to old yellow panel HTML if no EI data
@@ -2020,8 +2016,8 @@ ${COMMON}`
           return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div class="muted">No coach feedback available</div>`;
         })();
 
-    body.innerHTML = `<div class="coach-feedback-block">${eiHTML || oldYellowHTML}</div>`;
-    return;
+        body.innerHTML = `<div class="coach-feedback-block">${eiHTML || oldYellowHTML}</div>`;
+        return;
       }
 
       // Emotional-assessment and Role Play final eval - Use EI 5-point scale
@@ -2073,7 +2069,7 @@ ${COMMON}`
       coachLabel.classList.toggle("hidden", pk);
       coachSel.classList.toggle("hidden", pk);
 
-      if (currentMode === "sales-simulation") {
+      if (currentMode === "sales-coach") {
         diseaseLabel.classList.remove("hidden");
         diseaseSelect.classList.remove("hidden");
         hcpLabel.classList.remove("hidden");
@@ -2151,7 +2147,7 @@ ${COMMON}`
     diseaseSelect.addEventListener("change", () => {
       const ds = diseaseSelect.value || "";
       if (!ds) return;
-      if (currentMode === "sales-simulation" || currentMode === "role-play") {
+      if (currentMode === "sales-coach" || currentMode === "role-play") {
         populateHcpForDisease(ds);
       } else if (currentMode === "product-knowledge") {
         currentScenarioId = null;
@@ -2182,10 +2178,10 @@ ${COMMON}`
     coach.addEventListener("click", (e) => {
       const pill = e.target.closest(".ei-pill");
       if (!pill) return;
-      
+
       const metric = pill.getAttribute("data-metric");
       if (!metric) return;
-      
+
       showMetricModal(metric, pill.textContent);
     });
 
@@ -2540,6 +2536,14 @@ ${COMMON}`
   }
 
   async function callModel(messages, scenarioContext = null) {
+    // Validate mode before making request
+    const validModes = ["emotional-assessment", "product-knowledge", "sales-coach", "role-play"];
+    if (!validModes.includes(currentMode)) {
+      console.error("[chat] invalid_mode=" + currentMode);
+      showToast("Invalid mode selected. Please refresh the page.", "error");
+      throw new Error("invalid_mode");
+    }
+
     // Use window.WORKER_URL directly and append /chat
     // Normalize by removing trailing slashes to avoid double slashes
     const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
@@ -2723,11 +2727,28 @@ ${COMMON}`
         // Log error with status
         console.error(`[chat] status=${r.status} path=/chat`);
 
-        // Check if we should retry (429 or 5xx errors)
-        if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
+        // Don't retry 4xx client errors (except 429 rate limit)
+        const isRetryable = r.status === 429 || r.status >= 500;
+
+        // Check if we should retry
+        if (attempt < delays.length && isRetryable) {
           lastError = new Error("HTTP " + r.status);
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
+        }
+
+        // For 4xx errors (except 429), try to extract error message from response
+        if (r.status >= 400 && r.status < 500) {
+          try {
+            const errorBody = await r.json();
+            const errorMsg = errorBody.message || errorBody.error || `Request failed (status ${r.status})`;
+            showToast(errorMsg, "error");
+            throw new Error("HTTP " + r.status);
+          } catch (jsonErr) {
+            // If JSON parsing fails, show generic error
+            showToast(`Request failed (status ${r.status}). Please retry.`, "error");
+            throw new Error("HTTP " + r.status);
+          }
         }
 
         // Show toast for non-retryable errors
@@ -2820,8 +2841,8 @@ ${COMMON}`
 
     const evalMsgs = [
       systemPrompt ? { role: "system", content: systemPrompt } : null,
-      { 
-        role: "system", 
+      {
+        role: "system",
         content: buildPreface("role-play", sc) + `\n\nEvaluate the whole exchange now using the 5-point scale for these EXACT 10 metrics:
 
 **Core EI Metrics:**
@@ -2905,7 +2926,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
 
     const s = data.scores || {};
     const list = (arr) => Array.isArray(arr) && arr.length ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "—";
-    
+
     // Create clickable pills with ei-pill class and data-metric for all 10 metrics
     const pillsHTML = ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience'].map(k => {
       const v = s[k] ?? 0;
@@ -2915,7 +2936,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
         <div style="font-size:14px;font-weight:700;margin-top:2px">${v}/5</div>
       </span>`;
     }).join('');
-    
+
     const html = `
       <div class="coach-panel">
         <h4>Rep-only Evaluation</h4>
@@ -2962,7 +2983,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
   async function sendMessage(userText) {
     console.log('[DEBUG] sendMessage() called with text:', userText);
     console.log('[DEBUG] isSending:', isSending, ', isHealthy:', isHealthy);
-    
+
     if (isSending) return;
 
     // Health gate: block sends when unhealthy
@@ -3040,7 +3061,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       const messages = [];
 
       if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
-      if ((currentMode === "sales-simulation" || currentMode === "role-play") && eiHeuristics) {
+      if ((currentMode === "sales-coach" || currentMode === "role-play") && eiHeuristics) {
         messages.push({ role: "system", content: eiHeuristics });
       }
 
@@ -3072,16 +3093,19 @@ ${detail}`;
         }
 
         let raw = await callModel(messages, sc);
-        if (!raw) {
-          console.warn("[coach] degrade-to-legacy - Using fallback text due to empty response");
-          raw = fallbackText(currentMode);
+
+        // If response is empty or null, throw error instead of degrading to legacy
+        if (!raw || !raw.trim()) {
+          console.error("[coach] empty_response_from_worker mode=" + currentMode);
+          showToast("Received empty response from server. Please retry.", "error");
+          return;
         }
 
         let { coach, clean } = extractCoach(raw);
 
-        // Re-ask once if phrasing is missing in sales-simulation mode
+        // Re-ask once if phrasing is missing in sales-coach mode
         const phrasing = coach?.phrasing;
-        if (currentMode === "sales-simulation" && coach && (!phrasing || !phrasing.trim())) {
+        if (currentMode === "sales-coach" && coach && (!phrasing || !phrasing.trim())) {
           const correctiveHint = `
 IMPORTANT: The response must include a "phrasing" field in the <coach> JSON block.
 The phrasing should be a concrete, actionable question or statement the rep can use with the HCP.
@@ -3163,7 +3187,7 @@ Please provide your response again with all required fields including phrasing.`
         lastAssistantNorm = candidate;
         pushRecent(candidate);
 
-        replyText = clampLen(replyText, currentMode === "sales-simulation" ? 1200 : 1400);
+        replyText = clampLen(replyText, currentMode === "sales-coach" ? 1200 : 1400);
 
         const computed = scoreReply(userText, replyText, currentMode);
 
@@ -3219,10 +3243,9 @@ Please provide your response again with all required fields including phrasing.`
           }).catch(() => { });
         }
       } catch (e) {
-        console.error("[coach] degrade-to-legacy - Error in sendMessage:", e);
-        conversation.push({ role: "assistant", content: `Model error: ${String(e.message || e)}` });
-        trimConversationIfNeeded();
-        renderMessages();
+        console.error("[coach] error_in_sendMessage:", e);
+        showToast("Failed to send message: " + (e.message || "Unknown error"), "error");
+        // Don't add error message to conversation - let user retry
       }
     } finally {
       const shellEl2 = mount.querySelector(".reflectiv-chat");
@@ -3289,7 +3312,7 @@ Please provide your response again with all required fields including phrasing.`
       }
     } catch (e) {
       console.error("config load failed:", e);
-      cfg = { defaultMode: "sales-simulation" };
+      cfg = { defaultMode: "sales-coach" };
     }
 
     if (!cfg.apiBase && !cfg.workerUrl) {

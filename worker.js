@@ -112,35 +112,74 @@ export default {
 
 /* ------------------------- Inlined Knowledge & Rules ------------------------ */
 
-// Minimal curated facts for demo. Add more or move to KV.
+// Comprehensive facts database for all therapeutic areas: HIV, Oncology, Cardiovascular, COVID-19, Vaccines
+// Each fact provides AI with clinically accurate, label-aligned reference material for dynamic response generation
 const FACTS_DB = [
-  {
-    id: "HIV-PREP-ELIG-001",
-    ta: "HIV",
-    topic: "PrEP Eligibility",
-    text: "PrEP is recommended for individuals at substantial risk of HIV. Discuss sexual and injection risk factors.",
-    cites: ["CDC PrEP 2024"]
-  },
-  {
-    id: "HIV-PREP-TAF-002",
-    ta: "HIV",
-    topic: "Descovy for PrEP",
-    text: "Descovy (emtricitabine/tenofovir alafenamide) is indicated for PrEP excluding receptive vaginal sex.",
-    cites: ["FDA Label Descovy PrEP"]
-  },
-  {
-    id: "HIV-PREP-SAFETY-003",
-    ta: "HIV",
-    topic: "Safety",
-    text: "Assess renal function before and during PrEP. Consider eGFR thresholds per label.",
-    cites: ["FDA Label Descovy", "CDC PrEP 2024"]
-  }
+  // HIV Facts (10 facts)
+  { id: "HIV-PREP-ELIG-001", ta: "HIV", topic: "PrEP Eligibility", text: "PrEP is recommended for individuals at substantial risk of HIV acquisition, including those with sexual partners of unknown HIV status, inconsistent condom use, or recent STI diagnoses.", cites: [{ text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }] },
+  { id: "HIV-PREP-TAF-002", ta: "HIV", topic: "Descovy for PrEP", text: "Descovy (emtricitabine/tenofovir alafenamide) is indicated for HIV PrEP in at-risk adults and adolescents weighing ≥35 kg, excluding individuals assigned female at birth at risk from receptive vaginal sex.", cites: [{ text: "FDA Label - Descovy PrEP", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/208215s023lbl.pdf" }, { text: "DISCOVER Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1917257" }] },
+  { id: "HIV-PREP-SAFETY-003", ta: "HIV", topic: "Renal Safety Monitoring", text: "Assess renal function (eGFR, CrCl) and urinalysis before PrEP initiation and monitor every 3-6 months during treatment. Consider dose adjustment or discontinuation if eGFR <50 mL/min.", cites: [{ text: "FDA Label - Descovy", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/208215s023lbl.pdf" }, { text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }] },
+  { id: "HIV-PREP-APRETUDE-004", ta: "HIV", topic: "Apretude (CAB-LA)", text: "Apretude (cabotegravir long-acting injectable) is indicated for PrEP in at-risk adults and adolescents weighing ≥35 kg, administered as 600 mg IM every 2 months after oral lead-in or initial injections.", cites: [{ text: "FDA Label - Apretude", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/215499s000lbl.pdf" }, { text: "HPTN 083/084 Trials", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2101016" }] },
+  { id: "HIV-TREAT-BIKTARVY-005", ta: "HIV", topic: "Biktarvy for Treatment", text: "Biktarvy (bictegravir/emtricitabine/tenofovir alafenamide) is a complete once-daily single-tablet regimen for treatment-naïve or virologically suppressed adults, demonstrating high barrier to resistance and favorable safety profile.", cites: [{ text: "FDA Label - Biktarvy", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2022/210251s028lbl.pdf" }, { text: "Study 1489/1490", url: "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(18)30356-3/fulltext" }] },
+  { id: "HIV-TREAT-CAB-006", ta: "HIV", topic: "Cabenuva Long-Acting", text: "Cabenuva (cabotegravir/rilpivirine long-acting) is a complete monthly or every-2-month injectable regimen for virologically suppressed adults with no current or prior resistance to either component, requiring adherence and injection site management.", cites: [{ text: "FDA Label - Cabenuva", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/212888s000lbl.pdf" }, { text: "ATLAS/FLAIR Trials", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1904398" }] },
+  { id: "HIV-TREAT-RESISTANCE-007", ta: "HIV", topic: "Resistance Testing", text: "Genotypic resistance testing is recommended before initiating or modifying ART to guide regimen selection, particularly for integrase strand transfer inhibitor (INSTI) resistance mutations.", cites: [{ text: "DHHS Guidelines 2024", url: "https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-arv/what-start-antiretroviral-naive-patients" }, { text: "IAS-USA Recommendations", url: "https://jamanetwork.com/journals/jama/fullarticle/2799864" }] },
+  { id: "HIV-ADHERENCE-008", ta: "HIV", topic: "Adherence and Viral Suppression", text: "Sustained viral suppression (HIV RNA <50 copies/mL) requires >95% adherence to ART. Long-acting regimens may improve adherence for patients facing daily pill burden challenges.", cites: [{ text: "DHHS Guidelines 2024", url: "https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-arv/adherence-antiretroviral-therapy" }, { text: "Clinical Adherence Studies", url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3722218/" }] },
+  { id: "HIV-PREP-LAB-009", ta: "HIV", topic: "PrEP Laboratory Monitoring", text: "Before PrEP initiation, confirm negative HIV test, assess HBV status, and perform STI screening. Repeat HIV testing every 3 months and STI screening every 6-12 months during PrEP use.", cites: [{ text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }, { text: "USPSTF Recommendations", url: "https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/prevention-of-human-immunodeficiency-virus-hiv-infection-pre-exposure-prophylaxis" }] },
+  { id: "HIV-PREP-ADHERENCE-010", ta: "HIV", topic: "PrEP Adherence Strategies", text: "Daily oral PrEP requires 4-7 doses per week for protective efficacy. Event-driven (on-demand) dosing may be appropriate for cisgender men who have sex with men with predictable sexual activity.", cites: [{ text: "IPERGAY Study", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1506273" }, { text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }] },
+
+  // Oncology Facts (10 facts)
+  { id: "ONC-IO-CHECKPOINT-001", ta: "Oncology", topic: "Immune Checkpoint Inhibitors", text: "Immune checkpoint inhibitors (anti-PD-1, anti-PD-L1, anti-CTLA-4) enhance T-cell mediated anti-tumor immunity and have transformed treatment across multiple solid tumor types, with efficacy often correlating with PD-L1 expression and tumor mutational burden.", cites: [{ text: "NCCN Guidelines - Multiple Tumor Types", url: "https://www.nccn.org/guidelines/category_1" }, { text: "FDA Labels", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }] },
+  { id: "ONC-IO-TOXICITY-002", ta: "Oncology", topic: "Immune-Related Adverse Events", text: "Immune-related adverse events (irAEs) can affect any organ system, most commonly skin, GI, endocrine, and hepatic. Early recognition and corticosteroid management are critical; severe (Grade 3-4) irAEs require treatment interruption and specialist consultation.", cites: [{ text: "ASCO irAE Management Guidelines", url: "https://ascopubs.org/doi/full/10.1200/JCO.17.00577" }, { text: "NCCN IO Toxicity Management", url: "https://www.nccn.org/professionals/physician_gls/pdf/immunotherapy.pdf" }] },
+  { id: "ONC-ADC-MECHANISMS-003", ta: "Oncology", topic: "Antibody-Drug Conjugates", text: "Antibody-drug conjugates (ADCs) combine targeted monoclonal antibodies with cytotoxic payloads, delivering chemotherapy selectively to tumor cells expressing specific antigens (e.g., HER2, Trop-2, NECTIN-4).", cites: [{ text: "FDA Labels - ADCs", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }, { text: "NCCN Guidelines", url: "https://www.nccn.org/guidelines/category_1" }] },
+  { id: "ONC-ADC-TOXICITY-004", ta: "Oncology", topic: "ADC Adverse Event Management", text: "ADC-associated toxicities include neutropenia, peripheral neuropathy, ocular toxicity, and interstitial lung disease (ILD). Prophylactic growth factor support, dose modifications, and ophthalmologic monitoring may be required.", cites: [{ text: "FDA Labels - ADCs", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }, { text: "Clinical Practice Guidelines", url: "https://www.nccn.org/guidelines/category_1" }] },
+  { id: "ONC-BIOMARKER-PD-L1-005", ta: "Oncology", topic: "PD-L1 Testing", text: "PD-L1 immunohistochemistry (IHC) expression levels guide patient selection for certain IO therapies. Tumor Proportion Score (TPS) ≥50% or Combined Positive Score (CPS) thresholds vary by indication and agent.", cites: [{ text: "NCCN NSCLC Guidelines", url: "https://www.nccn.org/professionals/physician_gls/pdf/nscl.pdf" }, { text: "FDA Companion Diagnostic Approvals", url: "https://www.fda.gov/medical-devices/in-vitro-diagnostics/list-cleared-or-approved-companion-diagnostic-devices-in-vitro-and-imaging-tools" }] },
+  { id: "ONC-BIOMARKER-TMB-006", ta: "Oncology", topic: "Tumor Mutational Burden", text: "Tumor mutational burden (TMB-High, ≥10 mutations/megabase) is an FDA-approved biomarker for pembrolizumab monotherapy in advanced solid tumors after prior treatment, indicating potential for enhanced IO response.", cites: [{ text: "FDA Label - Pembrolizumab", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2020/125514s096lbl.pdf" }, { text: "KEYNOTE-158 Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2005653" }] },
+  { id: "ONC-ORAL-ONCOLYTIC-007", ta: "Oncology", topic: "Oral Oncolytic Adherence", text: "Oral oncolytics require patient education on dosing schedules, drug-drug interactions, food effects, and toxicity self-monitoring. Specialty pharmacy support and early refill coordination reduce treatment interruptions.", cites: [{ text: "ASCO/ONS Oral Chemotherapy Standards", url: "https://ascopubs.org/doi/full/10.1200/JOP.2016.016303" }, { text: "NCCN Patient Education", url: "https://www.nccn.org/patients" }] },
+  { id: "ONC-ORAL-TOXICITY-008", ta: "Oncology", topic: "Oral TKI Toxicity Management", text: "Tyrosine kinase inhibitors (TKIs) commonly cause diarrhea, rash, hypertension, and hand-foot syndrome. Dose modifications and supportive care (antidiarrheals, topical steroids, antihypertensives) maintain treatment continuity.", cites: [{ text: "NCCN Guidelines - Supportive Care", url: "https://www.nccn.org/professionals/physician_gls/pdf/palliative.pdf" }, { text: "FDA Labels", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }] },
+  { id: "ONC-PATHWAY-INTEGRATION-009", ta: "Oncology", topic: "Clinical Pathway Integration", text: "Evidence-based clinical pathways standardize treatment selection per NCCN categories of evidence and preference, optimizing outcomes while managing cost and toxicity. Pathway adherence requires EHR integration and multidisciplinary tumor board alignment.", cites: [{ text: "ASCO Quality Oncology Practice Initiative", url: "https://www.asco.org/practice-policy/quality-improvement/quality-programs/quality-oncology-practice-initiative" }, { text: "NCCN Clinical Pathways", url: "https://www.nccn.org/guidelines/nccn-evidence-blocks" }] },
+  { id: "ONC-SURVIVORSHIP-010", ta: "Oncology", topic: "Survivorship Care Planning", text: "Survivorship care plans document treatment history, potential late effects, surveillance schedules, and transition to primary care. Addressing long-term toxicities (neuropathy, cardiotoxicity, secondary malignancies) is essential.", cites: [{ text: "ASCO Survivorship Guidelines", url: "https://www.asco.org/practice-policy/cancer-care-initiatives/prevention-survivorship" }, { text: "NCCN Survivorship Guidelines", url: "https://www.nccn.org/professionals/physician_gls/pdf/survivorship.pdf" }] },
+
+  // Cardiovascular Facts (10 facts)
+  { id: "CV-GDMT-HFREF-001", ta: "Cardiovascular", topic: "HFrEF Guideline-Directed Medical Therapy", text: "Guideline-directed medical therapy (GDMT) for HFrEF includes four pillars: ACE-I/ARB/ARNI, beta-blockers, MRAs, and SGLT2 inhibitors, each providing mortality and hospitalization benefits with additive effects.", cites: [{ text: "ACC/AHA Heart Failure Guidelines 2022", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }, { text: "ESC HF Guidelines 2021", url: "https://academic.oup.com/eurheartj/article/42/36/3599/6358045" }] },
+  { id: "CV-ARNI-ENTRESTO-002", ta: "Cardiovascular", topic: "Sacubitril/Valsartan (Entresto)", text: "Sacubitril/valsartan (ARNI) is superior to enalapril in reducing cardiovascular death and HF hospitalization in HFrEF patients (NYHA Class II-IV, EF ≤40%). Requires 36-hour ACE-I washout to avoid angioedema.", cites: [{ text: "PARADIGM-HF Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1409077" }, { text: "FDA Label - Entresto", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/207620s019lbl.pdf" }] },
+  { id: "CV-SGLT2-HF-003", ta: "Cardiovascular", topic: "SGLT2 Inhibitors in Heart Failure", text: "SGLT2 inhibitors (dapagliflozin, empagliflozin) reduce HF hospitalization and cardiovascular death in HFrEF and HFpEF, independent of diabetes status. Benefits include diuresis, improved renal outcomes, and metabolic effects.", cites: [{ text: "DAPA-HF Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1911303" }, { text: "EMPEROR-Reduced", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2022190" }, { text: "ACC/AHA Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }] },
+  { id: "CV-SGLT2-CKD-004", ta: "Cardiovascular", topic: "SGLT2i in Chronic Kidney Disease", text: "SGLT2 inhibitors slow CKD progression (eGFR decline, ESKD, CV/renal death) in patients with and without diabetes, including CKD Stage 3-4 (eGFR ≥20 mL/min). Initiation safe despite transient eGFR dip.", cites: [{ text: "DAPA-CKD Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2024816" }, { text: "EMPA-KIDNEY", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2204233" }, { text: "KDIGO 2022 Guidelines", url: "https://kdigo.org/guidelines/diabetes-ckd/" }] },
+  { id: "CV-SGLT2-SAFETY-005", ta: "Cardiovascular", topic: "SGLT2i Safety and Sick Day Rules", text: "SGLT2 inhibitors carry risks of euglycemic DKA (rare), genital mycotic infections, and volume depletion. Educate patients on sick day rules: withhold during acute illness, dehydration, or fasting to prevent DKA.", cites: [{ text: "FDA Safety Communications", url: "https://www.fda.gov/drugs/drug-safety-and-availability/fda-drug-safety-communication-fda-warns-rare-occurrences-serious-infection-genital-area-sglt2" }, { text: "Endocrine Society Guidelines", url: "https://www.endocrine.org/clinical-practice-guidelines" }] },
+  { id: "CV-MRA-SPIRONOLACTONE-006", ta: "Cardiovascular", topic: "Mineralocorticoid Receptor Antagonists", text: "Spironolactone and eplerenone reduce mortality in HFrEF (NYHA Class II-IV) when added to ACE-I and beta-blockers. Monitor potassium and renal function; avoid if K+ >5.0 mEq/L or CrCl <30 mL/min.", cites: [{ text: "RALES Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJM199909023411001" }, { text: "EMPHASIS-HF", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1009492" }, { text: "ACC/AHA Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }] },
+  { id: "CV-BETA-BLOCKER-007", ta: "Cardiovascular", topic: "Beta-Blockers in HFrEF", text: "Evidence-based beta-blockers (carvedilol, metoprolol succinate, bisoprolol) reduce mortality and hospitalization in stable HFrEF. Initiate at low dose and titrate to target or maximum tolerated dose over weeks.", cites: [{ text: "MERIT-HF Trial", url: "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(99)04440-2/fulltext" }, { text: "COPERNICUS Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJM200105313442201" }, { text: "ACC/AHA Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }] },
+  { id: "CV-POST-MI-TRANSITION-008", ta: "Cardiovascular", topic: "Post-MI Discharge GDMT", text: "Post-MI patients with reduced EF should receive GDMT before discharge, including ARNI (if EF ≤40%), beta-blockers, SGLT2i, and statins. Early initiation (within 48-72 hours) improves adherence and outcomes.", cites: [{ text: "ACC/AHA STEMI Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000000525" }, { text: "ESC Acute MI Guidelines", url: "https://academic.oup.com/eurheartj/article/39/2/119/4095042" }] },
+  { id: "CV-TITRATION-CALENDAR-009", ta: "Cardiovascular", topic: "GDMT Titration Protocols", text: "Structured titration protocols with defined follow-up intervals (2-4 weeks) optimize GDMT dosing. Nurse-led HF clinics and remote monitoring support safe up-titration while managing hypotension, bradycardia, and renal function.", cites: [{ text: "ACC/AHA HF Performance Measures", url: "https://www.ahajournals.org/doi/10.1161/HCQ.0000000000000079" }, { text: "HF Society Clinical Practice", url: "https://www.hfsa.org/heart-failure-guidelines" }] },
+  { id: "CV-READMISSION-PREVENTION-010", ta: "Cardiovascular", topic: "HF Readmission Reduction Strategies", text: "Transitional care interventions (7-day follow-up, medication reconciliation, patient education, telemonitoring) reduce 30-day HF readmissions. Pharmacy support for copay assistance and prior authorization streamlines GDMT access.", cites: [{ text: "ACC/AHA Quality Measures", url: "https://www.ahajournals.org/doi/10.1161/HCQ.0000000000000079" }, { text: "CMS Hospital Readmissions Program", url: "https://www.cms.gov/medicare/payment/prospective-payment-systems/acute-inpatient-pps/hospital-readmissions-reduction-program-hrrp" }] },
+
+  // COVID-19 Facts (10 facts)
+  { id: "COVID-PAXLOVID-INDICATIONS-001", ta: "COVID-19", topic: "Paxlovid Indications and Efficacy", text: "Nirmatrelvir/ritonavir (Paxlovid) is authorized for treatment of mild-to-moderate COVID-19 in high-risk adults and pediatric patients (≥12 years, ≥40 kg) within 5 days of symptom onset, reducing hospitalization/death by ~89% when started early.", cites: [{ text: "FDA EUA - Paxlovid", url: "https://www.fda.gov/emergency-preparedness-and-response/mcm-legal-regulatory-and-policy-framework/paxlovid" }, { text: "EPIC-HR Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2118542" }, { text: "NIH COVID-19 Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
+  { id: "COVID-PAXLOVID-DDI-002", ta: "COVID-19", topic: "Paxlovid Drug-Drug Interactions", text: "Ritonavir is a strong CYP3A4 inhibitor, causing significant drug-drug interactions with statins, immunosuppressants, anticoagulants, and calcium channel blockers. Review medication list and consider dose adjustments or temporary holds during 5-day course.", cites: [{ text: "FDA EUA - Paxlovid DDI Table", url: "https://www.fda.gov/media/155050/download" }, { text: "Liverpool COVID-19 Drug Interactions", url: "https://www.covid19-druginteractions.org/" }] },
+  { id: "COVID-PAXLOVID-REBOUND-003", ta: "COVID-19", topic: "COVID-19 Rebound Phenomenon", text: "Viral and symptom rebound (2-8 days post-treatment) occurs in ~5-10% of Paxlovid-treated patients. Patients should be counseled to isolate if symptoms return and seek re-evaluation; no evidence supports extended or repeat courses.", cites: [{ text: "CDC COVID-19 Clinical Guidance", url: "https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html" }, { text: "NIH Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
+  { id: "COVID-REMDESIVIR-OUTPATIENT-004", ta: "COVID-19", topic: "Remdesivir Outpatient Infusion", text: "Remdesivir 3-day IV course (200 mg day 1, 100 mg days 2-3) is authorized for non-hospitalized high-risk COVID-19 patients within 7 days of symptom onset, reducing hospitalization by 87% in PINETREE trial. Requires infusion capacity.", cites: [{ text: "FDA EUA - Remdesivir", url: "https://www.fda.gov/emergency-preparedness-and-response/mcm-legal-regulatory-and-policy-framework/remdesivir-veklury" }, { text: "PINETREE Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2116846" }, { text: "NIH Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
+  { id: "COVID-HIGH-RISK-CRITERIA-005", ta: "COVID-19", topic: "High-Risk Patient Criteria", text: "High-risk criteria for severe COVID-19 include age ≥65, immunosuppression, obesity (BMI ≥35), chronic lung disease, diabetes, cardiovascular disease, chronic kidney disease, and pregnancy. These patients benefit most from early antiviral treatment.", cites: [{ text: "NIH COVID-19 Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/overview/clinical-spectrum/" }, { text: "CDC High-Risk Populations", url: "https://www.cdc.gov/coronavirus/2019-ncov/need-extra-precautions/people-with-medical-conditions.html" }] },
+  { id: "COVID-MOLNUPIRAVIR-006", ta: "COVID-19", topic: "Molnupiravir Alternative Therapy", text: "Molnupiravir is authorized for high-risk adults when Paxlovid and remdesivir are not accessible or clinically appropriate. Efficacy (30% hospitalization reduction) is lower than Paxlovid; avoid in pregnancy due to genotoxicity concerns.", cites: [{ text: "FDA EUA - Molnupiravir", url: "https://www.fda.gov/emergency-preparedness-and-response/mcm-legal-regulatory-and-policy-framework/lagevrio-molnupiravir" }, { text: "MOVe-OUT Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2116044" }, { text: "NIH Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
+  { id: "COVID-INITIATION-TIMING-007", ta: "COVID-19", topic: "Early Treatment Initiation", text: "Antiviral efficacy decreases significantly after 5 days of symptoms. Clinical workflows should enable same-day or next-day evaluation, testing, and treatment initiation for high-risk patients to maximize benefit.", cites: [{ text: "NIH Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }, { text: "CDC Clinical Guidance", url: "https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html" }] },
+  { id: "COVID-HOME-INFUSION-008", ta: "COVID-19", topic: "Hospital-at-Home and Infusion Access", text: "Home infusion services enable remdesivir administration for patients with transport barriers or post-discharge needs. Coordination with home health vendors and discharge planning optimizes access and reduces readmissions.", cites: [{ text: "CMS Hospital-at-Home Waiver", url: "https://www.cms.gov/files/document/covid-hospitals-without-walls-fact-sheet.pdf" }, { text: "Infusion Nursing Standards", url: "https://www.ins1.org/" }] },
+  { id: "COVID-IMMUNOCOMPROMISED-009", ta: "COVID-19", topic: "Immunocompromised Patient Considerations", text: "Immunocompromised patients (transplant, chemotherapy, HIV with low CD4) may have prolonged viral replication and benefit from extended antiviral courses. Infectious disease consultation is recommended for complex cases.", cites: [{ text: "NIH Guidelines - Special Populations", url: "https://www.covid19treatmentguidelines.nih.gov/special-populations/immunocompromised/" }, { text: "IDSA COVID-19 Guidelines", url: "https://www.idsociety.org/practice-guideline/covid-19-guideline-treatment-and-management/" }] },
+  { id: "COVID-MONOCLONAL-ANTIBODIES-010", ta: "COVID-19", topic: "Monoclonal Antibody Considerations", text: "Bebtelovimab and other monoclonal antibodies have limited activity against current Omicron subvariants. Verify current CDC and NIH guidance on authorized mAbs based on regional variant surveillance before prescribing.", cites: [{ text: "NIH COVID-19 Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/therapies/anti-sars-cov-2-antibody-products/" }, { text: "CDC Variant Surveillance", url: "https://covid.cdc.gov/covid-data-tracker/#variant-proportions" }] },
+
+  // Vaccines Facts (10 facts)
+  { id: "VAC-FLU-RECOMMENDATIONS-001", ta: "Vaccines", topic: "Annual Influenza Vaccination", text: "Annual influenza vaccination is recommended for all persons ≥6 months of age. Inactivated influenza vaccine (IIV) and recombinant influenza vaccine (RIV) are preferred over live attenuated vaccine (LAIV) for most populations.", cites: [{ text: "CDC ACIP Influenza Recommendations 2024-2025", url: "https://www.cdc.gov/flu/prevent/vaccinations.htm" }, { text: "MMWR", url: "https://www.cdc.gov/mmwr/volumes/72/rr/rr7202a1.htm" }] },
+  { id: "VAC-FLU-HIGH-DOSE-002", ta: "Vaccines", topic: "Enhanced Flu Vaccines for Older Adults", text: "Adults ≥65 years should receive high-dose inactivated (Fluzone High-Dose), recombinant (Flublok), or adjuvanted (Fluad) influenza vaccines, which provide superior immunogenicity and efficacy compared to standard-dose vaccines.", cites: [{ text: "CDC ACIP Recommendations", url: "https://www.cdc.gov/flu/prevent/vaccinations.htm" }, { text: "FDA Approvals - Enhanced Flu Vaccines", url: "https://www.fda.gov/vaccines-blood-biologics/vaccines/influenza-virus-vaccine" }] },
+  { id: "VAC-FLU-TIMING-003", ta: "Vaccines", topic: "Optimal Timing for Flu Vaccination", text: "Influenza vaccination should ideally occur by end of October, but vaccination throughout the influenza season (into January or later) is beneficial. Early vaccination (July-August) may result in waning immunity before season peak.", cites: [{ text: "CDC ACIP Influenza Recommendations", url: "https://www.cdc.gov/flu/prevent/vaccinations.htm" }, { text: "MMWR", url: "https://www.cdc.gov/mmwr/volumes/72/rr/rr7202a1.htm" }] },
+  { id: "VAC-PNEUMOCOCCAL-ADULTS-004", ta: "Vaccines", topic: "Pneumococcal Vaccination for Adults", text: "Adults ≥65 years should receive pneumococcal vaccination with PCV15 or PCV20. If PCV15 is used, follow with PPSV23 ≥1 year later. Adults 19-64 with chronic conditions or immunocompromising conditions also require pneumococcal vaccination.", cites: [{ text: "CDC ACIP Pneumococcal Recommendations", url: "https://www.cdc.gov/vaccines/vpd/pneumo/hcp/recommendations.html" }, { text: "MMWR 2022", url: "https://www.cdc.gov/mmwr/volumes/71/wr/mm7104a1.htm" }] },
+  { id: "VAC-RSV-OLDER-ADULTS-005", ta: "Vaccines", topic: "RSV Vaccination for Older Adults", text: "A single dose of RSV vaccine (RSVPreF3 or RSVpreF) is recommended for adults ≥60 years using shared clinical decision-making, particularly for those with chronic cardiopulmonary disease or residing in long-term care facilities.", cites: [{ text: "CDC ACIP RSV Recommendations 2023", url: "https://www.cdc.gov/vaccines/vpd/rsv/hcp/older-adults.html" }, { text: "FDA Approvals - RSV Vaccines", url: "https://www.fda.gov/vaccines-blood-biologics/vaccines/respiratory-syncytial-virus-rsv" }] },
+  { id: "VAC-SHINGLES-SHINGRIX-006", ta: "Vaccines", topic: "Shingles Vaccination (Shingrix)", text: "Recombinant zoster vaccine (RZV, Shingrix) is recommended for adults ≥50 years as a 2-dose series (0, 2-6 months), providing >90% efficacy against shingles and postherpetic neuralgia. Preferred over live zoster vaccine (ZVL).", cites: [{ text: "CDC ACIP Herpes Zoster Recommendations", url: "https://www.cdc.gov/vaccines/vpd/shingles/hcp/shingrix/recommendations.html" }, { text: "Shingrix Efficacy Trials", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1501184" }] },
+  { id: "VAC-VIS-DOCUMENTATION-007", ta: "Vaccines", topic: "Vaccine Information Statements (VIS)", text: "Federal law requires providing current VIS documents before administering ACIP-recommended vaccines and documenting VIS edition date, vaccine administration date, manufacturer, lot number, and administrator in the patient record.", cites: [{ text: "CDC VIS Requirements", url: "https://www.cdc.gov/vaccines/hcp/vis/about/required-use.html" }, { text: "National Childhood Vaccine Injury Act", url: "https://www.hrsa.gov/vaccine-compensation/index.html" }] },
+  { id: "VAC-STANDING-ORDERS-008", ta: "Vaccines", topic: "Standing Orders for Vaccination", text: "Standing orders allow nurses and pharmacists to assess and vaccinate patients without individual physician orders, increasing vaccination rates. Protocols must comply with state scope-of-practice laws and include contraindication screening.", cites: [{ text: "CDC Standing Orders Best Practices", url: "https://www.cdc.gov/vaccines/hcp/admin/standing-orders.html" }, { text: "AMA Policy on Standing Orders", url: "https://www.ama-assn.org/delivering-care/public-health/standing-orders-immunizations" }] },
+  { id: "VAC-IMMUNOCOMPROMISED-009", ta: "Vaccines", topic: "Vaccination in Immunocompromised Patients", text: "Immunocompromised patients (transplant, HIV, chemotherapy, immunosuppressive therapy) should receive inactivated vaccines per accelerated schedules and higher doses where indicated (e.g., double-dose hepatitis B). Live vaccines are generally contraindicated.", cites: [{ text: "CDC ACIP Immunocompromised Recommendations", url: "https://www.cdc.gov/vaccines/hcp/acip-recs/general-recs/immunocompetence.html" }, { text: "IDSA Vaccination Guidelines", url: "https://www.idsociety.org/practice-guideline/immunocompromised-host/" }] },
+  { id: "VAC-RECALL-SYSTEMS-010", ta: "Vaccines", topic: "Reminder-Recall Systems", text: "EHR-integrated reminder-recall systems using SMS, phone calls, or patient portals improve vaccination coverage. Automated reminders 1-2 weeks before due dates and missed-dose outreach increase completion rates for multi-dose series.", cites: [{ text: "CDC Community Guide - Vaccination", url: "https://www.thecommunityguide.org/pages/task-force-finding-and-rationale-statements.html" }, { text: "AHRQ Health IT Tools", url: "https://www.ahrq.gov/health-it/tools/index.html" }] }
 ];
 
 // Finite State Machines per mode (5 modes total)
 // CAPS INCREASED TO PREVENT CUTOFF - Sales Sim needs room for 4-section format
 const FSM = {
-  "sales-simulation": {
+  "sales-coach": {
     states: { START: { capSentences: 30, next: "COACH" }, COACH: { capSentences: 30, next: "COACH" } },
     start: "START"
   },
@@ -427,7 +466,7 @@ async function postFacts(req, env) {
 async function postPlan(req, env) {
   try {
     const body = await readJson(req);
-    const { mode = "sales-simulation", disease = "", persona = "", goal = "", topic = "" } = body || {};
+    const { mode = "sales-coach", disease = "", persona = "", goal = "", topic = "" } = body || {};
 
     const factsRes = FACTS_DB.filter(f => {
       const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
@@ -442,7 +481,7 @@ async function postPlan(req, env) {
       planId: cryptoRandomId(),
       mode, disease, persona, goal,
       facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
-      fsm: FSM[mode] || FSM["sales-simulation"]
+      fsm: FSM[mode] || FSM["sales-coach"]
     };
 
     const valid = Array.isArray(plan.facts) && plan.facts.length > 0 && typeof plan.mode === "string";
@@ -459,7 +498,7 @@ async function postPlan(req, env) {
 
 /**
  * validateModeResponse - Enforce mode-specific guardrails and clean responses
- * @param {string} mode - Current mode (sales-simulation, role-play, emotional-assessment, product-knowledge)
+ * @param {string} mode - Current mode (sales-coach, role-play, emotional-assessment, product-knowledge)
  * @param {string} reply - AI response text
  * @param {object} coach - Coach metadata object
  * @returns {object} - { reply: cleanedReply, warnings: [...], violations: [...] }
@@ -498,8 +537,8 @@ function validateModeResponse(mode, reply, coach) {
     }
   }
 
-  // SALES-SIMULATION: Enforce coach voice, NO HCP impersonation
-  if (mode === "sales-simulation") {
+  // SALES-COACH: Enforce coach voice, NO HCP impersonation
+  if (mode === "sales-coach") {
     // Detect if AI is speaking as HCP instead of coach
     const hcpVoicePatterns = [
       /^I'm a (busy|difficult|engaged)/i,
@@ -564,10 +603,10 @@ function validateModeResponse(mode, reply, coach) {
  */
 function validateCoachSchema(coach, mode) {
   const requiredFields = {
-    "sales-simulation": ["scores", "worked", "improve", "feedback"],
-    "emotional-assessment": ["ei"],
+    "sales-coach": ["scores", "worked", "improve", "feedback"],
+    "emotional-assessment": ["scores"],
     "product-knowledge": [],
-    "role-play": [] // Should have NO coach data in messages
+    "role-play": ["scores"]
   };
 
   const required = requiredFields[mode] || [];
@@ -647,15 +686,29 @@ ${siteContext.slice(0, 12000)}`;
 
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
+  const reqStart = Date.now();
+  const reqId = req.headers.get("x-req-id") || cryptoRandomId();
+
   try {
     // Defensive check: ensure at least one provider key is configured
     const keyPool = getProviderKeyPool(env);
     if (!keyPool.length) {
-      console.error("chat_error", { step: "config_check", message: "NO_PROVIDER_KEYS" });
+      console.error("chat_error", { req_id: reqId, step: "config_check", message: "NO_PROVIDER_KEYS" });
       return json({ error: "server_error", message: "No provider API keys configured" }, 500, env, req);
     }
 
     const body = await readJson(req);
+
+    // Log request start
+    console.log({
+      event: "chat_request",
+      req_id: reqId,
+      mode: body.mode || "unknown",
+      has_plan: !!body.plan,
+      has_history: !!(body.history || body.messages),
+      disease: body.disease || null,
+      persona: body.persona || null
+    });
 
     // Handle Alora site assistant separately - it needs concise, helpful answers, not coaching format
     if (body.role === 'alora') {
@@ -673,7 +726,7 @@ async function postChat(req, env) {
       const lastUserMsg = msgs.filter(m => m.role === "user").pop();
       const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
 
-      mode = body.mode || "sales-simulation";
+      mode = body.mode || "sales-coach";
       user = lastUserMsg?.content || "";
       history = historyMsgs;
       disease = body.disease || "";
@@ -684,7 +737,7 @@ async function postChat(req, env) {
       session = body.session || "anon";
     } else {
       // ReflectivAI format
-      mode = body.mode || "sales-simulation";
+      mode = body.mode || "sales-coach";
       user = body.user;
       history = body.history || [];
       disease = body.disease || "";
@@ -700,17 +753,24 @@ async function postChat(req, env) {
     if (!activePlan) {
       try {
         // Generate plan directly without creating a fake Request
-        const factsRes = FACTS_DB.filter(f => {
+        let factsRes = FACTS_DB.filter(f => {
           const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
           return dOk;
         });
+
+        // Fallback: if no disease-specific facts, take first 8 from DB
+        // (some modes like product-knowledge, emotional-assessment don't require disease context)
+        if (factsRes.length === 0) {
+          factsRes = FACTS_DB.slice(0, 8);
+        }
+
         const facts = factsRes.slice(0, 8);
 
         activePlan = {
           planId: cryptoRandomId(),
           mode, disease, persona, goal,
           facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
-          fsm: FSM[mode] || FSM["sales-simulation"]
+          fsm: FSM[mode] || FSM["sales-coach"]
         };
       } catch (e) {
         console.error("chat_error", { step: "plan_generation", message: e.message });
@@ -719,14 +779,30 @@ async function postChat(req, env) {
     }
 
     // Validate activePlan structure to avoid obscure crashes
-    if (!activePlan || !Array.isArray(activePlan.facts) || activePlan.facts.length === 0) {
-      console.error("chat_error", { step: "plan_validation", message: "no_active_plan_or_facts", activePlan });
-      throw new Error("no_active_plan_or_facts");
+    // Allow empty facts array for modes that don't require product context
+    const requiresFacts = ["sales-coach", "role-play"].includes(mode);
+    if (!activePlan || !Array.isArray(activePlan.facts)) {
+      console.error("chat_error", { step: "plan_validation", message: "invalid_plan_structure", activePlan });
+      throw new Error("invalid_plan_structure");
+    }
+    if (requiresFacts && activePlan.facts.length === 0) {
+      console.error("chat_error", { step: "plan_validation", message: "no_facts_for_mode", mode, disease });
+      throw new Error("no_facts_for_mode");
     }
 
     // Provider prompts with format hardening
     const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
-    const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
+    // Handle both citation formats: {text, url} objects and plain strings
+    const citesStr = activePlan.facts
+      .flatMap(f => f.cites || [])
+      .slice(0, 6)
+      .map(c => {
+        if (typeof c === 'object' && c.text) {
+          return `- ${c.text}${c.url ? ` (${c.url})` : ''}`;
+        }
+        return `- ${c}`;
+      })
+      .join("\n");
 
     // Mode-specific contracts - ENTERPRISE PHARMA FORMATTING
     const salesContract = `
@@ -792,11 +868,27 @@ Return exactly two parts. No code blocks or headings.
 CRITICAL: Base all claims on the provided Facts context. NO fabricated citations.`.trim();
 
     // Enhanced prompts for format hardening
-    const salesSimPrompt = [
-      `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
+    const salesCoachPrompt = [
+      `You are the ReflectivAI Sales Coach. You MUST follow the exact 4-section format below.`,
       `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
       `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
       ``,
+      `MANDATORY FORMAT - YOU MUST RETURN EXACTLY THIS STRUCTURE:`,
+      ``,
+      `Challenge: [one sentence describing HCP's barrier]`,
+      ``,
+      `Rep Approach:`,
+      `• [clinical point with reference [FACT-ID]]`,
+      `• [supporting strategy with reference [FACT-ID]]`,
+      `• [safety consideration with reference [FACT-ID]]`,
+      ``,
+      `Impact: [expected outcome connecting back to Challenge]`,
+      ``,
+      `Suggested Phrasing: "[exact words rep should say]"`,
+      ``,
+      `<coach>{...EI scores...}</coach>`,
+      ``,
+      `DO NOT deviate from this format. DO NOT add extra sections. DO NOT skip sections.`,
       salesContract
     ].join("\n");
 
@@ -813,6 +905,12 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Reflect time pressure, priorities, and decision style from persona`,
       `- Stay professional and realistic`,
       ``,
+      `SMALL TALK & GREETINGS:`,
+      `- If the rep opens with social greetings ("Hi doctor", "How are you?", "Good morning"), respond naturally and briefly`,
+      `- Example: "I'm doing well, thanks. I have a few minutes before my next patient, what brings you by?"`,
+      `- After the greeting, pivot naturally to clinical context or ask what the rep needs`,
+      `- Keep it warm but efficient - HCPs are busy but appreciate professional courtesy`,
+      ``,
       `CRITICAL RULES:`,
       `- NO coaching language ("You should have...", "The rep...")`,
       `- NO evaluation or scores  `,
@@ -824,6 +922,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `"• I prioritize regular follow-up appointments to assess treatment efficacy and detect any potential issues early. • I also encourage patients to report any changes in symptoms or side effects promptly. • Additionally, I consider using digital tools to enhance patient engagement and monitoring."`,
       `"I appreciate your emphasis on timely interventions and proactive prescribing."`,
       `"I've got a few minutes, what's on your mind?"`,
+      `"I'm good, thanks for asking. Between you and me, it's been a busy morning with back-to-back appointments. What can I help you with today?"`,
       ``,
       `Remember: You are the HCP. Natural, brief, clinical voice only - bullets allowed when clinically appropriate.`
     ].join("\n");
@@ -1054,8 +1153,8 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     let sys;
     if (mode === "role-play") {
       sys = rolePlayPrompt;
-    } else if (mode === "sales-simulation") {
-      sys = salesSimPrompt;
+    } else if (mode === "sales-coach") {
+      sys = salesCoachPrompt;
     } else if (mode === "emotional-assessment") {
       sys = eiPrompt;
     } else if (mode === "product-knowledge") {
@@ -1063,7 +1162,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     } else if (mode === "general-knowledge") {
       sys = generalKnowledgePrompt;
     } else {
-      sys = salesSimPrompt; // default fallback
+      sys = salesCoachPrompt; // default fallback
     }
 
     const messages = [
@@ -1078,7 +1177,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       try {
         // Token allocation prioritization
         let maxTokens;
-        if (mode === "sales-simulation") {
+        if (mode === "sales-coach") {
           maxTokens = 1600; // Increased to ensure all 4 sections complete (including Suggested Phrasing)
         } else if (mode === "role-play") {
           maxTokens = 1200; // Higher for natural conversation flow
@@ -1135,8 +1234,8 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       // Example: "• I prioritize follow-ups • I assess adherence"
     }
 
-    // Post-processing: Normalize headings and ENFORCE FORMAT for sales-simulation mode
-    if (mode === "sales-simulation") {
+    // Post-processing: Normalize headings and ENFORCE FORMAT for sales-coach mode
+    if (mode === "sales-coach") {
       reply = reply
         .replace(/Coach [Gg]uidance:/g, 'Challenge:')
         .replace(/Next[- ]?[Mm]ove [Pp]lanner:/g, 'Rep Approach:')
@@ -1211,7 +1310,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     // FSM clamps
-    const fsm = FSM[mode] || FSM["sales-simulation"];
+    const fsm = FSM[mode] || FSM["sales-coach"];
     const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
     reply = capSentences(reply, cap);
 
@@ -1295,9 +1394,85 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       });
     }
 
+    const responseTime = Date.now() - reqStart;
+    console.log({
+      event: "chat_success",
+      req_id: reqId,
+      mode,
+      duration_ms: responseTime,
+      reply_length: reply.length,
+      has_coach: !!coachObj,
+      plan_id: planId || activePlan.planId
+    });
+
+    // FINAL FORMATTING: Add newlines between sections for sales-coach mode
+    // This must happen AFTER capSentences() which strips newlines
+    if (mode === "sales-coach") {
+      reply = reply
+        .replace(/(Challenge:)/g, '\n\n$1')
+        .replace(/(\.)\s+(Rep Approach:)/g, '$1\n\n$2')
+        .replace(/(\.)\s+(Impact:)/g, '$1\n\n$2')
+        .replace(/(\.)\s+(Suggested Phrasing:)/g, '$1\n\n$2')
+        .trim();
+    }
+
+    // APPEND REFERENCES: For product-knowledge mode, convert citation codes to numbered refs and append full URLs
+    if (mode === "product-knowledge" && activePlan && activePlan.facts && activePlan.facts.length > 0) {
+      // Extract all citation codes from the reply (e.g., [HIV-PREP-001], [CV-SGLT2-SAFETY-005])
+      const citationCodes = (reply.match(/\[([A-Z]{2,}-[A-Z0-9-]{2,})\]/g) || [])
+        .map(m => m.slice(1, -1)); // Remove brackets
+      
+      if (citationCodes.length > 0) {
+        // Build reference list from cited facts
+        const refMap = new Map(); // code -> {number, citations}
+        let refNumber = 1;
+        
+        citationCodes.forEach(code => {
+          if (!refMap.has(code)) {
+            // Find the fact with this code
+            const fact = activePlan.facts.find(f => f.id === code);
+            if (fact && fact.cites && fact.cites.length > 0) {
+              refMap.set(code, {
+                number: refNumber++,
+                citations: fact.cites
+              });
+            }
+          }
+        });
+
+        // Replace citation codes with numbered references in the text
+        refMap.forEach((value, code) => {
+          const regex = new RegExp(`\\[${code}\\]`, 'g');
+          reply = reply.replace(regex, `[${value.number}]`);
+        });
+
+        // Build the references section
+        if (refMap.size > 0) {
+          reply += '\n\n**References:**\n';
+          refMap.forEach((value, code) => {
+            value.citations.forEach(cite => {
+              if (typeof cite === 'object' && cite.text && cite.url) {
+                reply += `${value.number}. [${cite.text}](${cite.url})\n`;
+              } else if (typeof cite === 'string') {
+                reply += `${value.number}. ${cite}\n`;
+              }
+            });
+          });
+          reply = reply.trim();
+        }
+      }
+    }
+
     return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
-    console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
+    const responseTime = Date.now() - reqStart;
+    console.error("chat_error", {
+      req_id: reqId,
+      step: "general",
+      message: e.message,
+      stack: e.stack,
+      duration_ms: responseTime
+    });
 
     // Distinguish provider errors from client bad_request errors
     const isProviderError = e.message && (
@@ -1305,7 +1480,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       e.message === "plan_generation_failed"
     );
 
-    const isPlanError = e.message === "no_active_plan_or_facts";
+    const isPlanError = e.message === "no_active_plan_or_facts" || e.message === "invalid_plan_structure" || e.message === "no_facts_for_mode";
 
     if (isProviderError) {
       // Provider errors return 502 Bad Gateway
@@ -1314,11 +1489,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         message: "External provider failed or is unavailable"
       }, 502, env, req);
     } else if (isPlanError) {
-      // Plan validation errors return 422 Unprocessable Entity
+      // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
       return json({
         error: "bad_request",
-        message: "Unable to generate or validate plan with provided parameters"
-      }, 422, env, req);
+        message: e.message === "no_facts_for_mode"
+          ? `No facts available for disease "${disease || "unknown"}" in mode "${mode}". Please select a scenario or provide disease context.`
+          : "Unable to generate or validate plan with provided parameters",
+        details: { mode, disease, persona, error: e.message }
+      }, 400, env, req);
     } else {
       // Other errors are treated as bad_request
       return json({
