@@ -232,6 +232,14 @@
 
   // ---------- Health gate ----------
   async function checkHealth() {
+    // Skip health check for localhost (no worker running locally)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      isHealthy = true;
+      hideHealthBanner();
+      enableSendButton();
+      return true;
+    }
+    
     // Normalize base URL to avoid double slashes
     const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
     const healthUrl = `${baseUrl}/health`;

@@ -1,0 +1,77 @@
+Debugger listening on ws://127.0.0.1:60181/d6cf2be5-ddc6-4bde-9740-75d0b8075580
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+🚀 Starting Automated Tests...
+URL: https://reflectivei.github.io/reflectiv-ai/
+Time: 2025-11-12T22:47:00.744Z
+
+
+[TEST 1] Page loads...
+[CONSOLE WARN] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+[CONSOLE LOG] [Citations] Loaded 5 references
+[CONSOLE LOG] [DEBUG] About to run initial health check...
+[CONSOLE LOG] [DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health
+[CONSOLE LOG] [DEBUG] Health check PASSED, isHealthy set to TRUE
+[CONSOLE LOG] [DEBUG] Initial health check complete, result: true , isHealthy: true
+📸 Screenshot: test-screenshots/test_1_page_loaded_1762987627181.png
+[PASS] Page loads
+
+[TEST 2] Check widget.js loaded...
+[PASS] widget.js loaded
+
+[TEST 3] Check widget appears...
+[PASS] Widget appears on page
+📸 Screenshot: test-screenshots/test_3_widget_visible_1762987628066.png
+
+[TEST 4] Check dropdown has 5 modes...
+[PASS] Dropdown has 5 modes
+
+[TEST 5] Select Sales Coach mode...
+📸 Screenshot: test-screenshots/test_5_sales_coach_selected_1762987629757.png
+[PASS] Select Sales Coach mode
+
+[TEST 6] Send test message...
+📸 Screenshot: test-screenshots/test_6_message_entered_1762987630916.png
+📸 Screenshot: test-screenshots/test_6_message_sent_1762987632585.png
+[PASS] Send test message
+⏳ Waiting for AI response...
+[FAIL] Send test message / Response
+
+[TEST 7] Check for EI pills...
+[FAIL] 10 EI pills present
+
+[TEST 8] Check pill gradients...
+[FAIL] Pills have gradient backgrounds
+
+[TEST 9] Click first EI pill...
+📸 Screenshot: test-screenshots/test_9_modal_opened_1762987664251.png
+[FAIL] Modal opens on pill click
+
+[TEST 10] Check for citations...
+[SKIP] Citations present
+
+[TEST 11] Test General Assistant mode...
+📸 Screenshot: test-screenshots/test_11_general_mode_selected_1762987666199.png
+[FAIL] General Assistant mode works
+📸 Screenshot: test-screenshots/final_state_1762987698852.png
+
+📝 Generating reports...
+✅ JSON results saved to: ./test-results.json
+✅ Markdown report saved to: ./TEST_CYCLE_1_AUTOMATED_REPORT.md
+
+============================================================
+TEST SUMMARY
+============================================================
+Total Tests: 12
+✅ Passed: 6
+❌ Failed: 5
+⏭️  Skipped: 1
+
+📸 Screenshots: 8
+📋 Console Logs: 6
+🌐 Network Calls: 38
+💥 JavaScript Errors: 0
+============================================================
+
+📄 Full report: ./TEST_CYCLE_1_AUTOMATED_REPORT.md
+Waiting for the debugger to disconnect...

@@ -1,0 +1,297 @@
+{
+  "diseaseState": "HIV",
+  "mode": "role-play",
+  "turns": [
+    {
+      "turn": 1,
+      "totalMessages": 2,
+      "correctLabels": 2,
+      "missingLabels": 0,
+      "labelPercentage": 100,
+      "messages": [
+        {
+          "index": 1,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 1: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 2,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the conversation about HIV treatment adherence.  I sense a sense of enthusi"
+        }
+      ]
+    },
+    {
+      "turn": 2,
+      "totalMessages": 4,
+      "correctLabels": 4,
+      "missingLabels": 0,
+      "labelPercentage": 100,
+      "messages": [
+        {
+          "index": 1,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 1: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 2,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the conversation about HIV treatment adherence.  I sense a sense of enthusi"
+        },
+        {
+          "index": 3,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 2: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 4,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the topic of HIV treatment adherence.  As we explore this subject, I want t"
+        }
+      ]
+    },
+    {
+      "turn": 3,
+      "totalMessages": 6,
+      "correctLabels": 6,
+      "missingLabels": 0,
+      "labelPercentage": 100,
+      "messages": [
+        {
+          "index": 1,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 1: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 2,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the conversation about HIV treatment adherence.  I sense a sense of enthusi"
+        },
+        {
+          "index": 3,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 2: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 4,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the topic of HIV treatment adherence.  As we explore this subject, I want t"
+        },
+        {
+          "index": 5,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 3: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 6,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantYou've just shared about HIV treatment adherence.  I'm curious, what did you notice about y"
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "totalMessages": 8,
+      "correctLabels": 8,
+      "missingLabels": 0,
+      "labelPercentage": 100,
+      "messages": [
+        {
+          "index": 1,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 1: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 2,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the conversation about HIV treatment adherence.  I sense a sense of enthusi"
+        },
+        {
+          "index": 3,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 2: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 4,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the topic of HIV treatment adherence.  As we explore this subject, I want t"
+        },
+        {
+          "index": 5,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 3: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 6,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantYou've just shared about HIV treatment adherence.  I'm curious, what did you notice about y"
+        },
+        {
+          "index": 7,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 4: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 8,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the conversation about HIV treatment adherence.  I sense a sense of enthusi"
+        }
+      ]
+    },
+    {
+      "turn": 5,
+      "totalMessages": 10,
+      "correctLabels": 10,
+      "missingLabels": 0,
+      "labelPercentage": 100,
+      "messages": [
+        {
+          "index": 1,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 1: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 2,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the conversation about HIV treatment adherence.  I sense a sense of enthusi"
+        },
+        {
+          "index": 3,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 2: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 4,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the topic of HIV treatment adherence.  As we explore this subject, I want t"
+        },
+        {
+          "index": 5,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 3: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 6,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantYou've just shared about HIV treatment adherence.  I'm curious, what did you notice about y"
+        },
+        {
+          "index": 7,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 4: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 8,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantLet's dive into the conversation about HIV treatment adherence.  I sense a sense of enthusi"
+        },
+        {
+          "index": 9,
+          "role": "user",
+          "labelFound": true,
+          "labelText": "You",
+          "labelClass": "speaker rep",
+          "bodyPreview": "YouTurn 5: Tell me about HIV treatment adherence."
+        },
+        {
+          "index": 10,
+          "role": "assistant",
+          "labelFound": true,
+          "labelText": "Assistant",
+          "labelClass": "speaker hcp",
+          "bodyPreview": "AssistantAs we discuss HIV treatment adherence, I notice a sense of enthusiasm in your tone.  You're"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalMessages": 30,
+    "totalCorrect": 30,
+    "totalMissing": 0,
+    "overallPercentage": 100
+  }
+}

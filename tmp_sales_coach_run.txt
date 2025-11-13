@@ -1,0 +1,25 @@
+🧪 Testing Sales Coach - Multi-Turn Conversation
+================================================
+
+📋 Turn 1: Initial Question
+-----------------------------------
+✓ Turn 1 response length: 1163 chars
+✓ Has Challenge: 1
+✓ Has Suggested Phrasing: 1
+✓ Has <coach> tags: 0
+0
+
+📋 Turn 2: Follow-up Question
+-----------------------------------
+sed: 1: "s/<coach>.*<\/coach>//s": bad flag in substitute command: 's'
+✓ Turn 2 response length: 0 chars
+✓ Has Challenge: 0
+0
+✓ Has Suggested Phrasing: 0
+0
+✓ Has <coach> tags: 0
+0
+
+📋 Turn 3: Third Follow-up (Critical Test)
+-----------------------------------
+sed: 1: "s/<coach>.*<\/coach>//s": bad flag in substitute command: 's'

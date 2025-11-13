@@ -1,0 +1,110 @@
+Debugger listening on ws://127.0.0.1:60257/97ea55a5-2a28-48ef-b09b-99ec6c2dc10e
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+🚀 Starting Automated Tests...
+URL: https://reflectivei.github.io/reflectiv-ai/
+Time: 2025-11-12T22:49:57.446Z
+
+
+[TEST 1] Page loads...
+[CONSOLE WARN] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+[CONSOLE LOG] [Citations] Loaded 5 references
+[CONSOLE LOG] [DEBUG] About to run initial health check...
+[CONSOLE LOG] [DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health
+[CONSOLE LOG] [DEBUG] Health check PASSED, isHealthy set to TRUE
+[CONSOLE LOG] [DEBUG] Initial health check complete, result: true , isHealthy: true
+📸 Screenshot: test-screenshots/test_1_page_loaded_1762987804357.png
+[PASS] Page loads
+
+[TEST 2] Check widget.js loaded...
+[PASS] widget.js loaded
+
+[TEST 3] Check widget appears...
+[PASS] Widget appears on page
+📸 Screenshot: test-screenshots/test_3_widget_visible_1762987805303.png
+
+[TEST 4] Check dropdown has 5 modes...
+[PASS] Dropdown has 5 modes
+
+[TEST 5] Select Sales Coach mode...
+📸 Screenshot: test-screenshots/test_5_sales_coach_selected_1762987807171.png
+[PASS] Select Sales Coach mode
+
+[TEST 6] Send test message...
+📸 Screenshot: test-screenshots/test_6_message_entered_1762987808541.png
+[CONSOLE LOG] [TEST] Found send button: JSHandle@node
+[CONSOLE LOG] [TEST] Clicking send button...
+[CONSOLE LOG] [DEBUG] Send button clicked!
+[CONSOLE LOG] [DEBUG] Message text: I struggle with HCP objections about drug cost
+[CONSOLE LOG] [DEBUG] sendMessage() called with text: I struggle with HCP objections about drug cost
+[CONSOLE LOG] [DEBUG] isSending: false , isHealthy: true
+[CONSOLE LOG] [DEBUG] Passed health gate, proceeding with send
+📸 Screenshot: test-screenshots/test_6_message_sent_1762987810411.png
+[PASS] Send test message
+⏳ Waiting for AI response...
+[CONSOLE LOG] [renderMessages] ========== SALES COACH MESSAGE ==========
+[CONSOLE LOG] [renderMessages] currentMode: sales-simulation
+[CONSOLE LOG] [renderMessages] m.role: assistant
+[CONSOLE LOG] [renderMessages] Has cached HTML? false
+[CONSOLE LOG] [renderMessages] rawContent preview: Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.  Rep Approach: • Discuss the cost-effectiveness of PrEP in preventing HIV infections, as recommen
+[CONSOLE LOG] [renderMessages] normalized preview: Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.  Rep Approach: • Discuss the cost-effectiveness of PrEP in preventing HIV infections, as recommen
+[CONSOLE LOG] [renderMessages] NO CACHE - Formatting now...
+[CONSOLE LOG] [Sales Coach Format] Input text: Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.  Rep Approach: • Discuss the cost-effectiveness of PrEP in preventing HIV infections, as recommen
+[CONSOLE LOG] [Sales Coach Format] Matches: JSHandle@object
+[CONSOLE LOG] [Sales Coach Format] Successfully formatted 2954 chars
+[CONSOLE LOG] [renderMessages] Cached HTML length: 2954
+[CONSOLE LOG] [renderMessages] Cached HTML preview: <div class="sales-sim-section"><div class="section-header"><strong>Challenge:</strong></div><div class="section-content">The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.</div></div>
+
+<div class="sales-sim-section"><div class="section-header"><strong>Rep App
+[CONSOLE TABLE] JSHandle@array
+📸 Screenshot: test-screenshots/test_6_response_received_1762987813276.png
+[PASS] Response received
+
+[TEST 7] Check for EI pills...
+[FAIL] 10 EI pills present
+
+[TEST 8] Check pill gradients...
+[FAIL] Pills have gradient backgrounds
+
+[TEST 9] Click first EI pill...
+📸 Screenshot: test-screenshots/test_9_modal_opened_1762987815097.png
+[FAIL] Modal opens on pill click
+
+[TEST 10] Check for citations...
+[PASS] Citations present
+📸 Screenshot: test-screenshots/test_10_citations_1762987815910.png
+
+[TEST 11] Test General Assistant mode...
+📸 Screenshot: test-screenshots/test_11_general_mode_selected_1762987817783.png
+[CONSOLE LOG] [TEST] Found send button for General mode: JSHandle@node
+[CONSOLE LOG] [TEST] Clicking send button for General mode...
+[CONSOLE LOG] [DEBUG] Send button clicked!
+[CONSOLE LOG] [DEBUG] Message text: What's the capital of France?
+[CONSOLE LOG] [DEBUG] sendMessage() called with text: What's the capital of France?
+[CONSOLE LOG] [DEBUG] isSending: false , isHealthy: true
+[CONSOLE LOG] [DEBUG] Passed health gate, proceeding with send
+[CONSOLE LOG] [Auto-Detect] Switched from general-knowledge → product-knowledge for general question
+[CONSOLE TABLE] JSHandle@array
+[FAIL] General Assistant mode works
+📸 Screenshot: test-screenshots/final_state_1762987850116.png
+
+📝 Generating reports...
+✅ JSON results saved to: ./test-results.json
+✅ Markdown report saved to: ./TEST_CYCLE_1_AUTOMATED_REPORT.md
+
+============================================================
+TEST SUMMARY
+============================================================
+Total Tests: 12
+✅ Passed: 8
+❌ Failed: 4
+⏭️  Skipped: 0
+
+📸 Screenshots: 10
+📋 Console Logs: 35
+🌐 Network Calls: 58
+💥 JavaScript Errors: 0
+============================================================
+
+📄 Full report: ./TEST_CYCLE_1_AUTOMATED_REPORT.md
+Waiting for the debugger to disconnect...

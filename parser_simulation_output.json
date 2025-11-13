@@ -1,0 +1,27 @@
+Debugger listening on ws://127.0.0.1:60165/23898004-950c-4f09-bfca-495650d3bf84
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+{
+  "timestamp": "2025-11-13T09:58:53Z",
+  "status": "error",
+  "lengths": {
+    "suggestedPhrasing": 0,
+    "coachingGuidance": 0,
+    "raw": 1525
+  },
+  "coachTagPresent": false,
+  "truncationSuspect": null,
+  "missing": [
+    "suggestedPhrasing",
+    "coachingGuidance"
+  ]
+}
+[parser] Issues detected: {
+  timestamp: '2025-11-13T09:58:53Z',
+  status: 'error',
+  lengths: { suggestedPhrasing: 0, coachingGuidance: 0, raw: 1525 },
+  coachTagPresent: false,
+  truncationSuspect: null,
+  missing: [ 'suggestedPhrasing', 'coachingGuidance' ]
+}
+Waiting for the debugger to disconnect...

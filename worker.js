@@ -363,9 +363,25 @@ function hashString(str) {
 function selectProviderKey(env, session) {
   const pool = getProviderKeyPool(env);
   if (!pool.length) return null;
-  const sid = String(session || "anon");
-  const idx = hashString(sid) % pool.length;
-  return pool[idx];
+  
+  // Round-robin rotation strategy (env.PROVIDER_ROTATION_STRATEGY)
+  const strategy = env.PROVIDER_ROTATION_STRATEGY || "session"; // "session" | "round-robin" | "random"
+  
+  if (strategy === "round-robin") {
+    // True round-robin: rotate on every request
+    // Use timestamp + random to avoid collision in concurrent requests
+    const idx = (Date.now() + Math.floor(Math.random() * 1000)) % pool.length;
+    return pool[idx];
+  } else if (strategy === "random") {
+    // Random selection
+    const idx = Math.floor(Math.random() * pool.length);
+    return pool[idx];
+  } else {
+    // Default: session-based stable hashing (same session = same key)
+    const sid = String(session || "anon");
+    const idx = hashString(sid) % pool.length;
+    return pool[idx];
+  }
 }
 
 function sanitizeLLM(s) {
@@ -409,22 +425,70 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
   if (env.DEBUG_MODE === "true") {
     console.log({ event: "provider_key_select", session, key_len: key.length, rotated: key !== env.PROVIDER_KEY });
   }
-  const r = await fetch(env.PROVIDER_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "authorization": `Bearer ${key}`
-    },
-    body: JSON.stringify({
-      model: env.PROVIDER_MODEL,
-      temperature,
-      max_tokens: finalMax,
-      messages
-    })
-  });
-  if (!r.ok) throw new Error(`provider_http_${r.status}`);
-  const j = await r.json().catch(() => ({}));
-  return j?.choices?.[0]?.message?.content || j?.content || "";
+  
+  // Retry logic for rate limits (429) and transient errors (502/503)
+  const maxRetries = 2;
+  let lastError;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const r = await fetch(env.PROVIDER_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: env.PROVIDER_MODEL,
+          temperature,
+          max_tokens: finalMax,
+          messages
+        })
+      });
+      
+      if (r.ok) {
+        const j = await r.json().catch(() => ({}));
+        const content = j?.choices?.[0]?.message?.content || j?.content || "";
+        if (!content) {
+          console.error({ event: "provider_empty_response", attempt, status: r.status });
+          throw new Error("provider_empty_response");
+        }
+        return content;
+      }
+      
+      // Log detailed error for debugging
+      const errorText = await r.text().catch(() => "");
+      console.error({ 
+        event: "provider_error", 
+        attempt, 
+        status: r.status, 
+        error: errorText.slice(0, 500),
+        model: env.PROVIDER_MODEL
+      });
+      
+      // Retry on rate limit or server errors
+      if (r.status === 429 || r.status === 502 || r.status === 503) {
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s
+          console.log({ event: "provider_retry", attempt, delay_ms: delay, status: r.status });
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      
+      throw new Error(`provider_http_${r.status}`);
+    } catch (e) {
+      lastError = e;
+      if (attempt < maxRetries && (e.message.includes("429") || e.message.includes("502") || e.message.includes("503"))) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw e;
+    }
+  }
+  
+  throw lastError || new Error("provider_max_retries_exceeded");
 }
 
 function deterministicScore({ reply, usedFactIds = [] }) {

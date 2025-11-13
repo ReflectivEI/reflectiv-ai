@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-11-12T23:18:50.916Z",
+  "tests": [
+    {
+      "name": "Page loads",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Select Role Play mode",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Send role-play message",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Role Play response received",
+      "status": "PASS",
+      "details": {
+        "totalMessages": 1,
+        "preview": "HCPI've got a few minutes, what's on your mind?",
+        "length": 47
+      }
+    }
+  ],
+  "totalTests": 4,
+  "passed": 4,
+  "failed": 0
+}
