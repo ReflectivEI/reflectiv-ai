@@ -368,32 +368,32 @@
     const tips = Array.isArray(coach.tips) ? coach.tips.slice(0, 3) : [];
     const rubver = coach.rubric_version || "v2.0";
 
-    const mk = (k, label) => {
+    // Enhanced clickable card with animation delay
+    const mkCard = (k, label, idx) => {
       const v = Number(S[k] ?? 0);
       const val = (v || v === 0) ? String(v) : "–";
-      const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
-      return `<span class="ei-pill" data-metric="${k}" title="${esc(title)}">
-        <span class="k">${esc(label)}</span>
-        <div style="font-size:14px;font-weight:700;margin-top:2px">${esc(val)}/5</div>
-      </span>`;
+      const animDelay = idx * 0.08; // Stagger animation 80ms per card
+      return `<div class="ei-card" data-metric="${k}" style="animation-delay:${animDelay}s">
+        <div class="ei-card-label">${esc(label)}</div>
+        <div class="ei-card-score">${esc(val)}<span class="ei-card-max">/5</span></div>
+        <div class="ei-card-icon">→</div>
+      </div>`;
     };
 
     return `
   <div class="ei-wrap">
     <div class="ei-h">Emotional Intelligence Summary</div>
-    <div class="ei-row">
-      ${mk("empathy", "Empathy")}
-      ${mk("clarity", "Clarity")}
-      ${mk("compliance", "Compliance")}
-      ${mk("discovery", "Discovery")}
-      ${mk("objection_handling", "Objection Handling")}
-    </div>
-    <div class="ei-row">
-      ${mk("confidence", "Confidence")}
-      ${mk("active_listening", "Active Listening")}
-      ${mk("adaptability", "Adaptability")}
-      ${mk("action_insight", "Action Insight")}
-      ${mk("resilience", "Resilience")}
+    <div class="ei-grid">
+      ${mkCard("empathy", "Empathy", 0)}
+      ${mkCard("clarity", "Clarity", 1)}
+      ${mkCard("compliance", "Compliance", 2)}
+      ${mkCard("discovery", "Discovery", 3)}
+      ${mkCard("objection_handling", "Objection Handling", 4)}
+      ${mkCard("confidence", "Confidence", 5)}
+      ${mkCard("active_listening", "Active Listening", 6)}
+      ${mkCard("adaptability", "Adaptability", 7)}
+      ${mkCard("action_insight", "Action Insight", 8)}
+      ${mkCard("resilience", "Resilience", 9)}
     </div>
     ${tips.length ? `<ul class="ei-tips">${tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
     <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
@@ -1464,6 +1464,73 @@ ${COMMON}`
 /* === EI summary in yellow panel === */
 #reflectiv-widget .ei-wrap{padding:10px 12px}
 #reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
+
+/* Enhanced EI Grid Cards */
+#reflectiv-widget .ei-grid{display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;margin:0 0 12px;max-width:100%}
+#reflectiv-widget .ei-card{
+  background:linear-gradient(135deg, #1e3a5f 0%, #0f2747 100%);
+  border-radius:12px;
+  padding:12px 10px;
+  cursor:pointer;
+  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(32, 191, 169, 0.2);
+  animation:fadeInUp 0.5s ease-out forwards;
+  opacity:0;
+  transform:translateY(10px);
+}
+
+@keyframes fadeInUp{
+  to{opacity:1;transform:translateY(0)}
+}
+
+#reflectiv-widget .ei-card:hover{
+  transform:translateY(-4px) scale(1.02);
+  border-color:rgba(32, 191, 169, 0.6);
+  box-shadow:0 8px 16px rgba(32, 191, 169, 0.3), 0 0 0 1px rgba(32, 191, 169, 0.4);
+  background:linear-gradient(135deg, #223052 0%, #14304d 100%);
+}
+
+#reflectiv-widget .ei-card-label{
+  font:600 10px/1.2 Inter,system-ui;
+  color:#20bfa9;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  margin-bottom:6px;
+}
+
+#reflectiv-widget .ei-card-score{
+  font:700 24px/1 Inter,system-ui;
+  color:#ffffff;
+  text-shadow:0 2px 4px rgba(0,0,0,0.3);
+}
+
+#reflectiv-widget .ei-card-score .ei-card-max{
+  font-size:14px;
+  opacity:0.7;
+  margin-left:2px;
+}
+
+#reflectiv-widget .ei-card-icon{
+  position:absolute;
+  top:10px;
+  right:10px;
+  font-size:16px;
+  color:#20bfa9;
+  opacity:0.6;
+  transition:all 0.3s;
+}
+
+#reflectiv-widget .ei-card:hover .ei-card-icon{
+  opacity:1;
+  transform:translateX(3px);
+}
+
+/* Responsive: stack on smaller screens */
+@media (max-width:768px){#reflectiv-widget .ei-grid{grid-template-columns:repeat(2, 1fr)}}
+
+/* Legacy pill styles (kept for backward compatibility) */
 #reflectiv-widget .ei-row{display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:0 0 8px;max-width:100%}
 #reflectiv-widget .ei-pill{font:700 10px/1.2 Inter,system-ui; padding:8px 6px; border-radius:999px; cursor:pointer; transition:all 0.2s; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.2); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 #reflectiv-widget .ei-pill:hover{transform:translateY(-1px); filter:brightness(1.1)}
@@ -2176,15 +2243,18 @@ ${COMMON}`
     shell._sendBtn = send;
     shell._ta = ta;
 
-    // Event delegation for clickable EI pills
+    // Event delegation for clickable EI pills and cards
     coach.addEventListener("click", (e) => {
       const pill = e.target.closest(".ei-pill");
-      if (!pill) return;
+      const card = e.target.closest(".ei-card");
+      const target = pill || card;
+      
+      if (!target) return;
 
-      const metric = pill.getAttribute("data-metric");
+      const metric = target.getAttribute("data-metric");
       if (!metric) return;
 
-      showMetricModal(metric, pill.textContent);
+      showMetricModal(metric, target.textContent);
     });
 
     populateDiseases();
@@ -2196,13 +2266,13 @@ ${COMMON}`
   function showMetricModal(metric, pillText) {
     const definitions = {
       empathy: {
-        title: "Empathy Score",
-        definition: "Measures how effectively the rep recognizes and appropriately responds to the emotional cues, needs, or concerns of the HCP.",
-        calculation: "Empathy Score = (Number of responses showing acknowledgment of HCP feelings/needs/concerns) / (Total conversational turns) × 100",
+        title: "Empathy Index",
+        definition: "Scores ability to perceive and respond to HCP emotions and concerns.",
+        calculation: "(Empathetic responses / Opportunities) × 100",
         tips: [
-          "Rep acknowledged the HCP's skepticism about new therapies.",
-          "Provided reassurance or validation before describing product benefits.",
-          "Mirrored HCP's emotional language or expressed understanding of patient challenges."
+          "Notices HCP's tone or hesitation; validates concerns before replying",
+          "Adapts message to emotional cues",
+          "Example: 'I hear you're concerned about side effects—let me walk you through the most recent safety information.'"
         ],
         source: "Empathy reflects the rep's ability to notice and verbally acknowledge emotional states or practical needs expressed by the HCP.",
         citation: {
@@ -2212,12 +2282,12 @@ ${COMMON}`
       },
       clarity: {
         title: "Clarity Index",
-        definition: "Assesses the simplicity and precision of the rep's communication, reducing jargon and making complex concepts understandable.",
-        calculation: "Clarity Index = (Number of concise, jargon-free statements) / (Total statements) × 100",
+        definition: "Measures how clearly information is explained to busy HCPs.",
+        calculation: "(Clear explanations / Total exchanges) × 100",
         tips: [
-          "Used simple analogies to explain clinical benefit.",
-          "Avoided unnecessary abbreviations or complex terminology.",
-          "Messages were understood on first reading/listening."
+          "Summarizes research in simple terms; avoids jargon",
+          "Provides short, digestible takeaways",
+          "Example: 'To put it simply, this treatment targets inflammation without suppressing your patient's immune system.'"
         ],
         source: "A low average sentence length and low jargon count produces a higher clarity score.",
         citation: {
@@ -2226,13 +2296,13 @@ ${COMMON}`
         }
       },
       compliance: {
-        title: "Compliance Accuracy",
-        definition: "Tracks adherence to approved, label-only product statements and avoidance of off-label or non-compliant messaging.",
-        calculation: "Compliance Accuracy = (Compliant Statements) / (Total Statements) × 100",
+        title: "Compliance Score",
+        definition: "Tracks adherence to approved messaging and regulatory guidelines.",
+        calculation: "(Total compliant exchanges / All exchanges) × 100",
         tips: [
-          "Statements matched approved clinical messaging.",
-          "Avoided unapproved claims about outcomes or populations.",
-          "Provided proper safety disclaimers when relevant."
+          "No off-label claims; follows label guardrails",
+          "Quickly adjusts to in-call compliance feedback",
+          "Example: 'Per the product label, this medication is approved for type 2 diabetes only. I'm happy to share the key study details.'"
         ],
         source: "Automated by evaluating message strings against approved and forbidden phrases.",
         citation: {
@@ -2241,13 +2311,13 @@ ${COMMON}`
         }
       },
       discovery: {
-        title: "Discovery Effectiveness",
-        definition: "Quantifies the rep's use of open-ended and probing questions to uncover true HCP needs and objections.",
-        calculation: "Discovery Effectiveness = (Number of open-ended or follow-up questions) / (Total rep dialogue count) × 100",
+        title: "Discovery Index",
+        definition: "Scores effectiveness in uncovering HCP needs and priorities.",
+        calculation: "(Probing questions / Opportunities to discover) × 100",
         tips: [
-          "Asked what's most important to the HCP in treatment decisions.",
-          "Probed for specific pain points or unmet needs.",
-          "Followed up after initial feedback for clarification."
+          "Uses open-ended questions; clarifies patient challenges",
+          "Asks for details on prescribing habits",
+          "Example: 'Could you tell me what factors are most important to you when selecting a treatment for this condition?'"
         ],
         source: "Open-ended questions identified by sentence structure (who, what, where, when, why, how) and ending with '?'",
         citation: {
@@ -2257,12 +2327,12 @@ ${COMMON}`
       },
       objection_handling: {
         title: "Objection Handling Score",
-        definition: "Evaluates how effectively objections or concerns are acknowledged, addressed, and reframed with accurate, compliant responses.",
-        calculation: "Objection Handling Score = (Objections acknowledged and answered satisfactorily) / (Total objections raised) × 100",
+        definition: "Reflects skill in acknowledging and resolving HCP concerns.",
+        calculation: "(Successful objection resolutions / Total objections) × 100",
         tips: [
-          "Did not ignore user concerns.",
-          "Responded with data or empathy rather than argument.",
-          "Guided HCP back to approved solution/benefits."
+          "Listens carefully; reframes objections constructively",
+          "Offers evidence-based answers",
+          "Example: 'Doctor, I noticed you hesitated on that point—would it help if I shared more specifics from the clinical trial?'"
         ],
         source: "A response is scored if it contains both objection recognition and a compliant fact or empathetic statement.",
         citation: {
@@ -2271,13 +2341,13 @@ ${COMMON}`
         }
       },
       confidence: {
-        title: "Confidence/Readiness Index",
-        definition: "Tracks the rep's confidence and fluency, as evidenced by reduced hesitations, directness, and accurate responses under pressure.",
-        calculation: "Confidence/Readiness = (Proportion of prompt, unhesitant, direct responses) / (Total responses) × 100",
+        title: "Confidence Level",
+        definition: "Assesses composure, credibility, and self-assurance during presentations.",
+        calculation: "Averaged observed confidence behaviors across interactions (scale 1–10)",
         tips: [
-          "Rarely hesitated or backtracked in responses.",
-          "Maintained composure when challenged.",
-          "Spoke with conviction and knowledge."
+          "Speaks smoothly; maintains eye contact",
+          "Stays on message despite pushback",
+          "Example: 'From my experience, I'm confident this therapy offers meaningful benefits that can improve patient outcomes.'"
         ],
         source: "Measured by absence of filler words, reduced latency, and correctness cross-checked by product knowledge.",
         citation: {
@@ -2286,13 +2356,13 @@ ${COMMON}`
         }
       },
       active_listening: {
-        title: "Active Listening Ratio",
-        definition: "Measures the proportion of responses where the rep reflects, paraphrases, or meaningfully builds on the HCP's previous statement.",
-        calculation: "Active Listening Ratio = (Responses containing paraphrase/reflective phrases or answering direct HCP concerns) / (Total responses) × 100",
+        title: "Active Listening Score",
+        definition: "Assesses attentiveness and ability to confirm and respond to HCP points.",
+        calculation: "(Active listening behaviors / Total exchanges) × 100",
         tips: [
-          "Confirmed the HCP's stated concern before moving forward.",
-          "Paraphrased HCP feedback to show understanding.",
-          "Responded to the last question, not a previously prepared pitch."
+          "Paraphrases HCP statements; checks for clarity",
+          "Reacts to both words and emotions",
+          "Example: 'So you're seeing these side effects mostly in younger patients, is that right?'"
         ],
         source: "Use NLP to detect phrases like 'What I'm hearing is...', 'If I understand correctly...'",
         citation: {
@@ -2301,13 +2371,13 @@ ${COMMON}`
         }
       },
       adaptability: {
-        title: "Emotional Adaptability Score",
-        definition: "Rates how well the rep adjusts their tone/emotional approach in response to changing HCP cues (e.g., from skeptical to concerned).",
-        calculation: "Score = (Detected adaptations in tone/style matching HCP sentiment shifts) / (Each instance HCP sentiment shifts) × 100",
+        title: "Emotional Adaptability Index",
+        definition: "Measures ability to flex communication style based on HCP attitude and energy.",
+        calculation: "(Adaptive responses / Opportunities to adapt) × 100",
         tips: [
-          "Responded with increased empathy when HCP became hesitant.",
-          "Shifted from data-driven to reassurance as needed.",
-          "Recognized and adjusted tone promptly after a challenging objection."
+          "Changes pace when needed; softens tone under stress",
+          "Expresses flexibility",
+          "Example: 'I can tell you're busy, so I'll keep this brief and focus on what matters most to your practice.'"
         ],
         source: "Use sentiment/tone analysis to identify shifts in HCP dialogue and test for corresponding change in rep's response.",
         citation: {
@@ -2318,11 +2388,11 @@ ${COMMON}`
       action_insight: {
         title: "Action/Insight Ratio",
         definition: "Assesses how often the rep translates insights from the HCP into concrete next steps or shared actions.",
-        calculation: "Action/Insight Ratio = (Action-oriented statements or suggested next steps) / (Total discovery insights identified) × 100",
+        calculation: "(Action-oriented statements or suggested next steps) / (Total discovery insights identified) × 100",
         tips: [
-          "Suggested a follow-up action after need discovery.",
-          "Clearly outlined the next step based on dialogue.",
-          "Closed the loop on HCP-stated priority."
+          "Suggested a follow-up action after need discovery",
+          "Clearly outlined the next step based on dialogue",
+          "Example: 'Based on what you shared, let me get you the trial data specific to that patient population.'"
         ],
         source: "Detect statements using action keywords ('Let's schedule...', 'I'll get you those data', 'Next visit, we'll discuss...')",
         citation: {
@@ -2333,11 +2403,11 @@ ${COMMON}`
       resilience: {
         title: "Resilience/Regulation Index",
         definition: "Tracks the ability to maintain professionalism and composure in the face of objections or negative feedback.",
-        calculation: "Resilience Index = (Emotionally regulated responses after negative feedback) / (Total negative or challenging turns) × 100",
+        calculation: "(Emotionally regulated responses after negative feedback) / (Total negative or challenging turns) × 100",
         tips: [
-          "Maintained positive tone when challenged.",
-          "Did not get defensive or argumentative.",
-          "Took a brief pause before responding to strong criticism."
+          "Maintained positive tone when challenged",
+          "Did not get defensive or argumentative",
+          "Example: 'I appreciate your candor—let me address that concern with the latest evidence.'"
         ],
         source: "Analyze for continued neutral/positive tone, absence of defensive language, and calm pacing after objections.",
         citation: {
