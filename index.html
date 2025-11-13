@@ -618,42 +618,46 @@
 
   <!-- ===== Hero ===== -->
   <section class="py-16 md:py-24 bg-white" id="home">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-start">
-      <!-- Left Column: Text + CTAs + Feature Cards + Centered Image -->
-      <div class="grid-mobile-center">
-        <span class="text-sm font-semibold uppercase text-accent-teal tracking-widest mb-3 block">AI Sales Enablement
-          for Life Sciences</span>
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">Connect and Convert with
-          Intelligence</h1>
-        <p class="text-lg sm:text-xl text-gray-600 mb-8">ReflectivAI blends clinical accuracy, emotional intelligence,
-          and adaptive AI coaching so every HCP conversation feels authentic, confident, and compliant.</p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 md:gap-10 items-start">
+      <!-- Left Column: Text + CTAs + Image (Flexbox for vertical alignment) -->
+      <div class="grid-mobile-center flex flex-col h-full">
+        <!-- Text Block -->
+        <div class="flex-shrink-0">
+          <span class="text-sm font-semibold uppercase text-accent-teal tracking-widest mb-3 block">AI Sales Enablement
+            for Life Sciences</span>
+          <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">Connect and Convert with
+            Intelligence</h1>
+          <p class="text-lg sm:text-xl text-gray-600 mb-8">ReflectivAI blends clinical accuracy, emotional intelligence,
+            and adaptive AI coaching so every HCP conversation feels authentic, confident, and compliant.</p>
+        </div>
 
-        <!-- CTA Buttons -->
-        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6 justify-center">
+        <!-- CTA Buttons - Centered -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-10 justify-center md:justify-start">
           <a href="#contact"
-            class="px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.02] text-center">Request
+            class="px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.02] text-center inline-block">Request
             a Demo</a>
           <a id="openCoach" href="#simulations"
-            class="px-8 py-3 rounded-full bg-white text-primary-dark border-2 border-primary-dark font-bold hover:bg-gray-50 transition text-center">Explore
+            class="px-8 py-3 rounded-full bg-white text-primary-dark border-4 font-bold hover:bg-indigo-50 hover:text-indigo-900 transition text-center inline-block"
+            style="border-color: #1E3A8A;">Explore
             Platform</a>
         </div>
         
         <!-- Hero Image Below CTA Buttons -->
-        <div class="w-full flex items-center justify-center">
-          <div class="rounded-xl overflow-hidden shadow-xl" style="max-width:420px;width:100%;">
+        <div class="w-full flex-shrink-0">
+          <div class="rounded-xl overflow-hidden shadow-xl">
             <img src="assets/hero-image.png" alt="HCP conversation with analytics overlay"
               class="w-full h-auto object-cover"
-              onerror="this.onerror=null;this.src='https://via.placeholder.com/420x280?text=Image+Not+Found';this.alt='Image not found';" />
+              onerror="this.onerror=null;this.src='https://via.placeholder.com/560x350?text=Image+Not+Found';this.alt='Image not found';" />
           </div>
         </div>
       </div>
 
-      <!-- Right Column: New Main Hero Image (10% smaller = 612px) -->
+      <!-- Right Column: Main Hero Image (Reduced height to align with left column) -->
       <div class="rounded-xl overflow-hidden shadow-2xl mt-8 md:mt-0"
-        style="min-height:612px;display:flex;align-items:stretch;" aria-hidden="true">
+        style="height:auto;display:flex;align-items:stretch;aspect-ratio:3/4;" aria-hidden="true">
         <img src="assets/site_image 1.png" alt="ReflectivAI Platform Overview" class="w-full h-full object-cover"
           style="object-position:center top;"
-          onerror="this.onerror=null;this.src='https://via.placeholder.com/600x680?text=Image+Not+Found';this.alt='Image not found';" />
+          onerror="this.onerror=null;this.src='https://via.placeholder.com/500x650?text=Image+Not+Found';this.alt='Image not found';" />
       </div>
     </div>
   </section>
