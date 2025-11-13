@@ -368,15 +368,27 @@
     const tips = Array.isArray(coach.tips) ? coach.tips.slice(0, 3) : [];
     const rubver = coach.rubric_version || "v2.0";
 
-    // Enhanced clickable card with animation delay
+    // Enhanced clickable card with animation delay, tooltips, and score-based styling
     const mkCard = (k, label, idx) => {
       const v = Number(S[k] ?? 0);
       const val = (v || v === 0) ? String(v) : "–";
       const animDelay = idx * 0.08; // Stagger animation 80ms per card
-      return `<div class="ei-card" data-metric="${k}" style="animation-delay:${animDelay}s">
+      
+      // Score-based color classes
+      let scoreClass = "ei-score-default";
+      if (v >= 4) scoreClass = "ei-score-excellent";
+      else if (v >= 3) scoreClass = "ei-score-good";
+      else if (v >= 2) scoreClass = "ei-score-fair";
+      else if (v >= 1) scoreClass = "ei-score-needs-work";
+      
+      // Tooltip content (rationale if available)
+      const tooltip = R[k] ? esc(R[k]) : `Click to learn about ${esc(label)}`;
+      
+      return `<div class="ei-card ${scoreClass}" data-metric="${k}" data-tooltip="${tooltip}" style="animation-delay:${animDelay}s">
         <div class="ei-card-label">${esc(label)}</div>
         <div class="ei-card-score">${esc(val)}<span class="ei-card-max">/5</span></div>
         <div class="ei-card-icon">→</div>
+        <div class="ei-tooltip">${tooltip}</div>
       </div>`;
     };
 
@@ -1474,7 +1486,7 @@ ${COMMON}`
   cursor:pointer;
   transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position:relative;
-  overflow:hidden;
+  overflow:visible;
   border:1px solid rgba(32, 191, 169, 0.2);
   animation:fadeInUp 0.5s ease-out forwards;
   opacity:0;
@@ -1490,7 +1502,25 @@ ${COMMON}`
   border-color:rgba(32, 191, 169, 0.6);
   box-shadow:0 8px 16px rgba(32, 191, 169, 0.3), 0 0 0 1px rgba(32, 191, 169, 0.4);
   background:linear-gradient(135deg, #223052 0%, #14304d 100%);
+  z-index:10;
 }
+
+/* Score-based color accents */
+#reflectiv-widget .ei-card.ei-score-excellent{border-color:rgba(16, 185, 129, 0.4)}
+#reflectiv-widget .ei-card.ei-score-excellent:hover{border-color:rgba(16, 185, 129, 0.8);box-shadow:0 8px 16px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(16, 185, 129, 0.5)}
+#reflectiv-widget .ei-card.ei-score-excellent .ei-card-label{color:#10b981}
+
+#reflectiv-widget .ei-card.ei-score-good{border-color:rgba(59, 130, 246, 0.4)}
+#reflectiv-widget .ei-card.ei-score-good:hover{border-color:rgba(59, 130, 246, 0.8);box-shadow:0 8px 16px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.5)}
+#reflectiv-widget .ei-card.ei-score-good .ei-card-label{color:#3b82f6}
+
+#reflectiv-widget .ei-card.ei-score-fair{border-color:rgba(245, 158, 11, 0.4)}
+#reflectiv-widget .ei-card.ei-score-fair:hover{border-color:rgba(245, 158, 11, 0.8);box-shadow:0 8px 16px rgba(245, 158, 11, 0.4), 0 0 0 1px rgba(245, 158, 11, 0.5)}
+#reflectiv-widget .ei-card.ei-score-fair .ei-card-label{color:#f59e0b}
+
+#reflectiv-widget .ei-card.ei-score-needs-work{border-color:rgba(239, 68, 68, 0.4)}
+#reflectiv-widget .ei-card.ei-score-needs-work:hover{border-color:rgba(239, 68, 68, 0.8);box-shadow:0 8px 16px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(239, 68, 68, 0.5)}
+#reflectiv-widget .ei-card.ei-score-needs-work .ei-card-label{color:#ef4444}
 
 #reflectiv-widget .ei-card-label{
   font:600 10px/1.2 Inter,system-ui;
@@ -1498,6 +1528,7 @@ ${COMMON}`
   text-transform:uppercase;
   letter-spacing:0.5px;
   margin-bottom:6px;
+  transition:color 0.3s;
 }
 
 #reflectiv-widget .ei-card-score{
@@ -1516,6 +1547,55 @@ ${COMMON}`
   position:absolute;
   top:10px;
   right:10px;
+  font-size:16px;
+  color:#20bfa9;
+  opacity:0.6;
+  transition:all 0.3s;
+}
+
+#reflectiv-widget .ei-card:hover .ei-card-icon{
+  opacity:1;
+  transform:translateX(3px);
+}
+
+/* Tooltip styling */
+#reflectiv-widget .ei-tooltip{
+  position:absolute;
+  bottom:calc(100% + 8px);
+  left:50%;
+  transform:translateX(-50%) translateY(-5px);
+  background:rgba(15, 23, 42, 0.95);
+  backdrop-filter:blur(8px);
+  color:#fff;
+  padding:8px 12px;
+  border-radius:8px;
+  font-size:11px;
+  line-height:1.4;
+  white-space:normal;
+  max-width:220px;
+  text-align:center;
+  pointer-events:none;
+  opacity:0;
+  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index:1000;
+  box-shadow:0 4px 12px rgba(0, 0, 0, 0.3);
+  border:1px solid rgba(255, 255, 255, 0.1);
+}
+
+#reflectiv-widget .ei-tooltip::before{
+  content:'';
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  border:6px solid transparent;
+  border-top-color:rgba(15, 23, 42, 0.95);
+}
+
+#reflectiv-widget .ei-card:hover .ei-tooltip{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
   font-size:16px;
   color:#20bfa9;
   opacity:0.6;
@@ -2420,46 +2500,56 @@ ${COMMON}`
     const data = definitions[metric];
     if (!data) return;
 
-    // Create modal HTML with citation link
+    // Create enhanced modal HTML with animations and backdrop blur
     const modalHTML = `
-      <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif">
-        <div style="background:white;border-radius:12px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
-          <div style="padding:24px;border-bottom:1px solid #e5e7eb">
-            <h3 style="margin:0;font-size:20px;font-weight:700;color:#111827;font-family:Inter,system-ui,sans-serif">${data.title}</h3>
-            <p style="margin:8px 0 0;color:#6b7280;font-size:14px;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.definition}</p>
-            <p style="margin:12px 0 0;color:#9ca3af;font-size:13px;font-style:italic;background:#f9fafb;padding:8px 12px;border-radius:6px;font-family:Inter,system-ui,sans-serif"><strong>Calculation:</strong> ${data.calculation}</p>
+      <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif;animation:fadeIn 0.2s ease-out">
+        <div style="background:white;border-radius:16px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);animation:slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)">
+          <div style="padding:24px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg, #0f2747 0%, #1e3a5f 100%)">
+            <h3 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;font-family:Inter,system-ui,sans-serif">${data.title}</h3>
+            <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:14px;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.definition}</p>
+          </div>
+          <div style="padding:20px 24px;background:#f9fafb">
+            <p style="margin:0;color:#475569;font-size:13px;font-style:italic;background:#ffffff;padding:12px 16px;border-radius:8px;border-left:4px solid #20bfa9;font-family:Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.1)"><strong style="color:#0f2747">Calculation:</strong> ${data.calculation}</p>
           </div>
           <div style="padding:24px">
-            <h4 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;font-family:Inter,system-ui,sans-serif">Sample Indicators:</h4>
+            <h4 style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f2747;font-family:Inter,system-ui,sans-serif;border-bottom:2px solid #20bfa9;padding-bottom:8px">Sample Indicators</h4>
             <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.8;font-family:Inter,system-ui,sans-serif">
-              ${data.tips.map(tip => `<li style="margin:8px 0">${tip}</li>`).join('')}
+              ${data.tips.map(tip => `<li style="margin:12px 0;padding-left:8px">${tip}</li>`).join('')}
             </ul>
-            <div style="margin-top:20px;padding:12px;background:#f0f9ff;border-left:4px solid #0ea5e9;border-radius:6px">
-              <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.source}</p>
+            <div style="margin-top:24px;padding:16px;background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);border-left:4px solid #0ea5e9;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+              <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6;font-family:Inter,system-ui,sans-serif;font-style:italic">${data.source}</p>
             </div>
           </div>
-          <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
-            <p style="margin:0 0 8px;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-family:Inter,system-ui,sans-serif">Learn More:</p>
-            <a href="${data.citation.url}" target="_blank" rel="noopener" style="display:inline-block;font-size:13px;color:#0369a1;text-decoration:none;background:#e0f2fe;padding:6px 12px;border-radius:6px;border:1px solid #bae6fd;font-weight:500;transition:all 0.2s;font-family:Inter,system-ui,sans-serif" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'">${data.citation.text} →</a>
+          <div style="padding:20px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
+            <p style="margin:0 0 10px;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;font-family:Inter,system-ui,sans-serif">📚 Learn More</p>
+            <a href="${data.citation.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#0369a1;text-decoration:none;background:#ffffff;padding:10px 16px;border-radius:8px;border:1px solid #bae6fd;font-weight:500;transition:all 0.2s;font-family:Inter,system-ui,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,0.05)" onmouseover="this.style.background='#e0f2fe';this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.background='#ffffff';this.style.transform='translateY(0)';this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">${data.citation.text} →</a>
           </div>
-          <div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:right">
-            <button onclick="document.getElementById('metric-modal').remove()" style="padding:10px 20px;background:#ec4899;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s;font-family:Inter,system-ui,sans-serif" onmouseover="this.style.background='#db2777'" onmouseout="this.style.background='#ec4899'">Got it!</button>
+          <div style="padding:20px 24px;border-top:1px solid #e5e7eb;text-align:right;background:#ffffff">
+            <button onclick="this.closest('#metric-modal').style.animation='fadeOut 0.2s ease-out';setTimeout(()=>document.getElementById('metric-modal').remove(),200)" style="padding:12px 24px;background:linear-gradient(135deg, #ec4899 0%, #db2777 100%);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s;font-family:Inter,system-ui,sans-serif;box-shadow:0 2px 4px rgba(236,72,153,0.3)" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 8px rgba(236,72,153,0.4)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 2px 4px rgba(236,72,153,0.3)'">Got it!</button>
           </div>
         </div>
       </div>
+      <style>
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes fadeOut{from{opacity:1}to{opacity:0}}
+        @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+      </style>
     `;
 
     // Remove existing modal if any
     const existing = document.getElementById("metric-modal");
     if (existing) existing.remove();
 
-    // Append new modal
+    // Append new modal with animation
     document.body.insertAdjacentHTML("beforeend", modalHTML);
 
-    // Close on backdrop click
+    // Close on backdrop click with fade animation
     const modal = document.getElementById("metric-modal");
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.remove();
+      if (e.target === modal) {
+        modal.style.animation = 'fadeOut 0.2s ease-out';
+        setTimeout(() => modal.remove(), 200);
+      }
     });
   }
 
