@@ -3191,9 +3191,14 @@ Please provide your response again with all required fields including phrasing.`
         pushRecent(candidate);
 
         // CRITICAL: Sales Coach responses have structured format (Challenge, Rep Approach, Impact, Suggested Phrasing)
-        // that must be preserved in full. Clamping at 1200 chars truncates Suggested Phrasing section.
-        // Increased limit to 2500 to accommodate full structured responses without truncation.
-        replyText = clampLen(replyText, currentMode === "sales-coach" ? 2500 : 1400);
+        // that must be preserved in full. Some responses exceed 3000–4500 chars (long phrasing + citations).
+        // Previous clamping (2500) caused mid-phrase truncation and UI ellipsis. Disable clamping for sales-coach.
+        // Retain clamping for other modes to prevent runaway verbosity.
+        if (currentMode !== "sales-coach") {
+          replyText = clampLen(replyText, 1400);
+        } else {
+          console.log("[Sales Coach] Skip clamp; length=", replyText.length);
+        }
 
         const computed = scoreReply(userText, replyText, currentMode);
 
