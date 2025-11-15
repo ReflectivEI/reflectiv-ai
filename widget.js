@@ -232,14 +232,6 @@
 
   // ---------- Health gate ----------
   async function checkHealth() {
-    // Skip health check for localhost (no worker running locally)
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      isHealthy = true;
-      hideHealthBanner();
-      enableSendButton();
-      return true;
-    }
-    
     // Normalize base URL to avoid double slashes
     const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
     const healthUrl = `${baseUrl}/health`;
@@ -376,47 +368,35 @@
     const tips = Array.isArray(coach.tips) ? coach.tips.slice(0, 3) : [];
     const rubver = coach.rubric_version || "v2.0";
 
-    // Enhanced clickable card with animation delay, tooltips, and score-based styling
-    const mkCard = (k, label, idx) => {
+    const mk = (k, label) => {
       const v = Number(S[k] ?? 0);
       const val = (v || v === 0) ? String(v) : "–";
-      const animDelay = idx * 0.08; // Stagger animation 80ms per card
-      
-      // Score-based color classes
-      let scoreClass = "ei-score-default";
-      if (v >= 4) scoreClass = "ei-score-excellent";
-      else if (v >= 3) scoreClass = "ei-score-good";
-      else if (v >= 2) scoreClass = "ei-score-fair";
-      else if (v >= 1) scoreClass = "ei-score-needs-work";
-      
-      // Tooltip content (rationale if available)
-      const tooltip = R[k] ? esc(R[k]) : `Click to learn about ${esc(label)}`;
-      
-      return `<div class="ei-card ${scoreClass}" data-metric="${k}" data-tooltip="${tooltip}" style="animation-delay:${animDelay}s">
-        <div class="ei-card-label">${esc(label)}</div>
-        <div class="ei-card-score">${esc(val)}<span class="ei-card-max">/5</span></div>
-        <div class="ei-card-icon">→</div>
-        <div class="ei-tooltip">${tooltip}</div>
-      </div>`;
+      const title = (R[k] ? `${label}: ${R[k]}` : `${label}`);
+      return `<span class="ei-pill" data-metric="${k}" title="${esc(title)}">
+        <span class="k">${esc(label)}</span>
+        <div style="font-size:14px;font-weight:700;margin-top:2px">${esc(val)}/5</div>
+      </span>`;
     };
 
     return `
   <div class="ei-wrap">
     <div class="ei-h">Emotional Intelligence Summary</div>
-    <div class="ei-grid">
-      ${mkCard("empathy", "Empathy", 0)}
-      ${mkCard("clarity", "Clarity", 1)}
-      ${mkCard("compliance", "Compliance", 2)}
-      ${mkCard("discovery", "Discovery", 3)}
-      ${mkCard("objection_handling", "Objection Handling", 4)}
-      ${mkCard("confidence", "Confidence", 5)}
-      ${mkCard("active_listening", "Active Listening", 6)}
-      ${mkCard("adaptability", "Adaptability", 7)}
-      ${mkCard("action_insight", "Action Insight", 8)}
-      ${mkCard("resilience", "Resilience", 9)}
+    <div class="ei-row">
+      ${mk("empathy", "Empathy")}
+      ${mk("clarity", "Clarity")}
+      ${mk("compliance", "Compliance")}
+      ${mk("discovery", "Discovery")}
+      ${mk("objection_handling", "Objection Handling")}
+    </div>
+    <div class="ei-row">
+      ${mk("confidence", "Confidence")}
+      ${mk("active_listening", "Active Listening")}
+      ${mk("adaptability", "Adaptability")}
+      ${mk("action_insight", "Action Insight")}
+      ${mk("resilience", "Resilience")}
     </div>
     ${tips.length ? `<ul class="ei-tips">${tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
-    <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/ei-scoring-guide.html" target="_blank" rel="noopener">scoring guide</a> · <a href="/ei-score-details.html" target="_blank" rel="noopener">view details</a></div>
+    <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
   </div>`;
   }
 
@@ -774,125 +754,49 @@
       cleanedText = cleanedText.replace(phrasingRegex, '$1');
     }
 
-    // CRITICAL: Stop at first occurrence of each section to avoid duplication
-    // Split by major sections - use NON-GREEDY matching and stop at next section header
+    // Strict contract enforcement: 4 headers in order, 3 bullets, phrasing
     const challengeMatch = cleanedText.match(/Challenge:\s*(.+?)(?=\s+Rep Approach:|$)/is);
     const repApproachMatch = cleanedText.match(/Rep Approach:\s*(.+?)(?=\s+Impact:|$)/is);
     const impactMatch = cleanedText.match(/Impact:\s*(.+?)(?=\s+Suggested Phrasing:|$)/is);
-    // GREEDY match for Suggested Phrasing (last section) to capture full text, not truncate mid-sentence
-    const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*[""']?(.+)[""']?\s*(?=\s*(?:<coach>|$))/is);
+    const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*["']?(.+?)["']?\s*(?=\s+Challenge:|<coach>|$)/is);
 
-    console.log('[Sales Coach Format] Matches:', {
-      challenge: !!challengeMatch,
-      repApproach: !!repApproachMatch,
-      impact: !!impactMatch,
-      phrasing: !!phrasingMatch
-    });
-
-    // Challenge section
-    if (challengeMatch) {
-      const challengeText = challengeMatch[1].trim();
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Challenge:</strong></div>`;
-      html += `<div class="section-content">${convertCitations(esc(challengeText))}</div>`;
-      html += `</div>\n\n`;
-    }
-
-    // Rep Approach section
+    // Validate strict contract
+    let contractValid = true;
+    let errorMsg = "";
+    if (!challengeMatch) { contractValid = false; errorMsg += "Missing Challenge section.\n"; }
+    if (!repApproachMatch) { contractValid = false; errorMsg += "Missing Rep Approach section.\n"; }
+    if (!impactMatch) { contractValid = false; errorMsg += "Missing Impact section.\n"; }
+    if (!phrasingMatch) { contractValid = false; errorMsg += "Missing Suggested Phrasing section.\n"; }
+    // Check 3 bullets in Rep Approach
+    let bulletCount = 0;
     if (repApproachMatch) {
       const repText = repApproachMatch[1].trim();
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Rep Approach:</strong></div>`;
-      html += `<ul class="section-bullets">`;
-
-      // Extract bullets - split on bullet characters (•, ●, ○) since LLM doesn't use newlines
-      const bullets = repText
-        .split(/\s*[•●○]\s*/)
-        .map(b => b.trim())
-        .filter(b => b.length > 0 && b.length < 500); // Filter out garbage/duplicates
-
-      bullets.forEach(bullet => {
-        html += `<li>${convertCitations(esc(bullet))}</li>`;
-      });
-
-      html += `</ul>`;
-      html += `</div>\n\n`;
+      const bullets = repText.split(/\s*[•●○]\s*/).map(b => b.trim()).filter(b => b.length > 0 && b.length < 500);
+      bulletCount = bullets.length;
+      if (bulletCount !== 3) { contractValid = false; errorMsg += `Rep Approach must have exactly 3 bullets (found ${bulletCount}).\n`; }
     }
-
-    // Impact section
-    if (impactMatch) {
-      const impactText = impactMatch[1].trim();
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Impact:</strong></div>`;
-      html += `<div class="section-content">${convertCitations(esc(impactText))}</div>`;
-      html += `</div>\n\n`;
-    }
-
-    // Suggested Phrasing section
-    if (phrasingMatch) {
-      const phrasingText = phrasingMatch[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Suggested Phrasing:</strong></div>`;
-      html += `<div class="section-quote">"${convertCitations(esc(phrasingText))}"</div>`;
-      html += `</div>`;
-    }
-
-    if (!html) {
-      console.error('[Sales Coach Format] CRITICAL: No sections matched - text may be malformed');
-      console.error('[Sales Coach Format] Text preview:', text.substring(0, 500));
-      // DO NOT fall back to md() - return a warning instead to preserve structure
+    if (!contractValid) {
       return `<div class="sales-sim-section" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
-        <strong style="color:#c00">⚠️ Format Error:</strong> Unable to parse Sales Coach response. Expected format:
-        <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">Challenge: [text]
-Rep Approach:
-• [bullet]
-Impact: [text]
-Suggested Phrasing: "[text]"</pre>
+        <strong style="color:#c00">⚠️ Format Error:</strong> Sales Coach response violated contract.<br>
+        <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">${esc(errorMsg)}</pre>
         <details style="margin-top:8px">
           <summary style="cursor:pointer;color:#666">Show raw response</summary>
           <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px">${esc(text)}</div>
         </details>
       </div>`;
     }
-
-    console.log('[Sales Coach Format] Successfully formatted', html.length, 'chars');
+    // Render sections if valid
+    html += `<div class="sales-sim-section"><div class="section-header"><strong>Challenge:</strong></div><div class="section-content">${convertCitations(esc(challengeMatch[1].trim()))}</div></div>\n\n`;
+    const repText = repApproachMatch[1].trim();
+    html += `<div class="sales-sim-section"><div class="section-header"><strong>Rep Approach:</strong></div><ul class="section-bullets">`;
+    repText.split(/\s*[•●○]\s*/).map(b => b.trim()).filter(b => b.length > 0 && b.length < 500).forEach(bullet => {
+      html += `<li>${convertCitations(esc(bullet))}</li>`;
+    });
+    html += `</ul></div>\n\n`;
+    html += `<div class="sales-sim-section"><div class="section-header"><strong>Impact:</strong></div><div class="section-content">${convertCitations(esc(impactMatch[1].trim()))}</div></div>\n\n`;
+    const phrasingText = phrasingMatch[1].trim().replace(/^['"]|['"]$/g, '');
+    html += `<div class="sales-sim-section"><div class="section-header"><strong>Suggested Phrasing:</strong></div><div class="section-quote">"${convertCitations(esc(phrasingText))}"</div></div>`;
     return html;
-  }
-
-  /**
-   * PHASE 3: normalizeCoachFormatting - Render-side formatting polish
-   * For sales-coach mode ONLY: ensure proper spacing between sections
-   * Does NOT modify the actual response payload; only affects visual rendering
-   * @param {string} text - Raw response text
-   * @param {string} mode - Current mode
-   * @returns {string} - Normalized text with proper spacing
-   */
-  function normalizeCoachFormatting(text, mode) {
-    if (!text || mode !== 'sales-coach') {
-      return text;
-    }
-
-    let normalized = String(text);
-
-    // Ensure blank lines between major sections if missing
-    // This is a VISUAL-ONLY normalization; server is source of truth
-    const sections = ['Challenge:', 'Rep Approach:', 'Impact:', 'Suggested Phrasing:'];
-
-    for (let i = 0; i < sections.length - 1; i++) {
-      const current = sections[i];
-      const next = sections[i + 1];
-
-      // Match: current section followed by optional content followed by next section
-      const pattern = new RegExp(
-        `(${current}[^]*?)\\n(?!\\n)((?:^|[^]*?)${next})`,
-        'gi'
-      );
-
-      // Replace with: current section + double newline + next section
-      normalized = normalized.replace(pattern, `$1\n\n$2`);
-    }
-
-    return normalized;
   }
 
   function md(text) {
@@ -1001,7 +905,41 @@ Suggested Phrasing: "[text]"</pre>
     s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
     s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
 
-    // Wrap paragraphs in <p> tags (skip if already wrapped in HTML)
+    // Product Knowledge strict contract enforcement
+    if (currentMode === "product-knowledge") {
+      // Must have at least one [n] citation
+      const citationMatches = s.match(/\[\d+\]/g) || [];
+      // Must have References section at the end
+      const refSectionMatch = s.match(/References:\s*([\s\S]*)$/i);
+      let contractValid = true;
+      let errorMsg = "";
+      if (citationMatches.length === 0) { contractValid = false; errorMsg += "Missing inline numeric citation [n].\n"; }
+      if (!refSectionMatch) { contractValid = false; errorMsg += "Missing References section.\n"; }
+      let refLines = [];
+      if (refSectionMatch) {
+        refLines = refSectionMatch[1].split(/\n|\r|\r\n/).filter(l => /^\d+\. /.test(l));
+        if (refLines.length === 0) { contractValid = false; errorMsg += "No numbered reference entries found.\n"; }
+        // Each reference line must have a real URL
+        refLines.forEach((line, i) => {
+          if (!line.match(/https?:\/\//)) { contractValid = false; errorMsg += `Reference ${i+1} missing URL.\n`; }
+        });
+        // Each [n] citation must have a matching reference
+        for (let i = 1; i <= citationMatches.length; i++) {
+          if (!refLines[i-1]) { contractValid = false; errorMsg += `Citation [${i}] missing matching reference line.\n`; }
+        }
+      }
+      if (!contractValid) {
+        return `<div class="pk-error-card" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
+          <strong style="color:#c00">⚠️ Format Error:</strong> Product Knowledge response violated contract.<br>
+          <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">${esc(errorMsg)}</pre>
+          <details style="margin-top:8px">
+            <summary style="cursor:pointer;color:#666">Show raw response</summary>
+            <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px">${esc(text)}</div>
+          </details>
+        </div>`;
+      }
+    }
+    // ...existing code...
     return s
       .split(/\n{2,}/)
       .map((p) => {
@@ -1014,147 +952,71 @@ Suggested Phrasing: "[text]"</pre>
       .join("\n");
   }
 
-  /* ===== PHASE 2: Response Contract Validators (Frontend) ===== */
-
-  /**
-   * validateSalesCoachResponse - Check that response has all required sections
-   * @param {string} replyText - The response text
-   * @param {object} coach - The coach block
-   * @returns {object} - { valid: bool, errors: [...], warnings: [...] }
-   */
-  function validateSalesCoachResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Check all 4 sections present
-    const hasChallenge = /Challenge:/i.test(replyText);
-    const hasRepApproach = /Rep Approach:/i.test(replyText);
-    const hasImpact = /Impact:/i.test(replyText);
-    const hasPhrasing = /Suggested Phrasing:/i.test(replyText);
-
-    if (!hasChallenge) errors.push("Missing Challenge section");
-    if (!hasRepApproach) errors.push("Missing Rep Approach section");
-    if (!hasImpact) errors.push("Missing Impact section");
-    if (!hasPhrasing) errors.push("Missing Suggested Phrasing section");
-
-    // Check coach block with 10 metrics
-    if (!coach || !coach.scores) {
-      errors.push("Missing coach block");
-    } else {
-      const requiredMetrics = [
-        "empathy", "clarity", "compliance", "discovery",
-        "objection_handling", "confidence", "active_listening",
-        "adaptability", "action_insight", "resilience"
-      ];
-      const missing = requiredMetrics.filter(m => !(m in coach.scores));
-      if (missing.length > 0) {
-        errors.push(`Missing EI metrics: ${missing.join(", ")}`);
-      }
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateEIResponse - Check EI assessment response
-   */
-  function validateEIResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Check coach block with all 10 metrics
-    if (!coach || !coach.scores) {
-      errors.push("Missing coach block");
-    } else {
-      const requiredMetrics = [
-        "empathy", "clarity", "compliance", "discovery",
-        "objection_handling", "confidence", "active_listening",
-        "adaptability", "action_insight", "resilience"
-      ];
-      const missing = requiredMetrics.filter(m => !(m in coach.scores));
-      if (missing.length > 0) {
-        errors.push(`Missing EI metrics: ${missing.join(", ")}`);
-      }
-    }
-
-    // Check for Socratic questions
-    const questionCount = (replyText.match(/\?/g) || []).length;
-    if (questionCount < 2) {
-      warnings.push(`Only ${questionCount} Socratic question(s) (expected 2+)`);
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateRolePlayResponse - Check role play has no coaching
-   */
-  function validateRolePlayResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Should NOT have coach block
-    if (coach && Object.keys(coach).length > 0) {
-      errors.push("Unexpected coach block in role-play");
-    }
-
-    // Should NOT have coaching language
-    const coachingPatterns = [
-      /Challenge:/i, /Rep Approach:/i, /Impact:/i, /Suggested Phrasing:/i
-    ];
-    for (const pattern of coachingPatterns) {
-      if (pattern.test(replyText)) {
-        errors.push(`Detected coaching language: "${pattern.source}"`);
-      }
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateProductKnowledgeResponse - Check for citations
-   */
-  function validateProductKnowledgeResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Should have citations
-    const citationPatterns = [
-      /\[\w+-\w+-\w+\]/,
-      /\[\d+\]/,
-      /\(citation\s*\d+\)/i
-    ];
-    const hasCitations = citationPatterns.some(p => p.test(replyText));
-    if (!hasCitations) {
-      warnings.push("No citations detected (expected for product knowledge)");
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateResponseForMode - Main validation dispatcher
-   */
-  function validateResponseForMode(mode, replyText, coach) {
-    switch (mode) {
-      case "sales-coach":
-        return validateSalesCoachResponse(replyText, coach);
-      case "emotional-assessment":
-        return validateEIResponse(replyText, coach);
-      case "role-play":
-        return validateRolePlayResponse(replyText, coach);
-      case "product-knowledge":
-        return validateProductKnowledgeResponse(replyText, coach);
-      default:
-        return { valid: true, errors: [], warnings: [] };
-    }
-  }
-
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
     if (text != null) e.textContent = text;
     return e;
+  }
+
+  // Soft contract warning card (non-network) for mode outputs
+  function renderContractWarningCard(mode, issues, raw) {
+    const card = document.createElement('div');
+    card.className = 'contract-warning-card';
+    card.style.cssText = 'background:#fff8e1;border:1px solid #e0b200;padding:10px 12px;border-radius:6px;margin:8px 0;font-size:12px;line-height:1.4';
+    const title = `<strong style="color:#b38300">⚠ Contract Warning (${mode})</strong>`;
+    const list = `<ul style="margin:6px 0 8px;padding-left:18px">${issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
+    const details = `<details style="font-size:11px"><summary style="cursor:pointer;color:#7a6400">Show raw</summary><div style="margin-top:6px;max-height:160px;overflow:auto;background:#fff;border:1px solid #eed;padding:6px;border-radius:4px">${esc(raw)}</div></details>`;
+    card.innerHTML = `${title}<div style="margin-top:4px">Response violated one or more contract constraints but transport was OK.</div>${list}${details}`;
+    return card;
+  }
+
+  /**
+   * Detect Role Play contract violations and optionally sanitize.
+   * What counts as a leak?
+   *  - Coach artifacts: <coach>...</coach>, rubric_version, scores JSON
+   *  - Sales-Coach headings: Challenge:, Rep Approach:, Impact:, Suggested Phrasing:, Next-Move Planner:, Risk Flags:
+   *  - Meta-coaching: phrases like "you should say" or "as the rep"
+   * Allowed HCP behavior:
+   *  - Clinical reasoning in 1–4 sentences
+   *  - Brief bullet lists for steps/criteria/monitoring (•, -, *)
+   *  - Professional tone without evaluating/scoring the rep
+   * Accepts either a plain string or an object { raw, clean, replyText, sc }.
+   */
+  function applyRolePlayContractWarning(input) {
+    const text = (typeof input === 'string') ? input : (input?.replyText || input?.clean || input?.raw || '');
+    const issues = [];
+    if (/<coach>[\s\S]*?<\/coach>/i.test(text)) issues.push('Leaked <coach> JSON block');
+    if (/\bSuggested Phrasing:/i.test(text)) issues.push('Contains "Suggested Phrasing:" heading');
+    if (/\bRep Approach:/i.test(text)) issues.push('Contains "Rep Approach:" heading');
+    if (/\bImpact:/i.test(text)) issues.push('Contains "Impact:" heading');
+    if (/\bChallenge:/i.test(text)) issues.push('Contains "Challenge:" heading');
+    if (/Sales Coach/i.test(text)) issues.push('Mentions Sales Coach');
+    if (/"scores"\s*:\s*\{[\s\S]*?\}/i.test(text)) issues.push('Embedded scoring JSON');
+    if (/rubric_version/i.test(text)) issues.push('Rubric metadata leaked');
+    // Meta-coaching (avoid generic "you should"; focus on meta instructions)
+    if (/\byou should say\b/i.test(text)) issues.push('Meta-coaching: "you should say"');
+    if (/\bas the rep\b/i.test(text)) issues.push('Meta-coaching: "as the rep"');
+
+    // Sanitize banned tokens if present (light pass, backend already did heavy)
+    if (issues.length) {
+      let cleaned = text
+        .replace(/<coach>[\s\S]*?<\/coach>/gi, '')
+        .replace(/\bSuggested Phrasing:/gi, '')
+        .replace(/\bRep Approach:/gi, '')
+        .replace(/\bImpact:/gi, '')
+        .replace(/\bChallenge:/gi, '')
+        .replace(/Sales Coach/gi, '')
+        .replace(/"scores"\s*:\s*\{[\s\S]*?\}/gi, '')
+        .replace(/rubric_version/gi, '')
+        .replace(/\byou should say\b/gi, '')
+        .replace(/\bas the rep\b/gi, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      const meta = (typeof input === 'string') ? { mode: 'role-play', issues, raw: text } : { mode: 'role-play', issues, raw: input?.raw || text };
+      return { cleaned, issues, meta };
+    }
+    return { cleaned: text, issues: [], meta: null };
   }
 
   // ---------- Legacy Coach Renderer (RESTORED UI) ----------
@@ -1656,141 +1518,6 @@ ${COMMON}`
 /* === EI summary in yellow panel === */
 #reflectiv-widget .ei-wrap{padding:10px 12px}
 #reflectiv-widget .ei-h{font:700 14px/1.2 Inter,system-ui;margin:0 0 8px}
-
-/* Enhanced EI Grid Cards */
-#reflectiv-widget .ei-grid{display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;margin:0 0 12px;max-width:100%}
-#reflectiv-widget .ei-card{
-  background:linear-gradient(135deg, #1e3a5f 0%, #0f2747 100%);
-  border-radius:12px;
-  padding:12px 10px;
-  cursor:pointer;
-  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position:relative;
-  overflow:visible;
-  border:1px solid rgba(32, 191, 169, 0.2);
-  animation:fadeInUp 0.5s ease-out forwards;
-  opacity:0;
-  transform:translateY(10px);
-}
-
-@keyframes fadeInUp{
-  to{opacity:1;transform:translateY(0)}
-}
-
-#reflectiv-widget .ei-card:hover{
-  transform:translateY(-4px) scale(1.02);
-  border-color:rgba(32, 191, 169, 0.6);
-  box-shadow:0 8px 16px rgba(32, 191, 169, 0.3), 0 0 0 1px rgba(32, 191, 169, 0.4);
-  background:linear-gradient(135deg, #223052 0%, #14304d 100%);
-  z-index:10;
-}
-
-/* Score-based color accents */
-#reflectiv-widget .ei-card.ei-score-excellent{border-color:rgba(16, 185, 129, 0.4)}
-#reflectiv-widget .ei-card.ei-score-excellent:hover{border-color:rgba(16, 185, 129, 0.8);box-shadow:0 8px 16px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(16, 185, 129, 0.5)}
-#reflectiv-widget .ei-card.ei-score-excellent .ei-card-label{color:#10b981}
-
-#reflectiv-widget .ei-card.ei-score-good{border-color:rgba(59, 130, 246, 0.4)}
-#reflectiv-widget .ei-card.ei-score-good:hover{border-color:rgba(59, 130, 246, 0.8);box-shadow:0 8px 16px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.5)}
-#reflectiv-widget .ei-card.ei-score-good .ei-card-label{color:#3b82f6}
-
-#reflectiv-widget .ei-card.ei-score-fair{border-color:rgba(245, 158, 11, 0.4)}
-#reflectiv-widget .ei-card.ei-score-fair:hover{border-color:rgba(245, 158, 11, 0.8);box-shadow:0 8px 16px rgba(245, 158, 11, 0.4), 0 0 0 1px rgba(245, 158, 11, 0.5)}
-#reflectiv-widget .ei-card.ei-score-fair .ei-card-label{color:#f59e0b}
-
-#reflectiv-widget .ei-card.ei-score-needs-work{border-color:rgba(239, 68, 68, 0.4)}
-#reflectiv-widget .ei-card.ei-score-needs-work:hover{border-color:rgba(239, 68, 68, 0.8);box-shadow:0 8px 16px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(239, 68, 68, 0.5)}
-#reflectiv-widget .ei-card.ei-score-needs-work .ei-card-label{color:#ef4444}
-
-#reflectiv-widget .ei-card-label{
-  font:600 10px/1.2 Inter,system-ui;
-  color:#20bfa9;
-  text-transform:uppercase;
-  letter-spacing:0.5px;
-  margin-bottom:6px;
-  transition:color 0.3s;
-}
-
-#reflectiv-widget .ei-card-score{
-  font:700 24px/1 Inter,system-ui;
-  color:#ffffff;
-  text-shadow:0 2px 4px rgba(0,0,0,0.3);
-}
-
-#reflectiv-widget .ei-card-score .ei-card-max{
-  font-size:14px;
-  opacity:0.7;
-  margin-left:2px;
-}
-
-#reflectiv-widget .ei-card-icon{
-  position:absolute;
-  top:10px;
-  right:10px;
-  font-size:16px;
-  color:#20bfa9;
-  opacity:0.6;
-  transition:all 0.3s;
-}
-
-#reflectiv-widget .ei-card:hover .ei-card-icon{
-  opacity:1;
-  transform:translateX(3px);
-}
-
-/* Tooltip styling */
-#reflectiv-widget .ei-tooltip{
-  position:absolute;
-  bottom:calc(100% + 8px);
-  left:50%;
-  transform:translateX(-50%) translateY(-5px);
-  background:rgba(15, 23, 42, 0.95);
-  backdrop-filter:blur(8px);
-  color:#fff;
-  padding:8px 12px;
-  border-radius:8px;
-  font-size:11px;
-  line-height:1.4;
-  white-space:normal;
-  max-width:220px;
-  text-align:center;
-  pointer-events:none;
-  opacity:0;
-  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index:1000;
-  box-shadow:0 4px 12px rgba(0, 0, 0, 0.3);
-  border:1px solid rgba(255, 255, 255, 0.1);
-}
-
-#reflectiv-widget .ei-tooltip::before{
-  content:'';
-  position:absolute;
-  top:100%;
-  left:50%;
-  transform:translateX(-50%);
-  border:6px solid transparent;
-  border-top-color:rgba(15, 23, 42, 0.95);
-}
-
-#reflectiv-widget .ei-card:hover .ei-tooltip{
-  opacity:1;
-  transform:translateX(-50%) translateY(0);
-}
-  font-size:16px;
-  color:#20bfa9;
-  opacity:0.6;
-  transition:all 0.3s;
-}
-
-#reflectiv-widget .ei-card:hover .ei-card-icon{
-  opacity:1;
-  transform:translateX(3px);
-}
-
-/* Responsive: stack on smaller screens */
-@media (max-width:768px){#reflectiv-widget .ei-grid{grid-template-columns:repeat(2, 1fr)}}
-
-/* Legacy pill styles (kept for backward compatibility) */
 #reflectiv-widget .ei-row{display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin:0 0 8px;max-width:100%}
 #reflectiv-widget .ei-pill{font:700 10px/1.2 Inter,system-ui; padding:8px 6px; border-radius:999px; cursor:pointer; transition:all 0.2s; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.2); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 #reflectiv-widget .ei-pill:hover{transform:translateY(-1px); filter:brightness(1.1)}
@@ -2185,75 +1912,31 @@ ${COMMON}`
         const normalized = normalizeGuidanceLabels(rawContent);
 
         // Use special formatting for sales-coach mode AND role-play HCP responses
-        // CRITICAL: Check message's own _mode, not global currentMode, to preserve formatting across mode switches
-        if (m._mode === "sales-coach" && m.role === "assistant") {
+        if (currentMode === "sales-coach" && m.role === "assistant") {
           console.log('[renderMessages] ========== SALES COACH MESSAGE ==========');
-          console.log('[renderMessages] m._mode:', m._mode);
+          console.log('[renderMessages] currentMode:', currentMode);
           console.log('[renderMessages] m.role:', m.role);
           console.log('[renderMessages] Has cached HTML?', !!m._formattedHTML);
           console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
           console.log('[renderMessages] normalized preview:', normalized.substring(0, 200));
 
-          // PHASE 2: Validate contract before rendering
-          const validation = validateSalesCoachResponse(normalized, m._coach);
-          if (!validation.valid) {
-            console.warn('[renderMessages] Sales Coach contract violation:', validation.errors);
-            body.innerHTML = `<div style="background:#fee;padding:12px;border-radius:6px;border:2px solid #f00">
-              <strong style="color:#c00">⚠️ Response Format Error:</strong>
-              <ul style="margin:8px 0;font-size:12px">
-                ${validation.errors.map(e => `<li>${esc(e)}</li>`).join("")}
-              </ul>
-              <p style="font-size:11px;color:#666;margin-top:8px">Please try again or refresh.</p>
-            </div>`;
+          // Cache formatted HTML to avoid re-parsing on every render
+          if (!m._formattedHTML) {
+            console.log('[renderMessages] NO CACHE - Formatting now...');
+            m._formattedHTML = formatSalesCoachReply(normalized);
+            console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
+            console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
           } else {
-            // Cache formatted HTML to avoid re-parsing on every render
-            if (!m._formattedHTML) {
-              console.log('[renderMessages] NO CACHE - Formatting now...');
-              m._formattedHTML = formatSalesCoachReply(normalized);
-              console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
-              console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
-            } else {
-              console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
-            }
-            body.innerHTML = m._formattedHTML;
+            console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
           }
-        } else if (m._mode === "role-play" && (m.role === "assistant" || m._speaker === "hcp")) {
+          body.innerHTML = m._formattedHTML;
+        } else if (currentMode === "role-play" && (m.role === "assistant" || m._speaker === "hcp")) {
           // Format HCP responses in Role Play mode with clean structure
           console.log('[renderMessages] Formatting HCP response in role-play mode');
-          
-          // PHASE 2: Validate no coaching language
-          const validation = validateRolePlayResponse(normalized, m._coach);
-          if (!validation.valid) {
-            console.warn('[renderMessages] Role Play contract violation:', validation.errors);
-            body.innerHTML = `<div style="background:#fff3cd;padding:12px;border-radius:6px;border:2px solid #ffc107">
-              <strong style="color:#856404">⚠️ Response Issue:</strong>
-              <ul style="margin:8px 0;font-size:12px">
-                ${validation.errors.map(e => `<li>${esc(e)}</li>`).join("")}
-              </ul>
-            </div>`;
-          } else {
-            if (!m._formattedHTML) {
-              m._formattedHTML = md(normalized); // Use markdown formatter for clean structure
-            }
-            body.innerHTML = m._formattedHTML;
+          if (!m._formattedHTML) {
+            m._formattedHTML = md(normalized); // Use markdown formatter for clean structure
           }
-        } else if (m._mode === "emotional-assessment" && m.role === "assistant") {
-          // PHASE 2: Validate EI response structure
-          const validation = validateEIResponse(normalized, m._coach);
-          if (!validation.valid) {
-            console.warn('[renderMessages] EI Assessment contract violation:', validation.errors);
-            body.innerHTML = `<div style="background:#fee;padding:12px;border-radius:6px;border:2px solid #f00">
-              <strong style="color:#c00">⚠️ EI Response Error:</strong>
-              <ul style="margin:8px 0;font-size:12px">
-                ${validation.errors.map(e => `<li>${esc(e)}</li>`).join("")}
-              </ul>
-            </div>`;
-          } else {
-            body.innerHTML = md(normalized);
-            if (validation.warnings.length > 0) {
-              console.info('[renderMessages] EI Assessment warnings:', validation.warnings);
-            }
-          }
+          body.innerHTML = m._formattedHTML;
         } else {
           body.innerHTML = md(normalized);
         }
@@ -2546,18 +2229,15 @@ ${COMMON}`
     shell._sendBtn = send;
     shell._ta = ta;
 
-    // Event delegation for clickable EI pills and cards
+    // Event delegation for clickable EI pills
     coach.addEventListener("click", (e) => {
       const pill = e.target.closest(".ei-pill");
-      const card = e.target.closest(".ei-card");
-      const target = pill || card;
-      
-      if (!target) return;
+      if (!pill) return;
 
-      const metric = target.getAttribute("data-metric");
+      const metric = pill.getAttribute("data-metric");
       if (!metric) return;
 
-      showMetricModal(metric, target.textContent);
+      showMetricModal(metric, pill.textContent);
     });
 
     populateDiseases();
@@ -2569,13 +2249,13 @@ ${COMMON}`
   function showMetricModal(metric, pillText) {
     const definitions = {
       empathy: {
-        title: "Empathy Index",
-        definition: "Scores ability to perceive and respond to HCP emotions and concerns.",
-        calculation: "(Empathetic responses / Opportunities) × 100",
+        title: "Empathy Score",
+        definition: "Measures how effectively the rep recognizes and appropriately responds to the emotional cues, needs, or concerns of the HCP.",
+        calculation: "Empathy Score = (Number of responses showing acknowledgment of HCP feelings/needs/concerns) / (Total conversational turns) × 100",
         tips: [
-          "Notices HCP's tone or hesitation; validates concerns before replying",
-          "Adapts message to emotional cues",
-          "Example: 'I hear you're concerned about side effects—let me walk you through the most recent safety information.'"
+          "Rep acknowledged the HCP's skepticism about new therapies.",
+          "Provided reassurance or validation before describing product benefits.",
+          "Mirrored HCP's emotional language or expressed understanding of patient challenges."
         ],
         source: "Empathy reflects the rep's ability to notice and verbally acknowledge emotional states or practical needs expressed by the HCP.",
         citation: {
@@ -2585,12 +2265,12 @@ ${COMMON}`
       },
       clarity: {
         title: "Clarity Index",
-        definition: "Measures how clearly information is explained to busy HCPs.",
-        calculation: "(Clear explanations / Total exchanges) × 100",
+        definition: "Assesses the simplicity and precision of the rep's communication, reducing jargon and making complex concepts understandable.",
+        calculation: "Clarity Index = (Number of concise, jargon-free statements) / (Total statements) × 100",
         tips: [
-          "Summarizes research in simple terms; avoids jargon",
-          "Provides short, digestible takeaways",
-          "Example: 'To put it simply, this treatment targets inflammation without suppressing your patient's immune system.'"
+          "Used simple analogies to explain clinical benefit.",
+          "Avoided unnecessary abbreviations or complex terminology.",
+          "Messages were understood on first reading/listening."
         ],
         source: "A low average sentence length and low jargon count produces a higher clarity score.",
         citation: {
@@ -2599,13 +2279,13 @@ ${COMMON}`
         }
       },
       compliance: {
-        title: "Compliance Score",
-        definition: "Tracks adherence to approved messaging and regulatory guidelines.",
-        calculation: "(Total compliant exchanges / All exchanges) × 100",
+        title: "Compliance Accuracy",
+        definition: "Tracks adherence to approved, label-only product statements and avoidance of off-label or non-compliant messaging.",
+        calculation: "Compliance Accuracy = (Compliant Statements) / (Total Statements) × 100",
         tips: [
-          "No off-label claims; follows label guardrails",
-          "Quickly adjusts to in-call compliance feedback",
-          "Example: 'Per the product label, this medication is approved for type 2 diabetes only. I'm happy to share the key study details.'"
+          "Statements matched approved clinical messaging.",
+          "Avoided unapproved claims about outcomes or populations.",
+          "Provided proper safety disclaimers when relevant."
         ],
         source: "Automated by evaluating message strings against approved and forbidden phrases.",
         citation: {
@@ -2614,13 +2294,13 @@ ${COMMON}`
         }
       },
       discovery: {
-        title: "Discovery Index",
-        definition: "Scores effectiveness in uncovering HCP needs and priorities.",
-        calculation: "(Probing questions / Opportunities to discover) × 100",
+        title: "Discovery Effectiveness",
+        definition: "Quantifies the rep's use of open-ended and probing questions to uncover true HCP needs and objections.",
+        calculation: "Discovery Effectiveness = (Number of open-ended or follow-up questions) / (Total rep dialogue count) × 100",
         tips: [
-          "Uses open-ended questions; clarifies patient challenges",
-          "Asks for details on prescribing habits",
-          "Example: 'Could you tell me what factors are most important to you when selecting a treatment for this condition?'"
+          "Asked what's most important to the HCP in treatment decisions.",
+          "Probed for specific pain points or unmet needs.",
+          "Followed up after initial feedback for clarification."
         ],
         source: "Open-ended questions identified by sentence structure (who, what, where, when, why, how) and ending with '?'",
         citation: {
@@ -2630,12 +2310,12 @@ ${COMMON}`
       },
       objection_handling: {
         title: "Objection Handling Score",
-        definition: "Reflects skill in acknowledging and resolving HCP concerns.",
-        calculation: "(Successful objection resolutions / Total objections) × 100",
+        definition: "Evaluates how effectively objections or concerns are acknowledged, addressed, and reframed with accurate, compliant responses.",
+        calculation: "Objection Handling Score = (Objections acknowledged and answered satisfactorily) / (Total objections raised) × 100",
         tips: [
-          "Listens carefully; reframes objections constructively",
-          "Offers evidence-based answers",
-          "Example: 'Doctor, I noticed you hesitated on that point—would it help if I shared more specifics from the clinical trial?'"
+          "Did not ignore user concerns.",
+          "Responded with data or empathy rather than argument.",
+          "Guided HCP back to approved solution/benefits."
         ],
         source: "A response is scored if it contains both objection recognition and a compliant fact or empathetic statement.",
         citation: {
@@ -2644,13 +2324,13 @@ ${COMMON}`
         }
       },
       confidence: {
-        title: "Confidence Level",
-        definition: "Assesses composure, credibility, and self-assurance during presentations.",
-        calculation: "Averaged observed confidence behaviors across interactions (scale 1–10)",
+        title: "Confidence/Readiness Index",
+        definition: "Tracks the rep's confidence and fluency, as evidenced by reduced hesitations, directness, and accurate responses under pressure.",
+        calculation: "Confidence/Readiness = (Proportion of prompt, unhesitant, direct responses) / (Total responses) × 100",
         tips: [
-          "Speaks smoothly; maintains eye contact",
-          "Stays on message despite pushback",
-          "Example: 'From my experience, I'm confident this therapy offers meaningful benefits that can improve patient outcomes.'"
+          "Rarely hesitated or backtracked in responses.",
+          "Maintained composure when challenged.",
+          "Spoke with conviction and knowledge."
         ],
         source: "Measured by absence of filler words, reduced latency, and correctness cross-checked by product knowledge.",
         citation: {
@@ -2659,13 +2339,13 @@ ${COMMON}`
         }
       },
       active_listening: {
-        title: "Active Listening Score",
-        definition: "Assesses attentiveness and ability to confirm and respond to HCP points.",
-        calculation: "(Active listening behaviors / Total exchanges) × 100",
+        title: "Active Listening Ratio",
+        definition: "Measures the proportion of responses where the rep reflects, paraphrases, or meaningfully builds on the HCP's previous statement.",
+        calculation: "Active Listening Ratio = (Responses containing paraphrase/reflective phrases or answering direct HCP concerns) / (Total responses) × 100",
         tips: [
-          "Paraphrases HCP statements; checks for clarity",
-          "Reacts to both words and emotions",
-          "Example: 'So you're seeing these side effects mostly in younger patients, is that right?'"
+          "Confirmed the HCP's stated concern before moving forward.",
+          "Paraphrased HCP feedback to show understanding.",
+          "Responded to the last question, not a previously prepared pitch."
         ],
         source: "Use NLP to detect phrases like 'What I'm hearing is...', 'If I understand correctly...'",
         citation: {
@@ -2674,13 +2354,13 @@ ${COMMON}`
         }
       },
       adaptability: {
-        title: "Emotional Adaptability Index",
-        definition: "Measures ability to flex communication style based on HCP attitude and energy.",
-        calculation: "(Adaptive responses / Opportunities to adapt) × 100",
+        title: "Emotional Adaptability Score",
+        definition: "Rates how well the rep adjusts their tone/emotional approach in response to changing HCP cues (e.g., from skeptical to concerned).",
+        calculation: "Score = (Detected adaptations in tone/style matching HCP sentiment shifts) / (Each instance HCP sentiment shifts) × 100",
         tips: [
-          "Changes pace when needed; softens tone under stress",
-          "Expresses flexibility",
-          "Example: 'I can tell you're busy, so I'll keep this brief and focus on what matters most to your practice.'"
+          "Responded with increased empathy when HCP became hesitant.",
+          "Shifted from data-driven to reassurance as needed.",
+          "Recognized and adjusted tone promptly after a challenging objection."
         ],
         source: "Use sentiment/tone analysis to identify shifts in HCP dialogue and test for corresponding change in rep's response.",
         citation: {
@@ -2691,11 +2371,11 @@ ${COMMON}`
       action_insight: {
         title: "Action/Insight Ratio",
         definition: "Assesses how often the rep translates insights from the HCP into concrete next steps or shared actions.",
-        calculation: "(Action-oriented statements or suggested next steps) / (Total discovery insights identified) × 100",
+        calculation: "Action/Insight Ratio = (Action-oriented statements or suggested next steps) / (Total discovery insights identified) × 100",
         tips: [
-          "Suggested a follow-up action after need discovery",
-          "Clearly outlined the next step based on dialogue",
-          "Example: 'Based on what you shared, let me get you the trial data specific to that patient population.'"
+          "Suggested a follow-up action after need discovery.",
+          "Clearly outlined the next step based on dialogue.",
+          "Closed the loop on HCP-stated priority."
         ],
         source: "Detect statements using action keywords ('Let's schedule...', 'I'll get you those data', 'Next visit, we'll discuss...')",
         citation: {
@@ -2706,11 +2386,11 @@ ${COMMON}`
       resilience: {
         title: "Resilience/Regulation Index",
         definition: "Tracks the ability to maintain professionalism and composure in the face of objections or negative feedback.",
-        calculation: "(Emotionally regulated responses after negative feedback) / (Total negative or challenging turns) × 100",
+        calculation: "Resilience Index = (Emotionally regulated responses after negative feedback) / (Total negative or challenging turns) × 100",
         tips: [
-          "Maintained positive tone when challenged",
-          "Did not get defensive or argumentative",
-          "Example: 'I appreciate your candor—let me address that concern with the latest evidence.'"
+          "Maintained positive tone when challenged.",
+          "Did not get defensive or argumentative.",
+          "Took a brief pause before responding to strong criticism."
         ],
         source: "Analyze for continued neutral/positive tone, absence of defensive language, and calm pacing after objections.",
         citation: {
@@ -2723,56 +2403,46 @@ ${COMMON}`
     const data = definitions[metric];
     if (!data) return;
 
-    // Create enhanced modal HTML with animations and backdrop blur
+    // Create modal HTML with citation link
     const modalHTML = `
-      <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif;animation:fadeIn 0.2s ease-out">
-        <div style="background:white;border-radius:16px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);animation:slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)">
-          <div style="padding:24px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg, #0f2747 0%, #1e3a5f 100%)">
-            <h3 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;font-family:Inter,system-ui,sans-serif">${data.title}</h3>
-            <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:14px;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.definition}</p>
-          </div>
-          <div style="padding:20px 24px;background:#f9fafb">
-            <p style="margin:0;color:#475569;font-size:13px;font-style:italic;background:#ffffff;padding:12px 16px;border-radius:8px;border-left:4px solid #20bfa9;font-family:Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.1)"><strong style="color:#0f2747">Calculation:</strong> ${data.calculation}</p>
+      <div id="metric-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif">
+        <div style="background:white;border-radius:12px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)">
+          <div style="padding:24px;border-bottom:1px solid #e5e7eb">
+            <h3 style="margin:0;font-size:20px;font-weight:700;color:#111827;font-family:Inter,system-ui,sans-serif">${data.title}</h3>
+            <p style="margin:8px 0 0;color:#6b7280;font-size:14px;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.definition}</p>
+            <p style="margin:12px 0 0;color:#9ca3af;font-size:13px;font-style:italic;background:#f9fafb;padding:8px 12px;border-radius:6px;font-family:Inter,system-ui,sans-serif"><strong>Calculation:</strong> ${data.calculation}</p>
           </div>
           <div style="padding:24px">
-            <h4 style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f2747;font-family:Inter,system-ui,sans-serif;border-bottom:2px solid #20bfa9;padding-bottom:8px">Sample Indicators</h4>
+            <h4 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;font-family:Inter,system-ui,sans-serif">Sample Indicators:</h4>
             <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.8;font-family:Inter,system-ui,sans-serif">
-              ${data.tips.map(tip => `<li style="margin:12px 0;padding-left:8px">${tip}</li>`).join('')}
+              ${data.tips.map(tip => `<li style="margin:8px 0">${tip}</li>`).join('')}
             </ul>
-            <div style="margin-top:24px;padding:16px;background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);border-left:4px solid #0ea5e9;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
-              <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6;font-family:Inter,system-ui,sans-serif;font-style:italic">${data.source}</p>
+            <div style="margin-top:20px;padding:12px;background:#f0f9ff;border-left:4px solid #0ea5e9;border-radius:6px">
+              <p style="margin:0;font-size:13px;color:#0c4a6e;line-height:1.6;font-family:Inter,system-ui,sans-serif">${data.source}</p>
             </div>
           </div>
-          <div style="padding:20px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
-            <p style="margin:0 0 10px;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;font-family:Inter,system-ui,sans-serif">📚 Learn More</p>
-            <a href="${data.citation.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#0369a1;text-decoration:none;background:#ffffff;padding:10px 16px;border-radius:8px;border:1px solid #bae6fd;font-weight:500;transition:all 0.2s;font-family:Inter,system-ui,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,0.05)" onmouseover="this.style.background='#e0f2fe';this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.background='#ffffff';this.style.transform='translateY(0)';this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">${data.citation.text} →</a>
+          <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
+            <p style="margin:0 0 8px;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-family:Inter,system-ui,sans-serif">Learn More:</p>
+            <a href="${data.citation.url}" target="_blank" rel="noopener" style="display:inline-block;font-size:13px;color:#0369a1;text-decoration:none;background:#e0f2fe;padding:6px 12px;border-radius:6px;border:1px solid #bae6fd;font-weight:500;transition:all 0.2s;font-family:Inter,system-ui,sans-serif" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'">${data.citation.text} →</a>
           </div>
-          <div style="padding:20px 24px;border-top:1px solid #e5e7eb;text-align:right;background:#ffffff">
-            <button onclick="this.closest('#metric-modal').style.animation='fadeOut 0.2s ease-out';setTimeout(()=>document.getElementById('metric-modal').remove(),200)" style="padding:12px 24px;background:linear-gradient(135deg, #ec4899 0%, #db2777 100%);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s;font-family:Inter,system-ui,sans-serif;box-shadow:0 2px 4px rgba(236,72,153,0.3)" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 8px rgba(236,72,153,0.4)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 2px 4px rgba(236,72,153,0.3)'">Got it!</button>
+          <div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:right">
+            <button onclick="document.getElementById('metric-modal').remove()" style="padding:10px 20px;background:#ec4899;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s;font-family:Inter,system-ui,sans-serif" onmouseover="this.style.background='#db2777'" onmouseout="this.style.background='#ec4899'">Got it!</button>
           </div>
         </div>
       </div>
-      <style>
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes fadeOut{from{opacity:1}to{opacity:0}}
-        @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-      </style>
     `;
 
     // Remove existing modal if any
     const existing = document.getElementById("metric-modal");
     if (existing) existing.remove();
 
-    // Append new modal with animation
+    // Append new modal
     document.body.insertAdjacentHTML("beforeend", modalHTML);
 
-    // Close on backdrop click with fade animation
+    // Close on backdrop click
     const modal = document.getElementById("metric-modal");
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        modal.style.animation = 'fadeOut 0.2s ease-out';
-        setTimeout(() => modal.remove(), 200);
-      }
+      if (e.target === modal) modal.remove();
     });
   }
 
@@ -2922,9 +2592,7 @@ ${COMMON}`
 
   async function callModel(messages, scenarioContext = null) {
     // Validate mode before making request
-    // CRITICAL: This is the single mode whitelist for the frontend.
-    // Must be kept in sync with worker.js VALID_MODES.
-    const validModes = ["emotional-assessment", "product-knowledge", "sales-coach", "role-play", "general-knowledge"];
+    const validModes = ["emotional-assessment", "product-knowledge", "sales-coach", "role-play"];
     if (!validModes.includes(currentMode)) {
       console.error("[chat] invalid_mode=" + currentMode);
       showToast("Invalid mode selected. Please refresh the page.", "error");
@@ -2977,21 +2645,6 @@ ${COMMON}`
       goal: goal,
       session: "widget-" + (Math.random().toString(36).slice(2, 10))
     };
-
-    // For EI mode, load and include EI framework content
-    if (currentMode === "emotional-assessment") {
-      try {
-        if (typeof EIContext !== "undefined" && EIContext?.getSystemExtras) {
-          const eiExtras = await EIContext.getSystemExtras().catch(() => null);
-          if (eiExtras) {
-            payload.eiContext = eiExtras.slice(0, 8000); // Limit to prevent payload bloat
-          }
-        }
-      } catch (e) {
-        console.warn("[chat] Failed to load EI context:", e.message);
-        // Continue without EI context rather than failing the entire request
-      }
-    }
 
     // SSE Streaming branch
     if (useStreaming) {
@@ -3135,17 +2788,8 @@ ${COMMON}`
         // Check if we should retry
         if (attempt < delays.length && isRetryable) {
           lastError = new Error("HTTP " + r.status);
-          if (r.status === 429) {
-            showToast("You've reached the usage limit. Please wait a moment and try again.", "warning");
-          }
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
-        }
-
-        // For 429 after retries exhausted
-        if (r.status === 429) {
-          showToast("You've reached the usage limit. Please wait a moment and try again.", "error");
-          throw new Error("HTTP 429: rate_limited");
         }
 
         // For 4xx errors (except 429), try to extract error message from response
@@ -3460,8 +3104,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       conversation.push({
         role: "user",
         content: userText,
-        _speaker: currentMode === "role-play" ? "rep" : "user",
-        _mode: currentMode
+        _speaker: currentMode === "role-play" ? "rep" : "user"
       });
       trimConversationIfNeeded();
       renderMessages();
@@ -3569,6 +3212,19 @@ Please provide your response again with all required fields including phrasing.`
           // Create a wrapper that passes scenario context to callModel
           const callModelWithContext = (msgs) => callModel(msgs, sc);
           replyText = await enforceHcpOnly(replyText, sc, messages, callModelWithContext);
+
+          // Frontend contract warning pass (non-fatal)
+          const { cleaned, issues, meta } = applyRolePlayContractWarning({ raw, clean, replyText, sc });
+          replyText = cleaned;
+          if (issues.length) {
+            // Attach a synthetic assistant warning entry before the cleaned HCP reply
+            conversation.push({
+              role: 'assistant',
+              content: '[contract-warning]',
+              _speaker: 'system',
+              _contractWarning: meta || { mode: 'role-play', issues, raw: clean }
+            });
+          }
         }
 
         if (norm(replyText) === norm(userText)) {
@@ -3599,15 +3255,7 @@ Please provide your response again with all required fields including phrasing.`
         lastAssistantNorm = candidate;
         pushRecent(candidate);
 
-        // CRITICAL: Sales Coach responses have structured format (Challenge, Rep Approach, Impact, Suggested Phrasing)
-        // that must be preserved in full. Some responses exceed 3000–4500 chars (long phrasing + citations).
-        // Previous clamping (2500) caused mid-phrase truncation and UI ellipsis. Disable clamping for sales-coach.
-        // Retain clamping for other modes to prevent runaway verbosity.
-        if (currentMode !== "sales-coach") {
-          replyText = clampLen(replyText, 1400);
-        } else {
-          console.log("[Sales Coach] Skip clamp; length=", replyText.length);
-        }
+        replyText = clampLen(replyText, currentMode === "sales-coach" ? 1200 : 1400);
 
         const computed = scoreReply(userText, replyText, currentMode);
 
@@ -3635,8 +3283,7 @@ Please provide your response again with all required fields including phrasing.`
           role: "assistant",
           content: replyText,
           _coach: finalCoach,
-          _speaker: currentMode === "role-play" ? "hcp" : "assistant",
-          _mode: currentMode
+          _speaker: currentMode === "role-play" ? "hcp" : "assistant"
         });
         trimConversationIfNeeded();
         renderMessages();
@@ -3675,6 +3322,25 @@ Please provide your response again with all required fields including phrasing.`
       if (sendBtn2) sendBtn2.disabled = false;
       if (ta2) { ta2.disabled = false; ta2.focus(); }
       isSending = false;
+
+      // Render any contract warning card entries (synthetic) by replacing placeholder content
+      const shell = mount.querySelector('.reflectiv-chat');
+      const msgsEl = shell?.querySelector('.chat-messages');
+      if (msgsEl) {
+        const synthetic = Array.from(msgsEl.querySelectorAll('.message.assistant .content'))
+          .filter(n => /\[contract-warning\]/.test(n.textContent || ''));
+        synthetic.forEach(node => {
+          // Find matching conversation entry to retrieve issues/raw
+          const parentIdx = Array.from(msgsEl.querySelectorAll('.message.assistant .content')).indexOf(node);
+          const convoEntry = conversation[parentIdx];
+          const meta = convoEntry?._contractWarning;
+          if (meta) {
+            const warningCard = renderContractWarningCard(meta.mode, meta.issues, meta.raw);
+            node.innerHTML = '';
+            node.appendChild(warningCard);
+          }
+        });
+      }
     }
   }
 
