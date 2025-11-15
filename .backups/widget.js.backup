@@ -978,142 +978,6 @@ Suggested Phrasing: "[text]"</pre>
       .join("\n");
   }
 
-  /* ===== PHASE 2: Response Contract Validators (Frontend) ===== */
-
-  /**
-   * validateSalesCoachResponse - Check that response has all required sections
-   * @param {string} replyText - The response text
-   * @param {object} coach - The coach block
-   * @returns {object} - { valid: bool, errors: [...], warnings: [...] }
-   */
-  function validateSalesCoachResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Check all 4 sections present
-    const hasChallenge = /Challenge:/i.test(replyText);
-    const hasRepApproach = /Rep Approach:/i.test(replyText);
-    const hasImpact = /Impact:/i.test(replyText);
-    const hasPhrasing = /Suggested Phrasing:/i.test(replyText);
-
-    if (!hasChallenge) errors.push("Missing Challenge section");
-    if (!hasRepApproach) errors.push("Missing Rep Approach section");
-    if (!hasImpact) errors.push("Missing Impact section");
-    if (!hasPhrasing) errors.push("Missing Suggested Phrasing section");
-
-    // Check coach block with 10 metrics
-    if (!coach || !coach.scores) {
-      errors.push("Missing coach block");
-    } else {
-      const requiredMetrics = [
-        "empathy", "clarity", "compliance", "discovery",
-        "objection_handling", "confidence", "active_listening",
-        "adaptability", "action_insight", "resilience"
-      ];
-      const missing = requiredMetrics.filter(m => !(m in coach.scores));
-      if (missing.length > 0) {
-        errors.push(`Missing EI metrics: ${missing.join(", ")}`);
-      }
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateEIResponse - Check EI assessment response
-   */
-  function validateEIResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Check coach block with all 10 metrics
-    if (!coach || !coach.scores) {
-      errors.push("Missing coach block");
-    } else {
-      const requiredMetrics = [
-        "empathy", "clarity", "compliance", "discovery",
-        "objection_handling", "confidence", "active_listening",
-        "adaptability", "action_insight", "resilience"
-      ];
-      const missing = requiredMetrics.filter(m => !(m in coach.scores));
-      if (missing.length > 0) {
-        errors.push(`Missing EI metrics: ${missing.join(", ")}`);
-      }
-    }
-
-    // Check for Socratic questions
-    const questionCount = (replyText.match(/\?/g) || []).length;
-    if (questionCount < 2) {
-      warnings.push(`Only ${questionCount} Socratic question(s) (expected 2+)`);
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateRolePlayResponse - Check role play has no coaching
-   */
-  function validateRolePlayResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Should NOT have coach block
-    if (coach && Object.keys(coach).length > 0) {
-      errors.push("Unexpected coach block in role-play");
-    }
-
-    // Should NOT have coaching language
-    const coachingPatterns = [
-      /Challenge:/i, /Rep Approach:/i, /Impact:/i, /Suggested Phrasing:/i
-    ];
-    for (const pattern of coachingPatterns) {
-      if (pattern.test(replyText)) {
-        errors.push(`Detected coaching language: "${pattern.source}"`);
-      }
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateProductKnowledgeResponse - Check for citations
-   */
-  function validateProductKnowledgeResponse(replyText, coach) {
-    const errors = [];
-    const warnings = [];
-
-    // Should have citations
-    const citationPatterns = [
-      /\[\w+-\w+-\w+\]/,
-      /\[\d+\]/,
-      /\(citation\s*\d+\)/i
-    ];
-    const hasCitations = citationPatterns.some(p => p.test(replyText));
-    if (!hasCitations) {
-      warnings.push("No citations detected (expected for product knowledge)");
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
-  }
-
-  /**
-   * validateResponseForMode - Main validation dispatcher
-   */
-  function validateResponseForMode(mode, replyText, coach) {
-    switch (mode) {
-      case "sales-coach":
-        return validateSalesCoachResponse(replyText, coach);
-      case "emotional-assessment":
-        return validateEIResponse(replyText, coach);
-      case "role-play":
-        return validateRolePlayResponse(replyText, coach);
-      case "product-knowledge":
-        return validateProductKnowledgeResponse(replyText, coach);
-      default:
-        return { valid: true, errors: [], warnings: [] };
-    }
-  }
-
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -2158,66 +2022,23 @@ ${COMMON}`
           console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
           console.log('[renderMessages] normalized preview:', normalized.substring(0, 200));
 
-          // PHASE 2: Validate contract before rendering
-          const validation = validateSalesCoachResponse(normalized, m._coach);
-          if (!validation.valid) {
-            console.warn('[renderMessages] Sales Coach contract violation:', validation.errors);
-            body.innerHTML = `<div style="background:#fee;padding:12px;border-radius:6px;border:2px solid #f00">
-              <strong style="color:#c00">⚠️ Response Format Error:</strong>
-              <ul style="margin:8px 0;font-size:12px">
-                ${validation.errors.map(e => `<li>${esc(e)}</li>`).join("")}
-              </ul>
-              <p style="font-size:11px;color:#666;margin-top:8px">Please try again or refresh.</p>
-            </div>`;
+          // Cache formatted HTML to avoid re-parsing on every render
+          if (!m._formattedHTML) {
+            console.log('[renderMessages] NO CACHE - Formatting now...');
+            m._formattedHTML = formatSalesCoachReply(normalized);
+            console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
+            console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
           } else {
-            // Cache formatted HTML to avoid re-parsing on every render
-            if (!m._formattedHTML) {
-              console.log('[renderMessages] NO CACHE - Formatting now...');
-              m._formattedHTML = formatSalesCoachReply(normalized);
-              console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
-              console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
-            } else {
-              console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
-            }
-            body.innerHTML = m._formattedHTML;
+            console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
           }
+          body.innerHTML = m._formattedHTML;
         } else if (m._mode === "role-play" && (m.role === "assistant" || m._speaker === "hcp")) {
           // Format HCP responses in Role Play mode with clean structure
           console.log('[renderMessages] Formatting HCP response in role-play mode');
-          
-          // PHASE 2: Validate no coaching language
-          const validation = validateRolePlayResponse(normalized, m._coach);
-          if (!validation.valid) {
-            console.warn('[renderMessages] Role Play contract violation:', validation.errors);
-            body.innerHTML = `<div style="background:#fff3cd;padding:12px;border-radius:6px;border:2px solid #ffc107">
-              <strong style="color:#856404">⚠️ Response Issue:</strong>
-              <ul style="margin:8px 0;font-size:12px">
-                ${validation.errors.map(e => `<li>${esc(e)}</li>`).join("")}
-              </ul>
-            </div>`;
-          } else {
-            if (!m._formattedHTML) {
-              m._formattedHTML = md(normalized); // Use markdown formatter for clean structure
-            }
-            body.innerHTML = m._formattedHTML;
+          if (!m._formattedHTML) {
+            m._formattedHTML = md(normalized); // Use markdown formatter for clean structure
           }
-        } else if (m._mode === "emotional-assessment" && m.role === "assistant") {
-          // PHASE 2: Validate EI response structure
-          const validation = validateEIResponse(normalized, m._coach);
-          if (!validation.valid) {
-            console.warn('[renderMessages] EI Assessment contract violation:', validation.errors);
-            body.innerHTML = `<div style="background:#fee;padding:12px;border-radius:6px;border:2px solid #f00">
-              <strong style="color:#c00">⚠️ EI Response Error:</strong>
-              <ul style="margin:8px 0;font-size:12px">
-                ${validation.errors.map(e => `<li>${esc(e)}</li>`).join("")}
-              </ul>
-            </div>`;
-          } else {
-            body.innerHTML = md(normalized);
-            if (validation.warnings.length > 0) {
-              console.info('[renderMessages] EI Assessment warnings:', validation.warnings);
-            }
-          }
+          body.innerHTML = m._formattedHTML;
         } else {
           body.innerHTML = md(normalized);
         }
