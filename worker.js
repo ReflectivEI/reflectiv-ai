@@ -1479,14 +1479,6 @@ Impact: By emphasizing the importance of risk assessment, the benefits of Descov
 
 Suggested Phrasing: "Given the substantial risk of HIV in certain patient populations, I recommend we discuss how to identify and assess these individuals for PrEP eligibility, and consider Descovy as a safe and effective option."
 
-Then append deterministic EI scoring:
-<coach>{
-  "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
-  "rationales":{"empathy":"...","clarity":"...","compliance":"...","discovery":"...","objection_handling":"...","confidence":"...","active_listening":"...","adaptability":"...","action_insight":"...","resilience":"..."},
-  "tips":["Tip 1","Tip 2","Tip 3"],
-  "rubric_version":"v2.0"
-}</coach>
-
 CRITICAL: Use ONLY the provided Facts context when making claims. NO fabricated references or citations.`.trim();
 
     const commonContract = `
@@ -1599,7 +1591,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Include 1-2 Socratic questions to deepen metacognition`,
       `- Reference Triple-Loop Reflection when relevant`,
       `- Model empathy and warmth in your coaching tone`,
-      `- End with a reflective question that builds emotional metacognition`,
+      `- CRITICAL: Your response MUST end with a single reflective question, and the LAST non-space character must be a question mark (?)`,
       `- If discussing the EI framework itself, ground responses in the actual framework content and domains`,
       ``,
       `DO NOT:`,
@@ -1652,8 +1644,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Distinguish clearly between on-label and off-label information`,
       `- Present risks, contraindications, and safety considerations alongside benefits`,
       `- Recommend consulting official sources (FDA labels, guidelines) for prescribing decisions`,
-      `- MUST use [numbered citations] [1], [2], [3] for ALL clinical claims and scientific facts - this is required`,
-      `- Each numbered citation [1], [2] must reference the facts listed above`,
+      `- When you make a clinical or scientific claim, you MUST include the corresponding fact ID from the context, such as [CV-GDMT-HFREF-001] or [HIV-PREP-TAF-002]. Use these bracketed IDs directly in your text.`,
       `- If asked about something outside your knowledge, acknowledge limitations`,
       ``,
       `EXAMPLE INTERACTIONS:`,
@@ -1876,6 +1867,22 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       // Example: "• I prioritize follow-ups • I assess adherence"
     }
 
+    // Post-processing: Enforce final question mark for EI mode
+    if (mode === "emotional-assessment") {
+      reply = reply.trim();
+      // If reply doesn't end with ?, replace final punctuation or append ?
+      if (!reply.endsWith('?')) {
+        // Replace common final punctuation with ?
+        if (reply.endsWith('.') || reply.endsWith('!') || reply.endsWith('…')) {
+          reply = reply.slice(0, -1) + '?';
+        } else {
+          // Append ?
+          reply = reply + ' ?';
+        }
+      }
+      reply = reply.trim();
+    }
+
     // Post-processing: Normalize headings and ENFORCE FORMAT for sales-coach mode
     if (mode === "sales-coach") {
       reply = reply
@@ -1884,6 +1891,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         .replace(/Risk [Ff]lags:/g, 'Impact:')
         .replace(/Suggested [Pp]hrasing:/g, 'Suggested Phrasing:')
         .replace(/Rubric [Jj][Ss][Oo][Nn]:/g, '');
+      
+      // Strip any lingering <coach>...</coach> blocks and their content
+      reply = reply.replace(/<coach>.*?<\/coach>/is, '').trim();
 
       // ENTERPRISE FORMATTING VALIDATION - Enforce exactly 1 Challenge, 3 bullets, 1 Impact, 1 Phrasing
       const hasChallenge = /Challenge:/i.test(reply);
