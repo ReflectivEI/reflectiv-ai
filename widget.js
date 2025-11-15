@@ -859,6 +859,42 @@ Suggested Phrasing: "[text]"</pre>
     return html;
   }
 
+  /**
+   * PHASE 3: normalizeCoachFormatting - Render-side formatting polish
+   * For sales-coach mode ONLY: ensure proper spacing between sections
+   * Does NOT modify the actual response payload; only affects visual rendering
+   * @param {string} text - Raw response text
+   * @param {string} mode - Current mode
+   * @returns {string} - Normalized text with proper spacing
+   */
+  function normalizeCoachFormatting(text, mode) {
+    if (!text || mode !== 'sales-coach') {
+      return text;
+    }
+
+    let normalized = String(text);
+
+    // Ensure blank lines between major sections if missing
+    // This is a VISUAL-ONLY normalization; server is source of truth
+    const sections = ['Challenge:', 'Rep Approach:', 'Impact:', 'Suggested Phrasing:'];
+
+    for (let i = 0; i < sections.length - 1; i++) {
+      const current = sections[i];
+      const next = sections[i + 1];
+
+      // Match: current section followed by optional content followed by next section
+      const pattern = new RegExp(
+        `(${current}[^]*?)\\n(?!\\n)((?:^|[^]*?)${next})`,
+        'gi'
+      );
+
+      // Replace with: current section + double newline + next section
+      normalized = normalized.replace(pattern, `$1\n\n$2`);
+    }
+
+    return normalized;
+  }
+
   function md(text) {
     if (!text) return "";
     let s = esc(String(text)).replace(/\r\n?/g, "\n");

@@ -688,6 +688,276 @@ function validateCoachSchema(coach, mode) {
   return { valid: missing.length === 0, missing };
 }
 
+/* ----- PHASE 3 DETECTION RULES: Edge-Case Validators ----- */
+
+/**
+ * PHASE 3: Detect SC-01 - Paragraph Separation (Sales-Coach)
+ * Verify blank lines (\n\n) exist between major sections
+ */
+function detectParagraphSeparation(replyText) {
+  const errors = [];
+  const sections = [
+    { name: 'Challenge', pattern: /Challenge:/i },
+    { name: 'Rep Approach', pattern: /Rep Approach:/i },
+    { name: 'Impact', pattern: /Impact:/i },
+    { name: 'Suggested Phrasing', pattern: /Suggested Phrasing:/i }
+  ];
+
+  for (let i = 0; i < sections.length - 1; i++) {
+    const current = sections[i];
+    const next = sections[i + 1];
+
+    if (current.pattern.test(replyText) && next.pattern.test(replyText)) {
+      const between = replyText.split(current.pattern)[1]?.split(next.pattern)[0] || '';
+      if (!/\n\n/.test(between)) {
+        errors.push(`SC_NO_SECTION_SEPARATION`);
+      }
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * PHASE 3: Detect SC-02 - Bullet Minimum Content (Sales-Coach)
+ * Verify Rep Approach bullets are 3+, each 15+ words
+ */
+function detectBulletContent(replyText) {
+  const errors = [];
+  const warnings = [];
+
+  const repMatch = replyText.match(/Rep Approach:\s*([\s\S]*?)(?=Impact:|$)/i);
+  if (!repMatch) return { errors, warnings };
+
+  const bullets = repMatch[1].split(/\n/).filter(l => /^\s*[•●○-]/.test(l));
+
+  if (bullets.length < 3) {
+    errors.push(`SC_INSUFFICIENT_BULLETS: ${bullets.length} found (need 3+)`);
+  }
+
+  bullets.forEach((bullet, idx) => {
+    const text = bullet.replace(/^\s*[•●○-]\s*/, '').trim();
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+
+    if (wordCount < 15) {
+      errors.push(`SC_BULLET_TOO_SHORT_${idx}: ${wordCount} words`);
+    }
+  });
+
+  return { errors, warnings };
+}
+
+/**
+ * PHASE 3: Detect SC-03 - Duplicate Metrics (Sales-Coach)
+ * Verify all 10 metrics present exactly once
+ */
+function detectDuplicateMetrics(coachData) {
+  const errors = [];
+  const requiredMetrics = [
+    "empathy", "clarity", "compliance", "discovery",
+    "objection_handling", "confidence", "active_listening",
+    "adaptability", "action_insight", "resilience"
+  ];
+
+  if (!coachData || !coachData.scores) return errors;
+
+  const scores = coachData.scores;
+  const metricsPresent = Object.keys(scores);
+
+  // Check for extra/unexpected metrics
+  const extra = metricsPresent.filter(m => !requiredMetrics.includes(m));
+  if (extra.length > 0) {
+    errors.push(`SC_EXTRA_METRICS: ${extra.join(", ")}`);
+  }
+
+  return errors;
+}
+
+/**
+ * PHASE 3: Detect RP-01 - First-Person Consistency (Role-Play)
+ * Ensure response maintains first-person HCP perspective, no third-person narrator
+ */
+function detectFirstPersonConsistency(replyText) {
+  const errors = [];
+  const warnings = [];
+
+  const sentences = replyText.match(/[^.!?]+[.!?]/g) || [];
+
+  const thirdPersonMarkers = /\b(the|a|this|that)\s+(rep|representative|provider|doc|physician)\b/i;
+  const imperativeStart = /^(ask|emphasize|consider|provide|offer|educate|ensure|recommend|suggest|discuss|address|reinforce|encourage|support)\b/i;
+
+  let hasFirstPerson = false;
+  let hasThirdPerson = false;
+
+  sentences.forEach((sentence) => {
+    if (/\b(I|we|my|me|our)\b/i.test(sentence)) hasFirstPerson = true;
+    if (thirdPersonMarkers.test(sentence)) {
+      hasThirdPerson = true;
+      errors.push(`RP_THIRD_PERSON_NARRATOR`);
+    }
+    if (imperativeStart.test(sentence)) {
+      errors.push(`RP_IMPERATIVE_COACHING_LANGUAGE`);
+    }
+  });
+
+  const firstPersonCount = replyText.match(/\b(I|we|my|our)\b/gi)?.length || 0;
+  if (firstPersonCount === 0 && sentences.length > 2) {
+    errors.push(`RP_NO_FIRST_PERSON`);
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * PHASE 3: Detect RP-02 - Ultra-Long Monologue (Role-Play)
+ * Flag if single response >300 words without natural pauses
+ */
+function detectUltraLongMonologue(replyText) {
+  const warnings = [];
+
+  const wordCount = replyText.split(/\s+/).filter(w => w.length > 0).length;
+  const sentences = (replyText.match(/[.!?]+/g) || []).length;
+  const avgWordsPerSentence = wordCount / Math.max(sentences, 1);
+
+  if (wordCount > 300) {
+    warnings.push(`RP_LONG_RESPONSE: ${wordCount} words`);
+  }
+  if (avgWordsPerSentence > 25) {
+    warnings.push(`RP_LONG_SENTENCES: ${avgWordsPerSentence.toFixed(1)} avg`);
+  }
+
+  return warnings;
+}
+
+/**
+ * PHASE 3: Detect EI-01 - Socratic Question Quality (Emotional-Assessment)
+ * Ensure questions are reflective, not closed-ended yes/no
+ */
+function detectSocraticQuality(replyText) {
+  const errors = [];
+  const warnings = [];
+
+  const questions = replyText.match(/[^.!?]*\?/g) || [];
+
+  if (questions.length === 0) {
+    errors.push('EI_NO_SOCRATIC_QUESTIONS');
+    return { errors, warnings };
+  }
+
+  const socraticKeywords = /what|how|why|which|where|when|who|might|could|would|notice|observe|reflect/i;
+
+  let goodQuestions = 0;
+  questions.forEach((q) => {
+    if (socraticKeywords.test(q)) {
+      goodQuestions++;
+    } else {
+      warnings.push(`EI_YES_NO_QUESTION_DETECTED`);
+    }
+  });
+
+  if (goodQuestions === 0) {
+    errors.push('EI_NO_REFLECTIVE_QUESTIONS');
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * PHASE 3: Detect EI-02 - Framework Depth (Emotional-Assessment)
+ * Ensure framework is substantively integrated, not just name-dropped
+ */
+function detectFrameworkDepth(replyText) {
+  const errors = [];
+  const warnings = [];
+
+  const frameworkConcepts = {
+    'CASEL': /CASEL|competencies?|self-awareness|self-management|responsible decision|relationship|social/i,
+    'Triple-Loop': /triple.?loop|loop\s1|loop\s2|loop\s3|task outcome|regulation|mindset/i,
+    'Metacognition': /metacognition|metacognitive|self-monitor|pattern|reflection|belief/i,
+    'Emotional Regulation': /regulat|stress|tension|pause|breath|ground|calm/i
+  };
+
+  const referencedConcepts = Object.entries(frameworkConcepts).filter(
+    ([name, pattern]) => pattern.test(replyText)
+  );
+
+  if (referencedConcepts.length === 0) {
+    errors.push('EI_NO_FRAMEWORK_REFERENCE');
+  } else if (referencedConcepts.length < 2) {
+    warnings.push('EI_LIMITED_FRAMEWORK_DEPTH');
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * PHASE 3: Detect PK-01 - Citation Format & Presence (Product-Knowledge)
+ * Verify citations are present and properly formatted
+ */
+function detectCitationFormat(replyText) {
+  const errors = [];
+  const warnings = [];
+
+  const citationPatterns = [
+    /\[[A-Z]{2,}-[A-Z0-9-]{2,}\]/,  // [HIV-PREP-001]
+    /\[\d+\]/,                       // [1], [2]
+    /\(citation\s*\d+\)/i
+  ];
+
+  const hasCitations = citationPatterns.some(p => p.test(replyText));
+  if (!hasCitations) {
+    errors.push("PK_MISSING_CITATIONS");
+  }
+
+  // Check citation format consistency
+  const codeCitations = replyText.match(/\[[A-Z]{2,}-[A-Z0-9-]{2,}\]/g) || [];
+  const numCitations = replyText.match(/\[\d+\]/g) || [];
+
+  if (codeCitations.length > 0 && numCitations.length > 0) {
+    warnings.push('PK_MIXED_CITATION_FORMATS');
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * PHASE 3: Detect PK-02 - Off-Label Context (Product-Knowledge)
+ * Flag uncontextualized off-label language
+ */
+function detectOffLabelContext(replyText) {
+  const errors = [];
+
+  if (/off-label|off label/i.test(replyText)) {
+    if (!/explicitly|not indicated|outside label|contraindicated|unlabeled|investigational|clinical evidence|case report/i.test(replyText)) {
+      errors.push("PK_OFFABEL_NOT_CONTEXTUALIZED");
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * PHASE 3: Detect GK-01 - Structure Leakage (General-Knowledge)
+ * Ensure no Sales-Coach/RP/EI/PK headers leak into general-knowledge
+ */
+function detectStructureLeakage(replyText) {
+  const errors = [];
+
+  const scHeaders = /Challenge:|Rep Approach:|Impact:|Suggested Phrasing:/i;
+  const rpVoice = /In my (?:clinic|practice|office|hospital)/i;
+  const eiHeaders = /worked:|improve:|emotional intelligence|CASEL/i;
+  const pkHeaders = /\[\d+\]|\[REF-|References:/i;
+
+  if (scHeaders.test(replyText)) {
+    errors.push("GK_SALES_COACH_STRUCTURE_LEAK");
+  }
+  if (rpVoice.test(replyText) && replyText.split(/\n/).length < 5) {
+    errors.push("GK_ROLEPLAY_VOICE_LEAK");
+  }
+
+  return errors;
+}
+
 /* ----- PHASE 2 SAFEGUARDS: Response Contract Validation ----- */
 
 /**
@@ -749,6 +1019,19 @@ function validateResponseContract(mode, replyText, coachData) {
         warnings.push(`SALES_COACH_INSUFFICIENT_BULLETS: ${bulletCount} (expected 3+)`);
       }
     }
+
+    // PHASE 3: SC-01 - Paragraph Separation Check
+    const sc01Errors = detectParagraphSeparation(replyText);
+    errors.push(...sc01Errors);
+
+    // PHASE 3: SC-02 - Bullet Content Check
+    const sc02Result = detectBulletContent(replyText);
+    errors.push(...sc02Result.errors);
+    warnings.push(...sc02Result.warnings);
+
+    // PHASE 3: SC-03 - Duplicate Metrics Check
+    const sc03Errors = detectDuplicateMetrics(coachData);
+    errors.push(...sc03Errors);
   }
 
   // EMOTIONAL-ASSESSMENT: STRICT REQUIREMENT (reflective coaching with Socratic questions)
@@ -799,6 +1082,16 @@ function validateResponseContract(mode, replyText, coachData) {
         }
       }
     }
+
+    // PHASE 3: EI-01 - Socratic Question Quality Check
+    const ei01Result = detectSocraticQuality(replyText);
+    errors.push(...ei01Result.errors);
+    warnings.push(...ei01Result.warnings);
+
+    // PHASE 3: EI-02 - Framework Depth Check
+    const ei02Result = detectFrameworkDepth(replyText);
+    errors.push(...ei02Result.errors);
+    warnings.push(...ei02Result.warnings);
   }
 
   // ROLE-PLAY: STRICT REQUIREMENT
@@ -823,6 +1116,15 @@ function validateResponseContract(mode, replyText, coachData) {
     if (!/\b(I|we|my|our)\b/i.test(replyText)) {
       warnings.push("ROLEPLAY_NOT_FIRST_PERSON_HCP");
     }
+
+    // PHASE 3: RP-01 - First-Person Consistency Check
+    const rp01Result = detectFirstPersonConsistency(replyText);
+    errors.push(...rp01Result.errors);
+    warnings.push(...rp01Result.warnings);
+
+    // PHASE 3: RP-02 - Ultra-Long Monologue Check
+    const rp02Warnings = detectUltraLongMonologue(replyText);
+    warnings.push(...rp02Warnings);
   }
 
   // PRODUCT-KNOWLEDGE: STRICT REQUIREMENT
@@ -849,6 +1151,15 @@ function validateResponseContract(mode, replyText, coachData) {
         errors.push("PK_OFFABEL_NOT_CONTEXTUALIZED");
       }
     }
+
+    // PHASE 3: PK-01 - Citation Format Check
+    const pk01Result = detectCitationFormat(replyText);
+    errors.push(...pk01Result.errors);
+    warnings.push(...pk01Result.warnings);
+
+    // PHASE 3: PK-02 - Off-Label Context Check
+    const pk02Errors = detectOffLabelContext(replyText);
+    errors.push(...pk02Errors);
   }
 
   // GENERAL-KNOWLEDGE: Strict against structural leakage (but flexible content)
@@ -880,6 +1191,10 @@ function validateResponseContract(mode, replyText, coachData) {
       // Only flag if it looks like single-sentence HCP voice, not if it's in a multi-paragraph context
       warnings.push("GENERAL_POSSIBLE_ROLEPLAY_LEAKAGE");
     }
+
+    // PHASE 3: GK-01 - Structure Leakage Check
+    const gk01Errors = detectStructureLeakage(replyText);
+    errors.push(...gk01Errors);
   }
 
   return {
@@ -957,6 +1272,50 @@ ${siteContext.slice(0, 12000)}`;
       reply: "I'm having trouble right now. You can still explore the Coach, view Platform modules, or request a demo."
     }, 500, env, req);
   }
+}
+
+/* ------------------------------ PHASE 3 REPAIR STRATEGIES ----- */
+
+/**
+ * PHASE 3: Repair SC-01 - Paragraph Collapse
+ * Triggered when SC_NO_SECTION_SEPARATION detected
+ * Builds prompt to insert \n\n between sections without altering content
+ */
+function buildParagraphCollapseRepairPrompt(currentResponse) {
+  return `URGENT REPAIR NEEDED: Your response is missing blank lines between sections.
+
+CURRENT RESPONSE:
+${currentResponse}
+
+REQUIRED FIX:
+- Add exactly one blank line (\\n\\n) BETWEEN each pair of these sections:
+  - After "Challenge:"
+  - After "Rep Approach:"
+  - After "Impact:"
+- Do NOT change any content, wording, or structure
+- Do NOT add or remove sections
+- Only add blank lines where specified
+- Return the corrected response, nothing else`;
+}
+
+/**
+ * PHASE 3: Repair SC-02 - Bullet Expansion
+ * Triggered when SC_INSUFFICIENT_BULLETS or SC_BULLET_TOO_SHORT detected
+ * Builds prompt to expand bullets to 3+, each 20-35 words
+ */
+function buildBulletExpansionRepairPrompt(currentResponse) {
+  return `URGENT REPAIR NEEDED: "Rep Approach" bullets need expansion.
+
+CURRENT RESPONSE:
+${currentResponse}
+
+REQUIRED FIX:
+- Ensure "Rep Approach" has exactly 3+ bullets (using •)
+- Each bullet MUST be 20-35 words
+- Each bullet MUST contain a reference code like [REF-CODE]
+- Keep all other sections (Challenge, Impact, Suggested Phrasing) exactly as-is
+- Do NOT change content, only expand or fix bullets
+- Return the corrected response with ONLY the bullets fixed`;
 }
 
 /* ------------------------------ /chat -------------------------------------- */
@@ -1762,16 +2121,34 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         attempt: "initial"
       });
       
-      // Identify repairable errors
-      const repairableErrors = contractValidation.errors
-        .filter(e => e.includes("MISSING") || e.includes("INSUFFICIENT"))
-        .length > 0;
-      
-      // Attempt repair for sales-coach mode (most structured)
-      if (repairableErrors && mode === "sales-coach") {
+      let repairPrompt = null;
+      let repairAttempted = false;
+
+      // PHASE 3: Targeted Repair Strategy SC-01 (Paragraph Collapse)
+      if (mode === "sales-coach" && contractValidation.errors.some(e => e.includes("SC_NO_SECTION_SEPARATION"))) {
+        repairPrompt = buildParagraphCollapseRepairPrompt(reply);
+        repairAttempted = true;
+      }
+      // PHASE 3: Targeted Repair Strategy SC-02 (Bullet Expansion)
+      else if (mode === "sales-coach" && contractValidation.errors.some(e => e.includes("SC_INSUFFICIENT_BULLETS") || e.includes("SC_BULLET_TOO_SHORT"))) {
+        repairPrompt = buildBulletExpansionRepairPrompt(reply);
+        repairAttempted = true;
+      }
+      // Fallback: Generic repair for other sales-coach errors
+      else if (mode === "sales-coach") {
+        const repairableErrors = contractValidation.errors
+          .filter(e => e.includes("MISSING") || e.includes("INSUFFICIENT"))
+          .length > 0;
+        
+        if (repairableErrors) {
+          repairPrompt = `URGENT: Your previous response had format issues. Regenerate using EXACTLY this structure:\n\nChallenge: [one sentence about HCP barrier]\n\nRep Approach:\n• [point 1 with [FACT-ID] reference]\n• [point 2 with [FACT-ID] reference]\n• [point 3 with [FACT-ID] reference]\n\nImpact: [expected outcome]\n\nSuggested Phrasing: "[exact rep wording]"\n\n<coach>{"scores":{"empathy":3,"clarity":4,"compliance":4,"discovery":3,"objection_handling":3,"confidence":4,"active_listening":3,"adaptability":3,"action_insight":3,"resilience":3}}</coach>`;
+          repairAttempted = true;
+        }
+      }
+
+      // Execute repair if a strategy was selected
+      if (repairAttempted && repairPrompt) {
         try {
-          const repairPrompt = `URGENT: Your previous response had format issues. Regenerate using EXACTLY this structure:\n\nChallenge: [one sentence about HCP barrier]\n\nRep Approach:\n• [point 1 with [FACT-ID] reference]\n• [point 2 with [FACT-ID] reference]\n• [point 3 with [FACT-ID] reference]\n\nImpact: [expected outcome]\n\nSuggested Phrasing: "[exact rep wording]"\n\n<coach>{"scores":{"empathy":3,"clarity":4,"compliance":4,"discovery":3,"objection_handling":3,"confidence":4,"active_listening":3,"adaptability":3,"action_insight":3,"resilience":3}}</coach>`;
-          
           const repairMsgs = [
             ...messages.slice(0, -1),
             { role: "user", content: repairPrompt }
