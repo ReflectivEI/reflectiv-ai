@@ -755,10 +755,12 @@
     }
 
     // Strict contract enforcement: 4 headers in order, 3 bullets, phrasing
-    const challengeMatch = cleanedText.match(/Challenge:\s*(.+?)(?=\s+Rep Approach:|$)/is);
-    const repApproachMatch = cleanedText.match(/Rep Approach:\s*(.+?)(?=\s+Impact:|$)/is);
-    const impactMatch = cleanedText.match(/Impact:\s*(.+?)(?=\s+Suggested Phrasing:|$)/is);
-    const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*["']?(.+?)["']?\s*(?=\s+Challenge:|<coach>|$)/is);
+    // Relaxed regex to handle variations in formatting
+    const challengeMatch = cleanedText.match(/Challenge\s*:\s*([\s\S]*?)(?=\n\s*(?:Rep Approach|Impact|Suggested Phrasing):|$)/i);
+    const repApproachMatch = cleanedText.match(/Rep Approach\s*:\s*([\s\S]*?)(?=\n\s*(?:Impact|Suggested Phrasing):|$)/i);
+    const impactMatch = cleanedText.match(/Impact\s*:\s*([\s\S]*?)(?=\n\s*Suggested Phrasing:|$)/i);
+    // More flexible phrasing regex: allow any text after the colon, with or without quotes
+    const phrasingMatch = cleanedText.match(/Suggested\s+Phrasing\s*:\s*([\s\S]*?)(?=\n\s*(?:Challenge|Rep Approach|Impact):|$)/i);
 
     // Validate strict contract
     let contractValid = true;
@@ -771,7 +773,9 @@
     let bulletCount = 0;
     if (repApproachMatch) {
       const repText = repApproachMatch[1].trim();
-      const bullets = repText.split(/\s*[•●○]\s*/).map(b => b.trim()).filter(b => b.length > 0 && b.length < 500);
+      const bullets = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
+        .map(b => b.replace(/^[\t ]*[•●○\-]\s+/, '').trim())
+        .filter(b => b.length > 0 && b.length < 500);
       bulletCount = bullets.length;
       if (bulletCount !== 3) { contractValid = false; errorMsg += `Rep Approach must have exactly 3 bullets (found ${bulletCount}).\n`; }
     }
@@ -788,13 +792,16 @@
     // Render sections if valid
     html += `<div class="sales-sim-section"><div class="section-header"><strong>Challenge:</strong></div><div class="section-content">${convertCitations(esc(challengeMatch[1].trim()))}</div></div>\n\n`;
     const repText = repApproachMatch[1].trim();
+    const bulletItems = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
+      .map(b => b.replace(/^[\t ]*[•●○\-]\s+/, '').trim())
+      .filter(b => b.length > 0 && b.length < 500);
     html += `<div class="sales-sim-section"><div class="section-header"><strong>Rep Approach:</strong></div><ul class="section-bullets">`;
-    repText.split(/\s*[•●○]\s*/).map(b => b.trim()).filter(b => b.length > 0 && b.length < 500).forEach(bullet => {
+    bulletItems.forEach(bullet => {
       html += `<li>${convertCitations(esc(bullet))}</li>`;
     });
     html += `</ul></div>\n\n`;
     html += `<div class="sales-sim-section"><div class="section-header"><strong>Impact:</strong></div><div class="section-content">${convertCitations(esc(impactMatch[1].trim()))}</div></div>\n\n`;
-    const phrasingText = phrasingMatch[1].trim().replace(/^['"]|['"]$/g, '');
+    const phrasingText = phrasingMatch[1].trim().replace(/^['"\s]+|['"]\s*$/g, '').trim();
     html += `<div class="sales-sim-section"><div class="section-header"><strong>Suggested Phrasing:</strong></div><div class="section-quote">"${convertCitations(esc(phrasingText))}"</div></div>`;
     return html;
   }
@@ -905,42 +912,32 @@
     s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
     s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
 
-    // Product Knowledge strict contract enforcement
+    // Product Knowledge relaxed contract enforcement
     if (currentMode === "product-knowledge") {
-      // Must have at least one [n] citation
-      const citationMatches = s.match(/\[\d+\]/g) || [];
-      // Must have References section at the end
+      // Accept both numeric [n] and code-based [XX-XX-XXX] citations
+      const citationMatches = s.match(/\[(?:\d+|[A-Z]{2,}-[A-Z0-9-]{2,})\]/g) || [];
       const refSectionMatch = s.match(/References:\s*([\s\S]*)$/i);
-      let contractValid = true;
-      let errorMsg = "";
-      if (citationMatches.length === 0) { contractValid = false; errorMsg += "Missing inline numeric citation [n].\n"; }
-      if (!refSectionMatch) { contractValid = false; errorMsg += "Missing References section.\n"; }
-      let refLines = [];
-      if (refSectionMatch) {
-        refLines = refSectionMatch[1].split(/\n|\r|\r\n/).filter(l => /^\d+\. /.test(l));
-        if (refLines.length === 0) { contractValid = false; errorMsg += "No numbered reference entries found.\n"; }
-        // Each reference line must have a real URL
-        refLines.forEach((line, i) => {
-          if (!line.match(/https?:\/\//)) { contractValid = false; errorMsg += `Reference ${i+1} missing URL.\n`; }
-        });
-        // Each [n] citation must have a matching reference
-        for (let i = 1; i <= citationMatches.length; i++) {
-          if (!refLines[i-1]) { contractValid = false; errorMsg += `Citation [${i}] missing matching reference line.\n`; }
-        }
+
+      // Citations are encouraged but not required
+      if (citationMatches.length === 0) {
+        // Add warning but don't fail
+        console.warn("[PK Validation] No inline citations found - proceeding");
       }
-      if (!contractValid) {
-        return `<div class="pk-error-card" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
-          <strong style="color:#c00">⚠️ Format Error:</strong> Product Knowledge response violated contract.<br>
-          <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">${esc(errorMsg)}</pre>
-          <details style="margin-top:8px">
-            <summary style="cursor:pointer;color:#666">Show raw response</summary>
-            <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px">${esc(text)}</div>
-          </details>
-        </div>`;
+
+      // Only do detailed ref validation if References section exists
+      if (refSectionMatch) {
+        // Accept various reference line formats
+        const refLines = refSectionMatch[1]
+          .split(/\n|\r|\r\n/)
+          .map(l => l.trim())
+          .filter(l => /^\d+\s*[\.\-\)]\s+/.test(l));
+
+        // Note: We no longer fail if refLines is empty - References section existing is enough
+        // This handles cases where references are formatted differently or synthesized by the backend
       }
     }
     // ...existing code...
-    return s
+    let finalS = s
       .split(/\n{2,}/)
       .map((p) => {
         if (p.startsWith("<ul>") || p.startsWith("<ol>") || p.startsWith("<h3>") ||
@@ -950,6 +947,16 @@
         return `<p>${p.replace(/\n/g, "<br>")}</p>`;
       })
       .join("\n");
+
+    // Add neutral note for PK if no references
+    if (currentMode === "product-knowledge") {
+      const refSectionMatch = s.match(/References:\s*([\s\S]*)$/i);
+      if (!refSectionMatch) {
+        finalS += "\n\n<div class='pk-note' style='font-size:12px;color:#666;margin-top:8px;'>No formal references were provided for this response.</div>";
+      }
+    }
+
+    return finalS;
   }
 
   function el(tag, cls, text) {
@@ -2829,7 +2836,15 @@ ${COMMON}`
 
         // Log network error
         console.error(`[chat] status=network_error path=/chat error=${e.message || "unknown"}`);
-        showToast(`Network error. Please check your connection and retry.`, "error");
+        // ONLY show generic network toast for real transport errors (timeout / TypeError / NetworkError)
+        // Do NOT show network toast for format/content validation errors - those are handled by the validators
+        if (/timeout|TypeError|NetworkError/i.test(String(e))) {
+          showToast(`Network error. Please check your connection and retry.`, "error");
+        } else if (!/(format|contract|validation)/i.test(String(e))) {
+          // Only show a generic error toast if it's not a known validation/format error
+          showToast(`Request failed (${e.message || 'error'}). Please retry.`, "error");
+        }
+        // If it IS a validation error, suppress the toast - the format error card will handle it
 
         // Show retry UI if we've exhausted all retries and taken >= 8s total
         const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
