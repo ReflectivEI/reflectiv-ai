@@ -2886,7 +2886,9 @@ ${COMMON}`
 
   async function callModel(messages, scenarioContext = null) {
     // Validate mode before making request
-    const validModes = ["emotional-assessment", "product-knowledge", "sales-coach", "role-play"];
+    // CRITICAL: This is the single mode whitelist for the frontend.
+    // Must be kept in sync with worker.js VALID_MODES.
+    const validModes = ["emotional-assessment", "product-knowledge", "sales-coach", "role-play", "general-knowledge"];
     if (!validModes.includes(currentMode)) {
       console.error("[chat] invalid_mode=" + currentMode);
       showToast("Invalid mode selected. Please refresh the page.", "error");
@@ -3097,8 +3099,17 @@ ${COMMON}`
         // Check if we should retry
         if (attempt < delays.length && isRetryable) {
           lastError = new Error("HTTP " + r.status);
+          if (r.status === 429) {
+            showToast("You've reached the usage limit. Please wait a moment and try again.", "warning");
+          }
           await new Promise((res) => setTimeout(res, delays[attempt]));
           continue;
+        }
+
+        // For 429 after retries exhausted
+        if (r.status === 429) {
+          showToast("You've reached the usage limit. Please wait a moment and try again.", "error");
+          throw new Error("HTTP 429: rate_limited");
         }
 
         // For 4xx errors (except 429), try to extract error message from response

@@ -642,10 +642,19 @@ function validateModeResponse(mode, reply, coach) {
       }
     }
 
-    // Ensure citations present
-    const hasCitations = /\[HIV-PREP-[A-Z]+-\d+\]|\[\d+\]/i.test(cleaned);
-    if (!hasCitations) {
-      warnings.push("no_citations_detected");
+    // ENFORCE citations for clinical/scientific claims
+    // Count sentences that appear to be clinical claims (heuristic: contain medical terms or question)
+    const clinicalSentences = cleaned.match(/[^.!?]*(?:[Dd]isease|[Cc]linical|[Rr]esearch|[Ss]tudy|[Pp]atient|[Tt]reatment|[Tt]herapy|[Mm]echanism|[Ee]vidence|[Dd]rug|[Mm]edication|[Cc]ondition|[Ss]afety|[Ee]fficacy)[^.!?]*[.!?]/g) || [];
+    const citationMatches = cleaned.match(/\[HIV-PREP-[A-Z]+-\d+\]|\[\d+\]/gi) || [];
+    
+    if (clinicalSentences.length > 0 && citationMatches.length === 0) {
+      // VIOLATION: Clinical content without citations
+      violations.push("product_knowledge_missing_citations");
+      // Try to preserve the clinical content but flag it
+      cleaned = cleaned + `\n\n[CITATION REQUIRED: Clinical claims detected but no citations found. Please ensure all statements are backed by references.]`;
+    } else if (clinicalSentences.length > 1 && citationMatches.length < Math.ceil(clinicalSentences.length / 2)) {
+      // WARNING: Fewer citations than expected for the clinical content
+      warnings.push("product_knowledge_insufficient_citations");
     }
   }
 
@@ -742,12 +751,39 @@ function validateResponseContract(mode, replyText, coachData) {
     }
   }
 
-  // EMOTIONAL-ASSESSMENT: STRICT REQUIREMENT
+  // EMOTIONAL-ASSESSMENT: STRICT REQUIREMENT (reflective coaching with Socratic questions)
   if (mode === "emotional-assessment") {
-    // Requirement 1: Coach block with all 10 metrics
-    if (!coachData || !coachData.scores) {
-      errors.push("EI_MISSING_COACH_BLOCK");
-    } else {
+    // Requirement 1: MUST have Socratic questions (defines EI mode)
+    const questionCount = (replyText.match(/\?/g) || []).length;
+    if (questionCount < 1) {
+      errors.push(`EI_NO_SOCRATIC_QUESTIONS`);
+    } else if (questionCount < 2) {
+      warnings.push(`EI_INSUFFICIENT_QUESTIONS: ${questionCount} (expected 2+)`);
+    }
+
+    // Requirement 2: MUST reference EI framework concepts
+    const frameworkKeywords = /CASEL|Triple-Loop|reflection|emotional intelligence|self-awareness|regulation|empathy|metacognition|pattern|trigger|mindset/i;
+    if (!frameworkKeywords.test(replyText)) {
+      errors.push("EI_NO_FRAMEWORK_REFERENCE");
+    }
+
+    // Requirement 3: Should NOT have coaching structure (Sales Coach format)
+    const coachingStructure = /Challenge:|Rep Approach:|Impact:|Suggested Phrasing:/i;
+    if (coachingStructure.test(replyText)) {
+      errors.push("EI_HAS_COACHING_STRUCTURE");
+    }
+
+    // Requirement 4: Should be 2-4 paragraphs (reflective, not prescriptive)
+    const paragraphs = replyText.split(/\n\n+/).filter(p => p.trim().length > 0);
+    if (paragraphs.length < 2) {
+      warnings.push(`EI_INSUFFICIENT_PARAGRAPHS: ${paragraphs.length} (expected 2+)`);
+    }
+    if (paragraphs.length > 5) {
+      warnings.push(`EI_TOO_MANY_PARAGRAPHS: ${paragraphs.length} (expected 2-4)`);
+    }
+
+    // Requirement 5: Coach block optional but if present, must be valid
+    if (coachData && coachData.scores) {
       const requiredMetrics = [
         "empathy", "clarity", "compliance", "discovery",
         "objection_handling", "confidence", "active_listening",
@@ -755,26 +791,13 @@ function validateResponseContract(mode, replyText, coachData) {
       ];
       const missingMetrics = requiredMetrics.filter(m => !(m in coachData.scores));
       if (missingMetrics.length > 0) {
-        errors.push(`EI_MISSING_METRICS: ${missingMetrics.join(",")}`);
+        warnings.push(`EI_INCOMPLETE_METRICS: ${missingMetrics.join(",")} (optional)`);
       }
-      // Validate metric scores in range
       for (const [key, value] of Object.entries(coachData.scores || {})) {
         if (typeof value !== "number" || value < 1 || value > 5) {
           errors.push(`EI_INVALID_METRIC_SCORE: ${key}=${value}`);
         }
       }
-    }
-
-    // Requirement 2: Must have Socratic questions
-    const questionCount = (replyText.match(/\?/g) || []).length;
-    if (questionCount < 2) {
-      warnings.push(`EI_INSUFFICIENT_QUESTIONS: ${questionCount} (expected 2+)`);
-    }
-
-    // Requirement 3: Should reference EI framework
-    const frameworkKeywords = /CASEL|Triple-Loop|reflection|emotional intelligence/i;
-    if (!frameworkKeywords.test(replyText)) {
-      warnings.push("EI_NO_FRAMEWORK_REFERENCE");
     }
   }
 
@@ -828,13 +851,35 @@ function validateResponseContract(mode, replyText, coachData) {
     }
   }
 
-  // GENERAL-KNOWLEDGE: Flexible (no strict contract)
+  // GENERAL-KNOWLEDGE: Strict against structural leakage (but flexible content)
   if (mode === "general-knowledge") {
-    // Requirement 1: Must have reply
+    // Requirement 1: Must have non-empty reply
     if (!replyText || replyText.trim().length === 0) {
       errors.push("GENERAL_EMPTY_REPLY");
     }
-    // No other strict requirements - mode is intentionally flexible
+
+    // Requirement 2: NO Sales Coach structure leakage
+    const coachingStructure = /Challenge:|Rep Approach:|Impact:|Suggested Phrasing:/i;
+    if (coachingStructure.test(replyText)) {
+      errors.push("GENERAL_HAS_COACHING_STRUCTURE");
+    }
+
+    // Requirement 3: NO coach blocks
+    if (coachData && Object.keys(coachData).length > 0) {
+      errors.push("GENERAL_UNEXPECTED_COACH_BLOCK");
+    }
+
+    // Requirement 4: Reasonable length (not wall-of-text)
+    const wordCount = replyText.split(/\s+/).length;
+    if (wordCount > 800) {
+      warnings.push(`GENERAL_TOO_LONG: ${wordCount} words (expected <= 700)`);
+    }
+
+    // Requirement 5: Not Role-Play leakage ("In my clinic...")
+    if (/\bIn my (?:clinic|practice|office|hospital)\b/i.test(replyText) && replyText.split(/\n/).length < 3) {
+      // Only flag if it looks like single-sentence HCP voice, not if it's in a multi-paragraph context
+      warnings.push("GENERAL_POSSIBLE_ROLEPLAY_LEAKAGE");
+    }
   }
 
   return {
@@ -1229,7 +1274,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `**For scientific/medical questions:**`,
       `- Clear, structured explanations (use headers, bullets, or paragraphs as appropriate)`,
       `- Clinical context and relevance`,
-      `- Evidence citations [1], [2] when available`,
+      `- Evidence citations [1], [2] when available - REQUIRED for any clinical/scientific claims`,
       `- Practical implications for HCPs or patients`,
       `- Acknowledge uncertainties or limitations in evidence`,
       ``,
@@ -1248,7 +1293,8 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Distinguish clearly between on-label and off-label information`,
       `- Present risks, contraindications, and safety considerations alongside benefits`,
       `- Recommend consulting official sources (FDA labels, guidelines) for prescribing decisions`,
-      `- Use [numbered citations] for clinical claims when references are available`,
+      `- MUST use [numbered citations] [1], [2], [3] for ALL clinical claims and scientific facts - this is required`,
+      `- Each numbered citation [1], [2] must reference the facts listed above`,
       `- If asked about something outside your knowledge, acknowledge limitations`,
       ``,
       `EXAMPLE INTERACTIONS:`,
@@ -1700,36 +1746,97 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
-    // PHASE 2: Validate response contract before returning
+    // ═══════════════════════════════════════════════════════════════════
+    // PHASE 2: SINGLE ENFORCEMENT POINT - validateResponseContract Gatekeeper
+    // This is the ONLY place responses are validated before returning to client.
+    // ALL future response processing MUST pass through this gate.
+    // ═══════════════════════════════════════════════════════════════════
     const contractValidation = validateResponseContract(mode, reply, coachObj);
     
-    // If contract validation fails for CRITICAL modes, return error
-    const criticalModes = ["sales-coach", "emotional-assessment", "product-knowledge"];
-    if (!contractValidation.valid && criticalModes.includes(mode)) {
-      console.warn("response_contract_violation", {
+    // If contract validation fails, attempt ONE internal repair pass
+    if (!contractValidation.valid && contractValidation.errors.length > 0) {
+      console.warn("response_contract_violation_detected", {
         req_id: reqId,
         mode,
-        errors: contractValidation.errors,
-        warnings: contractValidation.warnings
+        errors: contractValidation.errors.slice(0, 5),
+        attempt: "initial"
       });
       
-      // Return error response instead of broken data
-      return json({
-        error: "RESPONSE_CONTRACT_VIOLATION",
-        message: `Response did not match ${mode} contract requirements`,
-        details: contractValidation.errors.slice(0, 3),
-        reply: `[Format Error: Unable to generate proper ${mode} response. Please try again.]`,
-        coach: null,
-        validation_errors: contractValidation.errors
-      }, 400, env, req);
+      // Identify repairable errors
+      const repairableErrors = contractValidation.errors
+        .filter(e => e.includes("MISSING") || e.includes("INSUFFICIENT"))
+        .length > 0;
+      
+      // Attempt repair for sales-coach mode (most structured)
+      if (repairableErrors && mode === "sales-coach") {
+        try {
+          const repairPrompt = `URGENT: Your previous response had format issues. Regenerate using EXACTLY this structure:\n\nChallenge: [one sentence about HCP barrier]\n\nRep Approach:\n• [point 1 with [FACT-ID] reference]\n• [point 2 with [FACT-ID] reference]\n• [point 3 with [FACT-ID] reference]\n\nImpact: [expected outcome]\n\nSuggested Phrasing: "[exact rep wording]"\n\n<coach>{"scores":{"empathy":3,"clarity":4,"compliance":4,"discovery":3,"objection_handling":3,"confidence":4,"active_listening":3,"adaptability":3,"action_insight":3,"resilience":3}}</coach>`;
+          
+          const repairMsgs = [
+            ...messages.slice(0, -1),
+            { role: "user", content: repairPrompt }
+          ];
+          
+          const repairRaw = await providerChat(env, repairMsgs, {
+            maxTokens: 1600,
+            temperature: 0.2,
+            session
+          });
+          
+          if (repairRaw && repairRaw.trim().length > 0) {
+            const { coach: repairCoach, clean: repairClean } = extractCoach(repairRaw);
+            const repairValidation = validateResponseContract(mode, repairClean, repairCoach);
+            
+            if (repairValidation.valid) {
+              console.info("response_contract_repair_successful", { req_id: reqId, mode });
+              reply = repairClean;
+              coachObj = repairCoach || coachObj;
+            } else {
+              console.warn("response_contract_repair_still_invalid", {
+                req_id: reqId,
+                mode,
+                repair_errors: repairValidation.errors.slice(0, 3)
+              });
+            }
+          }
+        } catch (repairError) {
+          console.warn("response_contract_repair_exception", {
+            req_id: reqId,
+            message: repairError.message
+          });
+        }
+      }
+      
+      // Re-validate after repair attempt
+      const finalValidation = validateResponseContract(mode, reply, coachObj);
+      
+      // If STILL invalid for critical modes, return safe error (do NOT leak malformed data)
+      if (!finalValidation.valid) {
+        const criticalModes = ["sales-coach", "emotional-assessment", "product-knowledge"];
+        if (criticalModes.includes(mode)) {
+          console.error("response_contract_final_failure", {
+            req_id: reqId,
+            mode,
+            errors: finalValidation.errors.slice(0, 3)
+          });
+          
+          // Return safe error - NEVER return malformed coach blocks or broken structures
+          return json({
+            error: "FORMAT_ERROR",
+            message: "I had trouble formatting this response correctly. Please try again.",
+            reply: null,
+            coach: null
+          }, 400, env, req);
+        }
+      }
     }
     
-    // For other modes or if only warnings, return response with validation metadata
+    // Log validation warnings (non-blocking, allowed to return)
     if (contractValidation.warnings.length > 0) {
       console.info("response_validation_warnings", {
         req_id: reqId,
         mode,
-        warnings: contractValidation.warnings
+        warnings: contractValidation.warnings.slice(0, 3)
       });
     }
 
