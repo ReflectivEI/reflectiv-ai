@@ -1975,6 +1975,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     // Post-processing: Enforce final question mark for EI mode (MUST happen after capSentences)
     if (mode === "emotional-assessment") {
       reply = reply.trim();
+      // Strip trailing quotes first, then ensure it ends with ?
+      reply = reply.replace(/[""']*\s*$/, '').trim();
+      
       // If reply doesn't end with ?, replace final punctuation or append ?
       if (!reply.endsWith('?')) {
         // Replace common final punctuation with ?
@@ -2002,19 +2005,27 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     await seqPut(env, session, state);
 
     // Deterministic scoring if provider omitted or malformed
-    let coachObj = coach && typeof coach === "object" ? coach : null;
-    if (!coachObj || !coachObj.scores) {
-      const usedFactIds = (activePlan.facts || []).map(f => f.id);
-      const overall = deterministicScore({ reply, usedFactIds });
-      coachObj = {
-        overall,
-        scores: { empathy: 3, clarity: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, objection_handling: 3, confidence: 4, active_listening: 3, adaptability: 3, action_insight: 3, resilience: 3 },
-        worked: ["Tied guidance to facts"],
-        improve: ["End with one specific discovery question"],
-        phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
-        feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
-        context: { rep_question: String(user || ""), hcp_reply: reply }
-      };
+    let coachObj = null;
+    
+    // ROLE-PLAY MODE: Never return coach object - no scoring, no guidance
+    if (mode === "role-play") {
+      coachObj = null;  // Force null, skip fallback creation entirely
+    } else {
+      // For all other modes, use provided coach or create fallback
+      coachObj = coach && typeof coach === "object" ? coach : null;
+      if (!coachObj || !coachObj.scores) {
+        const usedFactIds = (activePlan.facts || []).map(f => f.id);
+        const overall = deterministicScore({ reply, usedFactIds });
+        coachObj = {
+          overall,
+          scores: { empathy: 3, clarity: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, objection_handling: 3, confidence: 4, active_listening: 3, adaptability: 3, action_insight: 3, resilience: 3 },
+          worked: ["Tied guidance to facts"],
+          improve: ["End with one specific discovery question"],
+          phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
+          feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          context: { rep_question: String(user || ""), hcp_reply: reply }
+        };
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -2091,24 +2102,33 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     // APPEND REFERENCES: For product-knowledge mode, convert citation codes to numbered refs and append full URLs
-    if (mode === "product-knowledge" && activePlan && activePlan.facts && activePlan.facts.length > 0) {
-      // Extract all citation codes from the reply (e.g., [HIV-PREP-001], [CV-SGLT2-SAFETY-005])
-      const citationCodes = (reply.match(/\[([A-Z]{2,}-[A-Z0-9-]{2,})\]/g) || [])
+    if (mode === "product-knowledge") {
+      // Try to extract fact-based citations first [HIV-PREP-001], [CV-SGLT2-SAFETY-005]
+      const factCitations = (reply.match(/\[([A-Z]{2,}-[A-Z0-9-]{2,})\]/g) || [])
         .map(m => m.slice(1, -1)); // Remove brackets
       
-      if (citationCodes.length > 0) {
+      if (factCitations.length > 0) {
         // Build reference list from cited facts
         const refMap = new Map(); // code -> {number, citations}
         let refNumber = 1;
         
-        citationCodes.forEach(code => {
+        factCitations.forEach(code => {
           if (!refMap.has(code)) {
-            // Find the fact with this code
-            const fact = activePlan.facts.find(f => f.id === code);
+            const fact = activePlan && activePlan.facts ? activePlan.facts.find(f => f.id === code) : null;
             if (fact && fact.cites && fact.cites.length > 0) {
               refMap.set(code, {
                 number: refNumber++,
                 citations: fact.cites
+              });
+            } else if (fact) {
+              refMap.set(code, {
+                number: refNumber++,
+                citations: [{ text: fact.text || fact.id, url: "#" }]
+              });
+            } else {
+              refMap.set(code, {
+                number: refNumber++,
+                citations: [{ text: code, url: "#" }]
               });
             }
           }
@@ -2123,16 +2143,29 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         // Build the references section
         if (refMap.size > 0) {
           reply += '\n\n**References:**\n';
-          refMap.forEach((value, code) => {
+          let refIdx = 1;
+          refMap.forEach((value) => {
             value.citations.forEach(cite => {
               if (typeof cite === 'object' && cite.text && cite.url) {
-                reply += `${value.number}. [${cite.text}](${cite.url})\n`;
+                reply += `${refIdx}. [${cite.text}](${cite.url})\n`;
               } else if (typeof cite === 'string') {
-                reply += `${value.number}. ${cite}\n`;
+                reply += `${refIdx}. ${cite}\n`;
               }
+              refIdx++;
             });
           });
           reply = reply.trim();
+        }
+      } else {
+        // No fact codes found; check if LLM already generated numbered citations [1][2][3]
+        // In this case, add a generic References section header
+        const numberedCites = reply.match(/\[\d+\]/g);
+        if (numberedCites && numberedCites.length > 0) {
+          // LLM already using numbered citations; append References header
+          // (widget will convert [1] to hyperlinks)
+          if (!/References:/i.test(reply)) {
+            reply += '\n\n**References:**\n[See citations inline throughout the response above, marked with [1], [2], etc. Consult current FDA labels and clinical guidelines for complete reference information.]';
+          }
         }
       }
     }
