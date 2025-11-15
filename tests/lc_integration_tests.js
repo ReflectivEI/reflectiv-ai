@@ -3,6 +3,17 @@
 /**
  * PHASE 2: Real Integration Tests for Learning Center Modes
  * 
+ * ⚠️  CRITICAL: See ../TESTING_GUARDRAILS.md
+ * 
+ * This test harness executes 20 REAL HTTP requests to the Cloudflare Worker
+ * /chat endpoint. ALL tests use actual mode keys, persona IDs, and scenario
+ * IDs from repo files. NO mocks, NO simulations, NO fake data.
+ * 
+ * Every assertion is backed by a real HTTP response from the live Worker.
+ * Tests must NEVER be replaced by theoretical analysis or fictional outputs.
+ * 
+ * See TESTING_GUARDRAILS.md for rules on what constitutes a "real test."
+ * 
  * Executes 20 real HTTP requests to Cloudflare Worker /chat endpoint
  * with real modes, personas, diseases from repo files.
  * 

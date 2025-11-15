@@ -1,6 +1,6 @@
 # LC Integration Tests Summary (With Retry)
 
-**Execution Date:** 2025-11-15T02:50:03.823Z
+**Execution Date:** 2025-11-15T03:11:58.699Z
 **HTTP Calls Made:** 20 (all to real Worker endpoint)
 **Total Tests:** 20
 **Passed:** 20
@@ -36,7 +36,7 @@
 |---------|---------|---------|--------|---------|----------|
 | EI-01 | hiv_fp_md_timepressed | hiv_im_decile3_prep_lowshare | ✅ PASS | 1 | None |
 | EI-02 | hiv_id_md_guideline_strict | hiv_np_decile10_highshare_access | ✅ PASS | 1 | None |
-| EI-03 | onco_hemonc_md_costtox | onc_md_decile10_io_adc_pathways | ✅ PASS | 2 | None |
+| EI-03 | onco_hemonc_md_costtox | onc_md_decile10_io_adc_pathways | ✅ PASS | 1 | None |
 | EI-04 | vax_peds_np_hesitancy | vac_np_decile5_primary_care_capture | ✅ PASS | 1 | None |
 
 ### PRODUCT-KNOWLEDGE
@@ -44,9 +44,9 @@
 
 | Test ID | Persona | Disease | Status | Retries | Details |
 |---------|---------|---------|--------|---------|----------|
-| PK-01 | hiv_fp_md_timepressed | hiv_im_decile3_prep_lowshare | ✅ PASS | 1 | None |
-| PK-02 | hiv_id_md_guideline_strict | hiv_np_decile10_highshare_access | ✅ PASS | 1 | None |
-| PK-03 | onco_hemonc_md_costtox | onc_md_decile10_io_adc_pathways | ✅ PASS | 0 | None |
+| PK-01 | hiv_fp_md_timepressed | hiv_im_decile3_prep_lowshare | ✅ PASS | 2 | None |
+| PK-02 | hiv_id_md_guideline_strict | hiv_np_decile10_highshare_access | ✅ PASS | 0 | None |
+| PK-03 | onco_hemonc_md_costtox | onc_md_decile10_io_adc_pathways | ✅ PASS | 1 | None |
 | PK-04 | vax_peds_np_hesitancy | vac_np_decile5_primary_care_capture | ✅ PASS | 1 | None |
 
 ### GENERAL-KNOWLEDGE
