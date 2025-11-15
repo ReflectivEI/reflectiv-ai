@@ -1495,34 +1495,53 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
     // Enhanced prompts for format hardening
     const salesCoachPrompt = [
-      `You are the ReflectivAI Sales Coach. You MUST follow the exact 4-section format below.`,
+      `You are the ReflectivAI Sales Coach. You MUST follow the exact 4-section format below. NO EXCEPTIONS.`,
       `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
       `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
       ``,
-      `MANDATORY FORMAT - YOU MUST RETURN EXACTLY THIS STRUCTURE:`,
+      `MANDATORY 4-SECTION STRUCTURE (EXACT ORDER):`,
       ``,
-      `Challenge: [one sentence describing HCP's barrier]`,
+      `SECTION 1 - Challenge: [ONE sentence describing HCP's specific barrier]`,
+      `SECTION 2 - Rep Approach: [EXACTLY 3 bullet points, each ≥20 words, each with [FACT-ID] reference]`,
+      `SECTION 3 - Impact: [ONE sentence describing expected outcome]`,
+      `SECTION 4 - Suggested Phrasing: "[exact words rep should say in quotes]"`,
+      ``,
+      `CRITICAL REQUIREMENTS:`,
+      `- Rep Approach MUST have EXACTLY 3 bullets (not 2, not 4, not 5)`,
+      `- Each bullet MUST be ≥20 words and include specific clinical context`,
+      `- Each bullet MUST include a [FACT-ID] reference like [HIV-PREP-SAFETY-001]`,
+      `- Sections MUST be separated by blank lines (\\n\\n)`,
+      `- Do NOT combine, reorder, or skip sections`,
+      `- Do NOT add rubrics, JSON, or <coach> blocks (those will be generated separately)`,
+      ``,
+      `EXAMPLE (follow this structure EXACTLY):`,
+      `Challenge: The HCP may not recognize the importance of early adherence assessment in determining treatment success.`,
       ``,
       `Rep Approach:`,
-      `• [clinical point with reference [FACT-ID]]`,
-      `• [supporting strategy with reference [FACT-ID]]`,
-      `• [safety consideration with reference [FACT-ID]]`,
+      `• Emphasize that consistent adherence is critical to achieving viral suppression, which directly impacts patient outcomes and quality of life, as supported by clinical guidelines [HIV-TREATMENT-ADHERENCE-001].`,
+      `• Discuss the role of baseline adherence assessment in identifying barriers to consistent medication use and tailoring support strategies accordingly [HIV-PREP-ELIG-002].`,
+      `• Recommend implementing structured follow-up protocols within the first month to monitor adherence and address early challenges before they compromise treatment efficacy [HIV-MONITORING-SAFETY-003].`,
       ``,
-      `Impact: [expected outcome connecting back to Challenge]`,
+      `Impact: By highlighting the critical nature of adherence and offering structured support mechanisms, the HCP will prioritize early patient engagement and implement systems to ensure consistent medication use.`,
       ``,
-      `Suggested Phrasing: "[exact words rep should say]"`,
+      `Suggested Phrasing: "I'd like to review our adherence monitoring process so we can catch and address issues early—would this week be a good time?"`,
       ``,
-      `<coach>{...EI scores...}</coach>`,
-      ``,
-      `DO NOT deviate from this format. DO NOT add extra sections. DO NOT skip sections.`,
       salesContract
     ].join("\n");
 
     const rolePlayPrompt = [
-      `You are the HCP in Role Play mode. Speak ONLY as the HCP in first person.`,
+      `You are the HCP in Role Play mode. Speak ONLY as the HCP in first person. NEVER speak as a coach.`,
       ``,
       `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
       `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+      ``,
+      `CRITICAL RULES (NON-NEGOTIABLE):`,
+      `- NEVER use coaching language ("You should...", "I recommend you...", "Best practice...")`,
+      `- NEVER generate coaching blocks or scores`,
+      `- NEVER include "Challenge:", "Rep Approach:", "Impact:", "Suggested Phrasing:" headers`,
+      `- NEVER evaluate or critique the rep—you are the HCP, not the coach`,
+      `- ALWAYS speak in first person as the HCP ("I", "we", "my clinic")`,
+      `- ALWAYS stay in character throughout the entire response`,
       ``,
       `HCP BEHAVIOR:`,
       `- Respond naturally as this HCP would in a real clinical setting`,
@@ -1537,20 +1556,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- After the greeting, pivot naturally to clinical context or ask what the rep needs`,
       `- Keep it warm but efficient - HCPs are busy but appreciate professional courtesy`,
       ``,
-      `CRITICAL RULES:`,
-      `- NO coaching language ("You should have...", "The rep...")`,
-      `- NO evaluation or scores  `,
-      `- NO "Suggested Phrasing:" or "Rep Approach:" meta-commentary`,
-      `- STAY IN CHARACTER as HCP throughout entire conversation`,
-      ``,
-      `EXAMPLE HCP RESPONSES:`,
+      `EXAMPLE HCP RESPONSES (follow this style):`,
       `"From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context."`,
       `"• I prioritize regular follow-up appointments to assess treatment efficacy and detect any potential issues early. • I also encourage patients to report any changes in symptoms or side effects promptly. • Additionally, I consider using digital tools to enhance patient engagement and monitoring."`,
       `"I appreciate your emphasis on timely interventions and proactive prescribing."`,
       `"I've got a few minutes, what's on your mind?"`,
       `"I'm good, thanks for asking. Between you and me, it's been a busy morning with back-to-back appointments. What can I help you with today?"`,
       ``,
-      `Remember: You are the HCP. Natural, brief, clinical voice only - bullets allowed when clinically appropriate.`
+      `Remember: You are ONLY the HCP. Natural, brief, clinical voice. Bullets allowed when clinically appropriate.`
     ].join("\n");
 
     // Build EI Prompt with framework content if provided in request
@@ -1852,6 +1865,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
     // Post-processing: Strip unwanted formatting for role-play mode
     if (mode === "role-play") {
+      // STRIP COACH BLOCKS COMPLETELY - Role-play should NEVER have coaching output
+      reply = reply.replace(/<coach>[\s\S]*?<\/coach>/gi, '').trim();
+      
       // Remove coaching labels but KEEP bullets for clinical explanations (natural HCP speech)
       reply = reply
         .replace(/^[\s]*Suggested Phrasing:\s*/gmi, '')  // Remove "Suggested Phrasing:" labels
@@ -1865,22 +1881,6 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
       // Don't remove bullets - HCPs naturally use them for clinical processes
       // Example: "• I prioritize follow-ups • I assess adherence"
-    }
-
-    // Post-processing: Enforce final question mark for EI mode
-    if (mode === "emotional-assessment") {
-      reply = reply.trim();
-      // If reply doesn't end with ?, replace final punctuation or append ?
-      if (!reply.endsWith('?')) {
-        // Replace common final punctuation with ?
-        if (reply.endsWith('.') || reply.endsWith('!') || reply.endsWith('…')) {
-          reply = reply.slice(0, -1) + '?';
-        } else {
-          // Append ?
-          reply = reply + ' ?';
-        }
-      }
-      reply = reply.trim();
     }
 
     // Post-processing: Normalize headings and ENFORCE FORMAT for sales-coach mode
@@ -1901,9 +1901,10 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       const hasImpact = /Impact:/i.test(reply);
       const hasSuggested = /Suggested Phrasing:/i.test(reply);
 
-      // Count bullets in Rep Approach section
+      // Count bullets in Rep Approach section (support • ○ ● - 1. 2. 3. formats)
       const repMatch = reply.match(/Rep Approach:(.*?)(?=Impact:|Suggested Phrasing:|$)/is);
-      const bulletCount = repMatch ? (repMatch[1].match(/•/g) || []).length : 0;
+      const repText = repMatch ? repMatch[1] : '';
+      const bulletCount = (repText.match(/[•●○\-\*]|\d+\./g) || []).length;
 
       // Validation warnings (log for monitoring, don't block)
       if (!hasChallenge || !hasRepApproach || !hasImpact || !hasSuggested) {
@@ -1918,7 +1919,6 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
       // Force-add Suggested Phrasing if missing (model consistently cuts off after Impact)
       if (!hasSuggested) {
-        const repText = repMatch ? repMatch[1] : '';
         let phrasing = `"Would you like to discuss how this approach fits your practice?"`;
 
         if (repText.includes('assess') || repText.includes('eligibility')) {
@@ -1933,13 +1933,19 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
 
       // Enforce exactly 3 bullets if Rep Approach exists but has wrong count
-      if (hasRepApproach && bulletCount !== 3 && repMatch) {
-        const bullets = repMatch[1].split(/\n/).filter(l => l.includes('•')).slice(0, 3);
-        while (bullets.length < 3) {
-          bullets.push(`• Reinforce evidence-based approach`);
+      if (hasRepApproach && bulletCount < 3 && repMatch) {
+        // Extract existing bullet lines (flexible format support)
+        const lines = repText.split('\n').map(l => l.trim()).filter(l => l.length > 10);
+        const existingBullets = lines.filter(l => /^([•●○\-\*]|\d+\.)/.test(l));
+        
+        // Pad with default bullets to reach 3
+        while (existingBullets.length < 3) {
+          existingBullets.push(`• Reference clinical guidelines and evidence to support the approach`);
         }
-        const newRepSection = `Rep Approach:\n${bullets.join('\n')}`;
-        reply = reply.replace(/Rep Approach:.*?(?=Impact:|Suggested Phrasing:|$)/is, newRepSection + '\n\n');
+        
+        // Rebuild Rep Approach with exactly 3 bullets
+        const bulletStr = existingBullets.slice(0, 3).join('\n');
+        reply = reply.replace(/Rep Approach:.*?(?=\n\nImpact:|Impact:|$)/is, `Rep Approach:\n${bulletStr}`);
       }
     }
 
@@ -1965,6 +1971,22 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     const fsm = FSM[mode] || FSM["sales-coach"];
     const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
     reply = capSentences(reply, cap);
+
+    // Post-processing: Enforce final question mark for EI mode (MUST happen after capSentences)
+    if (mode === "emotional-assessment") {
+      reply = reply.trim();
+      // If reply doesn't end with ?, replace final punctuation or append ?
+      if (!reply.endsWith('?')) {
+        // Replace common final punctuation with ?
+        if (reply.endsWith('.') || reply.endsWith('!') || reply.endsWith('…')) {
+          reply = reply.slice(0, -1) + '?';
+        } else {
+          // Append ?
+          reply = reply + '?';
+        }
+      }
+      reply = reply.trim();
+    }
 
     // Loop guard vs last reply
     const state = await seqGet(env, session);
