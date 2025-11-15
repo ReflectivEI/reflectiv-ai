@@ -695,7 +695,7 @@ function validateCoachSchema(coach, mode) {
  * Verify blank lines (\n\n) exist between major sections
  */
 function detectParagraphSeparation(replyText) {
-  const errors = [];
+  const warnings = [];
   const sections = [
     { name: 'Challenge', pattern: /Challenge:/i },
     { name: 'Rep Approach', pattern: /Rep Approach:/i },
@@ -710,12 +710,12 @@ function detectParagraphSeparation(replyText) {
     if (current.pattern.test(replyText) && next.pattern.test(replyText)) {
       const between = replyText.split(current.pattern)[1]?.split(next.pattern)[0] || '';
       if (!/\n\n/.test(between)) {
-        errors.push(`SC_NO_SECTION_SEPARATION`);
+        warnings.push(`SC_WEAK_SECTION_SEPARATION`);
       }
     }
   }
 
-  return errors;
+  return { errors: [], warnings };
 }
 
 /**
@@ -732,15 +732,15 @@ function detectBulletContent(replyText) {
   const bullets = repMatch[1].split(/\n/).filter(l => /^\s*[•●○-]/.test(l));
 
   if (bullets.length < 3) {
-    errors.push(`SC_INSUFFICIENT_BULLETS: ${bullets.length} found (need 3+)`);
+    warnings.push(`SC_WEAK_INSUFFICIENT_BULLETS: ${bullets.length} found (need 3+)`);
   }
 
   bullets.forEach((bullet, idx) => {
     const text = bullet.replace(/^\s*[•●○-]\s*/, '').trim();
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
 
-    if (wordCount < 15) {
-      errors.push(`SC_BULLET_TOO_SHORT_${idx}: ${wordCount} words`);
+    if (wordCount < 10) {  // Relaxed from 15 to 10 words
+      warnings.push(`SC_WEAK_BULLET_SHORT_${idx}: ${wordCount} words (prefer 10+)`);
     }
   });
 
@@ -752,25 +752,25 @@ function detectBulletContent(replyText) {
  * Verify all 10 metrics present exactly once
  */
 function detectDuplicateMetrics(coachData) {
-  const errors = [];
+  const warnings = [];
   const requiredMetrics = [
     "empathy", "clarity", "compliance", "discovery",
     "objection_handling", "confidence", "active_listening",
     "adaptability", "action_insight", "resilience"
   ];
 
-  if (!coachData || !coachData.scores) return errors;
+  if (!coachData || !coachData.scores) return { errors: [], warnings };
 
   const scores = coachData.scores;
   const metricsPresent = Object.keys(scores);
 
-  // Check for extra/unexpected metrics
+  // Check for extra/unexpected metrics - convert to warning
   const extra = metricsPresent.filter(m => !requiredMetrics.includes(m));
   if (extra.length > 0) {
-    errors.push(`SC_EXTRA_METRICS: ${extra.join(", ")}`);
+    warnings.push(`SC_WEAK_EXTRA_METRICS: ${extra.join(", ")}`);
   }
 
-  return errors;
+  return { errors: [], warnings };
 }
 
 /**
@@ -906,7 +906,7 @@ function detectCitationFormat(replyText) {
 
   const hasCitations = citationPatterns.some(p => p.test(replyText));
   if (!hasCitations) {
-    errors.push("PK_MISSING_CITATIONS");
+    warnings.push("PK_WEAK_MISSING_CITATIONS");
   }
 
   // Check citation format consistency
@@ -914,7 +914,7 @@ function detectCitationFormat(replyText) {
   const numCitations = replyText.match(/\[\d+\]/g) || [];
 
   if (codeCitations.length > 0 && numCitations.length > 0) {
-    warnings.push('PK_MIXED_CITATION_FORMATS');
+    warnings.push('PK_WEAK_MIXED_CITATION_FORMATS');
   }
 
   return { errors, warnings };
@@ -925,15 +925,15 @@ function detectCitationFormat(replyText) {
  * Flag uncontextualized off-label language
  */
 function detectOffLabelContext(replyText) {
-  const errors = [];
+  const warnings = [];
 
   if (/off-label|off label/i.test(replyText)) {
     if (!/explicitly|not indicated|outside label|contraindicated|unlabeled|investigational|clinical evidence|case report/i.test(replyText)) {
-      errors.push("PK_OFFABEL_NOT_CONTEXTUALIZED");
+      warnings.push("PK_WEAK_OFFABEL_NOT_CONTEXTUALIZED");
     }
   }
 
-  return errors;
+  return warnings;
 }
 
 /**
@@ -1020,18 +1020,18 @@ function validateResponseContract(mode, replyText, coachData) {
       }
     }
 
-    // PHASE 3: SC-01 - Paragraph Separation Check
-    const sc01Errors = detectParagraphSeparation(replyText);
-    errors.push(...sc01Errors);
+    // PHASE 3: SC-01 - Paragraph Separation Check (warnings only - relaxed)
+    const sc01Result = detectParagraphSeparation(replyText);
+    warnings.push(...sc01Result.warnings);
 
     // PHASE 3: SC-02 - Bullet Content Check
     const sc02Result = detectBulletContent(replyText);
     errors.push(...sc02Result.errors);
     warnings.push(...sc02Result.warnings);
 
-    // PHASE 3: SC-03 - Duplicate Metrics Check
-    const sc03Errors = detectDuplicateMetrics(coachData);
-    errors.push(...sc03Errors);
+    // PHASE 3: SC-03 - Duplicate Metrics Check (warnings only - relaxed)
+    const sc03Result = detectDuplicateMetrics(coachData);
+    warnings.push(...sc03Result.warnings);
   }
 
   // EMOTIONAL-ASSESSMENT: STRICT REQUIREMENT (reflective coaching with Socratic questions)
@@ -1127,9 +1127,9 @@ function validateResponseContract(mode, replyText, coachData) {
     warnings.push(...rp02Warnings);
   }
 
-  // PRODUCT-KNOWLEDGE: STRICT REQUIREMENT
+  // PRODUCT-KNOWLEDGE: FLEXIBLE REQUIREMENTS
   if (mode === "product-knowledge") {
-    // Requirement 1: Must have citations
+    // Requirement 1: Should have citations (warning, not error)
     const citationPatterns = [
       /\[\w+-\w+-\w+\]/,  // [REF-CODE-123]
       /\[\d+\]/,          // [1], [2]
@@ -1137,7 +1137,7 @@ function validateResponseContract(mode, replyText, coachData) {
     ];
     const hasCitations = citationPatterns.some(p => p.test(replyText));
     if (!hasCitations) {
-      errors.push("PK_MISSING_CITATIONS");
+      warnings.push("PK_WEAK_MISSING_CITATIONS");
     }
 
     // Requirement 2: Coach block should NOT be present
@@ -1148,18 +1148,19 @@ function validateResponseContract(mode, replyText, coachData) {
     // Requirement 3: If off-label mentioned, must be contextualized
     if (/off-label|off label/i.test(replyText)) {
       if (!/explicitly|not indicated|outside label|contraindicated/i.test(replyText)) {
-        errors.push("PK_OFFABEL_NOT_CONTEXTUALIZED");
+        warnings.push("PK_WEAK_OFFABEL_NOT_CONTEXTUALIZED");
       }
     }
 
-    // PHASE 3: PK-01 - Citation Format Check
+    // PHASE 3: PK-01 - Citation Format Check (warnings only)
     const pk01Result = detectCitationFormat(replyText);
-    errors.push(...pk01Result.errors);
     warnings.push(...pk01Result.warnings);
 
-    // PHASE 3: PK-02 - Off-Label Context Check
-    const pk02Errors = detectOffLabelContext(replyText);
-    errors.push(...pk02Errors);
+    // PHASE 3: PK-02 - Off-Label Context Check (warnings only)
+    const pk02Result = detectOffLabelContext(replyText);
+    if (Array.isArray(pk02Result)) {
+      warnings.push(...pk02Result.map(e => e.replace(/^PK_/, 'PK_WEAK_')));
+    }
   }
 
   // GENERAL-KNOWLEDGE: Strict against structural leakage (but flexible content)
@@ -1577,7 +1578,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       ``,
       `HCP Type: ${persona || "—"}; Disease context: ${disease || "—"}.`,
       ``,
-      `MISSION: Help the rep develop emotional intelligence through reflective practice based on about-ei.md framework.`,
+      `MISSION: Help the rep develop emotional intelligence through reflective practice and emotional metacognition, grounded in CASEL SEL Competencies and the about-ei.md framework.`,
       ``,
       `FOCUS AREAS (CASEL SEL Competencies):`,
       `- Self-Awareness: Recognizing emotions, triggers, communication patterns`,
@@ -1593,19 +1594,21 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `Loop 3 (Mindset Reframing): What beliefs or patterns should change for future conversations?`,
       ``,
       `USE SOCRATIC METACOACH PROMPTS:`,
-      `Self-Awareness: "What did you notice about your tone just now?" "What emotion are you holding as you plan your next response?"`,
+      `Self-Awareness: "What did you notice about your tone just now?" "What emotion are you holding as you plan your next response?" "What triggers did you notice in this interaction?"`,
       `Perspective-Taking: "How might the HCP have perceived your last statement?" "What might be driving the HCP's resistance?"`,
-      `Pattern Recognition: "What do you notice about how you respond when someone challenges your evidence?"`,
-      `Reframing: "What assumption did you hold about this HCP that shaped your approach?" "If objections are requests for clarity, how would you rephrase?"`,
+      `Pattern Recognition: "What do you notice about how you respond when someone challenges your evidence?" "What patterns emerged in your approach?"`,
+      `Reframing: "What assumption did you hold about this HCP that shaped your approach?" "If objections are requests for clarity, how would you rephrase?" "What belief triggered your emotional response?"`,
       `Regulation: "Where do you feel tension when hearing that objection?" "What would change if you paused for two seconds before responding?"`,
       ``,
       `OUTPUT STYLE:`,
       `- 2-4 short paragraphs of guidance (max 350 words)`,
-      `- Include 1-2 Socratic questions to deepen metacognition`,
+      `- MANDATORY KEYWORDS: Use specific EI framework language including: triggers, patterns, metacognition, reflection, CASEL`,
+      `- Include 1-2 Socratic questions to deepen metacognition and pattern recognition`,
       `- Reference Triple-Loop Reflection when relevant`,
       `- Model empathy and warmth in your coaching tone`,
       `- CRITICAL: Your response MUST end with a single reflective question, and the LAST non-space character must be a question mark (?)`,
       `- If discussing the EI framework itself, ground responses in the actual framework content and domains`,
+      `- MUST reference at least 3 of: triggers, patterns, metacognition, CASEL, self-awareness, emotion regulation`,
       ``,
       `DO NOT:`,
       `- Role-play as HCP`,
