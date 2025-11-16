@@ -15,6 +15,8 @@
  *   - 10 STRUCTURE EDGE CASES (missing sections, truncation, leakage, etc.)
  */
 
+import https from 'https';
+
 const WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat';
 const REQUEST_TIMEOUT_MS = 60000;
 const MAX_RETRIES = 3;
@@ -493,6 +495,63 @@ const STRUCTURE_EDGE_CASES = [
  */
 
 /**
+ * Helper function to make HTTP POST request using native https module
+ * @param {object} payload - Request payload
+ * @returns {Promise<object>} - Response object with statusCode and body
+ */
+function postToWorker(payload) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(WORKER_URL);
+    const postData = JSON.stringify(payload);
+    
+    const options = {
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      },
+      timeout: REQUEST_TIMEOUT_MS
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve({
+            statusCode: res.statusCode,
+            body: parsed
+          });
+        } catch (e) {
+          resolve({
+            statusCode: res.statusCode,
+            body: null,
+            error: 'JSON_PARSE_ERROR',
+            rawBody: data
+          });
+        }
+      });
+    });
+
+    req.on('error', (e) => {
+      reject(e);
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
+
+    req.write(postData);
+    req.end();
+  });
+}
+
+/**
  * POST to Worker with intelligent retry and rate-limit detection
  * Tuned backoff: 2000ms → 4000ms → 8000ms for 429 errors
  * Distinguishes rate-limit failures from contract/logic failures
@@ -505,14 +564,9 @@ async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
 
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        timeout: REQUEST_TIMEOUT_MS
-      });
+      const response = await postToWorker(payload);
 
-      if (response.status === 429) {
+      if (response.statusCode === 429) {
         // Rate limited - retry with tuned exponential backoff (2s, 4s, 8s)
         lastRateLimitError = new Error('HTTP 429 Too Many Requests');
         const delay = Math.pow(2, i + 1) * 1000; // 2000, 4000, 8000
@@ -521,11 +575,11 @@ async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
         continue;
       }
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (response.statusCode !== 200) {
+        throw new Error(`HTTP ${response.statusCode}`);
       }
 
-      return await response.json();
+      return response.body;
     } catch (e) {
       if (i === retries - 1) {
         // Final attempt failed
