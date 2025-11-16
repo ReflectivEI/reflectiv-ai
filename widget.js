@@ -1823,6 +1823,8 @@ ${COMMON}`
       }
     });
     const send = el("button", "btn", "Send");
+    // Start disabled until health check passes
+    send.disabled = true;
     send.onclick = () => {
       if (isDebugMode()) console.log('[DEBUG] Send button clicked!');
       const t = ta.value.trim();
@@ -3288,7 +3290,8 @@ Please provide your response again with all required fields including phrasing.`
       const shellEl2 = mount.querySelector(".reflectiv-chat");
       const sendBtn2 = shellEl2?._sendBtn;
       const ta2 = shellEl2?._ta;
-      if (sendBtn2) sendBtn2.disabled = false;
+      // Only re-enable send button if backend is healthy
+      if (sendBtn2) sendBtn2.disabled = !isHealthy;
       if (ta2) { ta2.disabled = false; ta2.focus(); }
       isSending = false;
 

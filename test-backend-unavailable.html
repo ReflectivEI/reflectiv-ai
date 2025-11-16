@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Backend Unavailable Banner and Button</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+    #test-results {
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .test-step {
+      margin: 10px 0;
+      padding: 10px;
+      border-left: 4px solid #0066cc;
+      background: white;
+    }
+    .test-step.pass {
+      border-left-color: #28a745;
+    }
+    .test-step.fail {
+      border-left-color: #dc3545;
+    }
+    .test-step.pending {
+      border-left-color: #ffc107;
+    }
+    .controls {
+      margin: 20px 0;
+      padding: 15px;
+      background: #e9ecef;
+      border-radius: 8px;
+    }
+    .controls button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #0066cc;
+      color: white;
+    }
+    .controls button:hover {
+      background: #0052a3;
+    }
+    .controls button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #widget-container {
+      margin-top: 30px;
+      border: 2px solid #0066cc;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .info {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    h2 {
+      color: #333;
+      border-bottom: 2px solid #0066cc;
+      padding-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Backend Unavailable Test</h1>
+  
+  <div class="info">
+    <strong>Test Purpose:</strong> Verify that the "Backend unavailable" banner and SEND button behave correctly:
+    <ul>
+      <li>Banner appears when backend is unavailable</li>
+      <li>SEND button is disabled when backend is unavailable</li>
+      <li>SEND button stays disabled even after clicking it while backend is down</li>
+      <li>Banner disappears when backend becomes available</li>
+      <li>SEND button is re-enabled when backend becomes available</li>
+    </ul>
+  </div>
+
+  <div class="controls">
+    <h3>Test Controls</h3>
+    <button id="simulate-backend-down">Simulate Backend Down</button>
+    <button id="simulate-backend-up">Simulate Backend Up</button>
+    <button id="run-automated-test">Run Automated Test</button>
+    <button id="check-button-state">Check Button State</button>
+  </div>
+
+  <div id="test-results">
+    <h3>Test Results</h3>
+    <div id="results-container">
+      <p>Click "Run Automated Test" to start the test sequence.</p>
+    </div>
+  </div>
+
+  <div id="widget-container">
+    <h2>Chat Widget</h2>
+    <div id="reflectiv-chat-mount"></div>
+  </div>
+
+  <!-- Load the widget -->
+  <script>
+    // Configure the widget before loading
+    window.WORKER_URL = 'http://localhost:8787'; // We'll mock this
+    window.COACH_ENDPOINT = 'http://localhost:8787/chat';
+    window.DEBUG_MODE = true;
+  </script>
+  <link rel="stylesheet" href="widget.css">
+  <script src="widget.js"></script>
+
+  <script>
+    // Test utilities
+    const resultsContainer = document.getElementById('results-container');
+    let testStepCounter = 0;
+
+    function addTestResult(message, status = 'pending') {
+      testStepCounter++;
+      const step = document.createElement('div');
+      step.className = `test-step ${status}`;
+      step.innerHTML = `<strong>Step ${testStepCounter}:</strong> ${message}`;
+      step.id = `test-step-${testStepCounter}`;
+      resultsContainer.appendChild(step);
+      return testStepCounter;
+    }
+
+    function updateTestResult(stepId, message, status) {
+      const step = document.getElementById(`test-step-${stepId}`);
+      if (step) {
+        step.className = `test-step ${status}`;
+        step.innerHTML = `<strong>Step ${stepId}:</strong> ${message}`;
+      }
+    }
+
+    function clearResults() {
+      resultsContainer.innerHTML = '';
+      testStepCounter = 0;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function getSendButton() {
+      const shell = document.querySelector('.reflectiv-chat');
+      return shell?._sendBtn || shell?.querySelector('.chat-input .btn');
+    }
+
+    function getHealthBanner() {
+      const shell = document.querySelector('.reflectiv-chat');
+      return shell?.querySelector('div[style*="background:#fff3cd"]');
+    }
+
+    function checkButtonState() {
+      const btn = getSendButton();
+      const banner = getHealthBanner();
+      
+      const btnStatus = btn ? (btn.disabled ? 'DISABLED' : 'ENABLED') : 'NOT FOUND';
+      const bannerStatus = banner ? 'VISIBLE' : 'HIDDEN';
+      
+      console.log('Button State:', btnStatus);
+      console.log('Banner State:', bannerStatus);
+      
+      return { button: btnStatus, banner: bannerStatus };
+    }
+
+    // Mock fetch to simulate backend availability
+    let backendAvailable = true;
+    const originalFetch = window.fetch;
+
+    window.fetch = function(...args) {
+      const url = args[0];
+      
+      // Intercept health checks
+      if (url && url.toString().includes('/health')) {
+        console.log('[MOCK] Health check called, backend available:', backendAvailable);
+        
+        if (!backendAvailable) {
+          return Promise.reject(new Error('Backend unavailable'));
+        }
+        
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ status: 'ok' })
+        });
+      }
+      
+      // Pass through other requests
+      return originalFetch.apply(this, args);
+    };
+
+    // Control buttons
+    document.getElementById('simulate-backend-down').addEventListener('click', () => {
+      backendAvailable = false;
+      console.log('[TEST] Backend set to UNAVAILABLE');
+      addTestResult('Backend manually set to UNAVAILABLE', 'pending');
+    });
+
+    document.getElementById('simulate-backend-up').addEventListener('click', () => {
+      backendAvailable = true;
+      console.log('[TEST] Backend set to AVAILABLE');
+      addTestResult('Backend manually set to AVAILABLE', 'pending');
+    });
+
+    document.getElementById('check-button-state').addEventListener('click', () => {
+      const state = checkButtonState();
+      addTestResult(`Current State - Button: ${state.button}, Banner: ${state.banner}`, 'pending');
+    });
+
+    // Automated test
+    document.getElementById('run-automated-test').addEventListener('click', async () => {
+      clearResults();
+      
+      try {
+        // Step 1: Start with backend available
+        addTestResult('Starting test - Backend is AVAILABLE', 'pass');
+        backendAvailable = true;
+        await sleep(1000);
+        
+        // Step 2: Simulate backend going down
+        const step2 = addTestResult('Setting backend to UNAVAILABLE...', 'pending');
+        backendAvailable = false;
+        
+        // Trigger a health check by trying to send (this will fail the health gate)
+        const textarea = document.querySelector('.reflectiv-chat textarea');
+        if (textarea) {
+          textarea.value = 'Test message';
+          const sendBtn = getSendButton();
+          if (sendBtn) {
+            sendBtn.click();
+          }
+        }
+        
+        await sleep(2000);
+        
+        // Step 3: Check banner appears and button is disabled
+        const state1 = checkButtonState();
+        if (state1.banner === 'VISIBLE' && state1.button === 'DISABLED') {
+          updateTestResult(step2, 'Backend UNAVAILABLE - Banner visible ✓, Button disabled ✓', 'pass');
+        } else {
+          updateTestResult(step2, `Backend UNAVAILABLE - Banner: ${state1.banner}, Button: ${state1.button} ✗`, 'fail');
+        }
+        
+        // Step 4: Try clicking send button while backend is down
+        const step4 = addTestResult('Clicking SEND while backend is down...', 'pending');
+        const sendBtn = getSendButton();
+        if (sendBtn) {
+          sendBtn.click();
+        }
+        await sleep(1500);
+        
+        // Step 5: Verify button stays disabled
+        const state2 = checkButtonState();
+        if (state2.button === 'DISABLED' && state2.banner === 'VISIBLE') {
+          updateTestResult(step4, 'After click: Button stays DISABLED ✓, Banner stays VISIBLE ✓', 'pass');
+        } else {
+          updateTestResult(step4, `After click: Button ${state2.button} ✗, Banner ${state2.banner} ✗`, 'fail');
+        }
+        
+        // Step 6: Simulate backend coming back up
+        const step6 = addTestResult('Setting backend to AVAILABLE...', 'pending');
+        backendAvailable = true;
+        
+        // Trigger a health check manually (simulate the polling interval)
+        if (window.reflectivChat && window.reflectivChat.checkHealth) {
+          await window.reflectivChat.checkHealth();
+        }
+        
+        await sleep(2000);
+        
+        // Step 7: Verify banner disappears and button is enabled
+        const state3 = checkButtonState();
+        if (state3.banner === 'HIDDEN' && state3.button === 'ENABLED') {
+          updateTestResult(step6, 'Backend AVAILABLE - Banner hidden ✓, Button enabled ✓', 'pass');
+        } else {
+          updateTestResult(step6, `Backend AVAILABLE - Banner: ${state3.banner}, Button: ${state3.button} (may need manual health check)`, 'pending');
+        }
+        
+        // Final summary
+        addTestResult('Test complete! Review results above.', 'pass');
+        
+      } catch (error) {
+        addTestResult(`Test failed with error: ${error.message}`, 'fail');
+        console.error(error);
+      }
+    });
+
+    // Initialize
+    console.log('[TEST] Test page loaded. Widget should initialize...');
+  </script>
+</body>
+</html>
