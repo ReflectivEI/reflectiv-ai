@@ -18,11 +18,11 @@
  *    Fallback order: explicit rotation pool > individual keys. If no keys present → 500 config error.
  *  - CORS_ORIGINS    comma-separated allowlist of allowed origins
  *                    REQUIRED VALUES (must include):
- *                      https://reflectivei.github.io
+ *                      https://reflectivei.github.io/reflectiv-ai
  *                      https://tonyabdelmalak.github.io
  *                      https://tonyabdelmalak.com
  *                      https://www.tonyabdelmalak.com
- *                    Example: "https://reflectivei.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com"
+ *                    Example: "https://reflectivei.github.io/reflectiv-ai,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com"
  *                    If not set, allows all origins (not recommended for production)
  *  - REQUIRE_FACTS   "true" to require at least one fact in plan
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
