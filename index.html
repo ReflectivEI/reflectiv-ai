@@ -549,7 +549,7 @@
 
   <!-- Coach script: context helpers first, then widget -->
   <script src="assets/chat/ei-context.js?v=1"></script>
-  <script defer src="widget.js?v=20251110-1243"></script>
+  <script defer src="widget.js?v=20251116-0600"></script>
 
   <!-- Ensure Alora sits on top -->
   <style>
@@ -1898,6 +1898,33 @@
   </script>
 
   <script src="assets/chat/about-ei-modal.js?v=1"></script>
+
+  <!-- Initialize ReflectivAI Chat Widget -->
+  <script type="module">
+    import { createBus } from './assets/chat/core/eventBus.js';
+    import { createModeStore } from './assets/chat/core/modeStore.js';
+    import { createModeSwitcher } from './assets/chat/core/switcher.js';
+
+    // Initialize core chat system
+    const bus = createBus();
+    const store = createModeStore(bus);
+    const switcher = createModeSwitcher({ bus, store });
+
+    // Make globally available for debugging
+    window.ReflectivChat = { bus, store, switcher };
+
+    // Auto-initialize when coach modal opens
+    document.addEventListener('click', async (e) => {
+      if (e.target.matches('[data-open-coach], [data-coach]') || 
+          e.target.closest('[data-open-coach], [data-coach]')) {
+        const modal = document.getElementById('coachModal');
+        if (modal && !modal.dataset.initialized) {
+          modal.dataset.initialized = 'true';
+          await switcher.switchMode('sales-coach'); // Default mode
+        }
+      }
+    });
+  </script>
 
   <script>
     (function () {
