@@ -21,7 +21,16 @@ export function createModule({ bus, store, register }){
     const {mode} = store.get();
     const {signal} = register.abortable();
     try{
-      const data = await chat({mode, messages:[{role:'user',content:msg}], signal});
+      let messages;
+      if (mode === 'product-knowledge') {
+        messages = [
+          {role:'system',content:PK_SYSTEM_PROMPT},
+          {role:'user',content:msg}
+        ];
+      } else {
+        messages = [{role:'user',content:msg}];
+      }
+      const data = await chat({mode, messages, signal});
       appendMessage('assistant', data.reply);
     }catch(e){
       appendMessage('system', 'Error: '+e.message);

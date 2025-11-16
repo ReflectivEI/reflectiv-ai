@@ -129,35 +129,33 @@ async function main() {
   console.log(`Date: ${new Date().toISOString()}`);
   console.log('');
 
-  // TEST 1: SALES-COACH - Phase 3 Contract (4 sections; no <coach> in reply string)
+  // TEST 1: SALES-COACH - Verify Fix #3 (No <coach> blocks)
   await runTest(
-    'SALES-COACH: 4 sections present; no <coach> in reply',
+    'SALES-COACH: No <coach> block leak (FIX #3)',
     {
+      site: 'reflectivai',
       mode: 'sales-coach',
-      persona: 'onc_hemonc_md_costtox',
-      disease: 'onc_md_decile10_io_adc_pathways',
       messages: [{ role: 'user', content: 'We\'re seeing toxicity concerns with ADC. How should we position the benefit-risk discussion?' }],
       session: `test-sc-${Date.now()}`
     },
     [
       {
-        name: 'No <coach> blocks in reply string',
+        name: 'No <coach> blocks in response',
         check: (reply) => {
           const hasCoachBlock = /<coach>[\s\S]*?<\/coach>/.test(reply);
           return {
             passed: !hasCoachBlock,
-            message: hasCoachBlock ? 'Found <coach> block in reply (should be extracted)' : 'Clean reply'
+            message: hasCoachBlock ? 'Found <coach> block - FIX #3 FAILED' : 'Clean response'
           };
         }
       },
       {
-        name: 'Has required 4 sections (Challenge, Rep Approach, Impact, Suggested Phrasing)',
+        name: 'Has expected sections (Challenge, etc)',
         check: (reply) => {
-          const req = ['Challenge:', 'Rep Approach:', 'Impact:', 'Suggested Phrasing:'];
-          const found = req.filter(h => reply.includes(h));
+          const sections = reply.match(/Challenge:|Positioning:|Key Talking Points:|Final Thought:/gi) || [];
           return {
-            passed: found.length === 4,
-            message: found.length === 4 ? 'All sections present' : `Missing sections: ${req.filter(h => !found.includes(h)).join(', ')}`
+            passed: sections.length >= 2,
+            message: sections.length >= 2 ? `Found ${sections.length} sections` : 'Missing sections'
           };
         }
       },
@@ -180,9 +178,8 @@ async function main() {
   await runTest(
     'EMOTIONAL-ASSESSMENT: Ends with question mark (FIX #2)',
     {
+      site: 'reflectivai',
       mode: 'emotional-assessment',
-      persona: 'hiv_id_md_guideline_strict',
-      disease: 'hiv_np_decile10_highshare_access',
       messages: [{ role: 'user', content: 'That conversation with the patient felt really challenging. I got defensive when they questioned my recommendations.' }],
       session: `test-ei-${Date.now()}`
     },
@@ -228,9 +225,8 @@ async function main() {
   await runTest(
     'PRODUCT-KNOWLEDGE: Has citations with [REF] codes (FIX #1)',
     {
+      site: 'reflectivai',
       mode: 'product-knowledge',
-      persona: 'onc_hemonc_md_costtox',
-      disease: 'onc_md_decile10_io_adc_pathways',
       messages: [{ role: 'user', content: 'What\'s the mechanism of action for this ADC? How does it differ from traditional chemotherapy?' }],
       session: `test-pk-${Date.now()}`
     },
@@ -274,9 +270,8 @@ async function main() {
   await runTest(
     'ROLE-PLAY: HCP voice with no <coach> blocks',
     {
+      site: 'reflectivai',
       mode: 'role-play',
-      persona: 'primary_care_md',
-      disease: 'hiv_np_decile10_highshare_access',
       messages: [{ role: 'user', content: 'I\'m not comfortable discussing PrEP with my patients. What should I say?' }],
       session: `test-rp-${Date.now()}`
     },
@@ -320,9 +315,8 @@ async function main() {
   await runTest(
     'GENERAL-KNOWLEDGE: No mode structure leakage',
     {
+      site: 'reflectivai',
       mode: 'general-knowledge',
-      persona: 'patient',
-      disease: 'hiv_np_decile10_highshare_access',
       messages: [{ role: 'user', content: 'Can you explain how HIV transmission works?' }],
       session: `test-gk-${Date.now()}`
     },

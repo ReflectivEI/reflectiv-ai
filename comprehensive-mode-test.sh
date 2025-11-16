@@ -137,7 +137,7 @@ echo ""
 test_mode "role-play" \
     "Role Play - HCP Simulation Cardiology" \
     "Hello, I'm here to share some updates on cholesterol management." \
-    "Cardiology" \
+    "Cardiovascular" \
     "Dr. Michael Torres"
 
 echo ""

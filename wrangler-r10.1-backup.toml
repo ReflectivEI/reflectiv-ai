@@ -21,6 +21,6 @@ CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,http
 
 [[kv_namespaces]]
 binding = "SESS"
-id = "dev-sess-kv"
+id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
 # preview_id can repeat id for dev
-preview_id = "dev-sess-kv"
+preview_id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"

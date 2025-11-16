@@ -505,6 +505,16 @@
         "CDC Community Guide - Vaccination",
         "AHRQ Health IT Tools"
       ]
+    },
+    {
+      "id": "DIABETES-MGMT-001",
+      "ta": "Diabetes",
+      "topic": "Diabetes Management",
+      "text": "Effective diabetes management requires a comprehensive approach including lifestyle modifications, glycemic control, cardiovascular risk reduction, and regular monitoring. Key strategies include healthy eating, physical activity, medication adherence, and routine check-ups.",
+      "cites": [
+        "ADA Standards of Care 2024",
+        "AHA/ACC Diabetes Guidelines"
+      ]
     }
   ]
 }

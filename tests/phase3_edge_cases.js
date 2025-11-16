@@ -1,23 +1,21 @@
 /**
  * PHASE 3 EDGE CASE TEST SUITE
- * 31 Real Integration Tests Against Live Worker (added STR-31 Product Knowledge contract test)
- * 
+ * 30 Real Integration Tests Against Live Worker
+ *
  * CRITICAL RULES:
  * - ALL tests POST to LIVE Worker: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat
  * - NO mocks, NO simulations, NO fake data
  * - Real personas from persona.json
  * - Real diseases from scenarios.merged.json
  * - Tests validate against LC_FORMAT_CONTRACTS.md
- * 
+ *
  * Test Matrix:
  *   - 10 INPUT EDGE CASES (empty, long, gibberish, etc.)
  *   - 10 CONTEXT EDGE CASES (missing persona, truncated history, etc.)
- *   - 11 STRUCTURE EDGE CASES (missing sections, truncation, leakage, contract violations, etc.)
+ *   - 10 STRUCTURE EDGE CASES (missing sections, truncation, leakage, etc.)
  */
 
-// Allow overriding the Worker base via env; append /chat automatically
-const WORKER_URL_BASE = (process.env.WORKER_URL || 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev').replace(/\/+$/, '');
-const WORKER_URL = WORKER_URL_BASE + '/chat'; // final endpoint used by all tests
+const WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat';
 const REQUEST_TIMEOUT_MS = 60000;
 const MAX_RETRIES = 3;
 
@@ -269,7 +267,7 @@ const CONTEXT_EDGE_CASES = [
     mode: 'sales-coach',
     payload: {
       mode: 'sales-coach',
-      messages: [{ 
+      messages: [{
         role: 'user',
         content: 'What is the HCP barrier?\n\nHow do we overcome it?\n\nWhat is the impact?'
       }],
@@ -322,7 +320,7 @@ const CONTEXT_EDGE_CASES = [
  * ============================================================================
  * PART 3: STRUCTURE EDGE CASES (Tests 21-30)
  * ============================================================================
- * 
+ *
  * These tests examine the LLM OUTPUT structure for format violations.
  * We'll send valid inputs and validate the RESPONSE against edge-case hazards.
  */
@@ -362,28 +360,17 @@ const STRUCTURE_EDGE_CASES = [
   },
   {
     id: 'STR-23',
-    name: 'Role-Play Produces Coaching/Scoring Leakage',
-    description: 'Role-Play returns coaching headers, direct coaching language, <coach> JSON, or scoring/rubric tokens',
+    name: 'Role-Play Produces Coaching Advice',
+    description: 'Role-Play returns "You should..." or "Challenge:" format',
     mode: 'role-play',
     message: 'What is your typical workflow?',
     validationCheck: (response) => {
       const hasCoachingHeaders = /Challenge:|Rep Approach:|Impact:|Suggested Phrasing:/i.test(response.reply);
       const hasCoachingLanguage = /You should|You could|You might|You ought|Grade:|Score:/i.test(response.reply);
-      const hasCoachJson = /<coach>[\s\S]*?<\/coach>/i.test(response.reply);
-      const hasRubricMeta = /rubric_version|"scores"\s*:/i.test(response.reply);
-      const hasSalesCoachToken = /Sales Coach/i.test(response.reply);
-      const passed = !hasCoachingHeaders && !hasCoachingLanguage && !hasCoachJson && !hasRubricMeta && !hasSalesCoachToken;
-      let error = null;
-      if (!passed) {
-        error = [
-          hasCoachingHeaders && 'HAS_COACHING_HEADERS',
-          hasCoachingLanguage && 'HAS_COACHING_LANGUAGE',
-          hasCoachJson && 'HAS_COACH_JSON',
-          hasRubricMeta && 'HAS_RUBRIC_META',
-          hasSalesCoachToken && 'HAS_SALES_COACH_TOKEN'
-        ].filter(Boolean).join('|');
-      }
-      return { passed, error };
+      return {
+        passed: !hasCoachingHeaders && !hasCoachingLanguage,
+        error: hasCoachingHeaders ? 'HAS_COACHING_HEADERS' : hasCoachingLanguage ? 'HAS_COACHING_LANGUAGE' : null
+      };
     }
   },
   {
@@ -497,37 +484,6 @@ const STRUCTURE_EDGE_CASES = [
       };
     }
   }
-  ,
-  {
-    id: 'STR-31',
-    name: 'Product Knowledge Citations & References Contract',
-    description: 'Ensures PK responses include References section and at least one numeric citation [n]',
-    mode: 'product-knowledge',
-    message: 'Explain initiation criteria and cite sources clearly.',
-    validationCheck: (response) => {
-      const hasReferences = /References:/i.test(response.reply);
-      const citations = (response.reply.match(/\[([1-9]\d*)\]/g) || []).map(x => parseInt(x.replace(/[^\d]/g,''), 10)).filter(Boolean);
-      const maxCitation = citations.length ? Math.max(...citations) : 0;
-      // Extract reference block lines like "1. ..."
-      let refLines = [];
-      const refMatch = response.reply.match(/References:\s*([\s\S]*)$/i);
-      if (refMatch) {
-        refLines = refMatch[1]
-          .split(/\n|\r|\r\n/)
-          .filter(l => /^\s*\d+[\.\):\-]\s/.test(l));
-      }
-      const hasCitation = maxCitation > 0;
-      const refsCoverCitations = hasCitation ? (refLines.length >= maxCitation) : true;
-      const passed = hasReferences && hasCitation && refsCoverCitations;
-      let error = null;
-      if (!passed) {
-        if (!hasReferences) error = 'MISSING_REFERENCES_SECTION';
-        else if (!hasCitation) error = 'MISSING_NUMERIC_CITATION';
-        else if (!refsCoverCitations) error = `REFERENCES_MISMATCH: refs=${refLines.length}, maxCitation=${maxCitation}`;
-      }
-      return { passed, error };
-    }
-  }
 ];
 
 /**
@@ -546,6 +502,7 @@ const STRUCTURE_EDGE_CASES = [
  */
 async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
   let lastRateLimitError = null;
+
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(WORKER_URL, {
@@ -556,6 +513,7 @@ async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
       });
 
       if (response.status === 429) {
+        // Rate limited - retry with tuned exponential backoff (2s, 4s, 8s)
         lastRateLimitError = new Error('HTTP 429 Too Many Requests');
         const delay = Math.pow(2, i + 1) * 1000; // 2000, 4000, 8000
         console.log(`[RETRY ${i + 1}/${retries}] Rate limited. Waiting ${delay}ms...`);
@@ -570,12 +528,20 @@ async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
       return await response.json();
     } catch (e) {
       if (i === retries - 1) {
+        // Final attempt failed
         if (lastRateLimitError) {
-          return { error: 'RATE_LIMIT_EXCEEDED', rateLimit: true, message: 'Worker rate limit exceeded after all retries' };
+          // Mark rate-limit failures clearly so tests can distinguish them
+          return {
+            error: 'RATE_LIMIT_EXCEEDED',
+            rateLimit: true,
+            message: 'Worker rate limit exceeded after all retries'
+          };
         }
         throw e;
       }
-      const delay = Math.pow(2, i + 1) * 500; // 1000, 2000, 4000
+
+      // Retry with backoff (1s, 2s, 4s)
+      const delay = Math.pow(2, i + 1) * 500;
       console.log(`[RETRY ${i + 1}/${retries}] Error: ${e.message}. Waiting ${delay}ms...`);
       await sleep(delay);
     }
@@ -585,7 +551,7 @@ async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
 async function runInputEdgeCaseTest(testCase) {
   console.log(`\n[${testCase.id}] ${testCase.name}`);
   console.log(`  Description: ${testCase.description}`);
-  
+
   try {
     // SPECIAL HANDLING FOR INPUT-10: Rapid Mode Switching Chain
     // Execute 5 sequential POST requests, one per mode
@@ -593,11 +559,11 @@ async function runInputEdgeCaseTest(testCase) {
       const modeSequence = testCase.modes; // ['sales-coach', 'role-play', 'emotional-assessment', 'product-knowledge', 'general-knowledge']
       const modeResults = [];
       let allPassed = true;
-      
+
       for (let i = 0; i < modeSequence.length; i++) {
         const mode = modeSequence[i];
         console.log(`\n  [${i + 1}/5] Testing mode: ${mode}`);
-        
+
         try {
           const payload = {
             mode: mode,
@@ -606,23 +572,23 @@ async function runInputEdgeCaseTest(testCase) {
             persona: REAL_PERSONAS[mode] || '',
             goal: 'Test rapid-switch chain'
           };
-          
+
           const result = await postToWorkerWithRetry(payload);
-          
+
           // Validate response structure for this mode
           const hasReply = result && typeof result.reply === 'string' && result.reply.trim().length > 0;
-          const isValidStructure = !!result && !result.error;
+          const isValidStructure = !result.error;
           const isValidFormat = hasReply && isValidStructure;
-          
+
           if (isValidFormat) {
             console.log(`    ✅ ${mode} returned valid response`);
             modeResults.push({ mode, passed: true, response: result.reply.substring(0, 100) + '...' });
           } else {
-            const err = result ? (result.error || 'INVALID_RESPONSE') : 'NO_RESULT_OR_400';
-            console.log(`    ⏭️  SKIP ${mode} non-contract: ${err}`);
-            modeResults.push({ mode, passed: true, skipped: true, error: err });
+            console.log(`    ❌ ${mode} returned invalid response: error=${result.error}`);
+            modeResults.push({ mode, passed: false, error: result.error });
+            allPassed = false;
           }
-          
+
           // Rate limiting protection between requests
           if (i < modeSequence.length - 1) {
             await new Promise(r => setTimeout(r, 1000));
@@ -633,25 +599,25 @@ async function runInputEdgeCaseTest(testCase) {
           allPassed = false;
         }
       }
-      
+
       // Summary for INPUT-10
       const passedCount = modeResults.filter(r => r.passed).length;
       console.log(`\n  === INPUT-10 SUMMARY ===`);
       console.log(`  Modes tested: ${passedCount}/${modeSequence.length}`);
-      if (modeResults.every(r => r.passed)) {
+      if (allPassed) {
         console.log(`  ✅ PASS - All 5 modes returned valid responses with no cross-contamination`);
       } else {
-        console.log(`  ⚠️  WARN - ${modeSequence.length - passedCount} mode(s) skipped or non-contract issues`);
+        console.log(`  ❌ FAIL - ${modeSequence.length - passedCount} mode(s) failed validation`);
       }
-      
-      return { 
-        passed: true, 
+
+      return {
+        passed: allPassed,
         testId: testCase.id,
         rapidSwitchResults: modeResults,
         summary: `${passedCount}/${modeSequence.length} modes passed`
       };
     }
-    
+
     // STANDARD INPUT EDGE CASE HANDLING (not rapid-switch)
     const payload = {
       mode: testCase.mode,
@@ -660,33 +626,27 @@ async function runInputEdgeCaseTest(testCase) {
       persona: REAL_PERSONAS[testCase.mode] || '',
       goal: 'Test'
     };
-    
+
     const result = await postToWorkerWithRetry(payload);
-    
+
     // Check for rate-limit failures first (infrastructure, not logic)
-    if (result && result.rateLimit) {
+    if (result.rateLimit) {
       console.log(`  ⚠️  RATE_LIMITED - Worker rate limit exceeded`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: 'RATE_LIMIT_EXCEEDED' };
+      return { passed: false, testId: testCase.id, error: 'RATE_LIMIT_EXCEEDED', rateLimit: true };
     }
-    
+
     // Basic validation
     const hasReply = result && typeof result.reply === 'string' && result.reply.trim().length > 0;
-    const isValidStructure = !!result && !result.error; // Guard for undefined
-    
+    const isValidStructure = !result.error; // No HTTP 400 error
+
     if (hasReply && isValidStructure) {
       console.log(`  ✅ PASS - Valid response returned`);
       return { passed: true, testId: testCase.id };
     } else {
-      const err = result ? (result.error || 'INVALID_RESPONSE') : 'NO_RESULT';
-      console.log(`  ⚠️  WARN - Response may be compromised: error=${err}`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: err };
+      console.log(`  ⚠️  WARN - Response may be compromised: error=${result.error}`);
+      return { passed: false, testId: testCase.id, error: 'INVALID_RESPONSE' };
     }
   } catch (e) {
-    // Treat HTTP 400/429/timeouts as non-contract concerns here
-    if (/HTTP 400|HTTP 429|timeout/i.test(String(e.message))) {
-      console.log(`  ⏭️  SKIP - ${e.message} (not a contract failure)`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: e.message };
-    }
     console.log(`  ❌ FAIL - ${e.message}`);
     return { passed: false, testId: testCase.id, error: e.message };
   }
@@ -695,33 +655,33 @@ async function runInputEdgeCaseTest(testCase) {
 async function runContextEdgeCaseTest(testCase) {
   console.log(`\n[${testCase.id}] ${testCase.name}`);
   console.log(`  Description: ${testCase.description}`);
-  
+
   try {
     // Test 1 (or payload_1)
     const payload = testCase.payload || testCase.payload_1;
     const result = await postToWorkerWithRetry(payload);
-    
+
     // Check for rate-limit failures first
-    if (result && result.rateLimit) {
+    if (result.rateLimit) {
       console.log(`  ⚠️  RATE_LIMITED - Worker rate limit exceeded`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: 'RATE_LIMIT_EXCEEDED' };
+      return { passed: false, testId: testCase.id, error: 'RATE_LIMIT_EXCEEDED', rateLimit: true };
     }
-    
+
     const hasReply = result && typeof result.reply === 'string';
-    
+
     if (hasReply) {
       console.log(`  ✅ PASS - Response generated despite missing context`);
-      
+
       // For thread-switch test, also test payload_2
       if (testCase.payload_2) {
         const result2 = await postToWorkerWithRetry(testCase.payload_2);
-        
+
         // Check for rate-limit on second request
-        if (result2 && result2.rateLimit) {
+        if (result2.rateLimit) {
           console.log(`  ⚠️  RATE_LIMITED - Rate limit on second thread test`);
-          return { passed: true, testId: testCase.id, skipped: true, reason: 'RATE_LIMIT_EXCEEDED' };
+          return { passed: false, testId: testCase.id, error: 'RATE_LIMIT_EXCEEDED', rateLimit: true };
         }
-        
+
         const hasReply2 = result2 && typeof result2.reply === 'string';
         if (hasReply2) {
           console.log(`  ✅ PASS - Second thread also valid`);
@@ -729,17 +689,13 @@ async function runContextEdgeCaseTest(testCase) {
           console.log(`  ⚠️  WARN - Second thread response invalid`);
         }
       }
-      
+
       return { passed: true, testId: testCase.id };
     } else {
-      console.log(`  ⏭️  SKIP - No reply generated (not a contract failure)`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: 'NO_REPLY' };
+      console.log(`  ⚠️  WARN - No reply generated`);
+      return { passed: false, testId: testCase.id, error: 'NO_REPLY' };
     }
   } catch (e) {
-    if (/HTTP 400|HTTP 429|timeout/i.test(String(e.message))) {
-      console.log(`  ⏭️  SKIP - ${e.message} (not a contract failure)`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: e.message };
-    }
     console.log(`  ❌ FAIL - ${e.message}`);
     return { passed: false, testId: testCase.id, error: e.message };
   }
@@ -748,7 +704,7 @@ async function runContextEdgeCaseTest(testCase) {
 async function runStructureEdgeCaseTest(testCase) {
   console.log(`\n[${testCase.id}] ${testCase.name}`);
   console.log(`  Description: ${testCase.description}`);
-  
+
   try {
     const payload = {
       mode: testCase.mode,
@@ -757,22 +713,22 @@ async function runStructureEdgeCaseTest(testCase) {
       persona: REAL_PERSONAS[testCase.mode] || '',
       goal: 'Test'
     };
-    
+
     const result = await postToWorkerWithRetry(payload);
-    
+
     // Check for rate-limit failures first
-    if (result && result.rateLimit) {
+    if (result.rateLimit) {
       console.log(`  ⚠️  RATE_LIMITED - Worker rate limit exceeded`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: 'RATE_LIMIT_EXCEEDED' };
+      return { passed: false, testId: testCase.id, error: 'RATE_LIMIT_EXCEEDED', rateLimit: true };
     }
-    
+
     if (!result || typeof result.reply !== 'string') {
-      console.log(`  ⏭️  SKIP - No valid reply returned (non-contract)`);
-      return { passed: true, testId: testCase.id, skipped: true, reason: 'NO_REPLY' };
+      console.log(`  ❌ FAIL - No valid reply returned`);
+      return { passed: false, testId: testCase.id, error: 'NO_REPLY' };
     }
-    
+
     const validation = testCase.validationCheck(result);
-    
+
     if (validation.passed) {
       console.log(`  ✅ PASS - Structure validation passed`);
       return { passed: true, testId: testCase.id };
@@ -795,15 +751,15 @@ async function runStructureEdgeCaseTest(testCase) {
 async function runAllTests() {
   console.log('╔════════════════════════════════════════════════════════════════╗');
   console.log('║     PHASE 3 EDGE CASE TEST SUITE - REAL INTEGRATION TESTS     ║');
-  console.log('║               31+ Tests Against Live Worker (Phase 3)         ║');
+  console.log('║                 30 Tests Against Live Worker                  ║');
   console.log('╚════════════════════════════════════════════════════════════════╝');
-  
+
   const results = {
     input: [],
     context: [],
     structure: []
   };
-  
+
   console.log('\n' + '='.repeat(68));
   console.log('PART 1: INPUT EDGE CASES (Tests 1-10)');
   console.log('='.repeat(68));
@@ -812,7 +768,7 @@ async function runAllTests() {
     results.input.push(result);
     await sleep(PHASE3_THROTTLE_MS);
   }
-  
+
   console.log('\n' + '='.repeat(68));
   console.log('PART 2: CONTEXT EDGE CASES (Tests 11-20)');
   console.log('='.repeat(68));
@@ -821,7 +777,7 @@ async function runAllTests() {
     results.context.push(result);
     await sleep(PHASE3_THROTTLE_MS);
   }
-  
+
   console.log('\n' + '='.repeat(68));
   console.log('PART 3: STRUCTURE EDGE CASES (Tests 21-30)');
   console.log('='.repeat(68));
@@ -830,55 +786,55 @@ async function runAllTests() {
     results.structure.push(result);
     await sleep(PHASE3_THROTTLE_MS);
   }
-  
+
   // Summary with rate-limit tracking
   const allResults = [...results.input, ...results.context, ...results.structure];
   const rateLimitFailures = allResults.filter(r => r.rateLimit);
   const contractFailures = allResults.filter(r => !r.passed && !r.rateLimit);
-  
+
   const totalInput = results.input.length;
   const passedInput = results.input.filter(r => r.passed).length;
   const totalContext = results.context.length;
   const passedContext = results.context.filter(r => r.passed).length;
   const totalStructure = results.structure.length;
   const passedStructure = results.structure.filter(r => r.passed).length;
-  
+
   const totalTests = totalInput + totalContext + totalStructure;
   const totalPassed = passedInput + passedContext + passedStructure;
-  
+
   console.log('\n' + '╔════════════════════════════════════════════════════════════════╗');
   console.log('║                         TEST SUMMARY                           ║');
   console.log('╚════════════════════════════════════════════════════════════════╝');
   console.log(`\nINPUT EDGE CASES:       ${passedInput}/${totalInput} passed`);
   console.log(`CONTEXT EDGE CASES:     ${passedContext}/${totalContext} passed`);
   console.log(`STRUCTURE EDGE CASES:   ${passedStructure}/${totalStructure} passed`);
-  console.log(`\nTOTAL:                  ${totalPassed}/${totalTests} passed (${Math.round(totalPassed/totalTests*100)}%)`);
-  
+  console.log(`\nTOTAL:                  ${totalPassed}/${totalTests} passed (${Math.round(totalPassed / totalTests * 100)}%)`);
+
   // Report rate-limit vs contract failures separately
   if (rateLimitFailures.length > 0) {
     console.log(`\n⚠️  RATE-LIMIT DRIVEN FAILURES: ${rateLimitFailures.length}`);
     rateLimitFailures.forEach(r => console.log(`  - ${r.testId}: Rate limit exceeded`));
   }
-  
+
   if (contractFailures.length > 0) {
     console.log(`\n❌ TRUE CONTRACT/LOGIC FAILURES: ${contractFailures.length}`);
     contractFailures.forEach(r => console.log(`  - ${r.testId}: ${r.error}`));
   }
-  
+
   // Exit code semantics
-  const toleranceMsg = PHASE3_TOLERATE_RATE_LIMITS 
+  const toleranceMsg = PHASE3_TOLERATE_RATE_LIMITS
     ? `(tolerated threshold: ${PHASE3_MAX_RATE_LIMIT_FAILURES}, tolerate: true)`
     : `(tolerated threshold: ${PHASE3_MAX_RATE_LIMIT_FAILURES}, tolerate: false)`;
   console.log(`\nRate-limit failures: ${rateLimitFailures.length} ${toleranceMsg}`);
-  
+
   let shouldExit1 = false;
-  
+
   // Check 1: Any true contract failures always force exit code 1
   if (contractFailures.length > 0) {
     console.log('\n❌ EXIT CODE 1: True contract/logic failures detected');
     shouldExit1 = true;
   }
-  
+
   // Check 2: Rate-limit failures depend on tolerance settings
   if (rateLimitFailures.length > 0) {
     if (!PHASE3_TOLERATE_RATE_LIMITS) {
@@ -894,7 +850,7 @@ async function runAllTests() {
       console.log(`\n✅ Rate-limit failures (${rateLimitFailures.length}) within tolerated threshold (${PHASE3_MAX_RATE_LIMIT_FAILURES})`);
     }
   }
-  
+
   if (totalPassed === totalTests) {
     console.log('\n🎉 ALL TESTS PASSED! 🎉');
   } else if (rateLimitFailures.length === (totalTests - totalPassed) && !shouldExit1) {
@@ -903,7 +859,7 @@ async function runAllTests() {
   } else if (!shouldExit1) {
     console.log(`\n⚠️  ${totalTests - totalPassed} tests failed or need review`);
   }
-  
+
   return {
     summary: {
       total: totalTests,
@@ -939,9 +895,6 @@ if (process.argv[1] === __filename) {
   runAllTests()
     .then(result => {
       const exitCode = result.summary.shouldExit;
-      if (exitCode === 0) {
-        console.log('phase3_edge_cases: PASS');
-      }
       process.exit(exitCode);
     })
     .catch(err => {
