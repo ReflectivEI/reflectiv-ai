@@ -44,7 +44,7 @@
     { key: "role-play", label: "Role Play w/ HCP", backendMode: "role-play" },
     { key: "ei-pk", label: "EI & Product Knowledge", backendModes: ["emotional-assessment", "product-knowledge"] }
   ];
-  
+
   // Legacy backend mode constants (DO NOT CHANGE - used by Worker)
   const BACKEND_MODES = {
     EMOTIONAL_ASSESSMENT: "emotional-assessment",
