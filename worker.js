@@ -740,42 +740,6 @@ ${siteContext.slice(0, 12000)}`;
 
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
-      // ═══════════════════════════════════════════════════════════════════
-      // STRICT CONTRACT ENFORCEMENT & REPAIR FOR sales-coach/product-knowledge
-      // ═══════════════════════════════════════════════════════════════════
-      let contractViolations = [];
-      if (["sales-coach","product-knowledge"].includes(mode)) {
-        // Re-validate with strict contract
-        const strictValidation = validateModeResponse(mode, raw, coachObj);
-        contractViolations = strictValidation.violations;
-        if (contractViolations.length > 0) {
-          // Attempt one repair pass
-          let repairPrompt = "";
-          if (mode === "sales-coach") {
-            repairPrompt = `Repair the response to strictly match this contract: Four sections in order (Challenge, Rep Approach, Impact, Suggested Phrasing), Rep Approach with exactly 3 bullets, and a <coach>{...}</coach> JSON block with all required EI metrics and keys. No extra headings. No <coach> content in visible text.`;
-          } else if (mode === "product-knowledge") {
-            repairPrompt = `Repair the response to strictly match this contract: At least one inline citation [n] in the body, a References: section with numbered APA-like entries and URLs, and no sales-coach headings or <coach> block.`;
-          }
-          const repairMessages = [
-            { role: "system", content: repairPrompt },
-            { role: "user", content: user }
-          ];
-          try {
-            const repaired = await providerChat(env, repairMessages, { maxTokens: 900, temperature: 0.2, session });
-            // Re-validate
-            const repairValidation = validateModeResponse(mode, repaired, coachObj);
-            if (repairValidation.violations.length === 0) {
-              reply = repaired;
-            } else {
-              // If still invalid, return error object
-              return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
-            }
-          } catch (e) {
-            // If repair fails, return error object
-            return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
-          }
-        }
-      }
   const reqStart = Date.now();
   const reqId = req.headers.get("x-req-id") || cryptoRandomId();
 
@@ -1470,6 +1434,43 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         feedback: "Stay concise. Cite label-aligned facts. Close with one clear question.",
         context: { rep_question: String(user || ""), hcp_reply: reply }
       };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // STRICT CONTRACT ENFORCEMENT & REPAIR FOR sales-coach/product-knowledge
+    // ═══════════════════════════════════════════════════════════════════
+    let contractViolations = [];
+    if (["sales-coach","product-knowledge"].includes(mode)) {
+      // Re-validate with strict contract
+      const strictValidation = validateModeResponse(mode, raw, coachObj);
+      contractViolations = strictValidation.violations;
+      if (contractViolations.length > 0) {
+        // Attempt one repair pass
+        let repairPrompt = "";
+        if (mode === "sales-coach") {
+          repairPrompt = `Repair the response to strictly match this contract: Four sections in order (Challenge, Rep Approach, Impact, Suggested Phrasing), Rep Approach with exactly 3 bullets, and a <coach>{...}</coach> JSON block with all required EI metrics and keys. No extra headings. No <coach> content in visible text.`;
+        } else if (mode === "product-knowledge") {
+          repairPrompt = `Repair the response to strictly match this contract: At least one inline citation [n] in the body, a References: section with numbered APA-like entries and URLs, and no sales-coach headings or <coach> block.`;
+        }
+        const repairMessages = [
+          { role: "system", content: repairPrompt },
+          { role: "user", content: user }
+        ];
+        try {
+          const repaired = await providerChat(env, repairMessages, { maxTokens: 900, temperature: 0.2, session });
+          // Re-validate
+          const repairValidation = validateModeResponse(mode, repaired, coachObj);
+          if (repairValidation.violations.length === 0) {
+            reply = repaired;
+          } else {
+            // If still invalid, return error object
+            return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
+          }
+        } catch (e) {
+          // If repair fails, return error object
+          return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
+        }
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════
