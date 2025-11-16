@@ -16,7 +16,10 @@
  */
 
 const WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat';
-const REQUEST_TIMEOUT_MS = 60000;
+// PHASE 3 Request Timeout: Configurable timeout for each test request
+// Usage: PHASE3_REQUEST_TIMEOUT_MS=15000 node tests/phase3_edge_cases.js
+// Default: 60000ms (60 seconds) - can be reduced for faster CI/CD
+const REQUEST_TIMEOUT_MS = parseInt(process.env.PHASE3_REQUEST_TIMEOUT_MS || '60000', 10);
 const MAX_RETRIES = 3;
 
 // PHASE 3 Throttle: Configurable delay between test requests to avoid Worker rate limiting

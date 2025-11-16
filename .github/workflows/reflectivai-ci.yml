@@ -118,9 +118,10 @@ jobs:
       - name: Run PHASE 3 edge-case tests
         run: |
           node tests/phase3_edge_cases.js --verbose || true
-        timeout-minutes: 45
+        timeout-minutes: 15
         env:
           WORKER_URL: ${{ secrets.WORKER_URL }}
+          PHASE3_REQUEST_TIMEOUT_MS: "15000"
           PHASE3_THROTTLE_MS: "2500"
           PHASE3_TOLERATE_RATE_LIMITS: "true"
           PHASE3_MAX_RATE_LIMIT_FAILURES: "2"
