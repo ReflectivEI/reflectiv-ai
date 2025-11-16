@@ -240,7 +240,7 @@ curl -X POST https://my-chat-agent-v2.tonyabdelmalak.workers.dev/agent \
 
 ## Rollback Plan
 
-If you need to rollback to r10.1:
+If you migrated to r9 and need to rollback to r10.1:
 
 ```bash
 # Restore backups
