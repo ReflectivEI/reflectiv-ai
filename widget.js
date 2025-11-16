@@ -2735,6 +2735,20 @@ ${COMMON}`
             // Remove typing indicator
             removeTypingIndicator(typingIndicator);
 
+            // Parse JSON response from worker and extract reply
+            // Worker returns: { reply, coach, plan }
+            try {
+              const jsonResponse = JSON.parse(text);
+              if (jsonResponse.reply !== undefined) {
+                // Store coach data globally so it can be retrieved later
+                window._lastCoachData = jsonResponse.coach || null;
+                return jsonResponse.reply;
+              }
+            } catch (e) {
+              // If not JSON or doesn't have reply field, treat as legacy plain text
+              console.warn('[callModel] Response is not JSON or missing reply field, treating as plain text');
+            }
+
             return text;
           }
 
@@ -3117,6 +3131,10 @@ ${detail}`;
 
         let raw = await callModel(messages, sc);
 
+        // Get coach data from global storage (set by callModel when parsing JSON response)
+        let coachFromWorker = window._lastCoachData || null;
+        window._lastCoachData = null; // Clear after use
+
         // If response is empty or null, throw error instead of degrading to legacy
         if (!raw || !raw.trim()) {
           console.error("[coach] empty_response_from_worker mode=" + currentMode);
@@ -3124,7 +3142,16 @@ ${detail}`;
           return;
         }
 
-        let { coach, clean } = extractCoach(raw);
+        // Use coach data from worker if available, otherwise extract from raw text (legacy)
+        let coach = coachFromWorker;
+        let clean = raw;
+
+        // If no coach data from worker, try extracting from raw text (legacy behavior)
+        if (!coach) {
+          const extracted = extractCoach(raw);
+          coach = extracted.coach;
+          clean = extracted.clean;
+        }
 
         // Re-ask once if phrasing is missing in sales-coach mode
         const phrasing = coach?.phrasing;
@@ -3143,12 +3170,20 @@ Please provide your response again with all required fields including phrasing.`
 
           try {
             const retryRaw = await callModel(retryMessages, sc);
+            const retryCoachFromWorker = window._lastCoachData || null;
+            window._lastCoachData = null;
             if (retryRaw) {
-              const retryResult = extractCoach(retryRaw);
-              // Use the retry result if it has phrasing, otherwise keep original
-              if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
-                coach = retryResult.coach;
-                clean = retryResult.clean;
+              // Use coach from worker or extract from raw
+              if (retryCoachFromWorker) {
+                coach = retryCoachFromWorker;
+                clean = retryRaw;
+              } else {
+                const retryResult = extractCoach(retryRaw);
+                // Use the retry result if it has phrasing, otherwise keep original
+                if (retryResult.coach && retryResult.coach.phrasing && retryResult.coach.phrasing.trim()) {
+                  coach = retryResult.coach;
+                  clean = retryResult.clean;
+                }
               }
             }
           } catch (retryErr) {
