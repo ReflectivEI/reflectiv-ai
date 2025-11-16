@@ -2737,18 +2737,23 @@ ${COMMON}`
 
             // Parse JSON response from worker and extract reply
             // Worker returns: { reply, coach, plan }
+            // Return an object with both reply text and coach data
             try {
               const jsonResponse = JSON.parse(text);
               if (jsonResponse.reply !== undefined) {
-                // Store coach data globally so it can be retrieved later
-                window._lastCoachData = jsonResponse.coach || null;
-                return jsonResponse.reply;
+                // Return object with reply text and coach data
+                return {
+                  text: jsonResponse.reply,
+                  _coachData: jsonResponse.coach || null,
+                  _isStructured: true
+                };
               }
             } catch (e) {
               // If not JSON or doesn't have reply field, treat as legacy plain text
               console.warn('[callModel] Response is not JSON or missing reply field, treating as plain text');
             }
 
+            // Legacy: return just the text string
             return text;
           }
 
@@ -2898,7 +2903,11 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       }
     ].filter(Boolean);
 
-    const raw = await callModel(evalMsgs, sc);
+    const rawResponse = await callModel(evalMsgs, sc);
+    // Extract text from structured or legacy response
+    const raw = (rawResponse && typeof rawResponse === 'object' && rawResponse._isStructured) 
+      ? rawResponse.text 
+      : rawResponse;
     const { coach, clean } = extractCoach(raw);
     const finalCoach = coach || scoreReply("", clean);
     conversation.push({ role: "assistant", content: clean, _coach: finalCoach, _finalEval: true });
@@ -2940,12 +2949,17 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       })
     };
 
-    let raw = "";
+    let rawResponse = "";
     try {
-      raw = await callModel([{ role: "system", content: sys }, user], null);
+      rawResponse = await callModel([{ role: "system", content: sys }, user], null);
     } catch (e) {
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
+
+    // Extract text from structured or legacy response
+    let raw = (rawResponse && typeof rawResponse === 'object' && rawResponse._isStructured) 
+      ? rawResponse.text 
+      : rawResponse;
 
     let data = null;
     try { data = JSON.parse(raw); } catch (_) { }
@@ -3129,11 +3143,18 @@ ${detail}`;
           if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
         }
 
-        let raw = await callModel(messages, sc);
+        let response = await callModel(messages, sc);
 
-        // Get coach data from global storage (set by callModel when parsing JSON response)
-        let coachFromWorker = window._lastCoachData || null;
-        window._lastCoachData = null; // Clear after use
+        // Handle structured response (new format) or plain text (legacy)
+        let raw, coachFromWorker;
+        if (response && typeof response === 'object' && response._isStructured) {
+          raw = response.text;
+          coachFromWorker = response._coachData;
+        } else {
+          // Legacy plain text response
+          raw = response;
+          coachFromWorker = null;
+        }
 
         // If response is empty or null, throw error instead of degrading to legacy
         if (!raw || !raw.trim()) {
@@ -3169,9 +3190,16 @@ Please provide your response again with all required fields including phrasing.`
           ];
 
           try {
-            const retryRaw = await callModel(retryMessages, sc);
-            const retryCoachFromWorker = window._lastCoachData || null;
-            window._lastCoachData = null;
+            const retryResponse = await callModel(retryMessages, sc);
+            let retryRaw, retryCoachFromWorker;
+            if (retryResponse && typeof retryResponse === 'object' && retryResponse._isStructured) {
+              retryRaw = retryResponse.text;
+              retryCoachFromWorker = retryResponse._coachData;
+            } else {
+              retryRaw = retryResponse;
+              retryCoachFromWorker = null;
+            }
+            
             if (retryRaw) {
               // Use coach from worker or extract from raw
               if (retryCoachFromWorker) {
@@ -3205,7 +3233,11 @@ Please provide your response again with all required fields including phrasing.`
             { role: "user", content: "Continue the same answer. Finish the thought in 1–2 sentences max. No new sections." }
           ];
           try {
-            let contRaw = await callModel(contMsgs, sc);
+            let contResponse = await callModel(contMsgs, sc);
+            // Extract text from structured or legacy response
+            let contRaw = (contResponse && typeof contResponse === 'object' && contResponse._isStructured) 
+              ? contResponse.text 
+              : contResponse;
             let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
             if (contClean) replyText = (replyText + " " + contClean).trim();
           } catch (_) { /* no-op */ }
@@ -3242,7 +3274,11 @@ Please provide your response again with all required fields including phrasing.`
             { role: "system", content: "Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
             messages[messages.length - 1]
           ];
-          let varied = await callModel(varyMsgs, sc);
+          let variedResponse = await callModel(varyMsgs, sc);
+          // Extract text from structured or legacy response
+          let varied = (variedResponse && typeof variedResponse === 'object' && variedResponse._isStructured) 
+            ? variedResponse.text 
+            : variedResponse;
           varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
           if (!varied || isTooSimilar(norm(varied))) {
             const alts = [
