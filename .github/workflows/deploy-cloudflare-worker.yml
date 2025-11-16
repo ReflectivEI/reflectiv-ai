@@ -18,18 +18,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: npm install -g wrangler
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret is not set"
+            echo "Please add the CLOUDFLARE_API_TOKEN secret in repository settings:"
+            echo "1. Go to Settings → Secrets and variables → Actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: CLOUDFLARE_API_TOKEN"
+            echo "4. Value: Your Cloudflare API token"
+            echo ""
+            echo "See GITHUB_SECRETS_SETUP.md for detailed instructions"
+            exit 1
+          fi
+          echo "✅ CLOUDFLARE_API_TOKEN secret is configured"
 
       - name: Deploy to Cloudflare Workers
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         
       - name: Deployment summary
         run: |
