@@ -89,9 +89,10 @@
   let repOnlyPanelHTML = "";
 
   // ---------- Health gate state ----------
-  let isHealthy = false;
+  let isHealthy = true; // Start optimistic, will be set to false if health check fails
   let healthCheckInterval = null;
   let healthBanner = null;
+  let healthCheckAttempted = false;
 
   // ---------- EI dev shim ----------
   const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
@@ -237,6 +238,9 @@
     const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
     const healthUrl = `${baseUrl}/health`;
     if (isDebugMode()) console.log('[DEBUG] checkHealth() called, healthUrl:', healthUrl);
+    
+    healthCheckAttempted = true;
+    
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000); // Increased to 3s for auth redirects
 
@@ -264,6 +268,10 @@
       // Check for authentication redirect (Cloudflare Access)
       if (response.status === 302 || response.status === 401 || response.status === 403) {
         console.warn('[Health Check] Authentication required - worker may be behind Cloudflare Access');
+        // Don't block functionality for auth issues - user might still be able to authenticate
+        isHealthy = true;
+        showHealthBanner(response.status);
+        return true;
       }
 
       isHealthy = false;
@@ -273,8 +281,18 @@
       return false;
     } catch (e) {
       clearTimeout(timeout);
-      isHealthy = false;
       const errorMsg = e.name === 'AbortError' ? 'Request timeout' : e.message;
+      
+      // Don't block if this is the first check - allow optimistic usage
+      if (!healthCheckAttempted || errorMsg.includes('Failed to fetch')) {
+        console.warn('[Health Check] Backend may not be deployed or accessible:', errorMsg);
+        console.warn('[Health Check] Allowing optimistic operation - errors will be shown on actual API calls');
+        isHealthy = true; // Allow operation, errors will surface on actual use
+        showHealthBanner(0);
+        return true;
+      }
+      
+      isHealthy = false;
       if (isDebugMode()) console.log('[DEBUG] Health check FAILED (exception), isHealthy set to FALSE, error:', errorMsg);
       console.warn('[Health Check] Failed to connect to backend:', errorMsg);
       showHealthBanner();
@@ -293,11 +311,11 @@
     
     // Customize message based on error type
     if (statusCode === 401 || statusCode === 403) {
-      healthBanner.textContent = "⚠️ Authentication required. Please check your access permissions.";
+      healthBanner.innerHTML = "⚠️ Authentication may be required. You can try to use the coach, errors will show if authentication fails. <a href='https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health' target='_blank' style='color:#856404;text-decoration:underline'>Check backend</a>";
     } else if (statusCode) {
-      healthBanner.textContent = `⚠️ Backend unavailable (Status: ${statusCode}). Retrying...`;
+      healthBanner.textContent = `⚠️ Backend may be unavailable (Status: ${statusCode}). You can try to use it, errors will be shown if it fails.`;
     } else {
-      healthBanner.textContent = "⚠️ Backend unavailable. Trying to reconnect…";
+      healthBanner.textContent = "⚠️ Backend connection couldn't be verified. You can try to use the coach, errors will show if the backend is unavailable.";
     }
 
     const shell = mount.querySelector(".reflectiv-chat");
@@ -2675,7 +2693,8 @@ ${COMMON}`
               mode: currentMode,
               scenario: scenarioContext
             }),
-            signal: controller.signal
+            signal: controller.signal,
+            credentials: 'include' // Support Cloudflare Access authentication
           });
           clearTimeout(timeout);
 
@@ -2696,6 +2715,12 @@ ${COMMON}`
             return text;
           }
 
+          // Check for authentication errors
+          if (r.status === 401 || r.status === 403) {
+            console.error('[API] Authentication required - check Cloudflare Access settings');
+            throw new Error('authentication_required');
+          }
+
           // Check if we should retry (429 or 5xx errors)
           if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
             lastError = new Error(`${url}_http_${r.status}`);
@@ -2709,7 +2734,7 @@ ${COMMON}`
           clearTimeout(timeout);
 
           // Retry on timeout or network errors
-          if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
+          if (attempt < delays.length && /timeout|TypeError|NetworkError|Failed to fetch/i.test(String(e))) {
             lastError = e;
             await new Promise(resolve => setTimeout(resolve, delays[attempt]));
             currentTelemetry.retries++;
@@ -3226,7 +3251,23 @@ Please provide your response again with all required fields including phrasing.`
         }
       } catch (e) {
         console.error("[coach] error_in_sendMessage:", e);
-        showToast("Failed to send message: " + (e.message || "Unknown error"), "error");
+        
+        // Provide specific error messages based on error type
+        let errorMessage = "Failed to send message. ";
+        
+        if (e.message.includes('authentication_required')) {
+          errorMessage += "Authentication required - please check access permissions.";
+        } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+          errorMessage += "Cannot connect to backend. Please check your internet connection or try again later.";
+        } else if (e.message.includes('timeout')) {
+          errorMessage += "Request timed out. Please try again.";
+        } else if (e.message.includes('worker_base_missing')) {
+          errorMessage += "Backend configuration missing.";
+        } else {
+          errorMessage += e.message || "Unknown error";
+        }
+        
+        showToast(errorMessage, "error");
         // Don't add error message to conversation - let user retry
       }
     } finally {
