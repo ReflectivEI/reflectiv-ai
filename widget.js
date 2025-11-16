@@ -2712,6 +2712,19 @@ ${COMMON}`
             scenarioId: scenarioContext?.id || null
           };
           
+          // Debug logging to help diagnose 400 errors
+          if (attempt === 0) {
+            console.log('[callModel] Sending request:', {
+              url,
+              mode: payload.mode,
+              messagesCount: payload.messages?.length || 0,
+              messageRoles: payload.messages?.map(m => m.role) || [],
+              hasUserMessage: payload.messages?.some(m => m.role === 'user') || false,
+              disease: payload.disease,
+              persona: payload.persona
+            });
+          }
+          
           const r = await fetch(url, {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -2757,21 +2770,40 @@ ${COMMON}`
             return text;
           }
 
+          // Non-OK response - read the error body to get worker's error message
+          let errorText = '';
+          let errorDetails = null;
+          try {
+            errorText = await r.text();
+            const errorJson = JSON.parse(errorText);
+            errorDetails = errorJson.message || errorJson.error || errorText;
+          } catch (e) {
+            errorDetails = errorText || `HTTP ${r.status}`;
+          }
+
+          console.error('[callModel] Worker error:', {
+            status: r.status,
+            url,
+            error: errorDetails,
+            attempt: attempt + 1
+          });
+
           // Check for authentication errors
           if (r.status === 401 || r.status === 403) {
             console.error('[API] Authentication required - check Cloudflare Access settings');
-            throw new Error('authentication_required');
+            throw new Error(`authentication_required: ${errorDetails}`);
           }
 
           // Check if we should retry (429 or 5xx errors)
           if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
-            lastError = new Error(`${url}_http_${r.status}`);
+            lastError = new Error(`Worker error (HTTP ${r.status}): ${errorDetails}`);
             await new Promise(resolve => setTimeout(resolve, delays[attempt]));
             currentTelemetry.retries++;
             continue;
           }
 
-          throw new Error(`${url}_http_${r.status}`);
+          // Non-retryable error - include the worker's error message
+          throw new Error(`Worker error (HTTP ${r.status}): ${errorDetails}`);
         } catch (e) {
           clearTimeout(timeout);
 
@@ -3355,13 +3387,18 @@ Please provide your response again with all required fields including phrasing.`
         // Provide specific error messages based on error type
         let errorMessage = "Failed to send message. ";
         
-        if (e.message.includes('authentication_required')) {
+        // Extract worker error details if present
+        const workerErrorMatch = e.message?.match(/Worker error \(HTTP \d+\): (.+)/);
+        if (workerErrorMatch) {
+          // Use the detailed worker error message
+          errorMessage += workerErrorMatch[1];
+        } else if (e.message?.includes('authentication_required')) {
           errorMessage += "Authentication required - please check access permissions.";
-        } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+        } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')) {
           errorMessage += "Cannot connect to backend. Please check your internet connection or try again later.";
-        } else if (e.message.includes('timeout')) {
+        } else if (e.message?.includes('timeout')) {
           errorMessage += "Request timed out. Please try again.";
-        } else if (e.message.includes('worker_base_missing')) {
+        } else if (e.message?.includes('worker_base_missing')) {
           errorMessage += "Backend configuration missing.";
         } else {
           errorMessage += e.message || "Unknown error";
