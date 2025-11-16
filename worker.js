@@ -839,9 +839,11 @@ async function postChat(req, env) {
       console.error("chat_error", { step: "plan_validation", message: "invalid_plan_structure", activePlan });
       throw new Error("invalid_plan_structure");
     }
-    if (requiresFacts && activePlan.facts.length === 0) {
-      console.error("chat_error", { step: "plan_validation", message: "no_facts_for_mode", mode, disease });
-      throw new Error("no_facts_for_mode");
+    // Relaxed validation: only error if facts array is missing entirely, not just empty
+    // Allow empty facts for general queries - worker will use fallback facts from DB
+    if (requiresFacts && !activePlan.facts) {
+      console.error("chat_error", { step: "plan_validation", message: "no_facts_array", mode, disease });
+      throw new Error("invalid_plan_structure");
     }
 
     // Provider prompts with format hardening

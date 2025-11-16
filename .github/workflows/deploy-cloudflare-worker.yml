@@ -1,0 +1,37 @@
+name: Deploy Cloudflare Worker
+
+on:
+  workflow_dispatch:  # Allows manual trigger from Actions tab
+  push:
+    branches:
+      - main
+    paths:
+      - 'worker.js'
+      - 'wrangler.toml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Workers
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install -g wrangler
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+        
+      - name: Deployment summary
+        run: |
+          echo "✅ Worker deployed successfully"
+          echo "Endpoint: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat"
