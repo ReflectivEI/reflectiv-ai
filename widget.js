@@ -2704,16 +2704,13 @@ ${COMMON}`
           // Build payload with individual fields extracted from scenario
           const payload = {
             messages,
-            mode: currentMode
+            mode: currentMode,
+            // Always include these fields, even if empty (worker r10.1 expects them)
+            disease: scenarioContext?.therapeuticArea || scenarioContext?.diseaseState || "",
+            persona: scenarioContext?.hcpProfile || scenarioContext?.hcpRole || "",
+            goal: scenarioContext?.goal || "",
+            scenarioId: scenarioContext?.id || null
           };
-          
-          // Extract scenario fields if scenario context is provided
-          if (scenarioContext) {
-            payload.disease = scenarioContext.therapeuticArea || "";
-            payload.persona = scenarioContext.hcpProfile || "";
-            payload.goal = scenarioContext.goal || "";
-            payload.scenarioId = scenarioContext.id || null;
-          }
           
           const r = await fetch(url, {
             method: "POST",
@@ -3029,7 +3026,13 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
 
     try {
       userText = clampLen((userText || "").trim(), 1600);
-      if (!userText) return;
+      if (!userText) {
+        // Reset sending state before returning
+        isSending = false;
+        if (sendBtn) sendBtn.disabled = false;
+        if (ta) { ta.disabled = false; ta.focus(); }
+        return;
+      }
       lastUserMessage = userText;
 
       // INTELLIGENT MODE AUTO-DETECTION
