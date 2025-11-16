@@ -67,6 +67,7 @@ export default {
               provider = { ok: r.ok, status: r.status };
             }
           } catch (e) {
+            console.error("health_check_provider_probe_error:", e);
             provider = { ok: false, error: String(e?.message || e) };
           }
           return json({ ok: true, time: Date.now(), key_pool: keyPool.length, provider }, 200, env, req, { "x-req-id": reqId });
@@ -807,6 +808,15 @@ async function postChat(req, env) {
       session = body.session || "anon";
     }
 
+    // Validate user message is not empty
+    if (!user || String(user).trim() === "") {
+      console.error("chat_error", { step: "request_validation", message: "empty_user_message", body });
+      return json({
+        error: "bad_request",
+        message: "User message cannot be empty"
+      }, 400, env, req);
+    }
+
     // Load or build a plan
     let activePlan = plan;
     if (!activePlan) {
@@ -839,17 +849,11 @@ async function postChat(req, env) {
 
     // Validate activePlan structure to avoid obscure crashes
     // Allow empty facts array for modes that don't require product context
-    const requiresFacts = ["sales-coach", "role-play", "product-knowledge"].includes(mode);
     if (!activePlan || !Array.isArray(activePlan.facts)) {
       console.error("chat_error", { step: "plan_validation", message: "invalid_plan_structure", activePlan });
       throw new Error("invalid_plan_structure");
     }
-    // Relaxed validation: only error if facts array is missing entirely, not just empty
-    // Allow empty facts for general queries - worker will use fallback facts from DB
-    if (requiresFacts && !activePlan.facts) {
-      console.error("chat_error", { step: "plan_validation", message: "no_facts_array", mode, disease });
-      throw new Error("invalid_plan_structure");
-    }
+    // Empty facts array is acceptable - fallback logic above ensures we have at least some facts
 
     // Provider prompts with format hardening
     const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
