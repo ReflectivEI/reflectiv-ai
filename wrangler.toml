@@ -26,6 +26,10 @@ CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,http
 # PROVIDER_KEY must be set as a secret using:
 # wrangler secret put PROVIDER_KEY
 # The secret value should be your GROQ API key starting with "gsk_..."
+#
+# Optional: For key rotation, you can also set:
+# wrangler secret put PROVIDER_KEY_2
+# wrangler secret put PROVIDER_KEY_3
 
 [[kv_namespaces]]
 binding = "SESS"
