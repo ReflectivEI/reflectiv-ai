@@ -239,6 +239,7 @@
     const healthUrl = `${baseUrl}/health`;
     if (isDebugMode()) console.log('[DEBUG] checkHealth() called, healthUrl:', healthUrl);
     
+    const isFirstAttempt = !healthCheckAttempted;
     healthCheckAttempted = true;
     
     const controller = new AbortController();
@@ -275,6 +276,16 @@
         return true;
       }
 
+      // For non-auth errors, still be optimistic on first check
+      if (isFirstAttempt) {
+        console.warn('[Health Check] Initial check failed with status:', response.status);
+        console.warn('[Health Check] Allowing optimistic operation - will show errors on actual use');
+        isHealthy = true;
+        hideHealthBanner();
+        enableSendButton();
+        return true;
+      }
+
       isHealthy = false;
       if (isDebugMode()) console.log('[DEBUG] Health check FAILED (not ok), isHealthy set to FALSE, status:', response.status);
       showHealthBanner(response.status);
@@ -285,7 +296,7 @@
       const errorMsg = e.name === 'AbortError' ? 'Request timeout' : e.message;
       
       // Don't block if this is the first check - allow optimistic usage
-      if (!healthCheckAttempted || errorMsg.includes('Failed to fetch')) {
+      if (isFirstAttempt || errorMsg.includes('Failed to fetch')) {
         console.warn('[Health Check] Backend may not be deployed or accessible:', errorMsg);
         console.warn('[Health Check] Allowing optimistic operation - errors will be shown on actual API calls');
         isHealthy = true; // Allow operation, errors will surface on actual use
@@ -294,6 +305,7 @@
         return true;
       }
       
+      // Persistent failure after retries - this is a real problem
       isHealthy = false;
       if (isDebugMode()) console.log('[DEBUG] Health check FAILED (exception), isHealthy set to FALSE, error:', errorMsg);
       console.warn('[Health Check] Failed to connect to backend:', errorMsg);
