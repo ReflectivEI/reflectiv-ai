@@ -2701,14 +2701,24 @@ ${COMMON}`
         const timeout = setTimeout(() => controller.abort("timeout"), 10000); // 10s timeout
 
         try {
+          // Build payload with individual fields extracted from scenario
+          const payload = {
+            messages,
+            mode: currentMode
+          };
+          
+          // Extract scenario fields if scenario context is provided
+          if (scenarioContext) {
+            payload.disease = scenarioContext.therapeuticArea || "";
+            payload.persona = scenarioContext.hcpProfile || "";
+            payload.goal = scenarioContext.goal || "";
+            payload.scenarioId = scenarioContext.id || null;
+          }
+          
           const r = await fetch(url, {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              messages,
-              mode: currentMode,
-              scenario: scenarioContext
-            }),
+            body: JSON.stringify(payload),
             signal: controller.signal,
             credentials: 'include' // Support Cloudflare Access authentication
           });
