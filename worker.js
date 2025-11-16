@@ -9,19 +9,20 @@
  *
  * Required VARS:
  *  - PROVIDER_URL    e.g., "https://api.groq.com/openai/v1/chat/completions"
- *  - PROVIDER_MODEL  e.g., "llama-3.1-70b-versatile"
- *  - PROVIDER_KEY    bearer key for provider (used if no rotation pool defined)
+ *  - PROVIDER_MODEL  e.g., "llama-3.1-8b-instant"
+ *  - PROVIDER_KEY    bearer key for provider (primary key)
+ *  - PROVIDER_KEY_2  optional second key for rotation
+ *  - PROVIDER_KEY_3  optional third key for rotation
  *  - PROVIDER_KEYS   optional comma/semicolon separated list of provider keys for round-robin / hashed rotation
- *    OR environment may define PROVIDER_KEY_1, PROVIDER_KEY_2, ... PROVIDER_KEY_N
  *    Selection strategy: stable hash on session id => key index (avoids per-request randomness & keeps stickiness)
- *    Fallback order: explicit rotation pool > single PROVIDER_KEY. If no keys present → 500 config error.
+ *    Fallback order: explicit rotation pool > individual keys. If no keys present → 500 config error.
  *  - CORS_ORIGINS    comma-separated allowlist of allowed origins
  *                    REQUIRED VALUES (must include):
- *                      https://reflectivei.github.io
+ *                      https://reflectivei.github.io/reflectiv-ai
  *                      https://tonyabdelmalak.github.io
  *                      https://tonyabdelmalak.com
  *                      https://www.tonyabdelmalak.com
- *                    Example: "https://reflectivei.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com"
+ *                    Example: "https://reflectivei.github.io/reflectiv-ai,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com"
  *                    If not set, allows all origins (not recommended for production)
  *  - REQUIRE_FACTS   "true" to require at least one fact in plan
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
@@ -332,21 +333,25 @@ function getProviderKeyPool(env) {
         .filter(Boolean)
     );
   }
-  // Enumerated keys PROVIDER_KEY_1..N
-  Object.keys(env)
-    .filter(k => /^PROVIDER_KEY_\d+$/.test(k))
-    .forEach(k => { if (env[k]) pool.push(String(env[k]).trim()); });
+  // Individual enumerated keys: PROVIDER_KEY, PROVIDER_KEY_2, PROVIDER_KEY_3
+  const providerKeyCandidates = ['PROVIDER_KEY', 'PROVIDER_KEY_2', 'PROVIDER_KEY_3'];
+  providerKeyCandidates.forEach(k => { 
+    if (env[k]) {
+      const val = String(env[k]).trim();
+      if (val && !pool.includes(val)) pool.push(val);
+    }
+  });
   // GROQ naming schemes (legacy)
   const groqCandidates = [
     'GROQ_KEY_1', 'GROQ_KEY_2', 'GROQ_KEY_3', 'GROQ_KEY_4', 'GROQ_KEY_5',
     'GROQ_API_KEY', 'GROQ_API_KEY_2', 'GROQ_API_KEY_3', 'GROQ_API_KEY_4', 'GROQ_API_KEY_5'
   ];
-  groqCandidates.forEach(k => { if (env[k]) pool.push(String(env[k]).trim()); });
-  // Single key fallback (ensure uniqueness)
-  if (env.PROVIDER_KEY) {
-    const base = String(env.PROVIDER_KEY).trim();
-    if (base && !pool.includes(base)) pool.push(base);
-  }
+  groqCandidates.forEach(k => { 
+    if (env[k]) {
+      const val = String(env[k]).trim();
+      if (val && !pool.includes(val)) pool.push(val);
+    }
+  });
   return pool.filter(Boolean);
 }
 
