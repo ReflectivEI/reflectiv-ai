@@ -168,7 +168,7 @@ If the worker is behind Cloudflare Access:
 
 ## Test Command
 ```bash
-node /tmp/real-world-validation.js
+node tests/real-world-validation.cjs
 ```
 
 ## Exit Code
