@@ -67,6 +67,7 @@ export default {
               provider = { ok: r.ok, status: r.status };
             }
           } catch (e) {
+            console.error("health_check_provider_probe_error:", e);
             provider = { ok: false, error: String(e?.message || e) };
           }
           return json({ ok: true, time: Date.now(), key_pool: keyPool.length, provider }, 200, env, req, { "x-req-id": reqId });
