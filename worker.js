@@ -313,8 +313,14 @@ function json(body, status, env, req, extraHeaders = {}) {
 
 async function readJson(req) {
   const txt = await req.text();
-  if (!txt) return {};
-  try { return JSON.parse(txt); } catch { return {}; }
+  if (!txt || txt.trim() === "") {
+    return { _parseError: "empty_body" };
+  }
+  try {
+    return JSON.parse(txt);
+  } catch (e) {
+    return { _parseError: "invalid_json", _rawText: txt.slice(0, 100) };
+  }
 }
 
 function capSentences(text, n) {
@@ -759,6 +765,17 @@ async function postChat(req, env) {
 
     const body = await readJson(req);
 
+    // Check for JSON parse errors
+    if (body._parseError) {
+      console.error("chat_error", { req_id: reqId, step: "json_parse", error: body._parseError, raw: body._rawText });
+      return json({
+        error: "bad_request",
+        message: body._parseError === "empty_body" 
+          ? "Request body is empty" 
+          : `Invalid JSON in request body: ${body._rawText || 'parse error'}`
+      }, 400, env, req, { "x-req-id": reqId });
+    }
+
     // Log request start
     console.log({
       event: "chat_request",
@@ -783,8 +800,28 @@ async function postChat(req, env) {
     if (body.messages && Array.isArray(body.messages)) {
       // Widget is sending provider-style payload - extract user message from messages array
       const msgs = body.messages;
-      const lastUserMsg = msgs.filter(m => m.role === "user").pop();
-      const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
+      
+      // Validate messages array is not empty
+      if (msgs.length === 0) {
+        console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_messages_array" });
+        return json({
+          error: "bad_request",
+          message: "messages array is empty"
+        }, 400, env, req, { "x-req-id": reqId });
+      }
+      
+      const lastUserMsg = msgs.filter(m => m && m.role === "user").pop();
+      
+      // Validate that we found a user message
+      if (!lastUserMsg) {
+        console.error("chat_error", { req_id: reqId, step: "request_validation", message: "no_user_message_in_array", messages: msgs.map(m => ({ role: m?.role })) });
+        return json({
+          error: "bad_request",
+          message: "No user message found in messages array"
+        }, 400, env, req, { "x-req-id": reqId });
+      }
+      
+      const historyMsgs = msgs.filter(m => m && m.role !== "system" && m !== lastUserMsg);
 
       mode = body.mode || "sales-coach";
       user = lastUserMsg?.content || "";
@@ -810,11 +847,11 @@ async function postChat(req, env) {
 
     // Validate user message is not empty
     if (!user || String(user).trim() === "") {
-      console.error("chat_error", { step: "request_validation", message: "empty_user_message", body });
+      console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_user_message", format: body.messages ? "widget" : "reflectiv", body });
       return json({
         error: "bad_request",
         message: "User message cannot be empty"
-      }, 400, env, req);
+      }, 400, env, req, { "x-req-id": reqId });
     }
 
     // Load or build a plan
