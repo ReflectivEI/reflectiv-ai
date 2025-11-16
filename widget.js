@@ -270,7 +270,8 @@
         console.warn('[Health Check] Authentication required - worker may be behind Cloudflare Access');
         // Don't block functionality for auth issues - user might still be able to authenticate
         isHealthy = true;
-        showHealthBanner(response.status);
+        hideHealthBanner();
+        enableSendButton();
         return true;
       }
 
@@ -288,7 +289,8 @@
         console.warn('[Health Check] Backend may not be deployed or accessible:', errorMsg);
         console.warn('[Health Check] Allowing optimistic operation - errors will be shown on actual API calls');
         isHealthy = true; // Allow operation, errors will surface on actual use
-        showHealthBanner(0);
+        hideHealthBanner();
+        enableSendButton();
         return true;
       }
       
