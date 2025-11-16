@@ -10,11 +10,7 @@
  * Required VARS:
  *  - PROVIDER_URL    e.g., "https://api.groq.com/openai/v1/chat/completions"
  *  - PROVIDER_MODEL  e.g., "llama-3.1-70b-versatile"
- *  - PROVIDER_KEY    bearer key for provider (used if no rotation pool defined)
- *  - PROVIDER_KEYS   optional comma/semicolon separated list of provider keys for round-robin / hashed rotation
- *    OR environment may define PROVIDER_KEY_1, PROVIDER_KEY_2, ... PROVIDER_KEY_N
- *    Selection strategy: stable hash on session id => key index (avoids per-request randomness & keeps stickiness)
- *    Fallback order: explicit rotation pool > single PROVIDER_KEY. If no keys present → 500 config error.
+ *  - PROVIDER_KEY    bearer key for provider
  *  - CORS_ORIGINS    comma-separated allowlist of allowed origins
  *                    REQUIRED VALUES (must include):
  *                      https://reflectivei.github.io
@@ -27,176 +23,249 @@
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  */
 
+function getGroqKey(env) {
+  const keys = [env.PROVIDER_KEY, env.PROVIDER_KEY_2, env.PROVIDER_KEY_3].filter(Boolean);
+  if (keys.length === 0) return null;
+  const index = Math.floor(Math.random() * keys.length);
+  return keys[index];
+}
+
+function normalizeSalesCoachReply(reply, userQuestion) {
+  if (!reply) return reply;
+
+  // Check for all 4 required headers in order
+  const challengeMatch = reply.match(/Challenge\s*:\s*(.+?)(?=\n\s*(?:Rep Approach|Impact|Suggested Phrasing):|$)/i);
+  const repMatch = reply.match(/Rep Approach\s*:\s*(.+?)(?=\n\s*(?:Impact|Suggested Phrasing):|$)/i);
+  const impactMatch = reply.match(/Impact\s*:\s*(.+?)(?=\n\s*Suggested Phrasing:|$)/i);
+  const phrasingMatch = reply.match(/Suggested\s+Phrasing\s*:\s*(.+)/i);
+
+  if (challengeMatch && repMatch && impactMatch && phrasingMatch) {
+    // Check bullets in Rep Approach
+    const repText = repMatch[1].trim();
+    const bullets = repText.split(/\s*•\s*/).filter(Boolean);
+    if (bullets.length === 3) {
+      return reply; // All good
+    }
+  }
+
+  // Rebuild compliant response
+  console.log('[Sales Coach Normalize] Rebuilding malformed response');
+
+  // Extract core idea from user question for Challenge
+  const challenge = userQuestion ? `Addressing ${userQuestion.split(' ').slice(0, 5).join(' ')}...` : 'Navigating HCP concerns effectively';
+
+  // Generic safe bullets
+  const bullets = [
+    'Focus on patient safety and label alignment',
+    'Use data to address specific concerns',
+    'End with a clear next step question'
+  ];
+
+  // Generic impact
+  const impact = 'Builds trust and advances patient care discussions';
+
+  // Generic phrasing
+  const phrasing = 'Based on the patient\'s profile, how can we ensure safety while exploring this option?';
+
+  return `Challenge: ${challenge}
+
+Rep Approach:
+• ${bullets[0]}
+• ${bullets[1]}
+• ${bullets[2]}
+
+Impact: ${impact}
+
+Suggested Phrasing: "${phrasing}"`;
+}
+
 export default {
   async fetch(req, env, ctx) {
-    const reqId = req.headers.get("x-req-id") || cryptoRandomId();
     try {
       const url = new URL(req.url);
 
-      // One-time environment validation log
-      if (!globalThis.__CFG_LOGGED__) {
-        const keyPool = getProviderKeyPool(env);
-        const allowed = String(env.CORS_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-        console.log({ event: "startup_config", key_pool_size: keyPool.length, cors_allowlist_size: allowed.length, rotation_strategy: (env.PROVIDER_ROTATION_STRATEGY || 'session') });
-        globalThis.__CFG_LOGGED__ = true;
-      }
-
       // CORS preflight
       if (req.method === "OPTIONS") {
-        const h = cors(env, req);
-        h["x-req-id"] = reqId;
-        return new Response(null, { status: 204, headers: h });
+        return new Response(null, { status: 204, headers: cors(env, req) });
       }
 
       // Health check - supports both GET and HEAD for frontend health checks
       if (url.pathname === "/health" && (req.method === "GET" || req.method === "HEAD")) {
-        const deep = url.searchParams.get("deep");
-        if (req.method === "HEAD" && !deep) {
-          return new Response(null, { status: 200, headers: cors(env, req) });
-        }
-        if (deep === "1" || deep === "true") {
-          const keyPool = getProviderKeyPool(env);
-          let provider = { ok: false, status: 0 };
-          try {
-            const key = selectProviderKey(env, "healthcheck");
-            if (key) {
-              const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
-                headers: { "authorization": `Bearer ${key}` }, method: "GET"
-              });
-              provider = { ok: r.ok, status: r.status };
-            }
-          } catch (e) {
-            provider = { ok: false, error: String(e?.message || e) };
-          }
-          return json({ ok: true, time: Date.now(), key_pool: keyPool.length, provider }, 200, env, req, { "x-req-id": reqId });
-        }
-        return new Response("ok", { status: 200, headers: { ...cors(env, req), "x-req-id": reqId } });
+        // HEAD requests return no body, GET returns "ok"
+        const body = req.method === "GET" ? "ok" : null;
+        return new Response(body, { status: 200, headers: cors(env, req) });
       }
 
       // Version endpoint
       if (url.pathname === "/version" && req.method === "GET") {
-        return json({ version: "r10.1" }, 200, env, req, { "x-req-id": reqId });
+        return json({ version: "r10.3" }, 200, env, req);
       }
 
       // Debug EI endpoint - returns basic info about the worker
       if (url.pathname === "/debug/ei" && req.method === "GET") {
-        return json({ worker: "ReflectivAI Gateway", version: "r10.1", endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"], timestamp: new Date().toISOString() }, 200, env, req, { "x-req-id": reqId });
+        return json({
+          worker: "ReflectivAI Gateway",
+          version: "r10.1",
+          endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"],
+          timestamp: new Date().toISOString()
+        }, 200, env, req);
       }
 
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
       if (url.pathname === "/plan" && req.method === "POST") return postPlan(req, env);
       if (url.pathname === "/chat" && req.method === "POST") {
-        const ip = req.headers.get("CF-Connecting-IP") || "0.0.0.0";
-        const gate = rateLimit(`${ip}:chat`, env);
-        if (!gate.ok) {
-          const retry = Number(env.RATELIMIT_RETRY_AFTER || 2);
-          return json({ error: "rate_limited", retry_after_sec: retry }, 429, env, req, {
-            "Retry-After": String(retry),
-            "X-RateLimit-Limit": String(gate.limit),
-            "X-RateLimit-Remaining": String(gate.remaining),
-            "x-req-id": reqId
-          });
+        const result = await postChat(req, env);
+        if (!result.ok) {
+          return json({ reply: "I'm sorry, but I'm unable to respond right now due to a technical issue. Please try again later." }, 200, env, req);
         }
-        return postChat(req, env);
+        return json(result.data, 200, env, req);
       }
-      if (url.pathname === "/coach-metrics" && req.method === "POST") return postCoachMetrics(req, env);
 
-      return json({ error: "not_found" }, 404, env, req, { "x-req-id": reqId });
+      return json({ error: "not_found" }, 404, env, req);
     } catch (e) {
       // Log the error for debugging but don't expose details to client
       console.error("Top-level error:", e);
-      return json({ error: "server_error", message: "Internal server error" }, 500, env, req, { "x-req-id": reqId });
+      return json({ error: "server_error", message: "Internal server error" }, 500, env, req);
     }
   }
 };
 
 /* ------------------------- Inlined Knowledge & Rules ------------------------ */
 
-// Comprehensive facts database for all therapeutic areas: HIV, Oncology, Cardiovascular, COVID-19, Vaccines
-// Each fact provides AI with clinically accurate, label-aligned reference material for dynamic response generation
+// Minimal curated facts for demo. Add more or move to KV.
 const FACTS_DB = [
-  // HIV Facts (10 facts)
-  { id: "HIV-PREP-ELIG-001", ta: "HIV", topic: "PrEP Eligibility", text: "PrEP is recommended for individuals at substantial risk of HIV acquisition, including those with sexual partners of unknown HIV status, inconsistent condom use, or recent STI diagnoses.", cites: [{ text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }] },
-  { id: "HIV-PREP-TAF-002", ta: "HIV", topic: "Descovy for PrEP", text: "Descovy (emtricitabine/tenofovir alafenamide) is indicated for HIV PrEP in at-risk adults and adolescents weighing ≥35 kg, excluding individuals assigned female at birth at risk from receptive vaginal sex.", cites: [{ text: "FDA Label - Descovy PrEP", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/208215s023lbl.pdf" }, { text: "DISCOVER Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1917257" }] },
-  { id: "HIV-PREP-SAFETY-003", ta: "HIV", topic: "Renal Safety Monitoring", text: "Assess renal function (eGFR, CrCl) and urinalysis before PrEP initiation and monitor every 3-6 months during treatment. Consider dose adjustment or discontinuation if eGFR <50 mL/min.", cites: [{ text: "FDA Label - Descovy", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/208215s023lbl.pdf" }, { text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }] },
-  { id: "HIV-PREP-APRETUDE-004", ta: "HIV", topic: "Apretude (CAB-LA)", text: "Apretude (cabotegravir long-acting injectable) is indicated for PrEP in at-risk adults and adolescents weighing ≥35 kg, administered as 600 mg IM every 2 months after oral lead-in or initial injections.", cites: [{ text: "FDA Label - Apretude", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/215499s000lbl.pdf" }, { text: "HPTN 083/084 Trials", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2101016" }] },
-  { id: "HIV-TREAT-BIKTARVY-005", ta: "HIV", topic: "Biktarvy for Treatment", text: "Biktarvy (bictegravir/emtricitabine/tenofovir alafenamide) is a complete once-daily single-tablet regimen for treatment-naïve or virologically suppressed adults, demonstrating high barrier to resistance and favorable safety profile.", cites: [{ text: "FDA Label - Biktarvy", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2022/210251s028lbl.pdf" }, { text: "Study 1489/1490", url: "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(18)30356-3/fulltext" }] },
-  { id: "HIV-TREAT-CAB-006", ta: "HIV", topic: "Cabenuva Long-Acting", text: "Cabenuva (cabotegravir/rilpivirine long-acting) is a complete monthly or every-2-month injectable regimen for virologically suppressed adults with no current or prior resistance to either component, requiring adherence and injection site management.", cites: [{ text: "FDA Label - Cabenuva", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/212888s000lbl.pdf" }, { text: "ATLAS/FLAIR Trials", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1904398" }] },
-  { id: "HIV-TREAT-RESISTANCE-007", ta: "HIV", topic: "Resistance Testing", text: "Genotypic resistance testing is recommended before initiating or modifying ART to guide regimen selection, particularly for integrase strand transfer inhibitor (INSTI) resistance mutations.", cites: [{ text: "DHHS Guidelines 2024", url: "https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-arv/what-start-antiretroviral-naive-patients" }, { text: "IAS-USA Recommendations", url: "https://jamanetwork.com/journals/jama/fullarticle/2799864" }] },
-  { id: "HIV-ADHERENCE-008", ta: "HIV", topic: "Adherence and Viral Suppression", text: "Sustained viral suppression (HIV RNA <50 copies/mL) requires >95% adherence to ART. Long-acting regimens may improve adherence for patients facing daily pill burden challenges.", cites: [{ text: "DHHS Guidelines 2024", url: "https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-arv/adherence-antiretroviral-therapy" }, { text: "Clinical Adherence Studies", url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3722218/" }] },
-  { id: "HIV-PREP-LAB-009", ta: "HIV", topic: "PrEP Laboratory Monitoring", text: "Before PrEP initiation, confirm negative HIV test, assess HBV status, and perform STI screening. Repeat HIV testing every 3 months and STI screening every 6-12 months during PrEP use.", cites: [{ text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }, { text: "USPSTF Recommendations", url: "https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/prevention-of-human-immunodeficiency-virus-hiv-infection-pre-exposure-prophylaxis" }] },
-  { id: "HIV-PREP-ADHERENCE-010", ta: "HIV", topic: "PrEP Adherence Strategies", text: "Daily oral PrEP requires 4-7 doses per week for protective efficacy. Event-driven (on-demand) dosing may be appropriate for cisgender men who have sex with men with predictable sexual activity.", cites: [{ text: "IPERGAY Study", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1506273" }, { text: "CDC PrEP Guidelines 2024", url: "https://www.cdc.gov/hiv/risk/prep/index.html" }] },
-
-  // Oncology Facts (10 facts)
-  { id: "ONC-IO-CHECKPOINT-001", ta: "Oncology", topic: "Immune Checkpoint Inhibitors", text: "Immune checkpoint inhibitors (anti-PD-1, anti-PD-L1, anti-CTLA-4) enhance T-cell mediated anti-tumor immunity and have transformed treatment across multiple solid tumor types, with efficacy often correlating with PD-L1 expression and tumor mutational burden.", cites: [{ text: "NCCN Guidelines - Multiple Tumor Types", url: "https://www.nccn.org/guidelines/category_1" }, { text: "FDA Labels", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }] },
-  { id: "ONC-IO-TOXICITY-002", ta: "Oncology", topic: "Immune-Related Adverse Events", text: "Immune-related adverse events (irAEs) can affect any organ system, most commonly skin, GI, endocrine, and hepatic. Early recognition and corticosteroid management are critical; severe (Grade 3-4) irAEs require treatment interruption and specialist consultation.", cites: [{ text: "ASCO irAE Management Guidelines", url: "https://ascopubs.org/doi/full/10.1200/JCO.17.00577" }, { text: "NCCN IO Toxicity Management", url: "https://www.nccn.org/professionals/physician_gls/pdf/immunotherapy.pdf" }] },
-  { id: "ONC-ADC-MECHANISMS-003", ta: "Oncology", topic: "Antibody-Drug Conjugates", text: "Antibody-drug conjugates (ADCs) combine targeted monoclonal antibodies with cytotoxic payloads, delivering chemotherapy selectively to tumor cells expressing specific antigens (e.g., HER2, Trop-2, NECTIN-4).", cites: [{ text: "FDA Labels - ADCs", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }, { text: "NCCN Guidelines", url: "https://www.nccn.org/guidelines/category_1" }] },
-  { id: "ONC-ADC-TOXICITY-004", ta: "Oncology", topic: "ADC Adverse Event Management", text: "ADC-associated toxicities include neutropenia, peripheral neuropathy, ocular toxicity, and interstitial lung disease (ILD). Prophylactic growth factor support, dose modifications, and ophthalmologic monitoring may be required.", cites: [{ text: "FDA Labels - ADCs", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }, { text: "Clinical Practice Guidelines", url: "https://www.nccn.org/guidelines/category_1" }] },
-  { id: "ONC-BIOMARKER-PD-L1-005", ta: "Oncology", topic: "PD-L1 Testing", text: "PD-L1 immunohistochemistry (IHC) expression levels guide patient selection for certain IO therapies. Tumor Proportion Score (TPS) ≥50% or Combined Positive Score (CPS) thresholds vary by indication and agent.", cites: [{ text: "NCCN NSCLC Guidelines", url: "https://www.nccn.org/professionals/physician_gls/pdf/nscl.pdf" }, { text: "FDA Companion Diagnostic Approvals", url: "https://www.fda.gov/medical-devices/in-vitro-diagnostics/list-cleared-or-approved-companion-diagnostic-devices-in-vitro-and-imaging-tools" }] },
-  { id: "ONC-BIOMARKER-TMB-006", ta: "Oncology", topic: "Tumor Mutational Burden", text: "Tumor mutational burden (TMB-High, ≥10 mutations/megabase) is an FDA-approved biomarker for pembrolizumab monotherapy in advanced solid tumors after prior treatment, indicating potential for enhanced IO response.", cites: [{ text: "FDA Label - Pembrolizumab", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2020/125514s096lbl.pdf" }, { text: "KEYNOTE-158 Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2005653" }] },
-  { id: "ONC-ORAL-ONCOLYTIC-007", ta: "Oncology", topic: "Oral Oncolytic Adherence", text: "Oral oncolytics require patient education on dosing schedules, drug-drug interactions, food effects, and toxicity self-monitoring. Specialty pharmacy support and early refill coordination reduce treatment interruptions.", cites: [{ text: "ASCO/ONS Oral Chemotherapy Standards", url: "https://ascopubs.org/doi/full/10.1200/JOP.2016.016303" }, { text: "NCCN Patient Education", url: "https://www.nccn.org/patients" }] },
-  { id: "ONC-ORAL-TOXICITY-008", ta: "Oncology", topic: "Oral TKI Toxicity Management", text: "Tyrosine kinase inhibitors (TKIs) commonly cause diarrhea, rash, hypertension, and hand-foot syndrome. Dose modifications and supportive care (antidiarrheals, topical steroids, antihypertensives) maintain treatment continuity.", cites: [{ text: "NCCN Guidelines - Supportive Care", url: "https://www.nccn.org/professionals/physician_gls/pdf/palliative.pdf" }, { text: "FDA Labels", url: "https://www.fda.gov/drugs/resources-information-approved-drugs" }] },
-  { id: "ONC-PATHWAY-INTEGRATION-009", ta: "Oncology", topic: "Clinical Pathway Integration", text: "Evidence-based clinical pathways standardize treatment selection per NCCN categories of evidence and preference, optimizing outcomes while managing cost and toxicity. Pathway adherence requires EHR integration and multidisciplinary tumor board alignment.", cites: [{ text: "ASCO Quality Oncology Practice Initiative", url: "https://www.asco.org/practice-policy/quality-improvement/quality-programs/quality-oncology-practice-initiative" }, { text: "NCCN Clinical Pathways", url: "https://www.nccn.org/guidelines/nccn-evidence-blocks" }] },
-  { id: "ONC-SURVIVORSHIP-010", ta: "Oncology", topic: "Survivorship Care Planning", text: "Survivorship care plans document treatment history, potential late effects, surveillance schedules, and transition to primary care. Addressing long-term toxicities (neuropathy, cardiotoxicity, secondary malignancies) is essential.", cites: [{ text: "ASCO Survivorship Guidelines", url: "https://www.asco.org/practice-policy/cancer-care-initiatives/prevention-survivorship" }, { text: "NCCN Survivorship Guidelines", url: "https://www.nccn.org/professionals/physician_gls/pdf/survivorship.pdf" }] },
-
-  // Cardiovascular Facts (10 facts)
-  { id: "CV-GDMT-HFREF-001", ta: "Cardiovascular", topic: "HFrEF Guideline-Directed Medical Therapy", text: "Guideline-directed medical therapy (GDMT) for HFrEF includes four pillars: ACE-I/ARB/ARNI, beta-blockers, MRAs, and SGLT2 inhibitors, each providing mortality and hospitalization benefits with additive effects.", cites: [{ text: "ACC/AHA Heart Failure Guidelines 2022", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }, { text: "ESC HF Guidelines 2021", url: "https://academic.oup.com/eurheartj/article/42/36/3599/6358045" }] },
-  { id: "CV-ARNI-ENTRESTO-002", ta: "Cardiovascular", topic: "Sacubitril/Valsartan (Entresto)", text: "Sacubitril/valsartan (ARNI) is superior to enalapril in reducing cardiovascular death and HF hospitalization in HFrEF patients (NYHA Class II-IV, EF ≤40%). Requires 36-hour ACE-I washout to avoid angioedema.", cites: [{ text: "PARADIGM-HF Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1409077" }, { text: "FDA Label - Entresto", url: "https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/207620s019lbl.pdf" }] },
-  { id: "CV-SGLT2-HF-003", ta: "Cardiovascular", topic: "SGLT2 Inhibitors in Heart Failure", text: "SGLT2 inhibitors (dapagliflozin, empagliflozin) reduce HF hospitalization and cardiovascular death in HFrEF and HFpEF, independent of diabetes status. Benefits include diuresis, improved renal outcomes, and metabolic effects.", cites: [{ text: "DAPA-HF Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1911303" }, { text: "EMPEROR-Reduced", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2022190" }, { text: "ACC/AHA Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }] },
-  { id: "CV-SGLT2-CKD-004", ta: "Cardiovascular", topic: "SGLT2i in Chronic Kidney Disease", text: "SGLT2 inhibitors slow CKD progression (eGFR decline, ESKD, CV/renal death) in patients with and without diabetes, including CKD Stage 3-4 (eGFR ≥20 mL/min). Initiation safe despite transient eGFR dip.", cites: [{ text: "DAPA-CKD Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2024816" }, { text: "EMPA-KIDNEY", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2204233" }, { text: "KDIGO 2022 Guidelines", url: "https://kdigo.org/guidelines/diabetes-ckd/" }] },
-  { id: "CV-SGLT2-SAFETY-005", ta: "Cardiovascular", topic: "SGLT2i Safety and Sick Day Rules", text: "SGLT2 inhibitors carry risks of euglycemic DKA (rare), genital mycotic infections, and volume depletion. Educate patients on sick day rules: withhold during acute illness, dehydration, or fasting to prevent DKA.", cites: [{ text: "FDA Safety Communications", url: "https://www.fda.gov/drugs/drug-safety-and-availability/fda-drug-safety-communication-fda-warns-rare-occurrences-serious-infection-genital-area-sglt2" }, { text: "Endocrine Society Guidelines", url: "https://www.endocrine.org/clinical-practice-guidelines" }] },
-  { id: "CV-MRA-SPIRONOLACTONE-006", ta: "Cardiovascular", topic: "Mineralocorticoid Receptor Antagonists", text: "Spironolactone and eplerenone reduce mortality in HFrEF (NYHA Class II-IV) when added to ACE-I and beta-blockers. Monitor potassium and renal function; avoid if K+ >5.0 mEq/L or CrCl <30 mL/min.", cites: [{ text: "RALES Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJM199909023411001" }, { text: "EMPHASIS-HF", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1009492" }, { text: "ACC/AHA Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }] },
-  { id: "CV-BETA-BLOCKER-007", ta: "Cardiovascular", topic: "Beta-Blockers in HFrEF", text: "Evidence-based beta-blockers (carvedilol, metoprolol succinate, bisoprolol) reduce mortality and hospitalization in stable HFrEF. Initiate at low dose and titrate to target or maximum tolerated dose over weeks.", cites: [{ text: "MERIT-HF Trial", url: "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(99)04440-2/fulltext" }, { text: "COPERNICUS Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJM200105313442201" }, { text: "ACC/AHA Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063" }] },
-  { id: "CV-POST-MI-TRANSITION-008", ta: "Cardiovascular", topic: "Post-MI Discharge GDMT", text: "Post-MI patients with reduced EF should receive GDMT before discharge, including ARNI (if EF ≤40%), beta-blockers, SGLT2i, and statins. Early initiation (within 48-72 hours) improves adherence and outcomes.", cites: [{ text: "ACC/AHA STEMI Guidelines", url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000000525" }, { text: "ESC Acute MI Guidelines", url: "https://academic.oup.com/eurheartj/article/39/2/119/4095042" }] },
-  { id: "CV-TITRATION-CALENDAR-009", ta: "Cardiovascular", topic: "GDMT Titration Protocols", text: "Structured titration protocols with defined follow-up intervals (2-4 weeks) optimize GDMT dosing. Nurse-led HF clinics and remote monitoring support safe up-titration while managing hypotension, bradycardia, and renal function.", cites: [{ text: "ACC/AHA HF Performance Measures", url: "https://www.ahajournals.org/doi/10.1161/HCQ.0000000000000079" }, { text: "HF Society Clinical Practice", url: "https://www.hfsa.org/heart-failure-guidelines" }] },
-  { id: "CV-READMISSION-PREVENTION-010", ta: "Cardiovascular", topic: "HF Readmission Reduction Strategies", text: "Transitional care interventions (7-day follow-up, medication reconciliation, patient education, telemonitoring) reduce 30-day HF readmissions. Pharmacy support for copay assistance and prior authorization streamlines GDMT access.", cites: [{ text: "ACC/AHA Quality Measures", url: "https://www.ahajournals.org/doi/10.1161/HCQ.0000000000000079" }, { text: "CMS Hospital Readmissions Program", url: "https://www.cms.gov/medicare/payment/prospective-payment-systems/acute-inpatient-pps/hospital-readmissions-reduction-program-hrrp" }] },
-
-  // COVID-19 Facts (10 facts)
-  { id: "COVID-PAXLOVID-INDICATIONS-001", ta: "COVID-19", topic: "Paxlovid Indications and Efficacy", text: "Nirmatrelvir/ritonavir (Paxlovid) is authorized for treatment of mild-to-moderate COVID-19 in high-risk adults and pediatric patients (≥12 years, ≥40 kg) within 5 days of symptom onset, reducing hospitalization/death by ~89% when started early.", cites: [{ text: "FDA EUA - Paxlovid", url: "https://www.fda.gov/emergency-preparedness-and-response/mcm-legal-regulatory-and-policy-framework/paxlovid" }, { text: "EPIC-HR Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2118542" }, { text: "NIH COVID-19 Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
-  { id: "COVID-PAXLOVID-DDI-002", ta: "COVID-19", topic: "Paxlovid Drug-Drug Interactions", text: "Ritonavir is a strong CYP3A4 inhibitor, causing significant drug-drug interactions with statins, immunosuppressants, anticoagulants, and calcium channel blockers. Review medication list and consider dose adjustments or temporary holds during 5-day course.", cites: [{ text: "FDA EUA - Paxlovid DDI Table", url: "https://www.fda.gov/media/155050/download" }, { text: "Liverpool COVID-19 Drug Interactions", url: "https://www.covid19-druginteractions.org/" }] },
-  { id: "COVID-PAXLOVID-REBOUND-003", ta: "COVID-19", topic: "COVID-19 Rebound Phenomenon", text: "Viral and symptom rebound (2-8 days post-treatment) occurs in ~5-10% of Paxlovid-treated patients. Patients should be counseled to isolate if symptoms return and seek re-evaluation; no evidence supports extended or repeat courses.", cites: [{ text: "CDC COVID-19 Clinical Guidance", url: "https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html" }, { text: "NIH Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
-  { id: "COVID-REMDESIVIR-OUTPATIENT-004", ta: "COVID-19", topic: "Remdesivir Outpatient Infusion", text: "Remdesivir 3-day IV course (200 mg day 1, 100 mg days 2-3) is authorized for non-hospitalized high-risk COVID-19 patients within 7 days of symptom onset, reducing hospitalization by 87% in PINETREE trial. Requires infusion capacity.", cites: [{ text: "FDA EUA - Remdesivir", url: "https://www.fda.gov/emergency-preparedness-and-response/mcm-legal-regulatory-and-policy-framework/remdesivir-veklury" }, { text: "PINETREE Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2116846" }, { text: "NIH Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
-  { id: "COVID-HIGH-RISK-CRITERIA-005", ta: "COVID-19", topic: "High-Risk Patient Criteria", text: "High-risk criteria for severe COVID-19 include age ≥65, immunosuppression, obesity (BMI ≥35), chronic lung disease, diabetes, cardiovascular disease, chronic kidney disease, and pregnancy. These patients benefit most from early antiviral treatment.", cites: [{ text: "NIH COVID-19 Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/overview/clinical-spectrum/" }, { text: "CDC High-Risk Populations", url: "https://www.cdc.gov/coronavirus/2019-ncov/need-extra-precautions/people-with-medical-conditions.html" }] },
-  { id: "COVID-MOLNUPIRAVIR-006", ta: "COVID-19", topic: "Molnupiravir Alternative Therapy", text: "Molnupiravir is authorized for high-risk adults when Paxlovid and remdesivir are not accessible or clinically appropriate. Efficacy (30% hospitalization reduction) is lower than Paxlovid; avoid in pregnancy due to genotoxicity concerns.", cites: [{ text: "FDA EUA - Molnupiravir", url: "https://www.fda.gov/emergency-preparedness-and-response/mcm-legal-regulatory-and-policy-framework/lagevrio-molnupiravir" }, { text: "MOVe-OUT Trial", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa2116044" }, { text: "NIH Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }] },
-  { id: "COVID-INITIATION-TIMING-007", ta: "COVID-19", topic: "Early Treatment Initiation", text: "Antiviral efficacy decreases significantly after 5 days of symptoms. Clinical workflows should enable same-day or next-day evaluation, testing, and treatment initiation for high-risk patients to maximize benefit.", cites: [{ text: "NIH Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/" }, { text: "CDC Clinical Guidance", url: "https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html" }] },
-  { id: "COVID-HOME-INFUSION-008", ta: "COVID-19", topic: "Hospital-at-Home and Infusion Access", text: "Home infusion services enable remdesivir administration for patients with transport barriers or post-discharge needs. Coordination with home health vendors and discharge planning optimizes access and reduces readmissions.", cites: [{ text: "CMS Hospital-at-Home Waiver", url: "https://www.cms.gov/files/document/covid-hospitals-without-walls-fact-sheet.pdf" }, { text: "Infusion Nursing Standards", url: "https://www.ins1.org/" }] },
-  { id: "COVID-IMMUNOCOMPROMISED-009", ta: "COVID-19", topic: "Immunocompromised Patient Considerations", text: "Immunocompromised patients (transplant, chemotherapy, HIV with low CD4) may have prolonged viral replication and benefit from extended antiviral courses. Infectious disease consultation is recommended for complex cases.", cites: [{ text: "NIH Guidelines - Special Populations", url: "https://www.covid19treatmentguidelines.nih.gov/special-populations/immunocompromised/" }, { text: "IDSA COVID-19 Guidelines", url: "https://www.idsociety.org/practice-guideline/covid-19-guideline-treatment-and-management/" }] },
-  { id: "COVID-MONOCLONAL-ANTIBODIES-010", ta: "COVID-19", topic: "Monoclonal Antibody Considerations", text: "Bebtelovimab and other monoclonal antibodies have limited activity against current Omicron subvariants. Verify current CDC and NIH guidance on authorized mAbs based on regional variant surveillance before prescribing.", cites: [{ text: "NIH COVID-19 Treatment Guidelines", url: "https://www.covid19treatmentguidelines.nih.gov/therapies/anti-sars-cov-2-antibody-products/" }, { text: "CDC Variant Surveillance", url: "https://covid.cdc.gov/covid-data-tracker/#variant-proportions" }] },
-
-  // Vaccines Facts (10 facts)
-  { id: "VAC-FLU-RECOMMENDATIONS-001", ta: "Vaccines", topic: "Annual Influenza Vaccination", text: "Annual influenza vaccination is recommended for all persons ≥6 months of age. Inactivated influenza vaccine (IIV) and recombinant influenza vaccine (RIV) are preferred over live attenuated vaccine (LAIV) for most populations.", cites: [{ text: "CDC ACIP Influenza Recommendations 2024-2025", url: "https://www.cdc.gov/flu/prevent/vaccinations.htm" }, { text: "MMWR", url: "https://www.cdc.gov/mmwr/volumes/72/rr/rr7202a1.htm" }] },
-  { id: "VAC-FLU-HIGH-DOSE-002", ta: "Vaccines", topic: "Enhanced Flu Vaccines for Older Adults", text: "Adults ≥65 years should receive high-dose inactivated (Fluzone High-Dose), recombinant (Flublok), or adjuvanted (Fluad) influenza vaccines, which provide superior immunogenicity and efficacy compared to standard-dose vaccines.", cites: [{ text: "CDC ACIP Recommendations", url: "https://www.cdc.gov/flu/prevent/vaccinations.htm" }, { text: "FDA Approvals - Enhanced Flu Vaccines", url: "https://www.fda.gov/vaccines-blood-biologics/vaccines/influenza-virus-vaccine" }] },
-  { id: "VAC-FLU-TIMING-003", ta: "Vaccines", topic: "Optimal Timing for Flu Vaccination", text: "Influenza vaccination should ideally occur by end of October, but vaccination throughout the influenza season (into January or later) is beneficial. Early vaccination (July-August) may result in waning immunity before season peak.", cites: [{ text: "CDC ACIP Influenza Recommendations", url: "https://www.cdc.gov/flu/prevent/vaccinations.htm" }, { text: "MMWR", url: "https://www.cdc.gov/mmwr/volumes/72/rr/rr7202a1.htm" }] },
-  { id: "VAC-PNEUMOCOCCAL-ADULTS-004", ta: "Vaccines", topic: "Pneumococcal Vaccination for Adults", text: "Adults ≥65 years should receive pneumococcal vaccination with PCV15 or PCV20. If PCV15 is used, follow with PPSV23 ≥1 year later. Adults 19-64 with chronic conditions or immunocompromising conditions also require pneumococcal vaccination.", cites: [{ text: "CDC ACIP Pneumococcal Recommendations", url: "https://www.cdc.gov/vaccines/vpd/pneumo/hcp/recommendations.html" }, { text: "MMWR 2022", url: "https://www.cdc.gov/mmwr/volumes/71/wr/mm7104a1.htm" }] },
-  { id: "VAC-RSV-OLDER-ADULTS-005", ta: "Vaccines", topic: "RSV Vaccination for Older Adults", text: "A single dose of RSV vaccine (RSVPreF3 or RSVpreF) is recommended for adults ≥60 years using shared clinical decision-making, particularly for those with chronic cardiopulmonary disease or residing in long-term care facilities.", cites: [{ text: "CDC ACIP RSV Recommendations 2023", url: "https://www.cdc.gov/vaccines/vpd/rsv/hcp/older-adults.html" }, { text: "FDA Approvals - RSV Vaccines", url: "https://www.fda.gov/vaccines-blood-biologics/vaccines/respiratory-syncytial-virus-rsv" }] },
-  { id: "VAC-SHINGLES-SHINGRIX-006", ta: "Vaccines", topic: "Shingles Vaccination (Shingrix)", text: "Recombinant zoster vaccine (RZV, Shingrix) is recommended for adults ≥50 years as a 2-dose series (0, 2-6 months), providing >90% efficacy against shingles and postherpetic neuralgia. Preferred over live zoster vaccine (ZVL).", cites: [{ text: "CDC ACIP Herpes Zoster Recommendations", url: "https://www.cdc.gov/vaccines/vpd/shingles/hcp/shingrix/recommendations.html" }, { text: "Shingrix Efficacy Trials", url: "https://www.nejm.org/doi/full/10.1056/NEJMoa1501184" }] },
-  { id: "VAC-VIS-DOCUMENTATION-007", ta: "Vaccines", topic: "Vaccine Information Statements (VIS)", text: "Federal law requires providing current VIS documents before administering ACIP-recommended vaccines and documenting VIS edition date, vaccine administration date, manufacturer, lot number, and administrator in the patient record.", cites: [{ text: "CDC VIS Requirements", url: "https://www.cdc.gov/vaccines/hcp/vis/about/required-use.html" }, { text: "National Childhood Vaccine Injury Act", url: "https://www.hrsa.gov/vaccine-compensation/index.html" }] },
-  { id: "VAC-STANDING-ORDERS-008", ta: "Vaccines", topic: "Standing Orders for Vaccination", text: "Standing orders allow nurses and pharmacists to assess and vaccinate patients without individual physician orders, increasing vaccination rates. Protocols must comply with state scope-of-practice laws and include contraindication screening.", cites: [{ text: "CDC Standing Orders Best Practices", url: "https://www.cdc.gov/vaccines/hcp/admin/standing-orders.html" }, { text: "AMA Policy on Standing Orders", url: "https://www.ama-assn.org/delivering-care/public-health/standing-orders-immunizations" }] },
-  { id: "VAC-IMMUNOCOMPROMISED-009", ta: "Vaccines", topic: "Vaccination in Immunocompromised Patients", text: "Immunocompromised patients (transplant, HIV, chemotherapy, immunosuppressive therapy) should receive inactivated vaccines per accelerated schedules and higher doses where indicated (e.g., double-dose hepatitis B). Live vaccines are generally contraindicated.", cites: [{ text: "CDC ACIP Immunocompromised Recommendations", url: "https://www.cdc.gov/vaccines/hcp/acip-recs/general-recs/immunocompetence.html" }, { text: "IDSA Vaccination Guidelines", url: "https://www.idsociety.org/practice-guideline/immunocompromised-host/" }] },
-  { id: "VAC-RECALL-SYSTEMS-010", ta: "Vaccines", topic: "Reminder-Recall Systems", text: "EHR-integrated reminder-recall systems using SMS, phone calls, or patient portals improve vaccination coverage. Automated reminders 1-2 weeks before due dates and missed-dose outreach increase completion rates for multi-dose series.", cites: [{ text: "CDC Community Guide - Vaccination", url: "https://www.thecommunityguide.org/pages/task-force-finding-and-rationale-statements.html" }, { text: "AHRQ Health IT Tools", url: "https://www.ahrq.gov/health-it/tools/index.html" }] }
+  {
+    id: "HIV-PREP-ELIG-001",
+    ta: "HIV",
+    topic: "PrEP Eligibility",
+    text: "PrEP is recommended for individuals at substantial risk of HIV. Discuss sexual and injection risk factors.",
+    cites: ["CDC PrEP 2024"]
+  },
+  {
+    id: "HIV-PREP-TAF-002",
+    ta: "HIV",
+    topic: "Descovy for PrEP",
+    text: "Descovy (emtricitabine/tenofovir alafenamide) is indicated for PrEP excluding receptive vaginal sex.",
+    cites: ["FDA Label Descovy PrEP"]
+  },
+  {
+    id: "HIV-PREP-SAFETY-003",
+    ta: "HIV",
+    topic: "Safety",
+    text: "Assess renal function before and during PrEP. Consider eGFR thresholds per label.",
+    cites: ["FDA Label Descovy", "CDC PrEP 2024"]
+  },
+  // Diabetes Facts
+  {
+    id: "DIABETES-MGMT-001",
+    ta: "Diabetes",
+    topic: "Diabetes Management",
+    text: "Effective diabetes management requires a comprehensive approach including lifestyle modifications, glycemic control, cardiovascular risk reduction, and regular monitoring. Key strategies include healthy eating, physical activity, medication adherence, and routine check-ups.",
+    cites: ["ADA Standards of Care 2024", "AHA/ACC Diabetes Guidelines"]
+  },
+  // Cardiovascular Facts
+  {
+    id: "CV-GDMT-HFREF-001",
+    ta: "Cardiovascular",
+    topic: "HFrEF Guideline-Directed Medical Therapy",
+    text: "Guideline-directed medical therapy (GDMT) for HFrEF includes four pillars: ACE-I/ARB/ARNI, beta-blockers, MRAs, and SGLT2 inhibitors, each providing mortality and hospitalization benefits with additive effects.",
+    cites: ["ACC/AHA Heart Failure Guidelines 2022", "ESC HF Guidelines 2021"]
+  },
+  {
+    id: "CV-ARNI-ENTRESTO-002",
+    ta: "Cardiovascular",
+    topic: "Sacubitril/Valsartan (Entresto)",
+    text: "Sacubitril/valsartan (ARNI) is superior to enalapril in reducing cardiovascular death and HF hospitalization in HFrEF patients (NYHA Class II-IV, EF ≤40%). Requires 36-hour ACE-I washout to avoid angioedema.",
+    cites: ["PARADIGM-HF Trial", "FDA Label - Entresto"]
+  },
+  {
+    id: "CV-SGLT2-HF-003",
+    ta: "Cardiovascular",
+    topic: "SGLT2 Inhibitors in Heart Failure",
+    text: "SGLT2 inhibitors (dapagliflozin, empagliflozin) reduce HF hospitalization and cardiovascular death in HFrEF and HFpEF, independent of diabetes status. Benefits include diuresis, improved renal outcomes, and metabolic effects.",
+    cites: ["DAPA-HF Trial", "EMPEROR-Reduced", "ACC/AHA Guidelines"]
+  },
+  {
+    id: "CV-SGLT2-CKD-004",
+    ta: "Cardiovascular",
+    topic: "SGLT2i in Chronic Kidney Disease",
+    text: "SGLT2 inhibitors slow CKD progression (eGFR decline, ESKD, CV/renal death) in patients with and without diabetes, including CKD Stage 3-4 (eGFR ≥20 mL/min). Initiation safe despite transient eGFR dip.",
+    cites: ["DAPA-CKD Trial", "EMPA-KIDNEY", "KDIGO 2022 Guidelines"]
+  },
+  {
+    id: "CV-SGLT2-SAFETY-005",
+    ta: "Cardiovascular",
+    topic: "SGLT2i Safety and Sick Day Rules",
+    text: "SGLT2 inhibitors carry risks of euglycemic DKA (rare), genital mycotic infections, and volume depletion. Educate patients on sick day rules: withhold during acute illness, dehydration, or fasting to prevent DKA.",
+    cites: ["FDA Safety Communications", "Endocrine Society Clinical Practice Guidelines"]
+  },
+  {
+    id: "CV-MRA-SPIRONOLACTONE-006",
+    ta: "Cardiovascular",
+    topic: "Mineralocorticoid Receptor Antagonists",
+    text: "Spironolactone and eplerenone reduce mortality in HFrEF (NYHA Class II-IV) when added to ACE-I and beta-blockers. Monitor potassium and renal function; avoid if K+ >5.0 mEq/L or CrCl <30 mL/min.",
+    cites: ["RALES Trial", "EMPHASIS-HF", "ACC/AHA Guidelines"]
+  },
+  {
+    id: "CV-BETA-BLOCKER-007",
+    ta: "Cardiovascular",
+    topic: "Beta-Blockers in HFrEF",
+    text: "Evidence-based beta-blockers (carvedilol, metoprolol succinate, bisoprolol) reduce mortality and hospitalization in stable HFrEF. Initiate at low dose and titrate to target or maximum tolerated dose over weeks.",
+    cites: ["MERIT-HF Trial", "COPERNICUS Trial", "ACC/AHA Guidelines"]
+  },
+  {
+    id: "CV-POST-MI-TRANSITION-008",
+    ta: "Cardiovascular",
+    topic: "Post-MI Discharge GDMT",
+    text: "Post-MI patients with reduced EF should receive GDMT before discharge, including ARNI (if EF ≤40%), beta-blockers, SGLT2i, and statins. Early initiation (within 48-72 hours) improves adherence and outcomes.",
+    cites: ["ACC/AHA STEMI Guidelines", "ESC Acute MI Guidelines"]
+  },
+  {
+    id: "CV-TITRATION-CALENDAR-009",
+    ta: "Cardiovascular",
+    topic: "GDMT Titration Protocols",
+    text: "Structured titration protocols with defined follow-up intervals (2-4 weeks) optimize GDMT dosing. Nurse-led HF clinics and remote monitoring support safe up-titration while managing hypotension, bradycardia, and renal function.",
+    cites: ["ACC/AHA HF Performance Measures", "HF Society Clinical Practice"]
+  },
+  {
+    id: "CV-READMISSION-PREVENTION-010",
+    ta: "Cardiovascular",
+    topic: "HF Readmission Reduction Strategies",
+    text: "Transitional care interventions (7-day follow-up, medication reconciliation, patient education, telemonitoring) reduce 30-day HF readmissions. Pharmacy support for copay assistance and prior authorization streamlines GDMT access.",
+    cites: ["ACC/AHA Quality Measures", "CMS Hospital Readmissions Reduction Program"]
+  },
+  // Oncology Facts
+  {
+    id: "ONC-ADC-MECHANISM-001",
+    ta: "onc_md_decile10_io_adc_pathways",
+    topic: "ADC Mechanism of Action",
+    text: "Antibody-drug conjugates (ADCs) combine monoclonal antibodies targeting tumor-specific antigens with cytotoxic payloads. Upon binding, ADCs are internalized, and lysosomal degradation releases the payload, causing DNA damage or microtubule disruption leading to apoptosis.",
+    cites: ["FDA ADC Guidance", "NCI ADC Review"]
+  },
+  {
+    id: "ONC-ADC-VS-CHEMO-002",
+    ta: "onc_md_decile10_io_adc_pathways",
+    topic: "ADC vs Traditional Chemotherapy",
+    text: "ADCs offer targeted delivery of cytotoxic agents, reducing systemic toxicity compared to traditional chemotherapy. While chemotherapy affects both healthy and cancerous cells, ADCs selectively target tumor cells expressing specific antigens, potentially improving therapeutic index.",
+    cites: ["ASCO ADC Guidelines", "Lancet Oncology ADC Meta-Analysis"]
+  },
+  {
+    id: "ONC-ADC-SAFETY-003",
+    ta: "onc_md_decile10_io_adc_pathways",
+    topic: "ADC Safety Profile",
+    text: "ADC toxicities include infusion reactions, peripheral neuropathy, myelosuppression, and organ-specific effects. Monitoring for liver function, cardiac toxicity, and ocular events is essential. Dose adjustments may be needed for hepatic impairment.",
+    cites: ["FDA ADC Safety Communications", "Oncologist ADC Toxicity Review"]
+  }
 ];
 
-// Finite State Machines per mode (5 modes total)
-// CAPS INCREASED TO PREVENT CUTOFF - Sales Sim needs room for 4-section format
+// Finite State Machines per mode
 const FSM = {
-  "sales-coach": {
-    states: { START: { capSentences: 30, next: "COACH" }, COACH: { capSentences: 30, next: "COACH" } },
+  "sales-simulation": {
+    states: { START: { capSentences: 5, next: "COACH" }, COACH: { capSentences: 6, next: "COACH" } },
     start: "START"
   },
   "role-play": {
-    states: { START: { capSentences: 12, next: "HCP" }, HCP: { capSentences: 12, next: "HCP" } },
-    start: "START"
-  },
-  "emotional-assessment": {
-    states: { START: { capSentences: 20, next: "EI" }, EI: { capSentences: 20, next: "EI" } },
-    start: "START"
-  },
-  "product-knowledge": {
-    states: { START: { capSentences: 20, next: "PK" }, PK: { capSentences: 20, next: "PK" } },
-    start: "START"
-  },
-  "general-knowledge": {
-    states: { START: { capSentences: 20, next: "GENERAL" }, GENERAL: { capSentences: 20, next: "GENERAL" } },
+    states: { START: { capSentences: 4, next: "HCP" }, HCP: { capSentences: 4, next: "HCP" } },
     start: "START"
   }
 };
@@ -301,12 +370,19 @@ function ok(body, headers = {}) {
   });
 }
 
-function json(body, status, env, req, extraHeaders = {}) {
-  const rid = req && typeof req.headers?.get === 'function' ? req.headers.get('x-req-id') : null;
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json", ...cors(env, req), ...(rid ? { "x-req-id": rid } : {}), ...extraHeaders }
-  });
+function json(body, status, env, req) {
+  try {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json", ...cors(env, req) }
+    });
+  } catch (e) {
+    console.error("json stringify error:", e);
+    return new Response('{"error":"response_error","message":"Failed to serialize response"}', {
+      status: 500,
+      headers: { "content-type": "application/json" }
+    });
+  }
 }
 
 async function readJson(req) {
@@ -318,54 +394,6 @@ async function readJson(req) {
 function capSentences(text, n) {
   const parts = String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
   return parts.slice(0, n).join(" ").trim();
-}
-
-// ───────────────────── Provider Key Rotation Utilities ──────────────────────
-function getProviderKeyPool(env) {
-  const pool = [];
-  // Comma / semicolon separated list
-  if (env.PROVIDER_KEYS) {
-    pool.push(
-      ...String(env.PROVIDER_KEYS)
-        .split(/[;,]/)
-        .map(s => s.trim())
-        .filter(Boolean)
-    );
-  }
-  // Enumerated keys PROVIDER_KEY_1..N
-  Object.keys(env)
-    .filter(k => /^PROVIDER_KEY_\d+$/.test(k))
-    .forEach(k => { if (env[k]) pool.push(String(env[k]).trim()); });
-  // GROQ naming schemes (legacy)
-  const groqCandidates = [
-    'GROQ_KEY_1', 'GROQ_KEY_2', 'GROQ_KEY_3', 'GROQ_KEY_4', 'GROQ_KEY_5',
-    'GROQ_API_KEY', 'GROQ_API_KEY_2', 'GROQ_API_KEY_3', 'GROQ_API_KEY_4', 'GROQ_API_KEY_5'
-  ];
-  groqCandidates.forEach(k => { if (env[k]) pool.push(String(env[k]).trim()); });
-  // Single key fallback (ensure uniqueness)
-  if (env.PROVIDER_KEY) {
-    const base = String(env.PROVIDER_KEY).trim();
-    if (base && !pool.includes(base)) pool.push(base);
-  }
-  return pool.filter(Boolean);
-}
-
-function hashString(str) {
-  // FNV-1a 32-bit
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = (h >>> 0) * 0x01000193;
-  }
-  return h >>> 0;
-}
-
-function selectProviderKey(env, session) {
-  const pool = getProviderKeyPool(env);
-  if (!pool.length) return null;
-  const sid = String(session || "anon");
-  const idx = hashString(sid) % pool.length;
-  return pool[idx];
 }
 
 function sanitizeLLM(s) {
@@ -401,56 +429,68 @@ function extractCoach(raw) {
   return { coach, clean: sanitizeLLM((head + " " + after).trim()) };
 }
 
-async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2, session = "anon", providerKey } = {}) {
-  {
-    const key = selectProviderKey(env, session);
-    if (!key) throw new Error("NO_PROVIDER_KEY");
+async function providerChat({ env, mode, messages, signal }) {
+  const keys = [env.PROVIDER_KEY, env.PROVIDER_KEY_2, env.PROVIDER_KEY_3].filter(Boolean);
+  const poolSize = keys.length;
+  if (poolSize === 0) return { ok: false, error: "No valid Groq keys configured.", provider: "groq" };
+  const keyIndex = Math.floor(Math.random() * poolSize);
+  const key = keys[keyIndex];
+  const hasKey = !!key;
 
-    const finalMax = Math.min(maxTokens, parseInt(env.MAX_TOKENS || "900", 10));
+  // Validate API key at runtime
+  if (!key || !key.startsWith("gsk_")) {
+    console.log("[GROQ-KEY-VALIDATION]", { index: keyIndex, valid: false });
+    return { ok: false, error: "Invalid API key format.", provider: "groq" };
+  }
+  console.log("[GROQ-KEY]", { index: keyIndex, poolSize, valid: true });
 
-    const body = JSON.stringify({
-      model: env.PROVIDER_MODEL,
-      temperature,
-      max_tokens: finalMax,
-      messages
-    });
+  const model = env.PROVIDER_MODEL;
+  const msgCount = messages.length;
 
-    const r = await fetch(env.PROVIDER_URL, {
+  console.log("[GROQ-REQ]", { mode, model, hasKey, poolSize, msgCount });
+
+  const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
+  const maxTokens = cap > 0 ? cap : 900;
+
+  console.log("[GROQ-FETCH-ATTEMPT]", { attempted: true });
+
+  try {
+    const res = await fetch(env.PROVIDER_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "authorization": `Bearer ${key}`
       },
-      body
+      body: JSON.stringify({
+        model: env.PROVIDER_MODEL,
+        temperature: 0.2,
+        max_tokens: maxTokens,
+        messages
+      }),
+      signal
     });
 
-    const text = await r.text();
+    const txt = await res.text();
+    console.log("[GROQ-RES]", { status: res.status, ok: res.ok, preview: txt.slice(0, 300) });
 
-    if (!r.ok) {
-      console.error({
-        event: "provider_error",
-        status: r.status,
-        body: text.slice(0, 500),
-        session
-      });
-      throw new Error("provider_error_" + r.status);
+    if (!res.ok) {
+      return { ok: false, error: `Groq error: status ${res.status}, body: ${txt.slice(0, 300)}`, provider: "groq" };
     }
 
     let j;
     try {
-      j = JSON.parse(text);
+      j = JSON.parse(txt);
     } catch (e) {
-      console.error({ event: "provider_json_parse_error", text: text.slice(0, 200) });
-      throw new Error("provider_invalid_json");
+      return { ok: false, error: `Groq JSON parse error: ${e.message}, body: ${txt.slice(0, 300)}`, provider: "groq" };
     }
 
-    const content = j?.choices?.[0]?.message?.content || j?.content;
-    if (!content) {
-      console.error({ event: "provider_empty_content", json: j });
-      throw new Error("provider_empty_content");
+    if (!j || !j.choices || !j.choices[0] || !j.choices[0].message || !j.choices[0].message.content) {
+      return { ok: false, error: `Groq invalid response: ${txt.slice(0, 300)}`, provider: "groq" };
     }
 
-    return content;
+    return { ok: true, content: j.choices[0].message.content, provider: "groq" };
+  } catch (e) {
+    return { ok: false, error: `Provider error: ${e.message}`, provider: "groq" };
   }
 }
 
@@ -493,25 +533,27 @@ async function postFacts(req, env) {
 async function postPlan(req, env) {
   try {
     const body = await readJson(req);
-    const { mode = "sales-coach", disease = "", persona = "", goal = "", topic = "" } = body || {};
+    const { mode = "sales-simulation", disease = "", persona = "", goal = "", topic = "" } = body || {};
 
     const factsRes = FACTS_DB.filter(f => {
-      const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
+      const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase() || mode === "product-knowledge";
       const tOk = !topic || f.topic?.toLowerCase().includes(String(topic).toLowerCase());
       return dOk && tOk;
     });
     const facts = factsRes.slice(0, 8);
-    if (env.REQUIRE_FACTS === "true" && facts.length === 0)
+    // Allow empty facts for product-knowledge mode (soft validation)
+    if (env.REQUIRE_FACTS === "true" && facts.length === 0 && mode !== "product-knowledge")
       return json({ error: "no_facts_for_request" }, 422, env, req);
 
     const plan = {
       planId: cryptoRandomId(),
       mode, disease, persona, goal,
       facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
-      fsm: FSM[mode] || FSM["sales-coach"]
+      fsm: FSM[mode] || FSM["sales-simulation"]
     };
 
-    const valid = Array.isArray(plan.facts) && plan.facts.length > 0 && typeof plan.mode === "string";
+    // Allow empty facts for product-knowledge mode
+    const valid = Array.isArray(plan.facts) && typeof plan.mode === "string" && (plan.facts.length > 0 || mode === "product-knowledge");
     if (!valid) return json({ error: "invalid_plan" }, 422, env, req);
 
     return json(plan, 200, env, req);
@@ -521,288 +563,23 @@ async function postPlan(req, env) {
   }
 }
 
-/* ------------------------------ Validators --------------------------------- */
-
-/**
- * validateModeResponse - Enforce mode-specific guardrails and clean responses
- * @param {string} mode - Current mode (sales-coach, role-play, emotional-assessment, product-knowledge)
- * @param {string} reply - AI response text
- * @param {object} coach - Coach metadata object
- * @returns {object} - { reply: cleanedReply, warnings: [...], violations: [...] }
- */
-function validateModeResponse(mode, reply, coach) {
-  let cleaned = reply;
-  const warnings = [];
-  const violations = [];
-
-  // ROLE-PLAY: Enforce HCP-only voice, NO coaching language
-  if (mode === "role-play") {
-    // Detect coaching leakage
-    const coachingPatterns = [
-      /Challenge:/i,
-      /Rep Approach:/i,
-      /Impact:/i,
-      /Suggested Phrasing:/i,
-      /Coach Guidance:/i,
-      /\bYou should have\b/i,
-      /\bThe rep\b/i,
-      /\bNext-Move Planner:/i
-    ];
-
-    for (const pattern of coachingPatterns) {
-      if (pattern.test(cleaned)) {
-        violations.push(`coaching_leak_detected: ${pattern.source}`);
-        // Strip from match point onward
-        cleaned = cleaned.split(pattern)[0].trim();
-      }
-    }
-
-    // Ensure HCP stays in first person
-    if (/\b(we evaluate|from my perspective|I think|I prioritize)/i.test(cleaned)) {
-      // This is actually GOOD for role-play - HCP should say this
-      warnings.push("hcp_first_person_detected_ok");
-    }
-  }
-
-  // SALES-COACH: Strict contract enforcement
-  if (mode === "sales-coach") {
-    // Detect HCP voice
-    const hcpVoicePatterns = [
-      /^I'm a (busy|difficult|engaged)/i,
-      /^From my clinic's perspective/i,
-      /^We don't have time for/i,
-      /^I've got a few minutes/i
-    ];
-    for (const pattern of hcpVoicePatterns) {
-      if (pattern.test(cleaned)) {
-        violations.push(`hcp_voice_in_sales_sim: ${pattern.source}`);
-      }
-    }
-    // Strictly enforce 4 headers in order
-    const headers = ["Challenge:", "Rep Approach:", "Impact:", "Suggested Phrasing:"];
-    let lastIdx = -1;
-    for (const h of headers) {
-      const idx = cleaned.indexOf(h);
-      if (idx < 0 || idx < lastIdx) {
-        violations.push(`missing_or_misordered_header:${h}`);
-      }
-      lastIdx = idx;
-    }
-    // Rep Approach: exactly 3 bullets
-    const repMatch = cleaned.match(/Rep Approach:[\s\S]*?(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(?=\n|\r|\r\n|Impact:)/);
-    if (!repMatch) violations.push("rep_approach_wrong_bullet_count");
-    // <coach> block
-    const coachMatch = cleaned.match(/<coach>\s*({[\s\S]+})\s*<\/coach>/);
-    if (!coachMatch) {
-      violations.push("missing_coach_block");
-    } else {
-      try {
-        const coachBlock = JSON.parse(coachMatch[1]);
-        const requiredMetrics = ["empathy","clarity","compliance","discovery","objection_handling","confidence","active_listening","adaptability","action_insight","resilience"];
-        for (const k of requiredMetrics) {
-          if (!coachBlock.scores || typeof coachBlock.scores[k] !== "number" || coachBlock.scores[k] < 1 || coachBlock.scores[k] > 5) {
-            violations.push(`missing_or_invalid_metric:${k}`);
-          }
-        }
-        const requiredKeys = ["scores","rationales","worked","improve","feedback","rubric_version"];
-        for (const k of requiredKeys) {
-          if (!(k in coachBlock)) {
-            violations.push(`missing_coach_key:${k}`);
-          }
-        }
-      } catch (e) {
-        violations.push("coach_json_parse_error");
-      }
-    }
-  }
-
-  // PRODUCT-KNOWLEDGE: Strict contract enforcement
-  if (mode === "product-knowledge") {
-    // At least one [n] citation
-    const citationMatch = cleaned.match(/\[\d+\]/);
-    if (!citationMatch) violations.push("missing_inline_citation");
-    // References section
-    const refMatch = cleaned.match(/References:\s*([\s\S]+)/);
-    if (!refMatch) {
-      violations.push("missing_references_section");
-    } else {
-      const refs = refMatch[1].split(/\n|\r|\r\n/).filter(l => /^\d+\. /.test(l));
-      if (refs.length === 0) violations.push("references_no_numbered_entries");
-      for (let i = 0; i < refs.length; i++) {
-        if (!cleaned.includes(`[${i + 1}]`)) violations.push(`missing_citation_for_reference_${i + 1}`);
-        if (!refs[i].match(/https?:\/\//)) violations.push(`reference_${i + 1}_missing_url`);
-      }
-    }
-    // No sales-coach headings or <coach>
-    if (/Challenge:|Rep Approach:|Impact:|Suggested Phrasing:|<coach>/i.test(cleaned)) {
-      violations.push("sales_coach_headings_or_coach_block_present");
-    }
-  }
-
-  // EMOTIONAL-ASSESSMENT: Verify Socratic questions
-  if (mode === "emotional-assessment") {
-    const questionCount = (cleaned.match(/\?/g) || []).length;
-    if (questionCount === 0) {
-      warnings.push("no_socratic_questions_detected");
-    } else if (questionCount >= 2) {
-      warnings.push(`socratic_questions_present: ${questionCount}`);
-    }
-  }
-
-  return { reply: cleaned, warnings, violations };
-}
-
-/**
- * validateCoachSchema - Ensure _coach object has required fields per mode
- */
-function validateCoachSchema(coach, mode) {
-  const requiredFields = {
-    "sales-coach": ["scores", "worked", "improve", "feedback"],
-    "emotional-assessment": ["scores"],
-    "product-knowledge": [],
-    "role-play": ["scores"]
-  };
-
-  const required = requiredFields[mode] || [];
-  const missing = required.filter(key => !(coach && key in coach));
-
-  return { valid: missing.length === 0, missing };
-}
-
-/* ------------------------------ Alora Site Assistant ----------------------- */
-async function handleAloraChat(body, env, req) {
-  // Alora payload: { role: 'alora', site: 'reflectivai', persona, site_context, message }
-  const message = body.message || "";
-  const siteContext = body.site_context || "";
-  const persona = body.persona || "You are Alora, a friendly and professional site assistant for ReflectivAI.";
-
-  // Build concise system prompt for Alora
-  const systemPrompt = `${persona}
-
-You answer questions about ReflectivAI's platform, features, emotional intelligence framework, simulations, analytics, pricing, and integrations.
-
-RESPONSE RULES:
-- Keep answers SHORT (2-4 sentences max)
-- Be friendly, conversational, and helpful
-- DO NOT use coaching format (no "Challenge:", "Rep Approach:", etc.)
-- DO NOT use numbered lists or bullet points unless absolutely necessary
-- Focus on direct, clear answers
-- If you don't know something from the context, suggest they request a demo or contact the team
-
-SITE CONTEXT:
-${siteContext.slice(0, 12000)}`;
-
-  try {
-    const key = selectProviderKey(env, "alora-" + cryptoRandomId());
-    if (!key) throw new Error("NO_PROVIDER_KEY");
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: message }
-    ];
-
-    const payload = {
-      model: env.PROVIDER_MODEL || "llama-3.1-8b-instant",
-      messages,
-      temperature: 0.7,
-      max_tokens: 200, // Keep Alora responses short
-      stream: false
-    };
-
-    const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!providerResp.ok) {
-      const errText = await providerResp.text();
-      console.error("alora_provider_error", { status: providerResp.status, error: errText });
-      throw new Error(`Provider error: ${providerResp.status}`);
-    }
-
-    const data = await providerResp.json();
-    const reply = data.choices?.[0]?.message?.content || "I'm having trouble responding right now. Please try again or contact our team.";
-
-    return json({ reply: reply.trim() }, 200, env, req);
-  } catch (e) {
-    console.error("alora_chat_error", { message: e.message, stack: e.stack });
-    return json({
-      error: "alora_error",
-      message: "Unable to process request",
-      reply: "I'm having trouble right now. You can still explore the Coach, view Platform modules, or request a demo."
-    }, 500, env, req);
-  }
-}
-
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
-      // ═══════════════════════════════════════════════════════════════════
-      // STRICT CONTRACT ENFORCEMENT & REPAIR FOR sales-coach/product-knowledge
-      // ═══════════════════════════════════════════════════════════════════
-      let contractViolations = [];
-      if (["sales-coach","product-knowledge"].includes(mode)) {
-        // Re-validate with strict contract
-        const strictValidation = validateModeResponse(mode, raw, coachObj);
-        contractViolations = strictValidation.violations;
-        if (contractViolations.length > 0) {
-          // Attempt one repair pass
-          let repairPrompt = "";
-          if (mode === "sales-coach") {
-            repairPrompt = `Repair the response to strictly match this contract: Four sections in order (Challenge, Rep Approach, Impact, Suggested Phrasing), Rep Approach with exactly 3 bullets, and a <coach>{...}</coach> JSON block with all required EI metrics and keys. No extra headings. No <coach> content in visible text.`;
-          } else if (mode === "product-knowledge") {
-            repairPrompt = `Repair the response to strictly match this contract: At least one inline citation [n] in the body, a References: section with numbered APA-like entries and URLs, and no sales-coach headings or <coach> block.`;
-          }
-          const repairMessages = [
-            { role: "system", content: repairPrompt },
-            { role: "user", content: user }
-          ];
-          try {
-            const repaired = await providerChat(env, repairMessages, { maxTokens: 900, temperature: 0.2, session });
-            // Re-validate
-            const repairValidation = validateModeResponse(mode, repaired, coachObj);
-            if (repairValidation.violations.length === 0) {
-              reply = repaired;
-            } else {
-              // If still invalid, return error object
-              return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
-            }
-          } catch (e) {
-            // If repair fails, return error object
-            return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
-          }
-        }
-      }
-  const reqStart = Date.now();
-  const reqId = req.headers.get("x-req-id") || cryptoRandomId();
-
   try {
-    // Defensive check: ensure at least one provider key is configured
-    const keyPool = getProviderKeyPool(env);
-    if (!keyPool.length) {
-      console.error("chat_error", { req_id: reqId, step: "config_check", message: "NO_PROVIDER_KEYS" });
-      return json({ error: "server_error", message: "No provider API keys configured" }, 500, env, req);
-    }
-
     const body = await readJson(req);
 
-    // Log request start
-    console.log({
-      event: "chat_request",
-      req_id: reqId,
-      mode: body.mode || "unknown",
-      has_plan: !!body.plan,
-      has_history: !!(body.history || body.messages),
-      disease: body.disease || null,
-      persona: body.persona || null
-    });
-
-    // Handle Alora site assistant separately - it needs concise, helpful answers, not coaching format
-    if (body.role === 'alora') {
-      return handleAloraChat(body, env, req);
+    // Defensive checks
+    if (!body || typeof body !== 'object') {
+      return { ok: false, error: "Invalid request body." };
+    }
+    if (body.messages && Array.isArray(body.messages)) {
+      if (body.messages.length === 0) {
+        return { ok: false, error: "Empty messages." };
+      }
+    } else {
+      if (!body.user && !body.messages) {
+        return { ok: false, error: "No user message provided." };
+      }
     }
 
     // Handle both payload formats:
@@ -816,7 +593,7 @@ async function postChat(req, env) {
       const lastUserMsg = msgs.filter(m => m.role === "user").pop();
       const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
 
-      mode = body.mode || "sales-coach";
+      mode = body.mode || "sales-simulation";
       user = lastUserMsg?.content || "";
       history = historyMsgs;
       disease = body.disease || "";
@@ -827,7 +604,7 @@ async function postChat(req, env) {
       session = body.session || "anon";
     } else {
       // ReflectivAI format
-      mode = body.mode || "sales-coach";
+      mode = body.mode || "sales-simulation";
       user = body.user;
       history = body.history || [];
       disease = body.disease || "";
@@ -842,418 +619,104 @@ async function postChat(req, env) {
     let activePlan = plan;
     if (!activePlan) {
       try {
-        // Generate plan directly without creating a fake Request
-        let factsRes = FACTS_DB.filter(f => {
-          const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
-          return dOk;
-        });
-
-        // Fallback: if no disease-specific facts, take first 8 from DB
-        // (some modes like product-knowledge, emotional-assessment don't require disease context)
-        if (factsRes.length === 0) {
-          factsRes = FACTS_DB.slice(0, 8);
-        }
-
-        const facts = factsRes.slice(0, 8);
-
-        activePlan = {
-          planId: cryptoRandomId(),
-          mode, disease, persona, goal,
-          facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
-          fsm: FSM[mode] || FSM["sales-coach"]
-        };
+        const r = await postPlan(new Request("http://x", { method: "POST", body: JSON.stringify({ mode, disease, persona, goal }) }), env);
+        activePlan = await r.json();
       } catch (e) {
         console.error("chat_error", { step: "plan_generation", message: e.message });
-        throw new Error("plan_generation_failed");
+        return { ok: false, error: "Plan generation failed." };
       }
     }
 
-    // Validate activePlan structure to avoid obscure crashes
-    // Allow empty facts array for modes that don't require product context
-    const requiresFacts = ["sales-coach", "role-play", "product-knowledge"].includes(mode);
-    if (!activePlan || !Array.isArray(activePlan.facts)) {
+    // Validate activePlan structure to avoid obscure crashes - but allow empty facts for relaxed modes
+    if (!activePlan || typeof activePlan !== 'object') {
       console.error("chat_error", { step: "plan_validation", message: "invalid_plan_structure", activePlan });
-      throw new Error("invalid_plan_structure");
+      return { ok: false, error: "Invalid plan structure." };
     }
-    if (requiresFacts && activePlan.facts.length === 0) {
-      console.error("chat_error", { step: "plan_validation", message: "no_facts_for_mode", mode, disease });
-      throw new Error("no_facts_for_mode");
+    // Allow empty facts for EI and General Assistant modes
+    if (!Array.isArray(activePlan.facts)) {
+      activePlan.facts = [];
     }
 
-    // Provider prompts with format hardening
+    // For product-knowledge mode, if no facts available, return a default fallback response
+    if (mode === "product-knowledge" && activePlan.facts.length === 0) {
+      const fallbackReply = "I'm sorry, but I don't have specific product knowledge information available for this query at the moment. Please provide more details or try a different therapeutic area.";
+      return json({ reply: fallbackReply, plan: { id: planId || activePlan.planId } }, 200, env, req);
+    }
+
+    // Provider prompts
     const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
-    // Handle both citation formats: {text, url} objects and plain strings
-    const citesStr = activePlan.facts
-      .flatMap(f => f.cites || [])
-      .slice(0, 6)
-      .map(c => {
-        if (typeof c === 'object' && c.text) {
-          return `- ${c.text}${c.url ? ` (${c.url})` : ''}`;
-        }
-        return `- ${c}`;
-      })
-      .join("\n");
+    const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
 
-    // Mode-specific contracts - ENTERPRISE PHARMA FORMATTING
-    const salesContract = `
-RESPONSE FORMAT (MANDATORY - MUST INCLUDE ALL 4 SECTIONS):
+    const salesCoachContract = `
+CRITICAL FORMAT CONTRACT — FOLLOW EXACTLY:
 
-Challenge: [ONE SENTENCE describing the HCP's concern, barrier, or knowledge gap - 15-25 words]
+Return your answer in EXACTLY these 4 sections, in this order, nothing else:
+
+Challenge: <one concise sentence summarizing the HCP or access challenge>
 
 Rep Approach:
-• [BULLET 1: Specific clinical discussion point with full context - Include "as recommended..." or "as indicated..." phrasing - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
-• [BULLET 2: Supporting strategy with rationale - Include contextual phrases like "for PrEP" or "in the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
-• [BULLET 3: Safety/monitoring consideration with clinical detail - Include phrases like "to ensure..." or "per the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
-[EXACTLY 3 BULLETS - NO MORE, NO LESS]
+• <tactical coaching bullet 1>
+• <tactical coaching bullet 2>
+• <tactical coaching bullet 3>
 
-Impact: [ONE SENTENCE describing expected outcome - 20-35 words - Connect back to Challenge]
+Impact: <one sentence on the expected outcome or value to the HCP/patient>
 
-Suggested Phrasing: "[EXACT words rep should say - Conversational, professional tone - 25-40 words total - Include key clinical points]"
+Suggested Phrasing: "<2–4 sentence sample script, all inside one quoted block>"
 
-CRITICAL ANTI-REPETITION RULES:
-- RETURN EACH SECTION EXACTLY ONCE - DO NOT REPEAT ANY SECTION
-- DO NOT ECHO THE FORMAT TEMPLATE MULTIPLE TIMES
-- DO NOT DUPLICATE CONTENT ACROSS SECTIONS
-- IF YOU FIND YOURSELF STARTING TO REPEAT "Challenge:" OR "Rep Approach:" - STOP IMMEDIATELY
+HARD RULES:
 
-BULLET WRITING REQUIREMENTS:
-- Include full context phrases: "as recommended for...", "as indicated in the FDA label...", "per the label...", "to ensure..."
-- Make each bullet clinically substantial - don't abbreviate
-- Connect action to outcome (e.g., "to identify individuals at substantial risk")
-- Reference specific clinical guidelines or label language
-- Each bullet should be 20-35 words (NOT the old 25 word max)
+Start each section on its own line with the exact labels above, including the colon.
 
-EXAMPLE (follow this detailed style):
-Challenge: The HCP may not be prioritizing PrEP prescriptions due to lack of awareness about the substantial risk of HIV in certain patient populations.
+Do NOT add any other headings or sections.
 
-Rep Approach:
-• Discuss the importance of assessing sexual and injection risk factors to identify individuals at substantial risk of HIV, as recommended for PrEP eligibility [HIV-PREP-ELIG-001].
-• Highlight the efficacy and safety profile of Descovy (emtricitabine/tenofovir alafenamide) for PrEP, excluding receptive vaginal sex, as indicated in the FDA label [HIV-PREP-TAF-002].
-• Emphasize the need for renal function assessment before and during PrEP, considering eGFR thresholds per the FDA label, to ensure safe prescribing practices [HIV-PREP-SAFETY-003].
+Do NOT wrap the whole answer in markdown code fences.
 
-Impact: By emphasizing the importance of risk assessment, the benefits of Descovy for PrEP, and the need for renal function monitoring, the HCP will be more likely to prioritize PrEP prescriptions for at-risk patients and commit to proactive Descovy prescribing.
+Do NOT preface with explanations. Start directly with "Challenge:" on the first line.
 
-Suggested Phrasing: "Given the substantial risk of HIV in certain patient populations, I recommend we discuss how to identify and assess these individuals for PrEP eligibility, and consider Descovy as a safe and effective option."
+Rep Approach MUST have exactly 3 bullets, each starting with •.
+`.trim();
 
-Then append deterministic EI scoring:
-<coach>{
-  "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
-  "rationales":{"empathy":"...","clarity":"...","compliance":"...","discovery":"...","objection_handling":"...","confidence":"...","active_listening":"...","adaptability":"...","action_insight":"...","resilience":"..."},
-  "tips":["Tip 1","Tip 2","Tip 3"],
-  "rubric_version":"v2.0"
-}</coach>
-
-CRITICAL: Use ONLY the provided Facts context when making claims. NO fabricated references or citations.`.trim();
-
-    const commonContract = `
-Return exactly two parts. No code blocks or headings.
-
-1) Sales Guidance: short, accurate, label-aligned guidance (3–5 sentences) and a "Suggested Phrasing:" single-sentence line.
-2) <coach>{
-  "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
-  "worked":["…"],"improve":["…"],"phrasing":"…","feedback":"…",
-  "context":{"rep_question":"...","hcp_reply":"..."}
-}</coach>
-
-CRITICAL: Base all claims on the provided Facts context. NO fabricated citations.`.trim();
-
-    // Enhanced prompts for format hardening
-    const salesCoachPrompt = [
-      `You are the ReflectivAI Sales Coach. You MUST follow the exact 4-section format below.`,
-      `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-      `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-      ``,
-      `MANDATORY FORMAT - YOU MUST RETURN EXACTLY THIS STRUCTURE:`,
-      ``,
-      `Challenge: [one sentence describing HCP's barrier]`,
-      ``,
-      `Rep Approach:`,
-      `• [clinical point with reference [FACT-ID]]`,
-      `• [supporting strategy with reference [FACT-ID]]`,
-      `• [safety consideration with reference [FACT-ID]]`,
-      ``,
-      `Impact: [expected outcome connecting back to Challenge]`,
-      ``,
-      `Suggested Phrasing: "[exact words rep should say]"`,
-      ``,
-      `<coach>{...EI scores...}</coach>`,
-      ``,
-      `DO NOT deviate from this format. DO NOT add extra sections. DO NOT skip sections.`,
-      salesContract
-    ].join("\n");
-
-    const rolePlayPrompt = [
-      `ROLE PLAY MODE (HCP ONLY)`,
-      ``,
-      `You are the healthcare professional (HCP). Speak ONLY as this HCP in first person. Do NOT describe, evaluate, coach, or analyze the sales representative. Stay entirely in character.`,
-      ``,
-      `Context: Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
-      `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
-      ``,
-      `STYLE REQUIREMENTS:`,
-      `- 1–4 sentences OR a brief clinical bullet list when listing steps, criteria, monitoring, differentials.`,
-      `- Bullets ONLY for clinical lists (risk factors, monitoring steps, treatment options).`,
-      `- Professional tone: concise, evidence-grounded, time-aware.`,
-      `- Warm but efficient greetings are acceptable once, then pivot to clinical substance.`,
-      ``,
-      `ABSOLUTE BANS (NEVER OUTPUT):`,
-      `- Any <coach>...</coach> JSON or scoring block.`,
-      `- The words: Sales Coach, Challenge:, Rep Approach:, Impact:, Suggested Phrasing:, Next-Move Planner:, Risk Flags:.`,
-      `- Coaching, evaluation, scoring, rubric language, meta commentary about the rep or conversation quality.`,
-      `- Directions to the rep like "You should" / "The rep should" / "Your approach".`,
-      `- Discussion of internal instructions, modes, prompts, or system rules.`,
-      ``,
-      `IF ASKED FOR COACHING OR META ANALYSIS: Ignore the request and instead give a normal HCP clinical reply consistent with persona & facts.`,
-      ``,
-      `IF ASKED FOR OFF-LABEL INFO: Provide a concise professional refusal and redirect to approved (on-label) considerations if appropriate.`,
-      ``,
-      `OUTPUT FORMAT:`,
-      `Return ONLY the HCP's reply text. No headings, no role labels, no JSON, no <coach> tags.`,
-      ``,
-      `EXAMPLES (DO NOT REPEAT VERBATIM):`,
-      `"We assess high-risk patients by reviewing history, behaviors, and adherence patterns."`,
-      `"• Baseline renal function • Adherence review • Risk behavior screening"`,
-      `"I have a couple minutes; focus on what impacts renal monitoring, please."`,
-      ``,
-      `FINAL REMINDER: Produce ONLY valid HCP speech complying with bans. If the model would have produced disallowed content, silently omit it rather than explaining why.`
-    ].join("\n");
-
-    const eiPrompt = [
-      `You are Reflectiv Coach in Emotional Intelligence mode.`,
-      ``,
-      `HCP Type: ${persona || "—"}; Disease context: ${disease || "—"}.`,
-      ``,
-      `MISSION: Help the rep develop emotional intelligence through reflective practice based on about-ei.md framework.`,
-      ``,
-      `FOCUS AREAS (CASEL SEL Competencies):`,
-      `- Self-Awareness: Recognizing emotions, triggers, communication patterns`,
-      `- Self-Regulation: Managing stress, tone, composure under pressure`,
-      `- Empathy/Social Awareness: Acknowledging HCP perspective, validating concerns`,
-      `- Clarity: Concise messaging without jargon`,
-      `- Relationship Skills: Building rapport, navigating disagreement`,
-      `- Responsible Decision-Making/Compliance: Balancing empathy with ethical boundaries`,
-      ``,
-      `TRIPLE-LOOP REFLECTION ARCHITECTURE:`,
-      `Loop 1 (Task Outcome): Did they accomplish the communication objective?`,
-      `Loop 2 (Emotional Regulation): How did they manage stress, tone, emotional responses?`,
-      `Loop 3 (Mindset Reframing): What beliefs or patterns should change for future conversations?`,
-      ``,
-      `USE SOCRATIC METACOACH PROMPTS:`,
-      `Self-Awareness: "What did you notice about your tone just now?" "What emotion are you holding as you plan your next response?"`,
-      `Perspective-Taking: "How might the HCP have perceived your last statement?" "What might be driving the HCP's resistance?"`,
-      `Pattern Recognition: "What do you notice about how you respond when someone challenges your evidence?"`,
-      `Reframing: "What assumption did you hold about this HCP that shaped your approach?" "If objections are requests for clarity, how would you rephrase?"`,
-      `Regulation: "Where do you feel tension when hearing that objection?" "What would change if you paused for two seconds before responding?"`,
-      ``,
-      `OUTPUT STYLE:`,
-      `- 2-4 short paragraphs of guidance (max 350 words)`,
-      `- Include 1-2 Socratic questions to deepen metacognition`,
-      `- Reference Triple-Loop Reflection when relevant`,
-      `- Model empathy and warmth in your coaching tone`,
-      `- CRITICAL: End with a reflective question that ends with '?' - your final sentence MUST be a Socratic question.`,
-      ``,
-      `DO NOT:`,
-      `- Role-play as HCP`,
-      `- Provide sales coaching or product info`,
-      `- Include coach scores or rubrics`,
-      `- Use structured Challenge/Rep Approach format`
-    ].join("\n");
-
-    const pkPrompt = [
-      `You are ReflectivAI, an advanced AI knowledge partner for life sciences professionals.`,
-      ``,
-      `CORE IDENTITY:`,
-      `You are a highly knowledgeable, scientifically rigorous assistant trained to answer questions across:`,
-      `- Disease states, pathophysiology, and clinical management`,
-      `- Pharmacology, mechanisms of action, and therapeutic approaches`,
-      `- Clinical trials, evidence-based medicine, and guidelines`,
-      `- Life sciences topics: biotechnology, drug development, regulatory affairs`,
-      `- General knowledge: business, strategy, technology, healthcare trends`,
-      `- Anything a thoughtful AI assistant could help with`,
-      ``,
-      `CONVERSATION STYLE:`,
-      `- Comprehensive yet accessible - explain complex topics clearly`,
-      `- Balanced - present multiple perspectives when appropriate`,
-      `- Evidence-based - cite sources when making scientific claims`,
-      `- Helpful - anticipate follow-up questions and offer relevant insights`,
-      `- Professional - maintain scientific accuracy while being engaging`,
-      ``,
-      `RESPONSE STRUCTURE (flexible based on question):`,
-      ``,
-      `**For scientific/medical questions:**`,
-      `- Clear, structured explanations (use headers, bullets, or paragraphs as appropriate)`,
-      `- Clinical context and relevance`,
-      `- Evidence citations [1], [2] when available`,
-      `- Practical implications for HCPs or patients`,
-      `- Acknowledge uncertainties or limitations in evidence`,
-      ``,
-      `**For general questions:**`,
-      `- Direct, helpful answers`,
-      `- Context and background as needed`,
-      `- Multiple perspectives or approaches when relevant`,
-      ``,
-      `AVAILABLE CONTEXT:`,
-      `${disease ? `Disease Focus: ${disease}` : ''}`,
-      `${persona ? `HCP Context: ${persona}` : ''}`,
-      `${factsStr ? `\nRelevant Facts:\n${factsStr}` : ''}`,
-      `${citesStr ? `\nReferences:\n${citesStr}` : ''}`,
-      ``,
-      `COMPLIANCE & QUALITY STANDARDS:`,
-      `- Distinguish clearly between on-label and off-label information`,
-      `- Present risks, contraindications, and safety considerations alongside benefits`,
-      `- Recommend consulting official sources (FDA labels, guidelines) for prescribing decisions`,
-      `- Use [numbered citations] for clinical claims when references are available`,
-      `- If asked about something outside your knowledge, acknowledge limitations`,
-      ``,
-      `EXAMPLE INTERACTIONS:`,
-      ``,
-      `Q: "What are the 5 key facts I need to know about this disease state?"`,
-      `A: Here are 5 essential points about [disease]:`,
-      `1. **Epidemiology:** [prevalence, key populations affected]`,
-      `2. **Pathophysiology:** [disease mechanism, biological basis]`,
-      `3. **Clinical Presentation:** [symptoms, diagnostic criteria]`,
-      `4. **Current Standard of Care:** [first-line treatments, guidelines]`,
-      `5. **Emerging Approaches:** [new therapies, ongoing research]`,
-      ``,
-      `Q: "How should I approach a busy PCP about this therapy?"`,
-      `A: When engaging busy PCPs, focus on:`,
-      `- **Time efficiency:** Lead with the single most relevant data point`,
-      `- **Practice relevance:** Connect to their patient population and workflow`,
-      `- **Evidence:** Brief reference to key trial or guideline`,
-      `- **Action:** One clear next step (trial offer, patient identification, etc.)`,
-      ``,
-      `PCPs appreciate concise, practice-applicable information that respects their time constraints while addressing real clinical needs.`,
-      ``,
-      `Q: "Explain the mechanism of action"`,
-      `A: [Detailed, clear explanation of MOA with appropriate technical depth, clinical relevance, and how it translates to therapeutic benefit]`,
-      ``,
-      `RESPONSE LENGTH:`,
-      `- Short questions: 100-200 words`,
-      `- Complex topics: 300-600 words`,
-      `- Very complex or multi-part questions: up to 800 words`,
-      `- Always prioritize clarity over brevity`,
-      ``,
-      `YOUR GOAL: Be the most helpful, knowledgeable, and trustworthy AI thought partner possible.`
-    ].join("\n");
-
-    const generalKnowledgePrompt = [
-      `You are ReflectivAI General Assistant - a helpful, knowledgeable AI that can discuss ANY topic.`,
-      ``,
-      `CORE CAPABILITIES:`,
-      `You can answer questions on ANY subject, including but not limited to:`,
-      `- Science & Medicine: disease states, biology, chemistry, physics`,
-      `- Technology: AI, software, hardware, emerging tech`,
-      `- Business: strategy, management, economics, finance`,
-      `- Arts & Humanities: history, literature, philosophy, culture`,
-      `- Current Events: news, trends, social topics`,
-      `- Practical Knowledge: how-to guides, advice, explanations`,
-      `- Creative Topics: writing, design, problem-solving`,
-      ``,
-      `You are NOT limited to life sciences or pharma topics. Answer anything the user asks with helpfulness and accuracy.`,
-      ``,
-      `CONVERSATION STYLE:`,
-      `- **Comprehensive yet concise:** Provide thorough answers without unnecessary verbosity`,
-      `- **Well-structured:** Use headers (##, ###), bullets, numbered lists, or paragraphs as appropriate`,
-      `- **Clear & accessible:** Explain complex topics in understandable language`,
-      `- **Balanced:** Present multiple perspectives when relevant`,
-      `- **Evidence-based:** Reference sources for factual claims when possible`,
-      `- **Engaging:** Maintain a friendly, professional tone`,
-      `- **Helpful:** Anticipate follow-up questions and offer related insights`,
-      ``,
-      `CRITICAL FORMATTING RULES:`,
-      `- Put each numbered item on a NEW LINE (1. First item\\n2. Second item)`,
-      `- Put each bullet point on a NEW LINE (- Bullet one\\n- Bullet two)`,
-      `- Use proper markdown syntax with line breaks between list items`,
-      `- DO NOT write inline lists like "1. First - sub - sub 2. Second"`,
-      `- DO NOT put bullets in the middle of sentences`,
-      `- Lists must have each item on its own line`,
-      ``,
-      `RESPONSE STRUCTURE:`,
-      ``,
-      `**For factual questions:**`,
-      `- Direct answer upfront`,
-      `- Supporting context and details`,
-      `- Examples when helpful`,
-      `- Related information or considerations`,
-      ``,
-      `**For complex topics:**`,
-      `- Brief overview/definition`,
-      `- Key concepts broken down with headers or bullets`,
-      `- Practical implications or examples`,
-      `- Acknowledgment of nuances or uncertainties`,
-      ``,
-      `**For how-to or advice questions:**`,
-      `- Step-by-step guidance or structured recommendations`,
-      `- Rationale for each point`,
-      `- Common pitfalls to avoid`,
-      `- Alternative approaches when relevant`,
-      ``,
-      `RESPONSE LENGTH GUIDELINES:`,
-      `- Simple factual questions: 50-150 words`,
-      `- Standard questions: 200-400 words`,
-      `- Complex or multi-part questions: 400-700 words`,
-      `- Very complex topics requiring depth: up to 900 words`,
-      ``,
-      `QUALITY STANDARDS:`,
-      `- Accuracy: Provide correct, up-to-date information`,
-      `- Clarity: Avoid jargon unless necessary; define technical terms`,
-      `- Completeness: Address all parts of multi-part questions`,
-      `- Honesty: Acknowledge limitations in knowledge or uncertainty`,
-      `- Relevance: Stay focused on what the user asked`,
-      ``,
-      `EXAMPLE INTERACTIONS:`,
-      ``,
-      `Q: "What is the capital of France?"`,
-      `A: The capital of France is **Paris**.`,
-      ``,
-      `Paris has been France's capital since 987 CE and is located in the north-central part of the country along the Seine River. It's not only France's political center but also its cultural, economic, and artistic heart.`,
-      ``,
-      `Key facts:`,
-      `- Population: ~2.2 million in the city, ~12 million in the metro area`,
-      `- Known as "The City of Light" (La Ville Lumière)`,
-      `- Home to iconic landmarks: Eiffel Tower, Louvre, Notre-Dame, Arc de Triomphe`,
-      ``,
-      `Q: "Explain quantum computing"`,
-      `A: Quantum computing is a revolutionary approach to computation that leverages quantum mechanics to process information differently than classical computers.`,
-      ``,
-      `**Core Concepts:**`,
-      `- **Qubits vs Bits:** Classical computers use bits (0 or 1). Quantum computers use qubits, which can be in superposition (0 AND 1 simultaneously)`,
-      `- **Superposition:** Enables parallel processing of multiple states`,
-      `- **Entanglement:** Qubits can be linked; measuring one affects others instantly`,
-      `- **Interference:** Amplifies correct answers, cancels wrong ones`,
-      ``,
-      `**Advantages:**`,
-      `Quantum computers excel at specific problems:`,
-      `- Cryptography (breaking/creating encryption)`,
-      `- Drug discovery (molecular simulations)`,
-      `- Optimization (logistics, finance)`,
-      `- Machine learning (pattern recognition)`,
-      ``,
-      `**Current Status:**`,
-      `We're in early stages - working prototypes exist (IBM, Google, Microsoft) but face challenges:`,
-      `- Extreme fragility (requires near absolute-zero temperatures)`,
-      `- High error rates`,
-      `- Limited qubits available (50-1000 today; millions needed)`,
-      ``,
-      `Think of it as the 1950s of classical computing - revolutionary potential, but decades from mainstream use.`,
-      ``,
-      `YOUR MISSION: Be the most helpful, versatile, and knowledgeable AI assistant possible. Answer any question with accuracy, clarity, and genuine helpfulness.`
-    ].join("\n");
-
-    // Select prompt based on mode
     let sys;
     if (mode === "role-play") {
-      sys = rolePlayPrompt;
-    } else if (mode === "sales-coach") {
-      sys = salesCoachPrompt;
-    } else if (mode === "emotional-assessment") {
-      sys = eiPrompt;
+      sys = [
+        `You are the HCP. First-person only. No coaching. No lists. No "<coach>".`,
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        `Speak concisely.`,
+        `CRITICAL: In every turn, and especially in later turns, YOU MUST speak strictly as the HCP in first person (I, me, my) and NEVER speak as the rep or coach.`
+      ].join("\n");
     } else if (mode === "product-knowledge") {
-      sys = pkPrompt;
+      sys = [
+        `You are a medical expert providing product knowledge. Be accurate and cite sources when possible.`,
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        `Provide clear, evidence-based information.`
+      ].join("\n");
+    } else if (mode === "sales-coach") {
+      sys = [
+        `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
+        `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+        `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
+        salesCoachContract
+      ].join("\n");
+    } else if (mode === "emotional-assessment") {
+      sys = [
+        `You are Reflectiv Coach, helping users develop emotional intelligence.`,
+        `Focus on recognizing emotions, perspective-taking, and self-reflection.`,
+        `ALWAYS respond helpfully and END EVERY RESPONSE with a reflective question that starts the user thinking deeper.`,
+        `CRITICAL: Your response MUST end with a question mark (?) to encourage reflection.`
+      ].join("\n");
     } else if (mode === "general-knowledge") {
-      sys = generalKnowledgePrompt;
+      sys = [
+        `You are a helpful AI assistant.`,
+        `Provide informative responses to general questions.`
+      ].join("\n");
     } else {
-      sys = salesCoachPrompt; // default fallback
+      // Fallback for unknown modes
+      sys = [
+        `You are a helpful AI assistant.`,
+        `Provide informative responses.`
+      ].join("\n");
     }
 
     const messages = [
@@ -1262,154 +725,34 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       { role: "user", content: String(user || "") }
     ];
 
-    // Provider call with retry and mode-specific token allocation
+    // Provider call with retry
     let raw = "";
     for (let i = 0; i < 3; i++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
       try {
-        // Token allocation prioritization
-        let maxTokens;
-        if (mode === "sales-coach") {
-          maxTokens = 1600; // Increased to ensure all 4 sections complete (including Suggested Phrasing)
-        } else if (mode === "role-play") {
-          maxTokens = 1200; // Higher for natural conversation flow
-        } else if (mode === "emotional-assessment") {
-          maxTokens = 1200; // Comprehensive EI coaching with reflective questions
-        } else if (mode === "product-knowledge") {
-          maxTokens = 1800; // HIGH - comprehensive AI assistant responses (like ChatGPT)
-        } else if (mode === "general-knowledge") {
-          maxTokens = 1800; // HIGH - comprehensive general knowledge responses
+        const result = await providerChat({ env, mode, messages, signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (result.ok) {
+          raw = result.content;
+          break;
         } else {
-          maxTokens = 900; // Default
+          console.error("Provider error:", result.error);
         }
-
-        raw = await providerChat(env, messages, {
-          maxTokens,
-          temperature: 0.2,
-          session
-        });
-        if (raw) break;
       } catch (e) {
+        clearTimeout(timeoutId);
         console.error("chat_error", { step: "provider_call", attempt: i + 1, message: e.message });
-        if (i === 2) throw e;
         await new Promise(r => setTimeout(r, 300 * (i + 1)));
       }
+    }
+
+    if (!raw) {
+      return { ok: false, error: "Provider failed after 3 attempts" };
     }
 
     // Extract coach and clean text
     const { coach, clean } = extractCoach(raw);
     let reply = clean;
-
-    // SAFETY: Ensure NO <coach> blocks remain in reply (even if extraction failed)
-    reply = reply.replace(/<coach>[\s\S]*?<\/coach>/gi, '').trim();
-
-    // Role-play: honor optional XML wrapper if produced
-    if (mode === "role-play") {
-      const role = (raw.match(/<role>(.*?)<\/role>/is) || [])[1]?.trim();
-      const content = (raw.match(/<content>([\s\S]*?)<\/content>/i) || [])[1]?.trim();
-      if (role && role.toLowerCase() === "hcp" && content) {
-        reply = sanitizeLLM(content);
-      }
-    }
-
-    // Post-processing: Strip unwanted formatting for role-play mode
-    if (mode === "role-play") {
-      // Harden cleanup for Role Play: purge ANY leaked coaching / scoring / headings / JSON remnants
-      // Double-strip any coach blocks (should already be gone earlier)
-      reply = reply.replace(/<coach>[\s\S]*?<\/coach>/gi, '').trim();
-
-      // Remove known leaked headings / meta labels
-      const headingPatterns = [
-        /(^|\n)[\s]*Suggested Phrasing:\s*/gmi,
-        /(^|\n)[\s]*Coach Guidance:\s*/gmi,
-        /(^|\n)[\s]*Challenge:\s*/gmi,
-        /(^|\n)[\s]*Rep Approach:\s*/gmi,
-        /(^|\n)[\s]*Impact:\s*/gmi,
-        /(^|\n)[\s]*Next-Move Planner:\s*/gmi,
-        /(^|\n)[\s]*Risk Flags:\s*/gmi,
-        /Sales Coach/gi
-      ];
-      headingPatterns.forEach(r => { reply = reply.replace(r, ''); });
-
-      // Remove any leaked scoring / rubric JSON fragments without breaking legitimate clinical braces in rare cases
-      reply = reply
-        .replace(/"scores"\s*:\s*\{[\s\S]*?\}/gi, '')
-        .replace(/"rubric_version"\s*:\s*"[^"]*"/gi, '')
-        .replace(/"worked"\s*:\s*\[[\s\S]*?\]/gi, '')
-        .replace(/"improve"\s*:\s*\[[\s\S]*?\]/gi, '')
-        .replace(/"phrasing"\s*:\s*"[^"]*"/gi, '')
-        .replace(/"feedback"\s*:\s*"[^"]*"/gi, '')
-        .replace(/"context"\s*:\s*\{[\s\S]*?\}/gi, '');
-
-      // Strip stray standalone JSON structural characters leftover on isolated lines
-      reply = reply.replace(/^[\s]*[\{\}\[\]]+[\s]*$/gm, '').trim();
-
-      // Final pass: if any banned tokens remain, remove again (defensive)
-      const bannedTokens = [/Sales Coach/gi, /Suggested Phrasing:/gi, /Rep Approach:/gi, /Impact:/gi, /Challenge:/gi];
-      bannedTokens.forEach(t => { reply = reply.replace(t, ''); });
-
-      // Preserve clinical bullets (•, -, *) but normalize excessive spacing
-      reply = reply.replace(/[\t ]+•/g, ' •').replace(/\n{3,}/g, '\n\n').trim();
-    }
-
-    // Post-processing: Normalize headings and ENFORCE FORMAT for sales-coach mode
-    if (mode === "sales-coach") {
-      // CRITICAL SAFETY: Remove ANY remaining <coach> blocks (shouldn't be here, but enforce it)
-      reply = reply.replace(/<coach>[\s\S]*?<\/coach>/gi, '').trim();
-
-      reply = reply
-        .replace(/Coach [Gg]uidance:/g, 'Challenge:')
-        .replace(/Next[- ]?[Mm]ove [Pp]lanner:/g, 'Rep Approach:')
-        .replace(/Risk [Ff]lags:/g, 'Impact:')
-        .replace(/Suggested [Pp]hrasing:/g, 'Suggested Phrasing:')
-        .replace(/Rubric [Jj][Ss][Oo][Nn]:/g, '');
-
-      // ENTERPRISE FORMATTING VALIDATION - Enforce exactly 1 Challenge, 3 bullets, 1 Impact, 1 Phrasing
-      const hasChallenge = /Challenge:/i.test(reply);
-      const hasRepApproach = /Rep Approach:/i.test(reply);
-      const hasImpact = /Impact:/i.test(reply);
-      const hasSuggested = /Suggested Phrasing:/i.test(reply);
-
-      // Count bullets in Rep Approach section
-      const repMatch = reply.match(/Rep Approach:(.*?)(?=Impact:|Suggested Phrasing:|$)/is);
-      const bulletCount = repMatch ? (repMatch[1].match(/•/g) || []).length : 0;
-
-      // Validation warnings (log for monitoring, don't block)
-      if (!hasChallenge || !hasRepApproach || !hasImpact || !hasSuggested) {
-        console.warn("sales_simulation_format_incomplete", {
-          has_challenge: hasChallenge,
-          has_rep_approach: hasRepApproach,
-          has_impact: hasImpact,
-          has_suggested: hasSuggested,
-          bullet_count: bulletCount
-        });
-      }
-
-      // Force-add Suggested Phrasing if missing (model consistently cuts off after Impact)
-      if (!hasSuggested) {
-        const repText = repMatch ? repMatch[1] : '';
-        let phrasing = `"Would you like to discuss how this approach fits your practice?"`;
-
-        if (repText.includes('assess') || repText.includes('eligibility')) {
-          phrasing = `"Can we review patient eligibility criteria together?"`;
-        } else if (repText.includes('renal') || repText.includes('monitor')) {
-          phrasing = `"Let's confirm the monitoring protocol that works for your workflow."`;
-        } else if (repText.includes('adherence') || repText.includes('follow-up')) {
-          phrasing = `"How do you currently support adherence in your at-risk population?"`;
-        }
-
-        reply += `\n\nSuggested Phrasing: ${phrasing}`;
-      }
-
-      // Enforce exactly 3 bullets if Rep Approach exists but has wrong count
-      if (hasRepApproach && bulletCount !== 3 && repMatch) {
-        const bullets = repMatch[1].split(/\n/).filter(l => l.includes('•')).slice(0, 3);
-        while (bullets.length < 3) {
-          bullets.push(`• Reinforce evidence-based approach`);
-        }
-        const newRepSection = `Rep Approach:\n${bullets.join('\n')}`;
-        reply = reply.replace(/Rep Approach:.*?(?=Impact:|Suggested Phrasing:|$)/is, newRepSection + '\n\n');
-      }
-    }
 
     // Mid-sentence cut-off guard + one-pass auto-continue
     const cutOff = (t) => {
@@ -1422,15 +765,24 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         { role: "assistant", content: reply },
         { role: "user", content: "Continue the same answer. Finish in 1–2 sentences. No new sections." }
       ];
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       try {
-        const contRaw = await providerChat(env, contMsgs, { maxTokens: 180, temperature: 0.2, session });
-        const contClean = sanitizeLLM(contRaw || "");
-        if (contClean) reply = (reply + " " + contClean).trim();
-      } catch (_) { }
+        const result = await providerChat({ env, mode, messages: contMsgs, signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (result.ok) {
+          const contClean = sanitizeLLM(result.content);
+          if (contClean) reply = (reply + " " + contClean).trim();
+        }
+      } catch (e) {
+        clearTimeout(timeoutId);
+        console.error("chat_error", { step: "continuation", message: e.message });
+        // Continue with original reply if continuation fails
+      }
     }
 
     // FSM clamps
-    const fsm = FSM[mode] || FSM["sales-coach"];
+    const fsm = FSM[mode] || FSM["sales-simulation"];
     const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
     reply = capSentences(reply, cap);
 
@@ -1447,13 +799,17 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     state.lastNorm = norm(reply);
     await seqPut(env, session, state);
 
-    // EI Mode: Enforce final question mark
-    if (mode === "emotional-assessment") {
-      const trimmedReply = reply.trim();
-      if (trimmedReply.length > 0 && !trimmedReply.endsWith("?")) {
-        // Add a reflective question to ensure response ends with ?
-        reply = trimmedReply + " What insight did this reflection give you?";
-      }
+    // Sales Coach normalization safety net
+    if (mode === "sales-coach") {
+      reply = normalizeSalesCoachReply(reply, user);
+    }
+
+    // Mode-specific post-processing
+    if (mode === "emotional-assessment" && !reply.trim().endsWith('?')) {
+      reply += " What insight does this give you about how you want to communicate moving forward?";
+    }
+    if (mode === "role-play" && !/\b(I|me|my)\b/i.test(reply)) {
+      reply = "From my perspective as the clinician, " + reply;
     }
 
     // Deterministic scoring if provider omitted or malformed
@@ -1463,7 +819,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       const overall = deterministicScore({ reply, usedFactIds });
       coachObj = {
         overall,
-        scores: { empathy: 3, clarity: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, objection_handling: 3, confidence: 4, active_listening: 3, adaptability: 3, action_insight: 3, resilience: 3 },
+        scores: { empathy: 4, clarity: 4, compliance: 4, discovery: /[?]\s*$/.test(reply) ? 4 : 3, objection_handling: 3, confidence: 4, active_listening: 4, adaptability: 4, action_insight: 4, resilience: 4 },
         worked: ["Tied guidance to facts"],
         improve: ["End with one specific discovery question"],
         phrasing: "Would confirming eGFR today help you identify one patient to start this month?",
@@ -1472,195 +828,18 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       };
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // VALIDATION & GUARDRAILS - Apply mode-specific safety checks
-    // ═══════════════════════════════════════════════════════════════════
-    const validation = validateModeResponse(mode, reply, coachObj);
-    reply = validation.reply; // Use cleaned reply
+    // Ensure reply is not empty
+    reply = reply || "I'm sorry — I couldn't generate a response just now.";
 
-    // Log validation results for debugging
-    if (validation.warnings.length > 0 || validation.violations.length > 0) {
-      console.log({
-        event: "validation_check",
-        mode,
-        warnings: validation.warnings,
-        violations: validation.violations,
-        reply_length: reply.length
-      });
+    const response = { reply, plan: { id: planId || activePlan.planId } };
+    if (mode !== "role-play" && mode !== "product-knowledge" && mode !== "sales-coach") {
+      response.coach = coachObj;
     }
 
-    // Schema validation
-    const schemaCheck = validateCoachSchema(coachObj, mode);
-    if (!schemaCheck.valid) {
-      console.log({
-        event: "schema_validation_failed",
-        mode,
-        missing_fields: schemaCheck.missing,
-        coach_keys: Object.keys(coachObj || {})
-      });
-    }
-
-    // Enhanced debug logging (disabled in production via env var)
-    if (env.DEBUG_MODE === "true") {
-      console.log({
-        event: "chat_response_debug",
-        mode,
-        reply_length: reply.length,
-        has_coach: !!coachObj,
-        coach_keys: Object.keys(coachObj || {}),
-        format_check: {
-          has_challenge: /Challenge:/i.test(reply),
-          has_rep_approach: /Rep Approach:/i.test(reply),
-          has_impact: /Impact:/i.test(reply),
-          has_suggested_phrasing: /Suggested Phrasing:/i.test(reply),
-          has_citations: /\[HIV-PREP-[A-Z]+-\d+\]|\[\d+\]/i.test(reply),
-          ends_with_question: /\?\s*$/.test(reply)
-        },
-        validation: {
-          warnings: validation.warnings,
-          violations: validation.violations
-        }
-      });
-    }
-
-    const responseTime = Date.now() - reqStart;
-    console.log({
-      event: "chat_success",
-      req_id: reqId,
-      mode,
-      duration_ms: responseTime,
-      reply_length: reply.length,
-      has_coach: !!coachObj,
-      plan_id: planId || activePlan.planId
-    });
-
-    // FINAL FORMATTING: Add newlines between sections for sales-coach mode
-    // This must happen AFTER capSentences() which strips newlines
-    if (mode === "sales-coach") {
-      reply = reply
-        .replace(/(Challenge:)/g, '\n\n$1')
-        .replace(/(\.)\s+(Rep Approach:)/g, '$1\n\n$2')
-        .replace(/(\.)\s+(Impact:)/g, '$1\n\n$2')
-        .replace(/(\.)\s+(Suggested Phrasing:)/g, '$1\n\n$2')
-        .trim();
-    }
-
-    // APPEND REFERENCES: For product-knowledge mode, convert citation codes to numbered refs and append full URLs
-    if (mode === "product-knowledge" && activePlan && activePlan.facts && activePlan.facts.length > 0) {
-      // Extract all citation codes from the reply (e.g., [HIV-PREP-001], [CV-SGLT2-SAFETY-005])
-      const citationCodes = (reply.match(/\[([A-Z]{2,}-[A-Z0-9-]{2,})\]/g) || [])
-        .map(m => m.slice(1, -1)); // Remove brackets
-
-      if (citationCodes.length > 0) {
-        // Build reference list from cited facts
-        const refMap = new Map(); // code -> {number, citations}
-        let refNumber = 1;
-
-        citationCodes.forEach(code => {
-          if (!refMap.has(code)) {
-            // Find the fact with this code
-            const fact = activePlan.facts.find(f => f.id === code);
-            if (fact && fact.cites && fact.cites.length > 0) {
-              refMap.set(code, {
-                number: refNumber++,
-                citations: fact.cites
-              });
-            }
-          }
-        });
-
-        // Replace citation codes with numbered references in the text
-        refMap.forEach((value, code) => {
-          const regex = new RegExp(`\\[${code}\\]`, 'g');
-          reply = reply.replace(regex, `[${value.number}]`);
-        });
-
-        // Build the references section
-        if (refMap.size > 0) {
-          reply += '\n\n**References:**\n';
-          refMap.forEach((value, code) => {
-            value.citations.forEach(cite => {
-              if (typeof cite === 'object' && cite.text && cite.url) {
-                reply += `${value.number}. [${cite.text}](${cite.url})\n`;
-              } else if (typeof cite === 'string') {
-                reply += `${value.number}. ${cite}\n`;
-              }
-            });
-          });
-          reply = reply.trim();
-        }
-      }
-    }
-
-    return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
+    return { ok: true, data: response };
   } catch (e) {
-    const responseTime = Date.now() - reqStart;
-    console.error("chat_error", {
-      req_id: reqId,
-      step: "general",
-      message: e.message,
-      stack: e.stack,
-      duration_ms: responseTime
-    });
-
-    // Distinguish provider errors from client bad_request errors
-    const isProviderError = e.message && (
-      e.message.startsWith("provider_http_") ||
-      e.message === "plan_generation_failed"
-    );
-
-    const isPlanError = e.message === "no_active_plan_or_facts" || e.message === "invalid_plan_structure" || e.message === "no_facts_for_mode";
-
-    if (isProviderError) {
-      // Provider errors return 502 Bad Gateway
-      return json({
-        error: "provider_error",
-        message: "External provider failed or is unavailable"
-      }, 502, env, req);
-    } else if (isPlanError) {
-      // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
-      return json({
-        error: "bad_request",
-        message: e.message === "no_facts_for_mode"
-          ? `No facts available for disease "${disease || "unknown"}" in mode "${mode}". Please select a scenario or provide disease context.`
-          : "Unable to generate or validate plan with provided parameters",
-        details: { mode, disease, persona, error: e.message }
-      }, 400, env, req);
-    } else {
-      // Other errors are treated as bad_request
-      return json({
-        error: "bad_request",
-        message: "Chat request failed"
-      }, 400, env, req);
-    }
-  }
-}
-
-/* -------------------------- /coach-metrics --------------------------------- */
-async function postCoachMetrics(req, env) {
-  try {
-    const body = await readJson(req);
-
-    // Log the metrics (in production, you could store these in KV or send to analytics)
-    console.log("coach_metrics", {
-      ts: body.ts || Date.now(),
-      schema: body.schema || "coach-v2",
-      mode: body.mode,
-      scenarioId: body.scenarioId,
-      turn: body.turn,
-      overall: body.overall,
-      scores: body.scores
-    });
-
-    // Return success
-    return json({
-      ok: true,
-      message: "Metrics recorded",
-      timestamp: Date.now()
-    }, 200, env, req);
-  } catch (e) {
-    console.error("postCoachMetrics error:", e);
-    return json({ error: "server_error", message: "Failed to record metrics" }, 500, env, req);
+    console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
+    return { ok: false, error: "Internal error." };
   }
 }
 
@@ -1668,19 +847,4 @@ function cryptoRandomId() {
   const a = new Uint8Array(8);
   crypto.getRandomValues(a);
   return [...a].map(x => x.toString(16).padStart(2, "0")).join("");
-}
-
-/* -------------------------- Rate limiting --------------------------- */
-const _buckets = new Map();
-function rateLimit(key, env) {
-  const rate = Number(env.RATELIMIT_RATE || 10);
-  const burst = Number(env.RATELIMIT_BURST || 4);
-  const now = Date.now();
-  const b = _buckets.get(key) || { tokens: burst, ts: now };
-  const elapsed = (now - b.ts) / 60000; // per minute
-  b.tokens = Math.min(burst, b.tokens + elapsed * rate);
-  b.ts = now;
-  if (b.tokens < 1) { _buckets.set(key, b); return { ok: false, limit: rate, remaining: 0 }; }
-  b.tokens -= 1; _buckets.set(key, b);
-  return { ok: true, limit: rate, remaining: Math.max(0, Math.floor(b.tokens)) };
 }
