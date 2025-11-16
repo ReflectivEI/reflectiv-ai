@@ -11,7 +11,7 @@ workers_dev = true
 [vars]
 PROVIDER = "groq"
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
-PROVIDER_MODEL = "llama-3.1-70b-versatile"
+PROVIDER_MODEL = "llama-3.1-8b-instant"
 MAX_OUTPUT_TOKENS = "1400"
 CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
 
