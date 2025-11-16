@@ -3029,7 +3029,13 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
 
     try {
       userText = clampLen((userText || "").trim(), 1600);
-      if (!userText) return;
+      if (!userText) {
+        // Reset sending state before returning
+        isSending = false;
+        if (sendBtn) sendBtn.disabled = false;
+        if (ta) { ta.disabled = false; ta.focus(); }
+        return;
+      }
       lastUserMessage = userText;
 
       // INTELLIGENT MODE AUTO-DETECTION
