@@ -1674,6 +1674,8 @@ ${COMMON}`
       }
     });
     const send = el("button", "btn", "Send");
+    // Start disabled until health check passes
+    send.disabled = true;
     send.onclick = () => {
       const t = ta.value.trim();
       if (!t) return;

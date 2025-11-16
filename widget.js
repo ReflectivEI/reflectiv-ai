@@ -1748,6 +1748,8 @@ ${COMMON}`
       }
     });
     const send = el("button", "btn", "Send");
+    // Start disabled until health check passes
+    send.disabled = true;
     send.onclick = () => {
       if (isDebugMode()) console.log('[DEBUG] Send button clicked!');
       const t = ta.value.trim();
