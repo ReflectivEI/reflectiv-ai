@@ -1,11 +1,17 @@
-# Deployment Required to Fix HTTP 400 Error
+# Deployment Required to Fix Chat Error
 
 ## Summary
-The HTTP 400 error was caused by a **payload mismatch** between the widget and worker. The fix has been applied to the code in this repository, but **both the widget.js and worker.js need to be deployed** for the fix to take effect.
+The chat errors were caused by **two issues**:
+1. **Payload mismatch** between the widget and worker (HTTP 400 error) - **FIXED**
+2. **CORS configuration** missing the correct origin - **FIXED**
+
+Both the widget.js and worker.js need to be deployed for the fixes to take effect.
 
 ## What Was Fixed
 
-### Frontend Fix (widget.js)
+### Issue 1: Payload Mismatch (HTTP 400 Error)
+
+#### Frontend Fix (widget.js)
 **Problem:** Widget was sending entire `scenario` object in payload
 **Solution:** Extract individual fields from scenario object
 
@@ -33,6 +39,29 @@ Changed to:
 **Files changed:**
 - `widget.js` (lines 2704-2716)
 - `index.html` (updated cache-busting version to 20251116-1121)
+
+### Issue 2: CORS Configuration Error
+
+#### Backend Fix (wrangler.toml)
+**Problem:** CORS_ORIGINS was missing `https://reflectivei.github.io` (without path)
+**Error:** `Access-Control-Allow-Origin header has a value 'null'`
+
+**Solution:** Added `https://reflectivei.github.io` to CORS_ORIGINS
+
+Changed from:
+```toml
+CORS_ORIGINS = "https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,..."
+```
+
+Changed to:
+```toml
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,..."
+```
+
+**Note:** Browser sends origin as `https://reflectivei.github.io` (without path), so it must be in the allowlist.
+
+**Files changed:**
+- `wrangler.toml` (line 24)
 
 ### Backend Compatibility (worker.js)
 The current worker.js (r10.1) expects this payload format:
@@ -85,12 +114,14 @@ curl https://my-chat-agent-v2.tonyabdelmalak.workers.dev/version
 ## Why Both Need to Be Deployed
 
 1. **Frontend (widget.js):** Sends the correct payload format
-2. **Backend (worker.js r10.1):** Expects and processes the correct payload format
+2. **Backend (worker.js + wrangler.toml):** 
+   - Expects and processes the correct payload format
+   - Has the correct CORS origins configured
 
-If only one is deployed, the mismatch will persist:
+If only one is deployed, issues will persist:
 - Old widget + New worker = ❌ Still sends wrong format
-- New widget + Old worker = ❌ Worker might not handle new format
-- New widget + New worker = ✅ Formats match
+- New widget + Old worker/config = ❌ CORS error or wrong payload handling  
+- New widget + New worker + New config = ✅ Everything works
 
 ## Testing After Deployment
 
@@ -129,9 +160,11 @@ The widget.js version has been updated from `?v=20251116-0600` to `?v=20251116-1
 ## Summary Checklist
 - [x] Fix applied to widget.js (extract scenario fields)
 - [x] Cache-busting version updated in index.html
+- [x] Fix applied to wrangler.toml (add CORS origin)
 - [x] Changes committed to repository
 - [ ] **Deploy frontend (GitHub Pages or hosting platform)**
 - [ ] **Deploy worker (Cloudflare Workers via wrangler deploy)**
 - [ ] Verify /version endpoint returns r10.1
+- [ ] Verify CORS headers are correct
 - [ ] Test chat functionality in browser
 - [ ] Clear browser cache if needed
