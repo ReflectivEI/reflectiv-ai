@@ -238,12 +238,14 @@
     const healthUrl = `${baseUrl}/health`;
     if (isDebugMode()) console.log('[DEBUG] checkHealth() called, healthUrl:', healthUrl);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
+    const timeout = setTimeout(() => controller.abort(), 3000); // Increased to 3s for auth redirects
 
     try {
       const response = await fetch(healthUrl, {
         method: "GET",
-        signal: controller.signal
+        signal: controller.signal,
+        // Allow credentials for Cloudflare Access authentication
+        credentials: 'include'
       });
       clearTimeout(timeout);
 
@@ -259,28 +261,43 @@
         return true;
       }
 
+      // Check for authentication redirect (Cloudflare Access)
+      if (response.status === 302 || response.status === 401 || response.status === 403) {
+        console.warn('[Health Check] Authentication required - worker may be behind Cloudflare Access');
+      }
+
       isHealthy = false;
       if (isDebugMode()) console.log('[DEBUG] Health check FAILED (not ok), isHealthy set to FALSE, status:', response.status);
-      showHealthBanner();
+      showHealthBanner(response.status);
       disableSendButton();
       return false;
     } catch (e) {
       clearTimeout(timeout);
       isHealthy = false;
-      if (isDebugMode()) console.log('[DEBUG] Health check FAILED (exception), isHealthy set to FALSE, error:', e.message);
+      const errorMsg = e.name === 'AbortError' ? 'Request timeout' : e.message;
+      if (isDebugMode()) console.log('[DEBUG] Health check FAILED (exception), isHealthy set to FALSE, error:', errorMsg);
+      console.warn('[Health Check] Failed to connect to backend:', errorMsg);
       showHealthBanner();
       disableSendButton();
       return false;
     }
   }
 
-  function showHealthBanner() {
+  function showHealthBanner(statusCode) {
     if (!mount) return;
 
     if (!healthBanner) {
       healthBanner = document.createElement("div");
       healthBanner.style.cssText = "background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin:8px 0;color:#856404;font-size:14px;font-weight:600;text-align:center;";
-      healthBanner.textContent = "⚠️ Backend unavailable. Trying again…";
+    }
+    
+    // Customize message based on error type
+    if (statusCode === 401 || statusCode === 403) {
+      healthBanner.textContent = "⚠️ Authentication required. Please check your access permissions.";
+    } else if (statusCode) {
+      healthBanner.textContent = `⚠️ Backend unavailable (Status: ${statusCode}). Retrying...`;
+    } else {
+      healthBanner.textContent = "⚠️ Backend unavailable. Trying to reconnect…";
     }
 
     const shell = mount.querySelector(".reflectiv-chat");
@@ -314,9 +331,35 @@
   function startHealthRetry() {
     if (healthCheckInterval) return;
 
-    healthCheckInterval = setInterval(async () => {
-      await checkHealth();
-    }, 20000); // 20 seconds
+    let retryCount = 0;
+    const maxRetries = 10; // Maximum number of retries before giving up
+    
+    // Exponential backoff: starts at 5s, doubles up to 60s max
+    const getRetryDelay = (count) => Math.min(5000 * Math.pow(2, count), 60000);
+
+    const performRetry = async () => {
+      const success = await checkHealth();
+      
+      if (success) {
+        // Health check passed, stop retrying
+        if (healthCheckInterval) {
+          clearInterval(healthCheckInterval);
+          healthCheckInterval = null;
+        }
+        retryCount = 0;
+      } else {
+        retryCount++;
+        
+        if (retryCount >= maxRetries) {
+          console.warn('[Health Check] Max retries reached, continuing to retry at 60s intervals');
+          // Continue retrying but at max interval
+          retryCount = maxRetries - 1;
+        }
+      }
+    };
+
+    // Initial retry after 5 seconds
+    healthCheckInterval = setInterval(performRetry, getRetryDelay(0));
   }
 
   // ---------- Toast notifications ----------
