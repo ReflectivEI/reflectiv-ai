@@ -89,9 +89,10 @@
   let repOnlyPanelHTML = "";
 
   // ---------- Health gate state ----------
-  let isHealthy = false;
+  let isHealthy = true; // Start optimistic, will be set to false if health check fails
   let healthCheckInterval = null;
   let healthBanner = null;
+  let healthCheckAttempted = false;
 
   // ---------- EI dev shim ----------
   const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
@@ -237,13 +238,19 @@
     const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
     const healthUrl = `${baseUrl}/health`;
     if (isDebugMode()) console.log('[DEBUG] checkHealth() called, healthUrl:', healthUrl);
+    
+    const isFirstAttempt = !healthCheckAttempted;
+    healthCheckAttempted = true;
+    
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
+    const timeout = setTimeout(() => controller.abort(), 3000); // Increased to 3s for auth redirects
 
     try {
       const response = await fetch(healthUrl, {
         method: "GET",
-        signal: controller.signal
+        signal: controller.signal,
+        // Allow credentials for Cloudflare Access authentication
+        credentials: 'include'
       });
       clearTimeout(timeout);
 
@@ -259,28 +266,70 @@
         return true;
       }
 
+      // Check for authentication redirect (Cloudflare Access)
+      if (response.status === 302 || response.status === 401 || response.status === 403) {
+        console.warn('[Health Check] Authentication required - worker may be behind Cloudflare Access');
+        // Don't block functionality for auth issues - user might still be able to authenticate
+        isHealthy = true;
+        hideHealthBanner();
+        enableSendButton();
+        return true;
+      }
+
+      // For non-auth errors, still be optimistic on first check
+      if (isFirstAttempt) {
+        console.warn('[Health Check] Initial check failed with status:', response.status);
+        console.warn('[Health Check] Allowing optimistic operation - will show errors on actual use');
+        isHealthy = true;
+        hideHealthBanner();
+        enableSendButton();
+        return true;
+      }
+
       isHealthy = false;
       if (isDebugMode()) console.log('[DEBUG] Health check FAILED (not ok), isHealthy set to FALSE, status:', response.status);
-      showHealthBanner();
+      showHealthBanner(response.status);
       disableSendButton();
       return false;
     } catch (e) {
       clearTimeout(timeout);
+      const errorMsg = e.name === 'AbortError' ? 'Request timeout' : e.message;
+      
+      // Don't block if this is the first check - allow optimistic usage
+      if (isFirstAttempt || errorMsg.includes('Failed to fetch')) {
+        console.warn('[Health Check] Backend may not be deployed or accessible:', errorMsg);
+        console.warn('[Health Check] Allowing optimistic operation - errors will be shown on actual API calls');
+        isHealthy = true; // Allow operation, errors will surface on actual use
+        hideHealthBanner();
+        enableSendButton();
+        return true;
+      }
+      
+      // Persistent failure after retries - this is a real problem
       isHealthy = false;
-      if (isDebugMode()) console.log('[DEBUG] Health check FAILED (exception), isHealthy set to FALSE, error:', e.message);
+      if (isDebugMode()) console.log('[DEBUG] Health check FAILED (exception), isHealthy set to FALSE, error:', errorMsg);
+      console.warn('[Health Check] Failed to connect to backend:', errorMsg);
       showHealthBanner();
       disableSendButton();
       return false;
     }
   }
 
-  function showHealthBanner() {
+  function showHealthBanner(statusCode) {
     if (!mount) return;
 
     if (!healthBanner) {
       healthBanner = document.createElement("div");
       healthBanner.style.cssText = "background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin:8px 0;color:#856404;font-size:14px;font-weight:600;text-align:center;";
-      healthBanner.textContent = "⚠️ Backend unavailable. Trying again…";
+    }
+    
+    // Customize message based on error type
+    if (statusCode === 401 || statusCode === 403) {
+      healthBanner.innerHTML = "⚠️ Authentication may be required. You can try to use the coach, errors will show if authentication fails. <a href='https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health' target='_blank' style='color:#856404;text-decoration:underline'>Check backend</a>";
+    } else if (statusCode) {
+      healthBanner.textContent = `⚠️ Backend may be unavailable (Status: ${statusCode}). You can try to use it, errors will be shown if it fails.`;
+    } else {
+      healthBanner.textContent = "⚠️ Backend connection couldn't be verified. You can try to use the coach, errors will show if the backend is unavailable.";
     }
 
     const shell = mount.querySelector(".reflectiv-chat");
@@ -314,9 +363,35 @@
   function startHealthRetry() {
     if (healthCheckInterval) return;
 
-    healthCheckInterval = setInterval(async () => {
-      await checkHealth();
-    }, 20000); // 20 seconds
+    let retryCount = 0;
+    const maxRetries = 10; // Maximum number of retries before giving up
+    
+    // Exponential backoff: starts at 5s, doubles up to 60s max
+    const getRetryDelay = (count) => Math.min(5000 * Math.pow(2, count), 60000);
+
+    const performRetry = async () => {
+      const success = await checkHealth();
+      
+      if (success) {
+        // Health check passed, stop retrying
+        if (healthCheckInterval) {
+          clearInterval(healthCheckInterval);
+          healthCheckInterval = null;
+        }
+        retryCount = 0;
+      } else {
+        retryCount++;
+        
+        if (retryCount >= maxRetries) {
+          console.warn('[Health Check] Max retries reached, continuing to retry at 60s intervals');
+          // Continue retrying but at max interval
+          retryCount = maxRetries - 1;
+        }
+      }
+    };
+
+    // Initial retry after 5 seconds
+    healthCheckInterval = setInterval(performRetry, getRetryDelay(0));
   }
 
   // ---------- Toast notifications ----------
@@ -2632,7 +2707,8 @@ ${COMMON}`
               mode: currentMode,
               scenario: scenarioContext
             }),
-            signal: controller.signal
+            signal: controller.signal,
+            credentials: 'include' // Support Cloudflare Access authentication
           });
           clearTimeout(timeout);
 
@@ -2653,6 +2729,12 @@ ${COMMON}`
             return text;
           }
 
+          // Check for authentication errors
+          if (r.status === 401 || r.status === 403) {
+            console.error('[API] Authentication required - check Cloudflare Access settings');
+            throw new Error('authentication_required');
+          }
+
           // Check if we should retry (429 or 5xx errors)
           if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
             lastError = new Error(`${url}_http_${r.status}`);
@@ -2666,7 +2748,7 @@ ${COMMON}`
           clearTimeout(timeout);
 
           // Retry on timeout or network errors
-          if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
+          if (attempt < delays.length && /timeout|TypeError|NetworkError|Failed to fetch/i.test(String(e))) {
             lastError = e;
             await new Promise(resolve => setTimeout(resolve, delays[attempt]));
             currentTelemetry.retries++;
@@ -3183,7 +3265,23 @@ Please provide your response again with all required fields including phrasing.`
         }
       } catch (e) {
         console.error("[coach] error_in_sendMessage:", e);
-        showToast("Failed to send message: " + (e.message || "Unknown error"), "error");
+        
+        // Provide specific error messages based on error type
+        let errorMessage = "Failed to send message. ";
+        
+        if (e.message.includes('authentication_required')) {
+          errorMessage += "Authentication required - please check access permissions.";
+        } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+          errorMessage += "Cannot connect to backend. Please check your internet connection or try again later.";
+        } else if (e.message.includes('timeout')) {
+          errorMessage += "Request timed out. Please try again.";
+        } else if (e.message.includes('worker_base_missing')) {
+          errorMessage += "Backend configuration missing.";
+        } else {
+          errorMessage += e.message || "Unknown error";
+        }
+        
+        showToast(errorMessage, "error");
         // Don't add error message to conversation - let user retry
       }
     } finally {
