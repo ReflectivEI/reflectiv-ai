@@ -1,0 +1,137 @@
+# Deployment Required to Fix HTTP 400 Error
+
+## Summary
+The HTTP 400 error was caused by a **payload mismatch** between the widget and worker. The fix has been applied to the code in this repository, but **both the widget.js and worker.js need to be deployed** for the fix to take effect.
+
+## What Was Fixed
+
+### Frontend Fix (widget.js)
+**Problem:** Widget was sending entire `scenario` object in payload
+**Solution:** Extract individual fields from scenario object
+
+Changed from:
+```javascript
+{
+  messages,
+  mode: currentMode,
+  scenario: scenarioContext  // ❌ Wrong - worker doesn't use this
+}
+```
+
+Changed to:
+```javascript
+{
+  messages,
+  mode: currentMode,
+  disease: scenarioContext.therapeuticArea,     // ✅ Correct
+  persona: scenarioContext.hcpProfile,          // ✅ Correct
+  goal: scenarioContext.goal,                   // ✅ Correct
+  scenarioId: scenarioContext.id                // ✅ Correct
+}
+```
+
+**Files changed:**
+- `widget.js` (lines 2704-2716)
+- `index.html` (updated cache-busting version to 20251116-1121)
+
+### Backend Compatibility (worker.js)
+The current worker.js (r10.1) expects this payload format:
+```javascript
+{
+  messages: [...],
+  mode: "sales-coach",
+  disease: "HIV",           // Not "scenario" object
+  persona: "Internal Medicine MD",
+  goal: "...",
+  scenarioId: "hiv_im_decile3_prep_lowshare"
+}
+```
+
+## Deployment Steps
+
+### 1. Deploy Frontend (GitHub Pages)
+The repository appears to be hosted on GitHub Pages. To deploy:
+
+```bash
+# The changes are already committed to the branch
+# GitHub Pages will automatically deploy when changes are merged to main branch
+# OR if the branch is configured as the deployment branch
+```
+
+**Files to deploy:**
+- `widget.js` (contains the payload fix)
+- `index.html` (updated cache-busting version)
+
+### 2. Deploy Worker (Cloudflare)
+The Cloudflare worker needs to be deployed (or redeployed) to ensure it's running the latest code:
+
+```bash
+# Authenticate (if not already done)
+wrangler login
+
+# Deploy the worker
+wrangler deploy
+```
+
+**Verify deployment:**
+```bash
+# Check version
+curl https://my-chat-agent-v2.tonyabdelmalak.workers.dev/version
+
+# Expected response:
+# {"version":"r10.1"}
+```
+
+## Why Both Need to Be Deployed
+
+1. **Frontend (widget.js):** Sends the correct payload format
+2. **Backend (worker.js r10.1):** Expects and processes the correct payload format
+
+If only one is deployed, the mismatch will persist:
+- Old widget + New worker = ❌ Still sends wrong format
+- New widget + Old worker = ❌ Worker might not handle new format
+- New widget + New worker = ✅ Formats match
+
+## Testing After Deployment
+
+### Test 1: Version Check
+```bash
+curl https://my-chat-agent-v2.tonyabdelmalak.workers.dev/version
+```
+Should return: `{"version":"r10.1"}`
+
+### Test 2: Chat Request
+```bash
+curl -X POST https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "sales-coach",
+    "messages": [{"role": "user", "content": "Test message"}],
+    "disease": "HIV",
+    "persona": "Internal Medicine MD"
+  }'
+```
+Should return a successful response (not 400)
+
+### Test 3: Browser Test
+1. Open the website in a browser
+2. Clear browser cache (or open in incognito/private mode)
+3. Select a scenario
+4. Send a chat message
+5. Should receive a response without 400 error
+
+## Cache Busting
+The widget.js version has been updated from `?v=20251116-0600` to `?v=20251116-1121` to ensure browsers load the new version. Users may need to:
+- Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
+- Clear browser cache
+- Use incognito/private mode
+
+## Summary Checklist
+- [x] Fix applied to widget.js (extract scenario fields)
+- [x] Cache-busting version updated in index.html
+- [x] Changes committed to repository
+- [ ] **Deploy frontend (GitHub Pages or hosting platform)**
+- [ ] **Deploy worker (Cloudflare Workers via wrangler deploy)**
+- [ ] Verify /version endpoint returns r10.1
+- [ ] Test chat functionality in browser
+- [ ] Clear browser cache if needed
