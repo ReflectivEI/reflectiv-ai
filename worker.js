@@ -623,24 +623,27 @@ function validateModeResponse(mode, reply, coach) {
     }
   }
 
-  // PRODUCT-KNOWLEDGE: Strict contract enforcement
+  // PRODUCT-KNOWLEDGE: Flexible validation (citations encouraged but not required)
   if (mode === "product-knowledge") {
-    // At least one [n] citation
+    // Warn if no citations (but don't fail validation)
     const citationMatch = cleaned.match(/\[\d+\]/);
-    if (!citationMatch) violations.push("missing_inline_citation");
-    // References section
-    const refMatch = cleaned.match(/References:\s*([\s\S]+)/);
-    if (!refMatch) {
-      violations.push("missing_references_section");
+    if (!citationMatch) {
+      warnings.push("no_inline_citations_provided");
     } else {
-      const refs = refMatch[1].split(/\n|\r|\r\n/).filter(l => /^\d+\. /.test(l));
-      if (refs.length === 0) violations.push("references_no_numbered_entries");
-      for (let i = 0; i < refs.length; i++) {
-        if (!cleaned.includes(`[${i + 1}]`)) violations.push(`missing_citation_for_reference_${i + 1}`);
-        if (!refs[i].match(/https?:\/\//)) violations.push(`reference_${i + 1}_missing_url`);
+      // If citations exist, validate References section
+      const refMatch = cleaned.match(/References:\s*([\s\S]+)/);
+      if (!refMatch) {
+        warnings.push("has_citations_but_missing_references_section");
+      } else {
+        const refs = refMatch[1].split(/\n|\r|\r\n/).filter(l => /^\d+\. /.test(l));
+        if (refs.length === 0) warnings.push("references_section_has_no_numbered_entries");
+        for (let i = 0; i < refs.length; i++) {
+          if (!cleaned.includes(`[${i + 1}]`)) warnings.push(`reference_${i + 1}_cited_but_not_used_inline`);
+          if (!refs[i].match(/https?:\/\//)) warnings.push(`reference_${i + 1}_missing_url`);
+        }
       }
     }
-    // No sales-coach headings or <coach>
+    // No sales-coach headings or <coach> blocks (this is a violation)
     if (/Challenge:|Rep Approach:|Impact:|Suggested Phrasing:|<coach>/i.test(cleaned)) {
       violations.push("sales_coach_headings_or_coach_block_present");
     }
@@ -1456,9 +1459,15 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     if (state && candNorm && (candNorm === state.lastNorm)) {
       if (mode === "role-play") {
         reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
+      } else if (mode === "sales-coach") {
+        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: \"For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?\"";
+      } else if (mode === "product-knowledge") {
+        reply = "For detailed product information, please refer to the prescribing information or consult clinical guidelines. I can help with specific questions about indications, dosing, or safety profiles.";
+      } else if (mode === "emotional-assessment") {
+        reply = "Consider: What pattern emerged in this conversation? What would help you approach similar situations differently? Reflect on one strength and one area for growth.";
       } else {
-        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
-      }
+        reply = "I can provide information on a wide range of topics. Could you rephrase or provide more specific details about what you would like to know?";
+    }
     }
     state.lastNorm = norm(reply);
     await seqPut(env, session, state);
