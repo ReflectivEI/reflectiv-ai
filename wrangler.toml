@@ -3,13 +3,13 @@ main = "worker.js"
 compatibility_date = "2024-11-12"
 workers_dev = true
 
-# Optional: Add your Cloudflare account_id for better deployment experience
+# REQUIRED: Add your Cloudflare account_id for deployment
 # To find your account_id:
 # 1. Go to https://dash.cloudflare.com
 # 2. Select your account
 # 3. Look for "Account ID" in the right sidebar
-# Uncomment and set:
-# account_id = "your-account-id-here"
+# Replace "your-account-id-here" with your actual account ID:
+account_id = "your-account-id-here"
 
 # If you want a custom domain/route later, add:
 # routes = [
