@@ -1,0 +1,45 @@
+# .github/workflows/deploy-with-wrangler.yml
+name: Deploy with Wrangler
+
+on:
+  workflow_dispatch:              # allow manual runs from the Actions tab
+  push:
+    branches:
+      - main
+    paths:
+      - "worker.js"
+      - "wrangler.toml"
+
+jobs:
+  deploy:
+    name: Deploy Cloudflare Worker via Wrangler
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate CLOUDFLARE_API_TOKEN
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret is not set"
+            exit 1
+          fi
+          echo "✅ CLOUDFLARE_API_TOKEN secret is configured"
+
+      - name: Deploy with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # optional but explicit – must match your Cloudflare account
+          accountId: 59fea97fab54bf4d4d168cca1fa3410
+          # wrangler.toml and worker.js are in repo root
+          workingDirectory: .
+          # default command is "deploy"; setting it explicitly for clarity
+          command: deploy
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Wrangler deploy completed"
+          echo "Worker URL: https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
+          echo "Chat endpoint: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat"
