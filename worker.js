@@ -603,27 +603,22 @@ function validateModeResponse(mode, reply, coach) {
     // Rep Approach: exactly 3 bullets
     const repMatch = cleaned.match(/Rep Approach:[\s\S]*?(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(?=\n|\r|\r\n|Impact:)/);
     if (!repMatch) violations.push("rep_approach_wrong_bullet_count");
-    // <coach> block
-    const coachMatch = cleaned.match(/<coach>\s*({[\s\S]+})\s*<\/coach>/);
-    if (!coachMatch) {
+    // <coach> block - check the passed coach object instead of looking for <coach> in cleaned text
+    // (cleaned text has <coach> block already extracted and removed)
+    if (!coach || typeof coach !== 'object') {
       violations.push("missing_coach_block");
     } else {
-      try {
-        const coachBlock = JSON.parse(coachMatch[1]);
-        const requiredMetrics = ["empathy","clarity","compliance","discovery","objection_handling","confidence","active_listening","adaptability","action_insight","resilience"];
-        for (const k of requiredMetrics) {
-          if (!coachBlock.scores || typeof coachBlock.scores[k] !== "number" || coachBlock.scores[k] < 1 || coachBlock.scores[k] > 5) {
-            violations.push(`missing_or_invalid_metric:${k}`);
-          }
+      const requiredMetrics = ["empathy","clarity","compliance","discovery","objection_handling","confidence","active_listening","adaptability","action_insight","resilience"];
+      for (const k of requiredMetrics) {
+        if (!coach.scores || typeof coach.scores[k] !== "number" || coach.scores[k] < 1 || coach.scores[k] > 5) {
+          violations.push(`missing_or_invalid_metric:${k}`);
         }
-        const requiredKeys = ["scores","rationales","worked","improve","feedback","rubric_version"];
-        for (const k of requiredKeys) {
-          if (!(k in coachBlock)) {
-            violations.push(`missing_coach_key:${k}`);
-          }
+      }
+      const requiredKeys = ["scores","rationales","worked","improve","feedback","rubric_version"];
+      for (const k of requiredKeys) {
+        if (!(k in coach)) {
+          violations.push(`missing_coach_key:${k}`);
         }
-      } catch (e) {
-        violations.push("coach_json_parse_error");
       }
     }
   }
