@@ -313,8 +313,14 @@ function json(body, status, env, req, extraHeaders = {}) {
 
 async function readJson(req) {
   const txt = await req.text();
-  if (!txt) return {};
-  try { return JSON.parse(txt); } catch { return {}; }
+  if (!txt || txt.trim() === "") {
+    return { _parseError: "empty_body" };
+  }
+  try {
+    return JSON.parse(txt);
+  } catch (e) {
+    return { _parseError: "invalid_json", _rawText: txt.slice(0, 100) };
+  }
 }
 
 function capSentences(text, n) {
@@ -597,49 +603,47 @@ function validateModeResponse(mode, reply, coach) {
     // Rep Approach: exactly 3 bullets
     const repMatch = cleaned.match(/Rep Approach:[\s\S]*?(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(?=\n|\r|\r\n|Impact:)/);
     if (!repMatch) violations.push("rep_approach_wrong_bullet_count");
-    // <coach> block
-    const coachMatch = cleaned.match(/<coach>\s*({[\s\S]+})\s*<\/coach>/);
-    if (!coachMatch) {
+    // <coach> block - check the passed coach object instead of looking for <coach> in cleaned text
+    // (cleaned text has <coach> block already extracted and removed)
+    if (!coach || typeof coach !== 'object') {
       violations.push("missing_coach_block");
     } else {
-      try {
-        const coachBlock = JSON.parse(coachMatch[1]);
-        const requiredMetrics = ["empathy","clarity","compliance","discovery","objection_handling","confidence","active_listening","adaptability","action_insight","resilience"];
-        for (const k of requiredMetrics) {
-          if (!coachBlock.scores || typeof coachBlock.scores[k] !== "number" || coachBlock.scores[k] < 1 || coachBlock.scores[k] > 5) {
-            violations.push(`missing_or_invalid_metric:${k}`);
-          }
+      const requiredMetrics = ["empathy","clarity","compliance","discovery","objection_handling","confidence","active_listening","adaptability","action_insight","resilience"];
+      for (const k of requiredMetrics) {
+        if (!coach.scores || typeof coach.scores[k] !== "number" || coach.scores[k] < 1 || coach.scores[k] > 5) {
+          violations.push(`missing_or_invalid_metric:${k}`);
         }
-        const requiredKeys = ["scores","rationales","worked","improve","feedback","rubric_version"];
-        for (const k of requiredKeys) {
-          if (!(k in coachBlock)) {
-            violations.push(`missing_coach_key:${k}`);
-          }
+      }
+      const requiredKeys = ["scores","rationales","worked","improve","feedback","rubric_version"];
+      for (const k of requiredKeys) {
+        if (!(k in coach)) {
+          violations.push(`missing_coach_key:${k}`);
         }
-      } catch (e) {
-        violations.push("coach_json_parse_error");
       }
     }
   }
 
-  // PRODUCT-KNOWLEDGE: Strict contract enforcement
+  // PRODUCT-KNOWLEDGE: Flexible validation (citations encouraged but not required)
   if (mode === "product-knowledge") {
-    // At least one [n] citation
+    // Warn if no citations (but don't fail validation)
     const citationMatch = cleaned.match(/\[\d+\]/);
-    if (!citationMatch) violations.push("missing_inline_citation");
-    // References section
-    const refMatch = cleaned.match(/References:\s*([\s\S]+)/);
-    if (!refMatch) {
-      violations.push("missing_references_section");
+    if (!citationMatch) {
+      warnings.push("no_inline_citations_provided");
     } else {
-      const refs = refMatch[1].split(/\n|\r|\r\n/).filter(l => /^\d+\. /.test(l));
-      if (refs.length === 0) violations.push("references_no_numbered_entries");
-      for (let i = 0; i < refs.length; i++) {
-        if (!cleaned.includes(`[${i + 1}]`)) violations.push(`missing_citation_for_reference_${i + 1}`);
-        if (!refs[i].match(/https?:\/\//)) violations.push(`reference_${i + 1}_missing_url`);
+      // If citations exist, validate References section
+      const refMatch = cleaned.match(/References:\s*([\s\S]+)/);
+      if (!refMatch) {
+        warnings.push("has_citations_but_missing_references_section");
+      } else {
+        const refs = refMatch[1].split(/\n|\r|\r\n/).filter(l => /^\d+\. /.test(l));
+        if (refs.length === 0) warnings.push("references_section_has_no_numbered_entries");
+        for (let i = 0; i < refs.length; i++) {
+          if (!cleaned.includes(`[${i + 1}]`)) warnings.push(`reference_${i + 1}_cited_but_not_used_inline`);
+          if (!refs[i].match(/https?:\/\//)) warnings.push(`reference_${i + 1}_missing_url`);
+        }
       }
     }
-    // No sales-coach headings or <coach>
+    // No sales-coach headings or <coach> blocks (this is a violation)
     if (/Challenge:|Rep Approach:|Impact:|Suggested Phrasing:|<coach>/i.test(cleaned)) {
       violations.push("sales_coach_headings_or_coach_block_present");
     }
@@ -652,6 +656,16 @@ function validateModeResponse(mode, reply, coach) {
       warnings.push("no_socratic_questions_detected");
     } else if (questionCount >= 2) {
       warnings.push(`socratic_questions_present: ${questionCount}`);
+    }
+  }
+
+  // GENERAL-KNOWLEDGE: No strict validation - allow any format
+  // This mode is for general assistant queries and should be flexible
+  if (mode === "general-knowledge") {
+    // No violations for general-knowledge - it's a flexible general-purpose assistant
+    // Just ensure no sales-coach or product-knowledge specific formatting leaked in
+    if (/Challenge:|Rep Approach:|Impact:|Suggested Phrasing:/i.test(cleaned)) {
+      warnings.push("sales_coach_headings_detected_in_general_mode");
     }
   }
 
@@ -759,6 +773,17 @@ async function postChat(req, env) {
 
     const body = await readJson(req);
 
+    // Check for JSON parse errors
+    if (body._parseError) {
+      console.error("chat_error", { req_id: reqId, step: "json_parse", error: body._parseError, raw: body._rawText });
+      return json({
+        error: "bad_request",
+        message: body._parseError === "empty_body" 
+          ? "Request body is empty" 
+          : `Invalid JSON in request body: ${body._rawText || 'parse error'}`
+      }, 400, env, req, { "x-req-id": reqId });
+    }
+
     // Log request start
     console.log({
       event: "chat_request",
@@ -783,8 +808,28 @@ async function postChat(req, env) {
     if (body.messages && Array.isArray(body.messages)) {
       // Widget is sending provider-style payload - extract user message from messages array
       const msgs = body.messages;
-      const lastUserMsg = msgs.filter(m => m.role === "user").pop();
-      const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
+      
+      // Validate messages array is not empty
+      if (msgs.length === 0) {
+        console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_messages_array" });
+        return json({
+          error: "bad_request",
+          message: "messages array is empty"
+        }, 400, env, req, { "x-req-id": reqId });
+      }
+      
+      const lastUserMsg = msgs.filter(m => m && m.role === "user").pop();
+      
+      // Validate that we found a user message
+      if (!lastUserMsg) {
+        console.error("chat_error", { req_id: reqId, step: "request_validation", message: "no_user_message_in_array", messages: msgs.map(m => ({ role: m?.role })) });
+        return json({
+          error: "bad_request",
+          message: "No user message found in messages array"
+        }, 400, env, req, { "x-req-id": reqId });
+      }
+      
+      const historyMsgs = msgs.filter(m => m && m.role !== "system" && m !== lastUserMsg);
 
       mode = body.mode || "sales-coach";
       user = lastUserMsg?.content || "";
@@ -810,11 +855,11 @@ async function postChat(req, env) {
 
     // Validate user message is not empty
     if (!user || String(user).trim() === "") {
-      console.error("chat_error", { step: "request_validation", message: "empty_user_message", body });
+      console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_user_message", format: body.messages ? "widget" : "reflectiv", body });
       return json({
         error: "bad_request",
         message: "User message cannot be empty"
-      }, 400, env, req);
+      }, 400, env, req, { "x-req-id": reqId });
     }
 
     // Load or build a plan
@@ -1069,7 +1114,6 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       ``,
       `AVAILABLE CONTEXT:`,
       `${disease ? `Disease Focus: ${disease}` : ''}`,
-      `${persona ? `HCP Context: ${persona}` : ''}`,
       `${factsStr ? `\nRelevant Facts:\n${factsStr}` : ''}`,
       `${citesStr ? `\nReferences:\n${citesStr}` : ''}`,
       ``,
@@ -1415,9 +1459,15 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     if (state && candNorm && (candNorm === state.lastNorm)) {
       if (mode === "role-play") {
         reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
+      } else if (mode === "sales-coach") {
+        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: \"For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?\"";
+      } else if (mode === "product-knowledge") {
+        reply = "For detailed product information, please refer to the prescribing information or consult clinical guidelines. I can help with specific questions about indications, dosing, or safety profiles.";
+      } else if (mode === "emotional-assessment") {
+        reply = "Consider: What pattern emerged in this conversation? What would help you approach similar situations differently? Reflect on one strength and one area for growth.";
       } else {
-        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
-      }
+        reply = "I can provide information on a wide range of topics. Could you rephrase or provide more specific details about what you would like to know?";
+    }
     }
     state.lastNorm = norm(reply);
     await seqPut(env, session, state);

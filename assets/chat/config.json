@@ -7,11 +7,13 @@
   "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
   "stream": true,
   "modes": [
+    "sales-coach",
+    "role-play",
     "emotional-assessment",
     "product-knowledge",
-    "sales-simulation"
+    "general-knowledge"
   ],
-  "defaultMode": "sales-simulation",
+  "defaultMode": "sales-coach",
   "analyticsEndpoint": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
   "brand": { "accent": "#2f3a4f", "radius": "14px" },
   "scenariosUrl": "assets/chat/data/scenarios.merged.json",
