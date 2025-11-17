@@ -1,14 +1,13 @@
-
 name: Deploy Cloudflare Worker
 
 on:
-  workflow_dispatch:  # Allows manual trigger from Actions tab
+  workflow_dispatch:            # manual trigger from Actions tab
   push:
     branches:
       - main
     paths:
-      - 'worker.js'
-      - 'wrangler.toml'
+      - "worker.js"
+      - "wrangler.toml"
 
 jobs:
   deploy:
@@ -23,24 +22,21 @@ jobs:
         run: |
           if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
             echo "::error::CLOUDFLARE_API_TOKEN secret is not set"
-            echo "Add CLOUDFLARE_API_TOKEN secret in repository:"
-            echo "1. Go to Settings → Secrets and variables → Actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: CLOUDFLARE_API_TOKEN"
-            echo "4. Value: Your Cloudflare API token"
-            echo ""
-            echo "See GITHUB_SECRETS_SETUP.md for details"
             exit 1
           fi
           echo "✅ CLOUDFLARE_API_TOKEN secret is configured"
 
-      - name: Deploy to Cloudflare Workers
+      - name: Deploy with Wrangler
         uses: cloudflare/wrangler-action@v3
         with:
+          # must match your repo secret name
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # optional but explicit; can also rely on `account_id` in wrangler.toml
+          accountId: 59fea97fab54bf4d4d168cca1fa3410
+          command: deploy
+          workingDirectory: .    # wrangler.toml + worker.js are in repo root
 
       - name: Deployment summary
         run: |
           echo "✅ Worker deployed successfully"
-          url="https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
-          echo "Endpoint: ${url}/chat"
+          echo "Endpoint: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat"
