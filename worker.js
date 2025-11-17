@@ -1242,6 +1242,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     const generalKnowledgePrompt = [
       `You are ReflectivAI General Assistant - a helpful, knowledgeable AI that can discuss ANY topic.`,
       ``,
+      `CURRENT DATE: ${new Date().toISOString().split('T')[0]} (November 2025)`,
+      `You have access to information and events up through November 2025. When discussing current events, political leadership, or time-sensitive information, use knowledge that reflects the current date.`,
+      ``,
       `CORE CAPABILITIES:`,
       `You can answer questions on ANY subject, including but not limited to:`,
       `- Science & Medicine: disease states, biology, chemistry, physics`,
