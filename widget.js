@@ -1140,7 +1140,7 @@
     const card = document.createElement('div');
     card.className = 'contract-warning-card';
     card.style.cssText = 'background:#fff8e1;border:1px solid #e0b200;padding:10px 12px;border-radius:6px;margin:8px 0;font-size:12px;line-height:1.4';
-    const title = `<strong style="color:#b38300">⚠ Contract Warning (${mode})</strong>`;
+    const title = `<strong style="color:#b38300">⚠ Contract Warning (${esc(mode)})</strong>`;
     const list = `<ul style="margin:6px 0 8px;padding-left:18px">${issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
     const details = `<details style="font-size:11px"><summary style="cursor:pointer;color:#7a6400">Show raw</summary><div style="margin-top:6px;max-height:160px;overflow:auto;background:#fff;border:1px solid #eed;padding:6px;border-radius:4px">${esc(raw)}</div></details>`;
     card.innerHTML = `${title}<div style="margin-top:4px">Response violated one or more contract constraints but transport was OK.</div>${list}${details}`;
