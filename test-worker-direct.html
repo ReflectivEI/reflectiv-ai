@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Direct Worker Test</title>
+</head>
+<body>
+    <h1>Direct Worker Connection Test</h1>
+    <div id="status">Testing...</div>
+    <div id="response"></div>
+    
+    <script>
+        const workerUrl = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
+        
+        async function testWorker() {
+            const statusEl = document.getElementById('status');
+            const responseEl = document.getElementById('response');
+            
+            try {
+                console.log('[TEST] Attempting to connect to:', workerUrl + '/health');
+                const response = await fetch(workerUrl + '/health', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                console.log('[TEST] Response status:', response.status);
+                console.log('[TEST] Response headers:', [...response.headers.entries()]);
+                
+                if (response.ok) {
+                    const data = await response.text();
+                    statusEl.innerHTML = '<span style="color:green">✓ Worker is accessible</span>';
+                    responseEl.innerHTML = '<pre>' + data + '</pre>';
+                } else {
+                    statusEl.innerHTML = '<span style="color:orange">⚠ Worker returned status: ' + response.status + '</span>';
+                    const text = await response.text();
+                    responseEl.innerHTML = '<pre>' + text + '</pre>';
+                }
+            } catch (error) {
+                console.error('[TEST] Error:', error);
+                statusEl.innerHTML = '<span style="color:red">✗ Connection failed: ' + error.message + '</span>';
+                responseEl.innerHTML = '<p>Error details: ' + error.toString() + '</p>';
+                
+                // Check if this is a CORS or network error
+                if (error.message.includes('Failed to fetch')) {
+                    responseEl.innerHTML += '<p><strong>This could be:</strong></p><ul>' +
+                        '<li>CORS policy blocking the request</li>' +
+                        '<li>Worker not deployed or inaccessible</li>' +
+                        '<li>Network/firewall blocking</li>' +
+                        '<li>Ad blocker or browser extension</li>' +
+                        '</ul>';
+                }
+            }
+        }
+        
+        testWorker();
+    </script>
+</body>
+</html>

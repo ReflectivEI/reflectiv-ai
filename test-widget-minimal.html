@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Widget Test</title>
+  <link rel="stylesheet" href="widget.css">
+  <style>
+    body { padding: 20px; font-family: sans-serif; }
+    #test-mount { border: 2px solid #ccc; min-height: 500px; }
+  </style>
+</head>
+<body>
+  <h1>Widget Loading Test</h1>
+  <div id="status">Loading...</div>
+  <div id="reflectiv-widget" class="reflectiv-widget"></div>
+
+  <script>
+    // Set worker URL
+    window.WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
+    
+    // Debug logging
+    console.log('[TEST] Document ready state:', document.readyState);
+    console.log('[TEST] Widget mount exists:', !!document.getElementById('reflectiv-widget'));
+    console.log('[TEST] Worker URL:', window.WORKER_URL);
+    
+    // Monitor for errors
+    window.addEventListener('error', (e) => {
+      console.error('[TEST] Global error:', e.error);
+      document.getElementById('status').innerHTML = '<span style="color:red">ERROR: ' + e.message + '</span>';
+    });
+    
+    // Monitor widget loading
+    setTimeout(() => {
+      const mount = document.getElementById('reflectiv-widget');
+      const hasContent = mount && mount.children.length > 0;
+      console.log('[TEST] After 2s - Widget has content:', hasContent);
+      if (hasContent) {
+        document.getElementById('status').innerHTML = '<span style="color:green">✓ Widget loaded successfully</span>';
+      } else {
+        document.getElementById('status').innerHTML = '<span style="color:orange">⚠ Widget did not render (check console)</span>';
+      }
+    }, 2000);
+  </script>
+  
+  <!-- Load widget -->
+  <script src="widget.js"></script>
+</body>
+</html>
