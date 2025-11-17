@@ -562,6 +562,9 @@
     if (mode === "role-play") {
       return "In my clinic, we review histories, behaviors, and adherence to guide decisions.";
     }
+    if (mode === "general-knowledge") {
+      return "I can help answer general questions. Please provide more specific details about what you'd like to know.";
+    }
     // emotional-assessment
     return "Reflect on tone. Note one thing that worked and one to improve, then ask yourself one next question.";
   }
@@ -765,14 +768,7 @@
       )
       .trim();
 
-    if (!out) {
-      const variants = [
-        "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-        "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-        "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-      ];
-      out = variants[Math.floor(Math.random() * variants.length)];
-    }
+    // If sanitization removed everything, return empty - caller should use mode-specific fallback
     return out;
   }
 
@@ -3305,9 +3301,23 @@ Please provide your response again with all required fields including phrasing.`
         // PATCH B: semantic duplicate handling with vary pass
         let candidate = norm(replyText);
         if (candidate && (candidate === lastAssistantNorm || isRecent(candidate) || isTooSimilar(candidate))) {
+          // Mode-specific vary prompts
+          let varyPrompt;
+          if (currentMode === "role-play") {
+            varyPrompt = "Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences.";
+          } else if (currentMode === "sales-coach") {
+            varyPrompt = "Do not repeat prior wording. Provide different coaching guidance with one new insight and one actionable tip. 2–3 sentences.";
+          } else if (currentMode === "product-knowledge") {
+            varyPrompt = "Do not repeat prior wording. Provide different product information with one new clinical detail and one reference. 2–4 sentences.";
+          } else if (currentMode === "emotional-assessment") {
+            varyPrompt = "Do not repeat prior wording. Provide different assessment feedback with one observation and one suggestion. 2–3 sentences.";
+          } else {
+            varyPrompt = "Do not repeat prior wording. Provide a different response with new information. 2–4 sentences.";
+          }
+          
           const varyMsgs = [
             ...messages.slice(0, -1),
-            { role: "system", content: "Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
+            { role: "system", content: varyPrompt },
             messages[messages.length - 1]
           ];
           let variedResponse = await callModel(varyMsgs, sc);
@@ -3317,12 +3327,8 @@ Please provide your response again with all required fields including phrasing.`
             : variedResponse;
           varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
           if (!varied || isTooSimilar(norm(varied))) {
-            const alts = [
-              "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-              "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-              "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-            ];
-            varied = alts.find(a => !isTooSimilar(norm(a))) || alts[0];
+            // Use mode-specific fallback
+            varied = fallbackText(currentMode);
           }
           replyText = varied;
           candidate = norm(replyText);
