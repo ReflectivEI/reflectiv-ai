@@ -75,7 +75,7 @@ const { mode, threadId } = store.get();
 store.set({ mode: 'role-play', threadId: crypto.randomUUID() });
 
 // Valid modes
-console.log(store.MODES); // ['role-play', 'sales-coach', 'emotional-intelligence', 'product-knowledge']
+console.log(store.MODES); // ['role-play', 'sales-coach', 'emotional-assessment', 'product-knowledge', 'general-knowledge']
 ```
 
 **API:**
@@ -152,10 +152,11 @@ export function createModule({ bus, store, register }) {
 
 #### Available Modes
 
-1. **`rolePlay.js`** - Role-play interaction mode
-2. **`salesCoach.js`** - Sales coaching mode
-3. **`emotionalIntelligence.js`** - Emotional intelligence assessment mode
-4. **`productKnowledge.js`** - Product knowledge query mode
+1. **`rolePlay.js`** - Role-play interaction mode (mode: `role-play`)
+2. **`salesCoach.js`** - Sales coaching mode (mode: `sales-coach`)
+3. **`emotionalIntelligence.js`** - Emotional intelligence assessment mode (mode: `emotional-assessment`)
+4. **`productKnowledge.js`** - Product knowledge query mode (mode: `product-knowledge`)
+5. **General knowledge mode** - General assistant mode (mode: `general-knowledge`, uses `productKnowledge.js`)
 
 ## Usage Example
 
