@@ -32,7 +32,7 @@ jobs:
           # must match your repo secret name
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           # optional but explicit; can also rely on `account_id` in wrangler.toml
-          accountId: 59fea97fab54bf4d4d168cca1fa3410
+          accountId: 59fea97fab54bfd4d4168ccaa1fa3410
           command: deploy
           workingDirectory: .    # wrangler.toml + worker.js are in repo root
 
