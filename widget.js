@@ -222,13 +222,13 @@
     return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9-]{3,})\]/g, (match, code) => {
       const citation = citationsDb[code];
       if (!citation) {
-        // Unknown code - show as-is but styled
-        return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${match}</span>`;
+        // Unknown code - show as-is but styled (escaped for safety)
+        return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${esc(match)}</span>`;
       }
 
-      // Create clickable footnote link
+      // Create clickable footnote link (all dynamic content escaped)
       const tooltip = citation.apa || `${citation.source}, ${citation.year}`;
-      return `<a href="${citation.url}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${code.split('-').pop()}]</a>`;
+      return `<a href="${esc(citation.url)}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${esc(code.split('-').pop())}]</a>`;
     });
   }
 
@@ -797,84 +797,181 @@
     console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
 
     let html = "";
+    const contractIssues = [];
+    let hasCitationIssues = false;
 
-    // DEDUPLICATION: LLM sometimes repeats sections 2-3x - remove duplicates first
-    // Look for patterns like "Challenge: X... Challenge: X..." and keep only first occurrence
+    // ROBUST DEDUPLICATION: Remove duplicate sections by keeping only first occurrence
+    // Enhanced to handle edge cases like partial duplicates and varied spacing
     let cleanedText = text;
 
-    // Remove duplicate "Challenge:" sections
-    const challengeRegex = /(Challenge:\s*.+?)(\s+Challenge:)/is;
-    while (challengeRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(challengeRegex, '$1');
+    // Deduplicate Challenge sections
+    const challengeDedupRegex = /(Challenge\s*:\s*[\s\S]*?)(?=\s*Challenge\s*:)/gi;
+    const challengeMatches = cleanedText.match(challengeDedupRegex);
+    if (challengeMatches && challengeMatches.length > 1) {
+      console.log('[Sales Coach] Deduplicating Challenge sections:', challengeMatches.length);
+      cleanedText = cleanedText.replace(challengeDedupRegex, '').replace(/^\s*/, challengeMatches[0]);
     }
 
-    // Remove duplicate "Rep Approach:" sections
-    const repRegex = /(Rep Approach:\s*.+?)(\s+Rep Approach:)/is;
-    while (repRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(repRegex, '$1');
+    // Deduplicate Rep Approach sections
+    const repDedupRegex = /(Rep Approach\s*:\s*[\s\S]*?)(?=\s*Rep Approach\s*:)/gi;
+    const repMatches = cleanedText.match(repDedupRegex);
+    if (repMatches && repMatches.length > 1) {
+      console.log('[Sales Coach] Deduplicating Rep Approach sections:', repMatches.length);
+      const firstRep = repMatches[0];
+      cleanedText = cleanedText.replace(new RegExp(repDedupRegex.source, 'gi'), '');
+      const insertPos = cleanedText.indexOf('Impact:') !== -1 ? cleanedText.indexOf('Impact:') : 
+                        cleanedText.indexOf('Suggested Phrasing:') !== -1 ? cleanedText.indexOf('Suggested Phrasing:') : 
+                        cleanedText.length;
+      cleanedText = cleanedText.slice(0, insertPos) + firstRep + '\n\n' + cleanedText.slice(insertPos);
     }
 
-    // Remove duplicate "Impact:" sections
-    const impactRegex = /(Impact:\s*.+?)(\s+Impact:)/is;
-    while (impactRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(impactRegex, '$1');
+    // Deduplicate Impact sections
+    const impactDedupRegex = /(Impact\s*:\s*[\s\S]*?)(?=\s*Impact\s*:)/gi;
+    const impactMatches = cleanedText.match(impactDedupRegex);
+    if (impactMatches && impactMatches.length > 1) {
+      console.log('[Sales Coach] Deduplicating Impact sections:', impactMatches.length);
+      const firstImpact = impactMatches[0];
+      cleanedText = cleanedText.replace(new RegExp(impactDedupRegex.source, 'gi'), '');
+      const insertPos = cleanedText.indexOf('Suggested Phrasing:') !== -1 ? cleanedText.indexOf('Suggested Phrasing:') : cleanedText.length;
+      cleanedText = cleanedText.slice(0, insertPos) + firstImpact + '\n\n' + cleanedText.slice(insertPos);
     }
 
-    // Remove duplicate "Suggested Phrasing:" sections
-    const phrasingRegex = /(Suggested Phrasing:\s*.+?)(\s+Suggested Phrasing:)/is;
-    while (phrasingRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(phrasingRegex, '$1');
+    // Deduplicate Suggested Phrasing sections
+    const phrasingDedupRegex = /(Suggested\s+Phrasing\s*:\s*[\s\S]*?)(?=\s*Suggested\s+Phrasing\s*:)/gi;
+    const phrasingMatches = cleanedText.match(phrasingDedupRegex);
+    if (phrasingMatches && phrasingMatches.length > 1) {
+      console.log('[Sales Coach] Deduplicating Suggested Phrasing sections:', phrasingMatches.length);
+      cleanedText = cleanedText.replace(phrasingDedupRegex, '').replace(/\s*$/, '\n' + phrasingMatches[0]);
     }
 
-    // Strict contract enforcement: 4 headers in order, 3 bullets, phrasing
-    // Relaxed regex to handle variations in formatting
-    const challengeMatch = cleanedText.match(/Challenge\s*:\s*([\s\S]*?)(?=\n\s*(?:Rep Approach|Impact|Suggested Phrasing):|$)/i);
-    const repApproachMatch = cleanedText.match(/Rep Approach\s*:\s*([\s\S]*?)(?=\n\s*(?:Impact|Suggested Phrasing):|$)/i);
-    const impactMatch = cleanedText.match(/Impact\s*:\s*([\s\S]*?)(?=\n\s*Suggested Phrasing:|$)/i);
-    // More flexible phrasing regex: allow any text after the colon, with or without quotes
-    const phrasingMatch = cleanedText.match(/Suggested\s+Phrasing\s*:\s*([\s\S]*?)(?=\n\s*(?:Challenge|Rep Approach|Impact):|$)/i);
+    // TOLERANT SECTION EXTRACTION: Extract available sections, handle missing/partial blocks
+    // Updated regex to not require References section and handle citation blocks properly
+    const challengeMatch = cleanedText.match(/Challenge\s*:\s*([\s\S]*?)(?=\n\s*(?:Rep Approach|Impact|Suggested Phrasing|References):|$)/i);
+    const repApproachMatch = cleanedText.match(/Rep Approach\s*:\s*([\s\S]*?)(?=\n\s*(?:Impact|Suggested Phrasing|References):|$)/i);
+    const impactMatch = cleanedText.match(/Impact\s*:\s*([\s\S]*?)(?=\n\s*(?:Suggested Phrasing|References):|$)/i);
+    const phrasingMatch = cleanedText.match(/Suggested\s+Phrasing\s*:\s*([\s\S]*?)(?=\n\s*(?:References|Challenge|Rep Approach|Impact):|$)/i);
 
-    // Validate strict contract
-    let contractValid = true;
-    let errorMsg = "";
-    if (!challengeMatch) { contractValid = false; errorMsg += "Missing Challenge section.\n"; }
-    if (!repApproachMatch) { contractValid = false; errorMsg += "Missing Rep Approach section.\n"; }
-    if (!impactMatch) { contractValid = false; errorMsg += "Missing Impact section.\n"; }
-    if (!phrasingMatch) { contractValid = false; errorMsg += "Missing Suggested Phrasing section.\n"; }
-    // Check 3 bullets in Rep Approach
+    // TOLERANT CONTRACT ENFORCEMENT: Render available sections, warn on missing ones
+    let sectionsPresent = 0;
+    
+    if (!challengeMatch) { 
+      contractIssues.push("Missing Challenge section");
+    } else {
+      sectionsPresent++;
+    }
+    
+    if (!repApproachMatch) { 
+      contractIssues.push("Missing Rep Approach section");
+    } else {
+      sectionsPresent++;
+    }
+    
+    if (!impactMatch) { 
+      contractIssues.push("Missing Impact section");
+    } else {
+      sectionsPresent++;
+    }
+    
+    if (!phrasingMatch) { 
+      contractIssues.push("Missing Suggested Phrasing section");
+    } else {
+      sectionsPresent++;
+    }
+
+    // Check bullet count in Rep Approach if present
     let bulletCount = 0;
+    let bulletItems = [];
     if (repApproachMatch) {
       const repText = repApproachMatch[1].trim();
-      const bullets = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
+      bulletItems = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
         .map(b => b.replace(/^[\t ]*[•●○\-]\s+/, '').trim())
         .filter(b => b.length > 0 && b.length < 500);
-      bulletCount = bullets.length;
-      if (bulletCount !== 3) { contractValid = false; errorMsg += `Rep Approach must have exactly 3 bullets (found ${bulletCount}).\n`; }
+      bulletCount = bulletItems.length;
+      if (bulletCount < 3) { 
+        contractIssues.push(`Rep Approach should have 3 bullets (found ${bulletCount})`);
+      }
     }
-    if (!contractValid) {
+
+    // HARDENED CITATION VALIDATION: Check for missing or malformed citations
+    const allSectionText = [
+      challengeMatch ? challengeMatch[1] : '',
+      repApproachMatch ? repApproachMatch[1] : '',
+      impactMatch ? impactMatch[1] : '',
+      phrasingMatch ? phrasingMatch[1] : ''
+    ].join(' ');
+
+    // Check for citation codes in the content
+    const citationCodes = allSectionText.match(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9-]{3,})\]/g) || [];
+    const malformedCitations = [];
+    
+    citationCodes.forEach(code => {
+      const cleanCode = code.replace(/[\[\]]/g, '');
+      if (!citationsDb[cleanCode]) {
+        malformedCitations.push(cleanCode);
+        hasCitationIssues = true;
+      }
+    });
+
+    if (malformedCitations.length > 0) {
+      contractIssues.push(`Malformed/missing citations: ${malformedCitations.join(', ')}`);
+    }
+
+    // Render contract warning card if issues exist but we have some sections
+    if (contractIssues.length > 0 && sectionsPresent > 0) {
+      html += `<div class="sales-sim-section" style="background:#fff8e1;border:1px solid #e0b200;padding:10px 12px;border-radius:6px;margin:8px 0;">
+        <strong style="color:#b38300">⚠ Contract Warning</strong>
+        <div style="font-size:12px;margin-top:4px;">Sales Coach response has formatting issues but will display available sections:</div>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;">
+          ${contractIssues.map(issue => `<li>${esc(issue)}</li>`).join('')}
+        </ul>
+        <details style="margin-top:8px;font-size:11px;">
+          <summary style="cursor:pointer;color:#7a6400">Show raw response</summary>
+          <div style="margin-top:6px;max-height:160px;overflow:auto;background:#fff;border:1px solid #eed;padding:6px;border-radius:4px;white-space:pre-wrap;">${esc(text)}</div>
+        </details>
+      </div>\n\n`;
+    }
+
+    // If no sections at all, show error
+    if (sectionsPresent === 0) {
       return `<div class="sales-sim-section" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
-        <strong style="color:#c00">⚠️ Format Error:</strong> Sales Coach response violated contract.<br>
-        <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">${esc(errorMsg)}</pre>
+        <strong style="color:#c00">⚠️ Format Error:</strong> Sales Coach response has no valid sections.<br>
         <details style="margin-top:8px">
           <summary style="cursor:pointer;color:#666">Show raw response</summary>
-          <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px">${esc(text)}</div>
+          <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px;white-space:pre-wrap;">${esc(text)}</div>
         </details>
       </div>`;
     }
-    // Render sections if valid
-    html += `<div class="sales-sim-section"><div class="section-header"><strong>Challenge:</strong></div><div class="section-content">${convertCitations(esc(challengeMatch[1].trim()))}</div></div>\n\n`;
-    const repText = repApproachMatch[1].trim();
-    const bulletItems = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
-      .map(b => b.replace(/^[\t ]*[•●○\-]\s+/, '').trim())
-      .filter(b => b.length > 0 && b.length < 500);
-    html += `<div class="sales-sim-section"><div class="section-header"><strong>Rep Approach:</strong></div><ul class="section-bullets">`;
-    bulletItems.forEach(bullet => {
-      html += `<li>${convertCitations(esc(bullet))}</li>`;
-    });
-    html += `</ul></div>\n\n`;
-    html += `<div class="sales-sim-section"><div class="section-header"><strong>Impact:</strong></div><div class="section-content">${convertCitations(esc(impactMatch[1].trim()))}</div></div>\n\n`;
-    const phrasingText = phrasingMatch[1].trim().replace(/^['"\s]+|['"]\s*$/g, '').trim();
-    html += `<div class="sales-sim-section"><div class="section-header"><strong>Suggested Phrasing:</strong></div><div class="section-quote">"${convertCitations(esc(phrasingText))}"</div></div>`;
+
+    // RENDER AVAILABLE SECTIONS with proper HTML escaping and citation conversion
+    if (challengeMatch) {
+      const challengeContent = challengeMatch[1].trim();
+      html += `<div class="sales-sim-section"><div class="section-header"><strong>Challenge:</strong></div><div class="section-content">${convertCitations(esc(challengeContent))}</div></div>\n\n`;
+    }
+
+    if (repApproachMatch) {
+      html += `<div class="sales-sim-section"><div class="section-header"><strong>Rep Approach:</strong></div><ul class="section-bullets">`;
+      if (bulletItems.length > 0) {
+        bulletItems.forEach(bullet => {
+          html += `<li>${convertCitations(esc(bullet))}</li>`;
+        });
+      } else {
+        // Fallback if no bullets detected - render as paragraph
+        const repText = repApproachMatch[1].trim();
+        html += `<li>${convertCitations(esc(repText))}</li>`;
+      }
+      html += `</ul></div>\n\n`;
+    }
+
+    if (impactMatch) {
+      const impactContent = impactMatch[1].trim();
+      html += `<div class="sales-sim-section"><div class="section-header"><strong>Impact:</strong></div><div class="section-content">${convertCitations(esc(impactContent))}</div></div>\n\n`;
+    }
+
+    if (phrasingMatch) {
+      const phrasingText = phrasingMatch[1].trim().replace(/^['"\s]+|['"]\s*$/g, '').trim();
+      html += `<div class="sales-sim-section"><div class="section-header"><strong>Suggested Phrasing:</strong></div><div class="section-quote">"${convertCitations(esc(phrasingText))}"</div></div>`;
+    }
+
     return html;
   }
 
@@ -1051,11 +1148,14 @@
   }
 
   /**
-   * Detect Role Play contract violations and optionally sanitize.
-   * What counts as a leak?
-   *  - Coach artifacts: <coach>...</coach>, rubric_version, scores JSON
+   * HARDENED Role Play Contract Enforcement
+   * Strictly detects and strips coach artifacts, meta-coaching, and evaluation tokens.
+   * What counts as a leak (EXPANDED):
+   *  - Coach artifacts: <coach>...</coach> (even truncated/malformed), rubric_version, scores JSON
    *  - Sales-Coach headings: Challenge:, Rep Approach:, Impact:, Suggested Phrasing:, Next-Move Planner:, Risk Flags:
-   *  - Meta-coaching: phrases like "you should say" or "as the rep"
+   *  - Meta-coaching: "you should say", "as the rep", "consider saying", "try to", instructional language
+   *  - Evaluation artifacts: scores, rubric, evaluation, assessment tokens
+   *  - Truncated backend responses: partial JSON, incomplete coach blocks
    * Allowed HCP behavior:
    *  - Clinical reasoning in 1–4 sentences
    *  - Brief bullet lists for steps/criteria/monitoring (•, -, *)
@@ -1065,36 +1165,80 @@
   function applyRolePlayContractWarning(input) {
     const text = (typeof input === 'string') ? input : (input?.replyText || input?.clean || input?.raw || '');
     const issues = [];
-    if (/<coach>[\s\S]*?<\/coach>/i.test(text)) issues.push('Leaked <coach> JSON block');
-    if (/\bSuggested Phrasing:/i.test(text)) issues.push('Contains "Suggested Phrasing:" heading');
-    if (/\bRep Approach:/i.test(text)) issues.push('Contains "Rep Approach:" heading');
-    if (/\bImpact:/i.test(text)) issues.push('Contains "Impact:" heading');
-    if (/\bChallenge:/i.test(text)) issues.push('Contains "Challenge:" heading');
-    if (/Sales Coach/i.test(text)) issues.push('Mentions Sales Coach');
-    if (/"scores"\s*:\s*\{[\s\S]*?\}/i.test(text)) issues.push('Embedded scoring JSON');
-    if (/rubric_version/i.test(text)) issues.push('Rubric metadata leaked');
-    // Meta-coaching (avoid generic "you should"; focus on meta instructions)
-    if (/\byou should say\b/i.test(text)) issues.push('Meta-coaching: "you should say"');
-    if (/\bas the rep\b/i.test(text)) issues.push('Meta-coaching: "as the rep"');
+    
+    // STRICT DETECTION: Check for all possible contract violations
+    // Coach artifacts (including truncated/malformed)
+    if (/<coach[\s\S]*?(?:<\/coach>|$)/i.test(text)) issues.push('Leaked <coach> block (possibly truncated)');
+    if (/<\/coach>/i.test(text)) issues.push('Found </coach> closing tag');
+    
+    // Sales Coach headings
+    if (/\b(?:Suggested\s+)?Phrasing\s*:/i.test(text)) issues.push('Contains "Suggested Phrasing:" heading');
+    if (/\bRep\s+Approach\s*:/i.test(text)) issues.push('Contains "Rep Approach:" heading');
+    if (/\bImpact\s*:/i.test(text)) issues.push('Contains "Impact:" heading');
+    if (/\bChallenge\s*:/i.test(text)) issues.push('Contains "Challenge:" heading');
+    if (/\bNext-?Move\s+Planner\s*:/i.test(text)) issues.push('Contains "Next-Move Planner:" heading');
+    if (/\bRisk\s+Flags\s*:/i.test(text)) issues.push('Contains "Risk Flags:" heading');
+    
+    // Coach/mode references
+    if (/Sales\s+Coach/i.test(text)) issues.push('Mentions Sales Coach');
+    if (/\bcoach\s+(?:mode|feedback|evaluation)/i.test(text)) issues.push('References coach functionality');
+    
+    // Evaluation/scoring artifacts (including partial JSON)
+    if (/"scores"\s*:\s*\{[\s\S]*?\}/i.test(text)) issues.push('Embedded scores JSON');
+    if (/\{[\s\S]*?"(?:empathy|accuracy|compliance|discovery)"[\s\S]*?:/i.test(text)) issues.push('Partial evaluation JSON detected');
+    if (/rubric[\s_-]?version/i.test(text)) issues.push('Rubric metadata leaked');
+    if (/\b(?:score|scoring|evaluated?|assessment)\s*[:=]\s*\d/i.test(text)) issues.push('Numeric evaluation detected');
+    
+    // Meta-coaching phrases (expanded)
+    if (/\byou should (?:say|try|consider|mention|ask|focus)/i.test(text)) issues.push('Meta-coaching: instructional language');
+    if (/\b(?:as|if you are|being) the rep\b/i.test(text)) issues.push('Meta-coaching: role instruction');
+    if (/\bconsider saying\b/i.test(text)) issues.push('Meta-coaching: "consider saying"');
+    if (/\btry to (?:say|ask|mention)\b/i.test(text)) issues.push('Meta-coaching: "try to"');
+    if (/\bhere's what (?:you could|to) say\b/i.test(text)) issues.push('Meta-coaching: script suggestion');
+    if (/\ba better (?:approach|response) (?:would be|is)\b/i.test(text)) issues.push('Meta-coaching: prescriptive guidance');
 
-    // Sanitize banned tokens if present (light pass, backend already did heavy)
-    if (issues.length) {
-      let cleaned = text
-        .replace(/<coach>[\s\S]*?<\/coach>/gi, '')
-        .replace(/\bSuggested Phrasing:/gi, '')
-        .replace(/\bRep Approach:/gi, '')
-        .replace(/\bImpact:/gi, '')
-        .replace(/\bChallenge:/gi, '')
-        .replace(/Sales Coach/gi, '')
-        .replace(/"scores"\s*:\s*\{[\s\S]*?\}/gi, '')
-        .replace(/rubric_version/gi, '')
-        .replace(/\byou should say\b/gi, '')
-        .replace(/\bas the rep\b/gi, '')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
+    // AGGRESSIVE SANITIZATION: Strip all banned tokens and patterns
+    if (issues.length > 0) {
+      let cleaned = text;
+      
+      // Strip coach blocks (including truncated/malformed ones)
+      cleaned = cleaned.replace(/<coach[\s\S]*?(?:<\/coach>|$)/gi, '');
+      cleaned = cleaned.replace(/<\/coach>/gi, '');
+      
+      // Strip all Sales Coach headings (strict)
+      cleaned = cleaned.replace(/\b(?:Suggested\s+)?Phrasing\s*:[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '');
+      cleaned = cleaned.replace(/\bRep\s+Approach\s*:[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '');
+      cleaned = cleaned.replace(/\bImpact\s*:[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '');
+      cleaned = cleaned.replace(/\bChallenge\s*:[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '');
+      cleaned = cleaned.replace(/\bNext-?Move\s+Planner\s*:[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '');
+      cleaned = cleaned.replace(/\bRisk\s+Flags\s*:[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '');
+      
+      // Strip coach/mode references
+      cleaned = cleaned.replace(/Sales\s+Coach/gi, '');
+      cleaned = cleaned.replace(/\bcoach\s+(?:mode|feedback|evaluation)/gi, '');
+      
+      // Strip JSON artifacts (complete and partial)
+      cleaned = cleaned.replace(/"scores"\s*:\s*\{[\s\S]*?\}/gi, '');
+      cleaned = cleaned.replace(/\{[\s\S]*?"(?:empathy|accuracy|compliance|discovery)"[\s\S]*?:[\s\S]*?\}/gi, '');
+      cleaned = cleaned.replace(/rubric[\s_-]?version[\s\S]*?(?:\n|$)/gi, '');
+      
+      // Strip meta-coaching sentences (aggressive)
+      cleaned = cleaned.replace(/[^.!?]*\byou should (?:say|try|consider|mention|ask|focus)[^.!?]*[.!?]/gi, '');
+      cleaned = cleaned.replace(/[^.!?]*\b(?:as|if you are|being) the rep\b[^.!?]*[.!?]/gi, '');
+      cleaned = cleaned.replace(/[^.!?]*\bconsider saying\b[^.!?]*[.!?]/gi, '');
+      cleaned = cleaned.replace(/[^.!?]*\btry to (?:say|ask|mention)\b[^.!?]*[.!?]/gi, '');
+      cleaned = cleaned.replace(/[^.!?]*\bhere's what (?:you could|to) say\b[^.!?]*[.!?]/gi, '');
+      cleaned = cleaned.replace(/[^.!?]*\ba better (?:approach|response) (?:would be|is)\b[^.!?]*[.!?]/gi, '');
+      
+      // Clean up excessive whitespace and empty lines
+      cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+      cleaned = cleaned.replace(/^\s+|\s+$/g, '');
+      cleaned = cleaned.trim();
+      
       const meta = (typeof input === 'string') ? { mode: 'role-play', issues, raw: text } : { mode: 'role-play', issues, raw: input?.raw || text };
       return { cleaned, issues, meta };
     }
+    
     return { cleaned: text, issues: [], meta: null };
   }
 
@@ -2853,13 +2997,13 @@ ${COMMON}`
     return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9-]{3,})\]/g, (match, code) => {
       const citation = citationsDb[code];
       if (!citation) {
-        // Unknown code - show as-is but styled
-        return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${match}</span>`;
+        // Unknown code - show as-is but styled (escaped for safety)
+        return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${esc(match)}</span>`;
       }
 
-      // Create clickable footnote link
+      // Create clickable footnote link (all dynamic content escaped)
       const tooltip = citation.apa || `${citation.source}, ${citation.year}`;
-      return `<a href="${citation.url}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${code.split('-').pop()}]</a>`;
+      return `<a href="${esc(citation.url)}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${esc(code.split('-').pop())}]</a>`;
     });
   }
 
