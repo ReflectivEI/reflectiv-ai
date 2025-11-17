@@ -1,4 +1,4 @@
-const MODES = ['role-play','sales-coach','emotional-intelligence','product-knowledge'];
+const MODES = ['role-play','sales-coach','emotional-assessment','product-knowledge','general-knowledge'];
 export function createModeStore(bus){
   let state = { mode:'sales-coach', threadId:null };
   return {
