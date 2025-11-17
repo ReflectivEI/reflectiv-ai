@@ -3100,11 +3100,13 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       // INTELLIGENT MODE AUTO-DETECTION
       // If user asks a general knowledge question (What/How/Why/Explain)
       // without HCP simulation context, auto-switch to Product Knowledge
+      // BUT: Don't switch if already in general-knowledge mode (General Assistant)
       const generalQuestionPatterns = /^(what|how|why|explain|tell me|describe|define|compare|list|when)/i;
       const simulationContextWords = /(hcp|doctor|physician|clinician|rep|objection|customer|prescriber)/i;
 
-      if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
+      if (currentMode !== "general-knowledge" && generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
         // This looks like a general knowledge question - use Product Knowledge mode
+        // (unless already in General Assistant mode which handles general questions)
         const prevMode = currentMode;
         currentMode = "product-knowledge";
         console.log(`[Auto-Detect] Switched from ${prevMode} → product-knowledge for general question`);

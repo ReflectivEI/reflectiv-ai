@@ -656,6 +656,16 @@ function validateModeResponse(mode, reply, coach) {
     }
   }
 
+  // GENERAL-KNOWLEDGE: No strict validation - allow any format
+  // This mode is for general assistant queries and should be flexible
+  if (mode === "general-knowledge") {
+    // No violations for general-knowledge - it's a flexible general-purpose assistant
+    // Just ensure no sales-coach or product-knowledge specific formatting leaked in
+    if (/Challenge:|Rep Approach:|Impact:|Suggested Phrasing:/i.test(cleaned)) {
+      warnings.push("sales_coach_headings_detected_in_general_mode");
+    }
+  }
+
   return { reply: cleaned, warnings, violations };
 }
 
