@@ -796,6 +796,39 @@
 
     console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
 
+    // HANDLE JSON ERROR RESPONSES: Backend may return error objects instead of formatted text
+    // Example: {"error":"format_error","card":"sales-coach","message":"Response Format Error"}
+    let parsedError = null;
+    try {
+      const trimmed = text.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.error || parsed.message) {
+          parsedError = parsed;
+          console.log('[Sales Coach Format] Detected JSON error response:', parsedError);
+        }
+      }
+    } catch (e) {
+      // Not JSON or malformed, continue with normal parsing
+    }
+
+    // If backend returned an error object, display it clearly
+    if (parsedError) {
+      const errorType = parsedError.error || 'unknown_error';
+      const errorMsg = parsedError.message || 'An error occurred';
+      return `<div class="sales-sim-section" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
+        <strong style="color:#c00">⚠️ Backend Error (${esc(errorType)})</strong>
+        <div style="margin-top:8px;font-size:13px;">${esc(errorMsg)}</div>
+        <details style="margin-top:8px;font-size:11px;">
+          <summary style="cursor:pointer;color:#666">Technical details</summary>
+          <pre style="margin-top:6px;font-size:11px;background:#fff;padding:8px;border-radius:4px;overflow:auto;">${esc(JSON.stringify(parsedError, null, 2))}</pre>
+        </details>
+        <div style="margin-top:12px;padding:8px;background:#fff8e1;border-radius:4px;font-size:12px;">
+          <strong>Troubleshooting:</strong> The backend could not generate a properly formatted Sales Coach response. This may be a temporary issue. Try rephrasing your question or try again.
+        </div>
+      </div>`;
+    }
+
     let html = "";
     const contractIssues = [];
     let hasCitationIssues = false;
