@@ -2775,6 +2775,7 @@ ${COMMON}`
           let errorDetails = null;
           try {
             errorText = await r.text();
+            console.log('[callModel] Raw error response:', errorText);
             const errorJson = JSON.parse(errorText);
             errorDetails = errorJson.message || errorJson.error || errorText;
           } catch (e) {
@@ -2785,6 +2786,7 @@ ${COMMON}`
             status: r.status,
             url,
             error: errorDetails,
+            rawError: errorText,
             attempt: attempt + 1
           });
 
