@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node worker.test.js",
     "test:cors": "node worker.cors.test.js",
-    "test:all": "node worker.cors.test.js && node worker.test.js"
+    "test:gk-date": "node test-general-knowledge-date.js",
+    "test:all": "node worker.cors.test.js && node worker.test.js && node test-general-knowledge-date.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
