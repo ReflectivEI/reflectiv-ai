@@ -562,6 +562,9 @@
     if (mode === "role-play") {
       return "In my clinic, we review histories, behaviors, and adherence to guide decisions.";
     }
+    if (mode === "general-knowledge") {
+      return "I can help answer general questions. Please provide more specific details about what you'd like to know.";
+    }
     // emotional-assessment
     return "Reflect on tone. Note one thing that worked and one to improve, then ask yourself one next question.";
   }
@@ -765,14 +768,7 @@
       )
       .trim();
 
-    if (!out) {
-      const variants = [
-        "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-        "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-        "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-      ];
-      out = variants[Math.floor(Math.random() * variants.length)];
-    }
+    // If sanitization removed everything, return empty - caller should use mode-specific fallback
     return out;
   }
 
@@ -2712,6 +2708,19 @@ ${COMMON}`
             scenarioId: scenarioContext?.id || null
           };
           
+          // Debug logging to help diagnose 400 errors
+          if (attempt === 0) {
+            console.log('[callModel] Sending request:', {
+              url,
+              mode: payload.mode,
+              messagesCount: payload.messages?.length || 0,
+              messageRoles: payload.messages?.map(m => m.role) || [],
+              hasUserMessage: payload.messages?.some(m => m.role === 'user') || false,
+              disease: payload.disease,
+              persona: payload.persona
+            });
+          }
+          
           const r = await fetch(url, {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -2757,21 +2766,42 @@ ${COMMON}`
             return text;
           }
 
+          // Non-OK response - read the error body to get worker's error message
+          let errorText = '';
+          let errorDetails = null;
+          try {
+            errorText = await r.text();
+            console.log('[callModel] Raw error response:', errorText);
+            const errorJson = JSON.parse(errorText);
+            errorDetails = errorJson.message || errorJson.error || errorText;
+          } catch (e) {
+            errorDetails = errorText || `HTTP ${r.status}`;
+          }
+
+          console.error('[callModel] Worker error:', {
+            status: r.status,
+            url,
+            error: errorDetails,
+            rawError: errorText,
+            attempt: attempt + 1
+          });
+
           // Check for authentication errors
           if (r.status === 401 || r.status === 403) {
             console.error('[API] Authentication required - check Cloudflare Access settings');
-            throw new Error('authentication_required');
+            throw new Error(`authentication_required: ${errorDetails}`);
           }
 
           // Check if we should retry (429 or 5xx errors)
           if (attempt < delays.length && (r.status === 429 || r.status >= 500)) {
-            lastError = new Error(`${url}_http_${r.status}`);
+            lastError = new Error(`Worker error (HTTP ${r.status}): ${errorDetails}`);
             await new Promise(resolve => setTimeout(resolve, delays[attempt]));
             currentTelemetry.retries++;
             continue;
           }
 
-          throw new Error(`${url}_http_${r.status}`);
+          // Non-retryable error - include the worker's error message
+          throw new Error(`Worker error (HTTP ${r.status}): ${errorDetails}`);
         } catch (e) {
           clearTimeout(timeout);
 
@@ -3066,11 +3096,13 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       // INTELLIGENT MODE AUTO-DETECTION
       // If user asks a general knowledge question (What/How/Why/Explain)
       // without HCP simulation context, auto-switch to Product Knowledge
+      // BUT: Don't switch if already in general-knowledge mode (General Assistant)
       const generalQuestionPatterns = /^(what|how|why|explain|tell me|describe|define|compare|list|when)/i;
       const simulationContextWords = /(hcp|doctor|physician|clinician|rep|objection|customer|prescriber)/i;
 
-      if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
+      if (currentMode !== "general-knowledge" && generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
         // This looks like a general knowledge question - use Product Knowledge mode
+        // (unless already in General Assistant mode which handles general questions)
         const prevMode = currentMode;
         currentMode = "product-knowledge";
         console.log(`[Auto-Detect] Switched from ${prevMode} → product-knowledge for general question`);
@@ -3269,9 +3301,23 @@ Please provide your response again with all required fields including phrasing.`
         // PATCH B: semantic duplicate handling with vary pass
         let candidate = norm(replyText);
         if (candidate && (candidate === lastAssistantNorm || isRecent(candidate) || isTooSimilar(candidate))) {
+          // Mode-specific vary prompts
+          let varyPrompt;
+          if (currentMode === "role-play") {
+            varyPrompt = "Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences.";
+          } else if (currentMode === "sales-coach") {
+            varyPrompt = "Do not repeat prior wording. Provide different coaching guidance with one new insight and one actionable tip. 2–3 sentences.";
+          } else if (currentMode === "product-knowledge") {
+            varyPrompt = "Do not repeat prior wording. Provide different product information with one new clinical detail and one reference. 2–4 sentences.";
+          } else if (currentMode === "emotional-assessment") {
+            varyPrompt = "Do not repeat prior wording. Provide different assessment feedback with one observation and one suggestion. 2–3 sentences.";
+          } else {
+            varyPrompt = "Do not repeat prior wording. Provide a different response with new information. 2–4 sentences.";
+          }
+          
           const varyMsgs = [
             ...messages.slice(0, -1),
-            { role: "system", content: "Do not repeat prior wording. Provide a different HCP reply with one concrete example, one criterion, and one follow-up step. 2–4 sentences." },
+            { role: "system", content: varyPrompt },
             messages[messages.length - 1]
           ];
           let variedResponse = await callModel(varyMsgs, sc);
@@ -3281,12 +3327,8 @@ Please provide your response again with all required fields including phrasing.`
             : variedResponse;
           varied = currentMode === "role-play" ? sanitizeRolePlayOnly(varied || "") : sanitizeLLM(varied || "");
           if (!varied || isTooSimilar(norm(varied))) {
-            const alts = [
-              "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-              "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-              "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-            ];
-            varied = alts.find(a => !isTooSimilar(norm(a))) || alts[0];
+            // Use mode-specific fallback
+            varied = fallbackText(currentMode);
           }
           replyText = varied;
           candidate = norm(replyText);
@@ -3355,13 +3397,18 @@ Please provide your response again with all required fields including phrasing.`
         // Provide specific error messages based on error type
         let errorMessage = "Failed to send message. ";
         
-        if (e.message.includes('authentication_required')) {
+        // Extract worker error details if present
+        const workerErrorMatch = e.message?.match(/Worker error \(HTTP \d+\): (.+)/);
+        if (workerErrorMatch) {
+          // Use the detailed worker error message
+          errorMessage += workerErrorMatch[1];
+        } else if (e.message?.includes('authentication_required')) {
           errorMessage += "Authentication required - please check access permissions.";
-        } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+        } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')) {
           errorMessage += "Cannot connect to backend. Please check your internet connection or try again later.";
-        } else if (e.message.includes('timeout')) {
+        } else if (e.message?.includes('timeout')) {
           errorMessage += "Request timed out. Please try again.";
-        } else if (e.message.includes('worker_base_missing')) {
+        } else if (e.message?.includes('worker_base_missing')) {
           errorMessage += "Backend configuration missing.";
         } else {
           errorMessage += e.message || "Unknown error";

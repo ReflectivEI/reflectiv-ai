@@ -7,6 +7,8 @@
   "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
   "stream": true,
   "modes": [
+    "sales-coach",
+    "role-play",
     "emotional-assessment",
     "product-knowledge",
     "sales-coach",
