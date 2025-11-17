@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ReflectivAI Widget - Test Page</title>
+  <link rel="stylesheet" href="widget.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    .test-header {
+      background: #0f2747;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .test-header h1 {
+      margin: 0 0 10px 0;
+      font-size: 24px;
+    }
+    
+    .test-header p {
+      margin: 5px 0;
+      opacity: 0.9;
+    }
+    
+    .test-controls {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-controls h2 {
+      margin-top: 0;
+      color: #0f2747;
+      font-size: 18px;
+    }
+    
+    .control-group {
+      margin-bottom: 15px;
+    }
+    
+    .control-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .control-group select,
+    .control-group input,
+    .control-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .control-group textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    
+    .control-group button {
+      background: #20bfa9;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .control-group button:hover {
+      background: #1aa896;
+    }
+    
+    .control-group button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .test-results {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-results h2 {
+      margin-top: 0;
+      color: #0f2747;
+      font-size: 18px;
+    }
+    
+    .test-result {
+      margin-bottom: 15px;
+      padding: 15px;
+      border-radius: 4px;
+      border-left: 4px solid #ddd;
+    }
+    
+    .test-result.success {
+      background: #e8f5e9;
+      border-left-color: #4caf50;
+    }
+    
+    .test-result.error {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+    
+    .test-result.info {
+      background: #e3f2fd;
+      border-left-color: #2196f3;
+    }
+    
+    .test-result pre {
+      background: rgba(0,0,0,0.05);
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin: 10px 0 0 0;
+    }
+    
+    .widget-container {
+      position: relative;
+      min-height: 600px;
+    }
+    
+    #status-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      font-size: 12px;
+      z-index: 10000;
+    }
+    
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    
+    .status-dot.connected {
+      background: #4caf50;
+    }
+    
+    .status-dot.disconnected {
+      background: #f44336;
+    }
+    
+    .status-dot.mock {
+      background: #ff9800;
+    }
+  </style>
+</head>
+<body>
+  <div id="status-indicator">
+    <span class="status-dot disconnected"></span>
+    <span id="status-text">Checking connection...</span>
+  </div>
+
+  <div class="test-header">
+    <h1>🧪 ReflectivAI Widget - Test Suite</h1>
+    <p>Real integration testing with actual HTTP calls - No fake tests!</p>
+    <p id="server-info">Server: Checking...</p>
+  </div>
+
+  <div class="test-controls">
+    <h2>Test Controls</h2>
+    
+    <div class="control-group">
+      <label for="test-mode">Select Mode to Test:</label>
+      <select id="test-mode">
+        <option value="sales-coach">Sales Coach</option>
+        <option value="role-play">Role Play</option>
+        <option value="emotional-assessment">Emotional Intelligence</option>
+        <option value="product-knowledge">Product Knowledge</option>
+        <option value="general-knowledge">General Assistant</option>
+      </select>
+    </div>
+    
+    <div class="control-group">
+      <label for="test-message">Test Message:</label>
+      <textarea id="test-message" placeholder="Enter a test message...">How should I approach an HCP about PrEP for HIV prevention?</textarea>
+    </div>
+    
+    <div class="control-group">
+      <button id="run-test-btn" onclick="runSingleTest()">🚀 Run Test</button>
+      <button id="run-all-btn" onclick="runAllTests()">🎯 Run All Mode Tests</button>
+      <button onclick="clearResults()">🗑️ Clear Results</button>
+    </div>
+  </div>
+
+  <div class="test-results">
+    <h2>Test Results</h2>
+    <div id="results-container">
+      <p style="color: #999;">No tests run yet. Click "Run Test" to start.</p>
+    </div>
+  </div>
+
+  <div class="widget-container">
+    <div id="reflectiv-widget"></div>
+  </div>
+
+  <!-- Load widget -->
+  <script src="widget.js"></script>
+  
+  <script>
+    // Test suite configuration
+    const TEST_ENDPOINT = '/chat'; // Use local server proxy
+    
+    // Check server health on load
+    async function checkServerHealth() {
+      try {
+        const response = await fetch('/health');
+        if (response.ok) {
+          updateStatus('connected', 'Server connected');
+          document.getElementById('server-info').textContent = 
+            'Server: http://localhost:8080 (Connected ✓)';
+          return true;
+        }
+      } catch (error) {
+        updateStatus('disconnected', 'Server offline');
+        document.getElementById('server-info').textContent = 
+          'Server: Not running - Start with: node local-test-server.js';
+        return false;
+      }
+    }
+    
+    function updateStatus(status, text) {
+      const dot = document.querySelector('.status-dot');
+      dot.className = `status-dot ${status}`;
+      document.getElementById('status-text').textContent = text;
+    }
+    
+    function addResult(type, title, details, data) {
+      const container = document.getElementById('results-container');
+      
+      // Clear initial message
+      if (container.querySelector('p')) {
+        container.innerHTML = '';
+      }
+      
+      const result = document.createElement('div');
+      result.className = `test-result ${type}`;
+      
+      const timestamp = new Date().toLocaleTimeString();
+      let html = `<strong>[${timestamp}] ${title}</strong>`;
+      
+      if (details) {
+        html += `<p>${details}</p>`;
+      }
+      
+      if (data) {
+        html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      }
+      
+      result.innerHTML = html;
+      container.insertBefore(result, container.firstChild);
+    }
+    
+    function clearResults() {
+      document.getElementById('results-container').innerHTML = 
+        '<p style="color: #999;">Results cleared. Ready for new tests.</p>';
+    }
+    
+    async function runSingleTest() {
+      const mode = document.getElementById('test-mode').value;
+      const message = document.getElementById('test-message').value;
+      
+      if (!message.trim()) {
+        addResult('error', 'Test Failed', 'Message cannot be empty');
+        return;
+      }
+      
+      const btn = document.getElementById('run-test-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running...';
+      
+      try {
+        addResult('info', `Testing mode: ${mode}`, `Message: "${message}"`);
+        
+        const payload = {
+          mode: mode,
+          messages: [
+            { role: 'user', content: message }
+          ],
+          threadId: `test-${Date.now()}`
+        };
+        
+        const startTime = Date.now();
+        
+        const response = await fetch(TEST_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const duration = Date.now() - startTime;
+        const data = await response.json();
+        
+        if (response.ok) {
+          addResult('success', 
+            `✅ Test Passed - ${mode}`, 
+            `Response received in ${duration}ms. Status: ${response.status}`,
+            data
+          );
+          
+          // Validate response structure
+          validateResponse(mode, data);
+        } else {
+          addResult('error', 
+            `❌ Test Failed - ${mode}`, 
+            `HTTP ${response.status} - ${data.error || 'Unknown error'}`,
+            data
+          );
+        }
+        
+      } catch (error) {
+        addResult('error', 
+          `❌ Test Failed - ${mode}`, 
+          `Error: ${error.message}`
+        );
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Run Test';
+      }
+    }
+    
+    function validateResponse(mode, data) {
+      const checks = [];
+      
+      // All modes should have a reply
+      if (data.reply) {
+        checks.push('✓ Reply field present');
+      } else {
+        checks.push('✗ Reply field missing');
+      }
+      
+      // Sales coach should have coach data
+      if (mode === 'sales-coach') {
+        if (data.coach) {
+          checks.push('✓ Coach data present');
+          if (data.coach.overall !== undefined) {
+            checks.push(`✓ Overall score: ${data.coach.overall}`);
+          }
+        } else {
+          checks.push('⚠️ Coach data missing (expected for sales-coach)');
+        }
+      }
+      
+      addResult('info', 'Response Validation', checks.join('<br>'));
+    }
+    
+    async function runAllTests() {
+      const modes = [
+        { mode: 'sales-coach', message: 'How should I approach an HCP about PrEP for HIV prevention?' },
+        { mode: 'role-play', message: 'I am concerned about the side effects of PrEP for my patients.' },
+        { mode: 'product-knowledge', message: 'What is the indication for Descovy for PrEP?' },
+        { mode: 'emotional-assessment', message: 'I think I showed good empathy in that conversation.' },
+      ];
+      
+      const btn = document.getElementById('run-all-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running all tests...';
+      
+      addResult('info', '🎯 Running All Mode Tests', `Testing ${modes.length} modes...`);
+      
+      let passed = 0;
+      let failed = 0;
+      
+      for (const test of modes) {
+        document.getElementById('test-mode').value = test.mode;
+        document.getElementById('test-message').value = test.message;
+        
+        try {
+          const payload = {
+            mode: test.mode,
+            messages: [{ role: 'user', content: test.message }],
+            threadId: `test-${Date.now()}`
+          };
+          
+          const response = await fetch(TEST_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok && data.reply) {
+            passed++;
+            addResult('success', `✅ ${test.mode}`, 'Test passed');
+          } else {
+            failed++;
+            addResult('error', `❌ ${test.mode}`, 'Test failed');
+          }
+        } catch (error) {
+          failed++;
+          addResult('error', `❌ ${test.mode}`, error.message);
+        }
+        
+        // Small delay between tests
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      addResult('info', '📊 All Tests Complete', 
+        `Passed: ${passed}, Failed: ${failed}, Total: ${modes.length}`);
+      
+      btn.disabled = false;
+      btn.textContent = '🎯 Run All Mode Tests';
+    }
+    
+    // Initialize
+    window.addEventListener('load', async () => {
+      await checkServerHealth();
+    });
+  </script>
+</body>
+</html>
