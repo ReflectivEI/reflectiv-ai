@@ -1111,7 +1111,6 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       ``,
       `AVAILABLE CONTEXT:`,
       `${disease ? `Disease Focus: ${disease}` : ''}`,
-      `${persona ? `HCP Context: ${persona}` : ''}`,
       `${factsStr ? `\nRelevant Facts:\n${factsStr}` : ''}`,
       `${citesStr ? `\nReferences:\n${citesStr}` : ''}`,
       ``,
