@@ -1,3 +1,16 @@
-# Disable Vercel deployment - using Cloudflare Workers instead
-*
-!vercel.json
+# Vercel ignore - exclude unnecessary files
+node_modules
+.git
+.github
+*.md
+!README.md
+*.log
+.DS_Store
+worker.js
+wrangler.toml
+test-*
+*-test.js
+*.test.js
+tests/
+.backups/
+tmp/
