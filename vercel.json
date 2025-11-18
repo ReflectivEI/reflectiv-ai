@@ -1,4 +1,67 @@
 {
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/chat.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/coach-metrics.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "widget.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "widget.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "widget-modern.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "styles.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "site.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/chat",
+      "dest": "/api/chat.js",
+      "methods": ["POST", "OPTIONS"]
+    },
+    {
+      "src": "/api/coach-metrics",
+      "dest": "/api/coach-metrics.js",
+      "methods": ["POST", "OPTIONS"]
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -10,10 +73,14 @@
         {
           "key": "Access-Control-Allow-Headers",
           "value": "X-Requested-With, Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
         }
       ]
     }
-  ]
+  ],
   "git": {
     "deploymentEnabled": true
   }
