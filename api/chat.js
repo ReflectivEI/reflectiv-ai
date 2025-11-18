@@ -82,7 +82,7 @@ async function providerChat(messages, maxTokens = 900, temperature = 0.2) {
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: "llama3-1-8b-instant",
+      model: "llama-3.1-8b-instant",
       temperature,
       max_tokens: maxTokens,
       messages,
