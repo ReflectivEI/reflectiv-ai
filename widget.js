@@ -234,8 +234,8 @@
 
   // ---------- Health gate ----------
   async function checkHealth() {
-    // Normalize base URL to avoid double slashes
-    const baseUrl = (window.WORKER_URL || "").replace(/\/+$/, "");
+    // Use getWorkerBase() for consistency with other endpoints
+    const baseUrl = getWorkerBase();
     const healthUrl = `${baseUrl}/health`;
     if (isDebugMode()) console.log('[DEBUG] checkHealth() called, healthUrl:', healthUrl);
     
@@ -495,8 +495,13 @@
   // --- Worker base normalizer + tiny JSON fetch helper ---
   // Ensures add-on calls like jfetch("/plan") hit the base (…/plan), even when config points to …/chat
   function getWorkerBase() {
+    // Prefer config.apiBase, fallback to window.WORKER_URL
+    let base = cfg?.apiBase || cfg?.workerUrl || cfg?.workerUrlFallback || window.WORKER_URL || "";
+    // If apiBase is the full /api/chat path, extract just the base for legacy endpoints
+    // (Vercel backend uses /api/chat, so we strip /chat suffix for legacy /plan, /facts endpoints)
+    base = base.replace(/\/chat\s*$/, "");
     // Normalize by removing trailing slashes
-    return (window.WORKER_URL || "").replace(/\/+$/, "");
+    return base.replace(/\/+$/, "");
   }
 
   async function jfetch(path, payload) {
