@@ -1,17 +1,4 @@
 {
-  "version": 2,
-  "routes": [
-    {
-      "src": "/api/chat",
-      "methods": ["POST", "OPTIONS"],
-      "dest": "/api/chat.js"
-    },
-    {
-      "src": "/api/coach-metrics",
-      "methods": ["POST", "OPTIONS"],
-      "dest": "/api/coach-metrics.js"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
