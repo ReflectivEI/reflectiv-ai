@@ -1,4 +1,6 @@
 {
+  "buildCommand": "",
+  "framework": null,
   "headers": [
     {
       "source": "/api/(.*)",
@@ -13,7 +15,7 @@
         }
       ]
     }
-  ]
+  ],
   "git": {
     "deploymentEnabled": true
   }
