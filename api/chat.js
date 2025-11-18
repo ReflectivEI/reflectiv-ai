@@ -255,9 +255,9 @@ export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   const isAllowed = allowed.length === 0 || allowed.includes(origin);
 
-  res.setHeader("Access-Control-Allow-Origin", isAllowed && origin ? origin : "");
+  res.setHeader("Access-Control-Allow-Origin", isAllowed && origin ? origin : "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Authorization");
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
