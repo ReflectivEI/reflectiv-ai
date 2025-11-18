@@ -255,9 +255,13 @@ export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   const isAllowed = allowed.length === 0 || allowed.includes(origin);
 
-  res.setHeader("Access-Control-Allow-Origin", isAllowed && origin ? origin : "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Authorization");
+  // Only set CORS headers if origin is allowed (can't use * with credentials)
+  if (isAllowed && origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Authorization");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
