@@ -6,9 +6,36 @@ A comprehensive AI-powered platform for pharmaceutical sales training, featuring
 
 **Just want to see it work?** Choose your deployment platform:
 
-### Option 1: Deploy to Cloudflare Workers (Recommended)
+### Option 1: Deploy to Vercel (Recommended)
 
-This is the **primary backend** that's fully tested and production-ready.
+This deploys both the **frontend** and **API endpoints** as serverless functions in one platform.
+
+```bash
+# 1. Install Vercel CLI
+npm install -g vercel
+
+# 2. Deploy
+vercel
+
+# 3. Set environment variables in Vercel Dashboard
+# Go to: Project Settings → Environment Variables
+# Add: PROVIDER_KEY = your-groq-api-key
+# Add: CORS_ORIGINS = https://your-domain.vercel.app
+
+# 4. Redeploy to apply environment variables
+vercel --prod
+
+# 5. Test
+curl https://your-project.vercel.app/api/chat
+```
+
+**That's it!** Your backend and frontend are live at: `https://your-project.vercel.app`
+
+**Important:** You MUST set the PROVIDER_KEY environment variable in the Vercel dashboard, or you'll get 404/502 errors.
+
+### Option 2: Deploy to Cloudflare Workers (Alternative Backend)
+
+This is an alternative backend option if you prefer Cloudflare.
 
 ```bash
 # 1. Install Wrangler
@@ -24,30 +51,8 @@ wrangler secret put PROVIDER_KEY
 # 4. Deploy
 wrangler deploy
 
-# 5. Test it works
+# 5. Test
 curl https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health
-```
-
-**That's it!** Your backend is live at: `https://my-chat-agent-v2.tonyabdelmalak.workers.dev`
-
-### Option 2: Deploy to Vercel
-
-This deploys both the **frontend** and **API endpoints** as serverless functions.
-
-```bash
-# 1. Install Vercel CLI
-npm install -g vercel
-
-# 2. Deploy
-vercel
-
-# 3. Set environment variables in Vercel Dashboard
-# Go to: Project Settings → Environment Variables
-# Add: PROVIDER_KEY = your-groq-api-key
-# Add: CORS_ORIGINS = https://your-domain.vercel.app
-
-# 4. Test
-curl https://your-project.vercel.app/api/chat
 ```
 
 ### Option 3: Use GitHub Pages (Frontend Only)
@@ -100,12 +105,12 @@ ReflectivAI is an AI training platform with 5 modes:
 ```
 
 **Primary Setup:**
-- Frontend: GitHub Pages
-- Backend: Cloudflare Workers
+- Frontend + Backend: Vercel (all-in-one)
 - LLM: GROQ (llama-3.1-8b-instant)
 
 **Alternative Setup:**
-- Frontend + Backend: Vercel (all-in-one)
+- Frontend: GitHub Pages
+- Backend: Cloudflare Workers
 
 ---
 
@@ -137,8 +142,8 @@ ReflectivAI is an AI training platform with 5 modes:
    - Files: `api/chat.js` and `api/coach-metrics.js` ✓ (already present)
    - Test: `curl https://your-project.vercel.app/api/chat`
 
-5. **If still failing, use Cloudflare Workers instead:**
-   - More reliable
+5. **If you need an alternative backend:**
+   - More reliable for some users
    - Easier to debug
    - See "Deploy to Cloudflare Workers" above
 
