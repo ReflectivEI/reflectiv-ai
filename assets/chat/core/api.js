@@ -34,8 +34,12 @@ async function loadConfig() {
 async function getWorkerBase() {
   const cfg = await loadConfig();
   
-  // Prefer apiBase, fall back to workerUrl, then window.WORKER_URL
-  let base = cfg.apiBase || cfg.workerUrl || window.WORKER_URL || '';
+  // Prefer apiBase, fall back to workerUrlFallback, workerUrl, then window.WORKER_URL
+  let base = cfg.apiBase || cfg.workerUrlFallback || cfg.workerUrl || window.WORKER_URL || '';
+  
+  // If apiBase is the full /api/chat path, extract just the base for endpoints
+  // (Vercel backend uses /api/chat, so we strip /chat suffix to allow appending /chat, /plan, etc.)
+  base = base.replace(/\/chat\s*$/, '');
   
   // Remove trailing slashes
   return base.replace(/\/+$/, '');
