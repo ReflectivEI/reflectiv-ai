@@ -1,0 +1,3 @@
+# Disable Vercel deployment - using Cloudflare Workers instead
+*
+!vercel.json

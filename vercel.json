@@ -1,3 +1,12 @@
 {
-  "builds": []
+  "builds": [],
+  "framework": null,
+  "buildCommand": "echo 'Vercel deployment disabled - using Cloudflare Workers instead'",
+  "outputDirectory": null,
+  "installCommand": "echo 'Vercel deployment disabled'",
+  "devCommand": null,
+  "ignoreCommand": "exit 1",
+  "git": {
+    "deploymentEnabled": false
+  }
 }

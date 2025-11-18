@@ -32,7 +32,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           # optional but explicit – must match your Cloudflare account
-          accountId: 59fea97fab54bf4d4d168cca1fa3410
+          accountId: 59fea97fab54bfd4d4168ccaa1fa3410
           # wrangler.toml and worker.js are in repo root
           workingDirectory: .
           # default command is "deploy"; setting it explicitly for clarity
