@@ -267,9 +267,10 @@ function cors(env, req) {
     
     // Support wildcard patterns like *.vercel.app
     if (pattern.includes('*')) {
+      // Escape special regex characters except * which we'll replace with .*
       const regexPattern = pattern
-        .replace(/\./g, '\\.')
-        .replace(/\*/g, '.*');
+        .replace(/[\\^$+?.()|[\]{}]/g, '\\$&')  // Escape all special chars including backslash
+        .replace(/\*/g, '.*');  // Replace * with .* for wildcard matching
       const regex = new RegExp('^' + regexPattern + '$');
       return regex.test(origin);
     }
