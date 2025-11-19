@@ -1,4 +1,3 @@
-
 /**
  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET/HEAD /health, GET /version, GET /debug/ei
