@@ -24,8 +24,7 @@ PROVIDER_MODEL = "llama-3.1-8b-instant"
 MAX_OUTPUT_TOKENS = "1400"
 
 # Fully whitelisted front-end origins (widget → worker)
-# Supports wildcard patterns (e.g., *.vercel.app for preview deployments)
-CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev,https://*.vercel.app"
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
 
 # IMPORTANT:
 # The following must be created via Wrangler or via Cloudflare dashboard:

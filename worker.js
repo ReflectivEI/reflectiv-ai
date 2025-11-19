@@ -260,27 +260,9 @@ function cors(env, req) {
     .map(s => s.trim())
     .filter(Boolean);
 
-  // Helper function to check if origin matches an allowed pattern
-  function matchesPattern(origin, pattern) {
-    // Exact match
-    if (origin === pattern) return true;
-    
-    // Support wildcard patterns like *.vercel.app
-    if (pattern.includes('*')) {
-      // Escape special regex characters except * which we'll replace with .*
-      const regexPattern = pattern
-        .replace(/[\\^$+?.()|[\]{}]/g, '\\$&')  // Escape all special chars including backslash
-        .replace(/\*/g, '.*');  // Replace * with .* for wildcard matching
-      const regex = new RegExp('^' + regexPattern + '$');
-      return regex.test(origin);
-    }
-    
-    return false;
-  }
-
   // If no allowlist is configured, allow any origin
-  // If allowlist exists, check if request origin matches any allowed pattern
-  const isAllowed = allowed.length === 0 || allowed.some(pattern => matchesPattern(reqOrigin, pattern));
+  // If allowlist exists, check if request origin is in the list
+  const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
 
   // Log CORS denials for diagnostics
   if (!isAllowed && reqOrigin) {

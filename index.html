@@ -9,14 +9,14 @@
   <link rel="icon" type="image/png" href="logo-modern.png">
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
-  <!-- Allows Tailwind CDN + Google Fonts + your Worker + Cloudflare Access + Vercel Live -->
+  <!-- Allows Tailwind CDN + Google Fonts + your Worker + Cloudflare Access -->
   <meta http-equiv="Content-Security-Policy" content="
           default-src 'self';
           img-src 'self' data:;
-          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
           font-src  'self' https://fonts.gstatic.com;
-          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://vercel.live;
-          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev https://*.cloudflareaccess.com https://vercel.live
+          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
+          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev https://*.cloudflareaccess.com
         ">
 
   <!-- Performance: preconnect for Google Fonts -->
