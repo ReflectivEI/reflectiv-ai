@@ -1,38 +1,38 @@
-
 name = "my-chat-agent-v2"
 main = "worker.js"
 compatibility_date = "2024-11-12"
 workers_dev = true
 
-# REQUIRED: Your Cloudflare Account ID
-# This MUST be set for proper Wrangler → Cloudflare sync
-account_id = "59fea97fab54bfd4d4168ccaa1fa3410"
+# Optional: Add your Cloudflare account_id for better deployment experience
+# To find your account_id:
+# 1. Go to https://dash.cloudflare.com
+# 2. Select your account
+# 3. Look for "Account ID" in the right sidebar
+# Uncomment and set:
+account_id = "59fea97fab54fbd4d4168ccaa1fa3410"
 
-# OPTIONAL but recommended: Bind a custom Worker URL pattern
-# This ensures routing works even when GitHub or widget points directly to the Worker
-routes = [
-  { pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "tonyabdelmalak.com" }
-]
+# If you want a custom domain/route later, add:
+# routes = [
+#   { pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "" }
+# ]
 
 [vars]
-# Provider & model routing
 PROVIDER = "groq"
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
 PROVIDER_MODEL = "llama-3.1-8b-instant"
-
-# Response limits
 MAX_OUTPUT_TOKENS = "1400"
-
-# Fully whitelisted front-end origins (widget → worker)
 CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
 
-# IMPORTANT:
-# The following must be created via Wrangler or via Cloudflare dashboard:
+# PROVIDER_KEY must be set as a secret using:
 # wrangler secret put PROVIDER_KEY
+# The secret value should be your GROQ API key starting with "gsk_..."
+#
+# Optional: For key rotation, you can also set:
 # wrangler secret put PROVIDER_KEY_2
 # wrangler secret put PROVIDER_KEY_3
 
 [[kv_namespaces]]
 binding = "SESS"
 id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
+# preview_id can repeat id for dev
 preview_id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
