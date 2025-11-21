@@ -63,6 +63,7 @@
   // ---------- SSE Configuration ----------
   // Set to false to disable SSE streaming and use regular fetch only
   // SSE streaming is disabled by default due to payload size limitations
+  // eslint-disable-next-line no-unused-vars
   const USE_SSE = false;
 
   let cfg = null;
@@ -95,12 +96,14 @@
   let healthCheckAttempted = false;
 
   // ---------- EI dev shim ----------
+  // eslint-disable-next-line no-unused-vars
   const DEBUG_EI_SHIM = new URLSearchParams(location.search).has('eiShim');
 
   // ---------- Performance telemetry ----------
   let debugMode = false;  // Only shows if ?debug=1 in URL
   let telemetryFooter = null;
   let currentTelemetry = null;
+  // eslint-disable-next-line no-unused-vars
   const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
 
   function isDebugMode() {
@@ -504,6 +507,7 @@
     return base.replace(/\/+$/, "");
   }
 
+  // eslint-disable-next-line no-unused-vars
   async function jfetch(path, payload) {
     const base = getWorkerBase();
     if (!base) throw new Error("worker_base_missing");
@@ -745,7 +749,9 @@
       const r1 = await callModelFn(rewriteMsgs);
       out = sanitizeRolePlayOnly(r1);
       if (!isGuidanceLeak(out)) return out;
-    } catch (_) { }
+    } catch {
+      // Pass 1 failed - continue to pass 2
+    }
 
     // Pass 2: fresh completion with corrective rails prepended to original convo
     try {
@@ -753,7 +759,9 @@
       const r2 = await callModelFn(hardened);
       out = sanitizeRolePlayOnly(r2);
       if (!isGuidanceLeak(out)) return out;
-    } catch (_) { }
+    } catch {
+      // Pass 2 failed - continue to pass 3
+    }
 
     // Pass 3: last-ditch strip + diversified variants (PATCH D)
     out = out.replace(
@@ -813,7 +821,7 @@
           console.log('[Sales Coach Format] Detected JSON error response:', parsedError);
         }
       }
-    } catch (e) {
+    } catch {
       // Not JSON or malformed, continue with normal parsing
     }
 
@@ -836,6 +844,7 @@
 
     let html = "";
     const contractIssues = [];
+    // eslint-disable-next-line no-unused-vars
     let hasCitationIssues = false;
 
     // ROBUST DEDUPLICATION: Remove duplicate sections by keeping only first occurrence
@@ -921,8 +930,8 @@
     let bulletItems = [];
     if (repApproachMatch) {
       const repText = repApproachMatch[1].trim();
-      bulletItems = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
-        .map(b => b.replace(/^[\t ]*[•●○\-]\s+/, '').trim())
+      bulletItems = (repText.match(/^[\t ]*[•●○-]\s+.+$/gm) || [])
+        .map(b => b.replace(/^[\t ]*[•●○-]\s+/, '').trim())
         .filter(b => b.length > 0 && b.length < 500);
       bulletCount = bulletItems.length;
       if (bulletCount < 3) { 
@@ -943,7 +952,7 @@
     const malformedCitations = [];
     
     citationCodes.forEach(code => {
-      const cleanCode = code.replace(/[\[\]]/g, '');
+      const cleanCode = code.replace(/[[\]]/g, '');
       if (!citationsDb[cleanCode]) {
         malformedCitations.push(cleanCode);
         hasCitationIssues = true;
@@ -1134,10 +1143,11 @@
       // Only do detailed ref validation if References section exists
       if (refSectionMatch) {
         // Accept various reference line formats
+        // eslint-disable-next-line no-unused-vars
         const refLines = refSectionMatch[1]
           .split(/\n|\r|\r\n/)
           .map(l => l.trim())
-          .filter(l => /^\d+\s*[\.\-\)]\s+/.test(l));
+          .filter(l => /^\d+\s*[.\-)]\s+/.test(l));
 
         // Note: We no longer fail if refLines is empty - References section existing is enough
         // This handles cases where references are formatted differently or synthesized by the backend
@@ -1330,6 +1340,7 @@
   }
 
   // Call this when you want to inject a coach card into the thread container
+  // eslint-disable-next-line no-unused-vars
   function renderCoachMessage(container, coachObj) {
     if (USE_LEGACY_COACH_UI) {
       container.appendChild(renderLegacyCoachCard(coachObj || {}));
@@ -1476,6 +1487,7 @@
       idealLen: inRange(words, 45, 160)
     };
 
+    // eslint-disable-next-line no-unused-vars
     const accuracy = sig.accuracyCue ? (sig.label ? 5 : 4) : 3;
     const compliance = sig.label ? 5 : 3;
     const discovery = sig.discovery ? 4 : 2;
@@ -2509,6 +2521,7 @@ ${COMMON}`
   }
 
   // ---------- Metric definitions modal ----------
+  // eslint-disable-next-line no-unused-vars
   function showMetricModal(metric, pillText) {
     const definitions = {
       empathy: {
@@ -2710,6 +2723,7 @@ ${COMMON}`
   }
 
   // ---------- callModel (hardened with retries, timeout, SSE streaming, and backoff) ----------
+  // eslint-disable-next-line no-unused-vars
   function rid() {
     return Math.random().toString(36).slice(2);
   }
@@ -2738,6 +2752,7 @@ ${COMMON}`
   }
 
   // SSE streaming handler with requestAnimationFrame batching
+  // eslint-disable-next-line no-unused-vars
   async function streamWithSSE(url, payload, onToken, telemetry, onFirstByte) {
     return new Promise((resolve, reject) => {
       let accumulated = "";
@@ -2758,6 +2773,7 @@ ${COMMON}`
       sseUrl.searchParams.set("data", btoa(payloadStr));
 
       const eventSource = new EventSource(sseUrl.toString());
+      // eslint-disable-next-line no-unused-vars
       const startTime = Date.now();
       let lastTokenTime = Date.now();
 
@@ -2841,7 +2857,7 @@ ${COMMON}`
         }
       };
 
-      eventSource.onerror = (err) => {
+      eventSource.onerror = () => {
         cleanup();
 
         if (accumulated) {
@@ -2939,7 +2955,7 @@ ${COMMON}`
                   _isStructured: true
                 };
               }
-            } catch (e) {
+            } catch {
               // If not JSON or doesn't have reply field, treat as legacy plain text
               console.warn('[callModel] Response is not JSON or missing reply field, treating as plain text');
             }
@@ -2956,7 +2972,7 @@ ${COMMON}`
             console.log('[callModel] Raw error response:', errorText);
             const errorJson = JSON.parse(errorText);
             errorDetails = errorJson.message || errorJson.error || errorText;
-          } catch (e) {
+          } catch {
             errorDetails = errorText || `HTTP ${r.status}`;
           }
 
@@ -3006,46 +3022,8 @@ ${COMMON}`
     }
   }
 
-  /**
-   * Load citations database from citations.json
-   */
-  async function loadCitations() {
-    try {
-      const resp = await fetch('./citations.json?' + Date.now());
-      if (resp.ok) {
-        citationsDb = await resp.json();
-        console.log('[Citations] Loaded', Object.keys(citationsDb).length, 'references');
-      }
-    } catch (e) {
-      console.warn('[Citations] Failed to load citations.json:', e);
-    }
-  }
-
-  /**
-   * Convert citation codes [HIV-PREP-001] to clickable footnote links
-   * This version escapes the text first, then unescapes and converts citations
-   * @param {string} text - Text containing citation codes
-   * @returns {string} HTML with citation codes converted to links
-   */
-  function convertCitations(text) {
-    if (!text) return text;
-
-    // Match citation codes like [HIV-PREP-001] or [HIV-TREAT-TAF-001]
-    // Works on both escaped and unescaped text
-    return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9-]{3,})\]/g, (match, code) => {
-      const citation = citationsDb[code];
-      if (!citation) {
-        // Unknown code - show as-is but styled (escaped for safety)
-        return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${esc(match)}</span>`;
-      }
-
-      // Create clickable footnote link (all dynamic content escaped)
-      const tooltip = citation.apa || `${citation.source}, ${citation.year}`;
-      return `<a href="${esc(citation.url)}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${esc(code.split('-').pop())}]</a>`;
-    });
-  }
-
   // Show retry button UI
+  // eslint-disable-next-line no-unused-vars
   function showRetryUI() {
     const shellEl = mount.querySelector(".reflectiv-chat");
     const msgsEl = shellEl?.querySelector(".chat-messages");
@@ -3164,7 +3142,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
     let rawResponse = "";
     try {
       rawResponse = await callModel([{ role: "system", content: sys }, user], null);
-    } catch (e) {
+    } catch {
       return { html: `<div class='coach-panel'><h4>Rep-only Evaluation</h4><p>Unavailable now. Try again.</p></div>` };
     }
 
@@ -3174,7 +3152,11 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       : rawResponse;
 
     let data = null;
-    try { data = JSON.parse(raw); } catch (_) { }
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      // Not valid JSON - continue with fallback
+    }
 
     if (!data || !data.scores) {
       const safe = sanitizeLLM(raw || "Rep-only evaluation unavailable.");
@@ -3350,9 +3332,10 @@ ${detail}`;
 
       try {
         if (currentMode !== "role-play") {
+          // EIContext is loaded from assets/chat/ei-context.js
           const sysExtras =
-            typeof EIContext !== "undefined" && EIContext?.getSystemExtras
-              ? await EIContext.getSystemExtras().catch(() => null)
+            typeof window.EIContext !== "undefined" && window.EIContext?.getSystemExtras
+              ? await window.EIContext.getSystemExtras().catch(() => null)
               : null;
           if (sysExtras) messages.unshift({ role: "system", content: sysExtras });
         }
@@ -3454,7 +3437,9 @@ Please provide your response again with all required fields including phrasing.`
               : contResponse;
             let contClean = currentMode === "role-play" ? sanitizeRolePlayOnly(contRaw) : sanitizeLLM(contRaw);
             if (contClean) replyText = (replyText + " " + contClean).trim();
-          } catch (_) { /* no-op */ }
+          } catch {
+            // Failed to continue - keep original reply
+          }
         }
 
         if (currentMode === "role-play") {
@@ -3679,7 +3664,7 @@ Please provide your response again with all required fields including phrasing.`
     try {
       try {
         cfg = await fetchLocal("./assets/chat/config.json");
-      } catch (e) {
+      } catch {
         cfg = await fetchLocal("./config.json");
       }
     } catch (e) {
