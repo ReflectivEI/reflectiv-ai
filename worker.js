@@ -28,7 +28,7 @@
  */
 
 export default {
-  async fetch(req, env, ctx) {
+  async fetch(req, env) {
     const reqId = req.headers.get("x-req-id") || cryptoRandomId();
     try {
       const url = new URL(req.url);
@@ -206,7 +206,10 @@ const FSM = {
   }
 };
 
-// JSON Schemas (basic)
+// JSON Schemas (basic) - Reserved for future JSON schema validation implementation
+// These schemas define the expected structure for plan and coach objects
+// TODO: Implement JSON schema validation using these schemas
+// eslint-disable-next-line no-unused-vars
 const PLAN_SCHEMA = {
   type: "object",
   required: ["mode", "disease", "persona", "goal", "facts"],
@@ -227,6 +230,7 @@ const PLAN_SCHEMA = {
   }
 };
 
+// eslint-disable-next-line no-unused-vars
 const COACH_SCHEMA = {
   type: "object",
   required: ["scores"],
@@ -299,6 +303,7 @@ function cors(env, req) {
   return headers;
 }
 
+// eslint-disable-next-line no-unused-vars
 function ok(body, headers = {}) {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -321,7 +326,7 @@ async function readJson(req) {
   }
   try {
     return JSON.parse(txt);
-  } catch (e) {
+  } catch {
     return { _parseError: "invalid_json", _rawText: txt.slice(0, 100) };
   }
 }
@@ -411,12 +416,16 @@ function extractCoach(raw) {
   }
   if (end < 0) return { coach: null, clean: sanitizeLLM(head) };
   let coach = null;
-  try { coach = JSON.parse(body.slice(start, end + 1)); } catch { }
+  try {
+    coach = JSON.parse(body.slice(start, end + 1));
+  } catch {
+    // Invalid JSON in coach block - leave coach as null
+  }
   const after = close >= 0 ? tail.slice(close + 8) : "";
   return { coach, clean: sanitizeLLM((head + " " + after).trim()) };
 }
 
-async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2, session = "anon", providerKey } = {}) {
+async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2, session = "anon" } = {}) {
   {
     const key = selectProviderKey(env, session);
     if (!key) throw new Error("NO_PROVIDER_KEY");
@@ -454,7 +463,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
     let j;
     try {
       j = JSON.parse(text);
-    } catch (e) {
+    } catch {
       console.error({ event: "provider_json_parse_error", text: text.slice(0, 200) });
       throw new Error("provider_invalid_json");
     }
@@ -663,7 +672,7 @@ function validateModeResponse(mode, reply, coach) {
     }
     
     // Rep Approach: exactly 3 bullets
-    const repMatch = cleaned.match(/Rep Approach:[\s\S]*?(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(\n|\r|\r\n)([•\-].+?)(?=\n|\r|\r\n|Impact:)/);
+    const repMatch = cleaned.match(/Rep Approach:[\s\S]*?(\n|\r|\r\n)([•-].+?)(\n|\r|\r\n)([•-].+?)(\n|\r|\r\n)([•-].+?)(?=\n|\r|\r\n|Impact:)/);
     if (!repMatch) violations.push("rep_approach_wrong_bullet_count");
     
     // <coach> block - check the passed coach object instead of looking for <coach> in cleaned text
@@ -1027,13 +1036,16 @@ Suggested Phrasing: "Given the substantial risk of HIV in certain patient popula
 Then append deterministic EI scoring:
 <coach>{
   "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
-  "rationales":{"empathy":"...","clarity":"...","compliance":"...","discovery":"...","objection_handling":"...","confidence":"...","active_listening":"...","adaptability":"...","action_insight":"...","resilience":"..."},
-  "tips":["Tip 1","Tip 2","Tip 3"],
+  "rationales":{"empathy":"Brief rationale for empathy score","clarity":"Brief rationale for clarity score","compliance":"Brief rationale for compliance score","discovery":"Brief rationale for discovery score","objection_handling":"Brief rationale for objection handling score","confidence":"Brief rationale for confidence score","active_listening":"Brief rationale for active listening score","adaptability":"Brief rationale for adaptability score","action_insight":"Brief rationale for action insight score","resilience":"Brief rationale for resilience score"},
+  "worked":["What the rep did effectively in this exchange","Another specific behavior or approach that worked well"],
+  "improve":["Specific area where the rep could improve","Another concrete suggestion for enhancement"],
+  "feedback":"Overall constructive feedback on the rep's approach and communication effectiveness",
   "rubric_version":"v2.0"
 }</coach>
 
 CRITICAL: Use ONLY the provided Facts context when making claims. NO fabricated references or citations.`.trim();
 
+    // eslint-disable-next-line no-unused-vars
     const commonContract = `
 Return exactly two parts. No code blocks or headings.
 
@@ -1437,16 +1449,16 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
       // Remove any leaked scoring / rubric JSON fragments without breaking legitimate clinical braces in rare cases
       reply = reply
-        .replace(/"scores"\s*:\s*\{[\s\S]*?\}/gi, '')
+        .replace(/"scores"\s*:\s*{[\s\S]*?}/gi, '')
         .replace(/"rubric_version"\s*:\s*"[^"]*"/gi, '')
         .replace(/"worked"\s*:\s*\[[\s\S]*?\]/gi, '')
         .replace(/"improve"\s*:\s*\[[\s\S]*?\]/gi, '')
         .replace(/"phrasing"\s*:\s*"[^"]*"/gi, '')
         .replace(/"feedback"\s*:\s*"[^"]*"/gi, '')
-        .replace(/"context"\s*:\s*\{[\s\S]*?\}/gi, '');
+        .replace(/"context"\s*:\s*{[\s\S]*?}/gi, '');
 
       // Strip stray standalone JSON structural characters leftover on isolated lines
-      reply = reply.replace(/^[\s]*[\{\}\[\]]+[\s]*$/gm, '').trim();
+      reply = reply.replace(/^[\s]*[{}[\]]+[\s]*$/gm, '').trim();
 
       // Final pass: if any banned tokens remain, remove again (defensive)
       const bannedTokens = [/Sales Coach/gi, /Suggested Phrasing:/gi, /Rep Approach:/gi, /Impact:/gi, /Challenge:/gi];
@@ -1531,7 +1543,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         const contRaw = await providerChat(env, contMsgs, { maxTokens: 180, temperature: 0.2, session });
         const contClean = sanitizeLLM(contRaw || "");
         if (contClean) reply = (reply + " " + contClean).trim();
-      } catch (_) { }
+      } catch {
+        // Failed to continue - keep original reply
+      }
     }
 
     // FSM clamps
@@ -1613,7 +1627,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
             // If still invalid, return error object
             return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
           }
-        } catch (e) {
+        } catch {
           // If repair fails, return error object
           return json({ error: "format_error", card: mode, message: "Response Format Error" }, 200, env, req);
         }
@@ -1726,7 +1740,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         // Build the references section
         if (refMap.size > 0) {
           reply += '\n\n**References:**\n';
-          refMap.forEach((value, code) => {
+          refMap.forEach((value) => {
             value.citations.forEach(cite => {
               if (typeof cite === 'object' && cite.text && cite.url) {
                 reply += `${value.number}. [${cite.text}](${cite.url})\n`;
@@ -1767,12 +1781,18 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }, 502, env, req);
     } else if (isPlanError) {
       // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
+      // eslint-disable-next-line no-undef
+      const diseaseVal = typeof disease !== 'undefined' ? disease : "unknown";
+      // eslint-disable-next-line no-undef
+      const modeVal = typeof mode !== 'undefined' ? mode : "unknown";
+      // eslint-disable-next-line no-undef
+      const personaVal = typeof persona !== 'undefined' ? persona : "unknown";
       return json({
         error: "bad_request",
         message: e.message === "no_facts_for_mode"
-          ? `No facts available for disease "${disease || "unknown"}" in mode "${mode}". Please select a scenario or provide disease context.`
+          ? `No facts available for disease "${diseaseVal}" in mode "${modeVal}". Please select a scenario or provide disease context.`
           : "Unable to generate or validate plan with provided parameters",
-        details: { mode, disease, persona, error: e.message }
+        details: { mode: modeVal, disease: diseaseVal, persona: personaVal, error: e.message }
       }, 400, env, req);
     } else {
       // Other errors are treated as bad_request
