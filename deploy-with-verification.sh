@@ -196,6 +196,8 @@ verify_token() {
     fi
     
     # Make verification request (suppress token output and errors)
+    # Note: Token appears in process list during curl execution (inherent curl limitation)
+    # Run in secure environment and ensure proper token rotation
     local verify_response
     local curl_exit_code
     verify_response=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/tokens/verify" \
@@ -386,11 +388,23 @@ generate_final_report() {
     
     echo -e "${BOLD}4. Test Mode Results:${NC}"
     if [ -f /tmp/phase3_test_results.txt ]; then
-        echo "   • sales-coach:            $(grep -q "SALES-COACH.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • emotional-assessment:   $(grep -q "EMOTIONAL-ASSESSMENT.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • product-knowledge:      $(grep -q "PRODUCT-KNOWLEDGE.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • role-play:              $(grep -q "ROLE-PLAY.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • general-knowledge:      $(grep -q "GENERAL-KNOWLEDGE.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
+        # Helper function to check if a test passed
+        # Extracts section between "TEST: <mode>" and next "TEST:" then checks for "TEST PASSED"
+        check_mode_passed() {
+            local mode="$1"
+            awk -v test="TEST: $mode" '
+                $0 ~ test {found=1; next}
+                found && /^TEST:/ {exit}
+                found && /TEST PASSED/ {print "PASS"; exit}
+                found && /TEST FAILED/ {print "FAIL"; exit}
+            ' /tmp/phase3_test_results.txt
+        }
+        
+        echo "   • sales-coach:            $([ "$(check_mode_passed "SALES-COACH")" = "PASS" ] && echo "✅" || echo "❌")"
+        echo "   • emotional-assessment:   $([ "$(check_mode_passed "EMOTIONAL-ASSESSMENT")" = "PASS" ] && echo "✅" || echo "❌")"
+        echo "   • product-knowledge:      $([ "$(check_mode_passed "PRODUCT-KNOWLEDGE")" = "PASS" ] && echo "✅" || echo "❌")"
+        echo "   • role-play:              $([ "$(check_mode_passed "ROLE-PLAY")" = "PASS" ] && echo "✅" || echo "❌")"
+        echo "   • general-knowledge:      $([ "$(check_mode_passed "GENERAL-KNOWLEDGE")" = "PASS" ] && echo "✅" || echo "❌")"
     else
         echo "   (Tests not run)"
     fi

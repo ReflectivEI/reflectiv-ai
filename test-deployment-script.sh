@@ -156,10 +156,12 @@ done
 echo ""
 echo "Test 9: Security checks..."
 
-# Check that script doesn't echo tokens (allow escaped $ for examples)
-# Look for unescaped token echo which would leak the value
-if grep -E 'echo[^"]*\$\{?CLOUDFLARE_API_TOKEN\}?' deploy-with-verification.sh | grep -v '\\$' | grep -q .; then
-    echo "❌ Script may leak token via echo"
+# Check that script doesn't echo actual token values
+# Look for unescaped token variable references (not literal strings like "NEW_TOKEN_HERE")
+# We want to catch: echo $CLOUDFLARE_API_TOKEN or echo ${CLOUDFLARE_API_TOKEN}
+# But allow: echo "... \$CLOUDFLARE_API_TOKEN ..." or echo "NEW_TOKEN_HERE"
+if grep -E 'echo[[:space:]]+.*[^\\]\$\{?CLOUDFLARE_API_TOKEN' deploy-with-verification.sh | grep -v '\".*\\' | grep -q .; then
+    echo "❌ Script may leak token via unescaped echo"
     exit 1
 else
     echo "✅ No direct token echo found (escaped examples OK)"
