@@ -507,6 +507,9 @@
     return base.replace(/\/+$/, "");
   }
 
+  // Reserved for future use: Direct fetch to worker endpoints (plan, facts, etc.)
+  // Currently using callModel for all backend communication
+  // TODO: Implement when adding support for /plan and /facts endpoints
   // eslint-disable-next-line no-unused-vars
   async function jfetch(path, payload) {
     const base = getWorkerBase();

@@ -206,7 +206,9 @@ const FSM = {
   }
 };
 
-// JSON Schemas (basic) - Reserved for future validation implementation
+// JSON Schemas (basic) - Reserved for future JSON schema validation implementation
+// These schemas define the expected structure for plan and coach objects
+// TODO: Implement JSON schema validation using these schemas
 // eslint-disable-next-line no-unused-vars
 const PLAN_SCHEMA = {
   type: "object",
@@ -1035,7 +1037,9 @@ Then append deterministic EI scoring:
 <coach>{
   "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
   "rationales":{"empathy":"...","clarity":"...","compliance":"...","discovery":"...","objection_handling":"...","confidence":"...","active_listening":"...","adaptability":"...","action_insight":"...","resilience":"..."},
-  "tips":["Tip 1","Tip 2","Tip 3"],
+  "worked":["What went well in this exchange","Another positive aspect"],
+  "improve":["Area for improvement","Another suggestion"],
+  "feedback":"Overall feedback on the rep's approach",
   "rubric_version":"v2.0"
 }</coach>
 
