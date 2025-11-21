@@ -195,10 +195,19 @@ verify_token() {
         return 1
     fi
     
-    # Make verification request (suppress token output)
+    # Make verification request (suppress token output and errors)
     local verify_response
+    local curl_exit_code
     verify_response=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/tokens/verify" \
-         -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" 2>&1)
+         -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" 2>/dev/null)
+    curl_exit_code=$?
+    
+    # Check if curl failed
+    if [ $curl_exit_code -ne 0 ]; then
+        log_error "Failed to connect to Cloudflare API"
+        trigger_remediation_protocol "Network error: Unable to reach Cloudflare API"
+        return $?
+    fi
     
     # Extract only safe fields (no token data)
     local success=$(echo "$verify_response" | grep -o '"success":[^,]*' | cut -d':' -f2 | tr -d ' ')
@@ -377,11 +386,11 @@ generate_final_report() {
     
     echo -e "${BOLD}4. Test Mode Results:${NC}"
     if [ -f /tmp/phase3_test_results.txt ]; then
-        echo "   • sales-coach:            $(grep -c "SALES-COACH.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • emotional-assessment:   $(grep -c "EMOTIONAL-ASSESSMENT.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • product-knowledge:      $(grep -c "PRODUCT-KNOWLEDGE.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • role-play:              $(grep -c "ROLE-PLAY.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
-        echo "   • general-knowledge:      $(grep -c "GENERAL-KNOWLEDGE.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
+        echo "   • sales-coach:            $(grep -q "SALES-COACH.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
+        echo "   • emotional-assessment:   $(grep -q "EMOTIONAL-ASSESSMENT.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
+        echo "   • product-knowledge:      $(grep -q "PRODUCT-KNOWLEDGE.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
+        echo "   • role-play:              $(grep -q "ROLE-PLAY.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
+        echo "   • general-knowledge:      $(grep -q "GENERAL-KNOWLEDGE.*PASSED" /tmp/phase3_test_results.txt && echo "✅" || echo "❌")"
     else
         echo "   (Tests not run)"
     fi
