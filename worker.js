@@ -1036,10 +1036,10 @@ Suggested Phrasing: "Given the substantial risk of HIV in certain patient popula
 Then append deterministic EI scoring:
 <coach>{
   "scores":{"empathy":0-5,"clarity":0-5,"compliance":0-5,"discovery":0-5,"objection_handling":0-5,"confidence":0-5,"active_listening":0-5,"adaptability":0-5,"action_insight":0-5,"resilience":0-5},
-  "rationales":{"empathy":"...","clarity":"...","compliance":"...","discovery":"...","objection_handling":"...","confidence":"...","active_listening":"...","adaptability":"...","action_insight":"...","resilience":"..."},
-  "worked":["What went well in this exchange","Another positive aspect"],
-  "improve":["Area for improvement","Another suggestion"],
-  "feedback":"Overall feedback on the rep's approach",
+  "rationales":{"empathy":"Brief rationale for empathy score","clarity":"Brief rationale for clarity score","compliance":"Brief rationale for compliance score","discovery":"Brief rationale for discovery score","objection_handling":"Brief rationale for objection handling score","confidence":"Brief rationale for confidence score","active_listening":"Brief rationale for active listening score","adaptability":"Brief rationale for adaptability score","action_insight":"Brief rationale for action insight score","resilience":"Brief rationale for resilience score"},
+  "worked":["What the rep did effectively in this exchange","Another specific behavior or approach that worked well"],
+  "improve":["Specific area where the rep could improve","Another concrete suggestion for enhancement"],
+  "feedback":"Overall constructive feedback on the rep's approach and communication effectiveness",
   "rubric_version":"v2.0"
 }</coach>
 
