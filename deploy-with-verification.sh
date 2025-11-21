@@ -256,6 +256,8 @@ check_wrangler_config() {
         log_info "Found: $config_account_id"
         
         log_warning "Attempting to fix wrangler.toml..."
+        # Create backup before modifying
+        cp wrangler.toml wrangler.toml.bak 2>/dev/null || true
         sed -i "s/account_id = .*/account_id = \"$ACCOUNT_ID\"/" wrangler.toml
         
         local new_account_id=$(grep -E '^account_id' wrangler.toml | cut -d'=' -f2 | tr -d ' "')
@@ -334,8 +336,9 @@ run_phase3_tests() {
     
     echo "$test_output"
     
-    # Store results
+    # Store results with secure permissions
     echo "$test_output" > /tmp/phase3_test_results.txt
+    chmod 600 /tmp/phase3_test_results.txt 2>/dev/null || true
     
     # Analyze results
     local tests_passed=$(echo "$test_output" | grep -o "Tests Passed: [0-9]*" | grep -o "[0-9]*")
