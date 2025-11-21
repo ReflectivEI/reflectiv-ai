@@ -5,7 +5,7 @@ compatibility_date = "2024-11-12"
 workers_dev = true
 
 # REQUIRED: Cloudflare account information for Wrangler → Cloudflare sync
-account_id = "59fea97fab54bfd4d4168ccaa1fa3410"
+account_id = "59fea97fab54fbd4d4168ccaa1fa3410"
 
 # OPTIONAL but recommended: Bind a custom Worker route for widget stability
 routes = [
