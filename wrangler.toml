@@ -1,19 +1,34 @@
+# Updated worker manifest to match required Cloudflare config
 name = "my-chat-agent-v2"
 main = "worker.js"
 compatibility_date = "2024-11-12"
 workers_dev = true
 
-# If you want a custom domain/route later, add:
-# routes = [
-#   { pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "" }
-# ]
+# REQUIRED: Cloudflare account information for Wrangler → Cloudflare sync
+account_id = "59fea97fab54bfd4d4168ccaa1fa3410"
+
+# OPTIONAL but recommended: Bind a custom Worker route for widget stability
+routes = [
+	{ pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "tonyabdelmalak.com" }
+]
 
 [vars]
+# Provider routing
 PROVIDER = "groq"
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
-PROVIDER_MODEL = "llama3-1-8b-instant"
+PROVIDER_MODEL = "llama-3.1-8b-instant"
+
+# Response limits (both names for compatibility)
 MAX_OUTPUT_TOKENS = "1400"
-CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
+MAX_TOKENS = "1400"
+
+# Fully approved frontend origins
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
+
+# Secrets (store via `wrangler secret put` or Cloudflare dashboard)
+# wrangler secret put PROVIDER_KEY
+# wrangler secret put PROVIDER_KEY_2
+# wrangler secret put PROVIDER_KEY_3
 
 # PROVIDER_KEY must be set as a secret using:
 # wrangler secret put PROVIDER_KEY
@@ -24,3 +39,10 @@ binding = "SESS"
 id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
 # preview_id can repeat id for dev
 preview_id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+# TODO: replace with the actual RATE_LIMIT_KV namespace id obtained via `wrangler kv:namespace create`
+id = "REPLACE_WITH_RATE_LIMIT_NAMESPACE_ID"
+# Preview id can reuse the production namespace value
+preview_id = "REPLACE_WITH_RATE_LIMIT_NAMESPACE_ID"
