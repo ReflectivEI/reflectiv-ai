@@ -340,13 +340,6 @@ const CONTEXT_EDGE_CASES = [
     expectStatus: 200
   }
 ];
-      disease: REAL_DISEASES.role_play,
-      persona: '', // Empty persona
-      goal: 'Discuss'
-    },
-    expectedBehavior: 'Should use generic HCP voice; still return valid RP format'
-  }
-];
 
 /**
  * ============================================================================

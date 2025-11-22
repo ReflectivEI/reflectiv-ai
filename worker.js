@@ -917,19 +917,21 @@ async function postChat(req, env) {
       }, 400, env, req, { "x-req-id": reqId });
     }
 
-    // DEBUG: Log incoming payload structure for contract alignment
-    console.log("DEBUG /chat incoming payload", {
-      req_id: reqId,
-      has_mode: !!body.mode,
-      mode: body.mode,
-      has_messages: !!body.messages,
-      messages_count: body.messages?.length,
-      has_disease: !!body.disease,
-      has_persona: !!body.persona,
-      has_goal: !!body.goal,
-      has_eiContext: !!body.eiContext,
-      payload_keys: Object.keys(body)
-    });
+    // DEBUG: Log incoming payload structure for contract alignment (optional, controlled by DEBUG_CHAT env var)
+    if (env.DEBUG_CHAT === "true") {
+      console.log("DEBUG /chat incoming payload", {
+        req_id: reqId,
+        has_mode: !!body.mode,
+        mode: body.mode,
+        has_messages: !!body.messages,
+        messages_count: body.messages?.length,
+        has_disease: !!body.disease,
+        has_persona: !!body.persona,
+        has_goal: !!body.goal,
+        has_eiContext: !!body.eiContext,
+        payload_keys: Object.keys(body)
+      });
+    }
 
     // Log request start
     console.log({
