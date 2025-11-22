@@ -849,6 +849,36 @@ ${siteContext.slice(0, 12000)}`;
 }
 
 /* ------------------------------ /chat -------------------------------------- */
+/**
+ * POST /chat - Main chat endpoint
+ * 
+ * Expected request schema (widget format):
+ * {
+ *   mode: string,              // Required: "sales-coach" | "role-play" | "product-knowledge" | "emotional-assessment" | "sales-simulation" (maps to sales-coach)
+ *   messages: Array<{role, content}>,  // Required: at least one message with role="user"
+ *   disease: string,           // Optional: therapeutic area context
+ *   persona: string,           // Optional: HCP profile
+ *   goal: string,              // Optional: conversation goal
+ *   scenarioId: string,        // Optional: scenario identifier
+ *   eiContext: string,         // Optional: EI framework content (for emotional-assessment mode)
+ *   plan: object,              // Optional: pre-generated plan
+ *   planId: string,            // Optional: plan identifier
+ *   session: string            // Optional: session identifier for state tracking
+ * }
+ * 
+ * Validation rules:
+ * - messages array must not be empty
+ * - At least one message must have role="user"
+ * - User message content must not be empty/whitespace
+ * - mode is normalized (sales-simulation → sales-coach)
+ * - eiContext is used when provided, falls back to hardcoded CASEL framework
+ * 
+ * Returns:
+ * - 200: Success with { reply, coach, plan, _meta }
+ * - 400: Bad request (validation failure, empty messages, etc.)
+ * - 429: Rate limit exceeded
+ * - 502: Provider unavailable or network error
+ */
 async function postChat(req, env) {
   const reqStart = Date.now();
   const reqId = req.headers.get("x-req-id") || cryptoRandomId();
@@ -1804,15 +1834,20 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
     // Distinguish provider errors from client bad_request errors
     const isProviderError = e.message && (
-      e.message.startsWith("provider_http_") ||
-      e.message === "plan_generation_failed"
+      e.message.startsWith("provider_") ||
+      e.message === "plan_generation_failed" ||
+      e.message === "NO_PROVIDER_KEY" ||
+      // Network failures when calling provider API
+      e.message.includes("fetch failed") ||
+      e.message.includes("network error") ||
+      e.name === "TypeError" && e.stack?.includes("providerChat")
     );
 
     const isPlanError = e.message === "no_active_plan_or_facts" || e.message === "invalid_plan_structure" || e.message === "no_facts_for_mode";
 
     if (isProviderError) {
       // Check if it's a provider rate limit (429)
-      const isProvider429 = e.message === "provider_http_429";
+      const isProvider429 = e.message === "provider_error_429";
       if (isProvider429) {
         // Propagate provider 429 as our own 429 with clear indication
         return json({
