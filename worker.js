@@ -852,32 +852,40 @@ ${siteContext.slice(0, 12000)}`;
 /**
  * POST /chat - Main chat endpoint
  * 
- * Expected request schema (widget format):
- * {
- *   mode: string,              // Required: "sales-coach" | "role-play" | "product-knowledge" | "emotional-assessment" | "sales-simulation" (maps to sales-coach)
- *   messages: Array<{role, content}>,  // Required: at least one message with role="user"
- *   disease: string,           // Optional: therapeutic area context
- *   persona: string,           // Optional: HCP profile
- *   goal: string,              // Optional: conversation goal
- *   scenarioId: string,        // Optional: scenario identifier
- *   eiContext: string,         // Optional: EI framework content (for emotional-assessment mode)
- *   plan: object,              // Optional: pre-generated plan
- *   planId: string,            // Optional: plan identifier
- *   session: string            // Optional: session identifier for state tracking
- * }
+ * REQUEST CONTRACT (aligned with widget.js and Phase 3 tests):
  * 
- * Validation rules:
- * - messages array must not be empty
- * - At least one message must have role="user"
- * - User message content must not be empty/whitespace
- * - mode is normalized (sales-simulation → sales-coach)
- * - eiContext is used when provided, falls back to hardcoded CASEL framework
+ * Required fields:
+ * - mode: string                       // One of: "sales-coach", "role-play", "product-knowledge", "emotional-assessment", "general-knowledge"
+ *                                      // Also accepts "sales-simulation" (normalized to "sales-coach")
+ *                                      // If missing or empty, defaults to "sales-coach"
+ * - messages: Array<{role, content}>  // Must have at least one message with role="user" and non-empty content
  * 
- * Returns:
+ * Optional fields (all are truly optional - worker provides defaults):
+ * - disease: string                    // Therapeutic area context (e.g., "HIV", "Oncology")
+ * - persona: string                    // HCP profile (e.g., "Infectious Disease Specialist")
+ * - goal: string                       // Conversation goal
+ * - scenarioId: string                 // Scenario identifier
+ * - eiContext: string                  // EI framework content (for emotional-assessment mode; falls back to hardcoded CASEL)
+ * - plan: object                       // Pre-generated plan
+ * - planId: string                     // Plan identifier
+ * - session: string                    // Session identifier for state tracking
+ * - threadId: string                   // Thread identifier for conversation continuity
+ * 
+ * VALIDATION RULES:
+ * 1. messages array must not be empty
+ * 2. At least one message must have role="user"
+ * 3. User message content must not be empty/whitespace after trim
+ * 4. mode is normalized (sales-simulation → sales-coach) and defaults to "sales-coach" if missing
+ * 5. All other fields are optional and worker provides sensible defaults
+ * 
+ * RESPONSE STATUS CODES:
  * - 200: Success with { reply, coach, plan, _meta }
- * - 400: Bad request (validation failure, empty messages, etc.)
+ * - 400: Bad request (malformed JSON, empty messages array, no user message, empty user content)
  * - 429: Rate limit exceeded
- * - 502: Provider unavailable or network error
+ * - 502: Provider unavailable or network error (valid request, but provider failed)
+ * 
+ * IMPORTANT: Missing optional fields like persona, disease, goal should NOT return 400.
+ * They may affect behavior (e.g., EI mode wiring, prompt context) but are not validation errors.
  */
 async function postChat(req, env) {
   const reqStart = Date.now();
@@ -919,6 +927,22 @@ async function postChat(req, env) {
             : `Invalid JSON in request body: ${body._rawText || 'parse error'}`
         }
       }, 400, env, req, { "x-req-id": reqId });
+    }
+
+    // DEBUG: Log incoming payload structure for contract alignment (optional, controlled by DEBUG_CHAT env var)
+    if (env.DEBUG_CHAT === "true") {
+      console.log("DEBUG /chat incoming payload", {
+        req_id: reqId,
+        has_mode: !!body.mode,
+        mode: body.mode,
+        has_messages: !!body.messages,
+        messages_count: body.messages?.length,
+        has_disease: !!body.disease,
+        has_persona: !!body.persona,
+        has_goal: !!body.goal,
+        has_eiContext: !!body.eiContext,
+        payload_keys: Object.keys(body)
+      });
     }
 
     // Log request start
