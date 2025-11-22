@@ -147,11 +147,11 @@ jobs:
           cat > /tmp/contract_scan.js << 'EOF'
           const BASE_URL = process.env.WORKER_URL || 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
           const MODES = ['sales-coach', 'role-play', 'emotional-assessment', 'product-knowledge', 'general-knowledge'];
-          
+
           async function testContractScan() {
             let violations = 0;
             const results = [];
-            
+
             for (const mode of MODES) {
               try {
                 const resp = await fetch(`${BASE_URL}/chat`, {
@@ -162,7 +162,7 @@ jobs:
                     messages: [{ role: 'user', content: 'test' }]
                   })
                 });
-                
+
                 const data = await resp.json();
                 if (!resp.ok || data.error) {
                   violations++;
@@ -175,7 +175,7 @@ jobs:
                 results.push(`❌ ${mode}: ${e.message}`);
               }
             }
-            
+
             console.log(results.join('\n'));
             if (violations > 0) {
               console.error(`\n⚠️ Contract scan found ${violations} violation(s)`);
@@ -184,10 +184,10 @@ jobs:
               console.log('\n✅ All contracts validated');
             }
           }
-          
+
           testContractScan();
           EOF
-          
+
           node /tmp/contract_scan.js
         timeout-minutes: 10
         env:

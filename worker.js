@@ -32,7 +32,7 @@ export default {
   async fetch(req, env, ctx) {
     const reqId = req.headers.get("x-req-id") || cryptoRandomId();
     const reqStart = Date.now();
-    
+
     // Initialize observability metrics
     const metrics = {
       req_id: reqId,
@@ -48,7 +48,7 @@ export default {
       rate_limited: false,
       error_type: null
     };
-    
+
     try {
       const url = new URL(req.url);
 
@@ -124,12 +124,12 @@ export default {
           metrics.status = "rate_limited";
           metrics.rate_limited = true;
           metrics.response_time_ms = Date.now() - reqStart;
-          
+
           console.log({
             event: "request_metrics",
             ...metrics
           });
-          
+
           const retry = Number(env.RATELIMIT_RETRY_AFTER || 2);
           return json({ error: "rate_limited", retry_after_sec: retry }, 429, env, req, {
             "Retry-After": String(retry),
@@ -1849,18 +1849,18 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     const responseTime = Date.now() - reqStart;
-    
+
     // Update and log final metrics
     metrics.status = "success";
     metrics.mode = mode;
     metrics.response_time_ms = responseTime;
     metrics.contract_violations = (validation.violations || []).length;
-    
+
     console.log({
       event: "request_metrics",
       ...metrics
     });
-    
+
     console.log({
       event: "chat_success",
       req_id: reqId,
@@ -1993,18 +1993,18 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }, 200, env, req);
   } catch (e) {
     const responseTime = Date.now() - reqStart;
-    
+
     // Update metrics for error case
     metrics.status = "error";
     metrics.response_time_ms = responseTime;
     metrics.error_type = e.message?.split('_')[0] || "unknown";
     metrics.rate_limited = e.message?.includes('rate_limited') || false;
-    
+
     console.log({
       event: "request_metrics",
       ...metrics
     });
-    
+
     console.error("chat_error", {
       req_id: reqId,
       step: "general",

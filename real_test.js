@@ -90,13 +90,13 @@ async function runTest(testName, payload, validations) {
   console.log('\n' + '='.repeat(70));
   console.log(`TEST: ${testName}`);
   console.log('='.repeat(70));
-  
+
   try {
     console.log(`📤 Sending request to ${payload.mode} mode...`);
     console.log(`   Message: "${payload.messages[0].content.substring(0, 50)}..."`);
-    
+
     const response = await makeRequest(payload);
-    
+
     if (response.status !== 200) {
       console.log(`❌ FAILED - HTTP ${response.status}`);
       if (response.data) {
@@ -106,7 +106,7 @@ async function runTest(testName, payload, validations) {
       testsFailed++;
       return false;
     }
-    
+
     if (!response.data || !response.data.reply) {
       console.log(`❌ FAILED - No reply in response`);
       testsFailed++;
@@ -401,7 +401,7 @@ async function main() {
   const passRate = totalTests > 0 ? ((testsPassed / totalTests) * 100).toFixed(1) : 0;
   console.log(`║ Pass Rate: ${String(passRate + '%').padEnd(57)}║`);
   console.log('╠' + '═'.repeat(68) + '╣');
-  
+
   if (testsFailed === 0 && testsPassed > 0) {
     console.log('║' + ' ✅ ALL TESTS PASSED - Phase 3 Hotfixes Working! '.padStart(35).padEnd(69) + '║');
   } else if (testsPassed > testsFailed) {
@@ -409,7 +409,7 @@ async function main() {
   } else {
     console.log('║' + ' ❌ TESTS FAILED - Investigation Needed '.padStart(35).padEnd(69) + '║');
   }
-  
+
   console.log('╚' + '═'.repeat(68) + '╝');
   console.log('');
 
