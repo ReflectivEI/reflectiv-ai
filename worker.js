@@ -1,6 +1,6 @@
 
 /**
- * Cloudflare Worker — ReflectivAI Gateway (r11.0-phase11)
+ * Cloudflare Worker — ReflectivAI Gateway (r12.0-phase13)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET/HEAD /health, GET /version, GET /debug/ei
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
@@ -31,6 +31,24 @@
 export default {
   async fetch(req, env, ctx) {
     const reqId = req.headers.get("x-req-id") || cryptoRandomId();
+    const reqStart = Date.now();
+    
+    // Initialize observability metrics
+    const metrics = {
+      req_id: reqId,
+      method: req.method,
+      path: new URL(req.url).pathname,
+      user_agent: req.headers.get("user-agent") || "unknown",
+      ip: req.headers.get("CF-Connecting-IP") || req.headers.get("x-forwarded-for") || "unknown",
+      start_time: reqStart,
+      status: "processing",
+      mode: null,
+      response_time_ms: null,
+      contract_violations: 0,
+      rate_limited: false,
+      error_type: null
+    };
+    
     try {
       const url = new URL(req.url);
 
@@ -88,12 +106,12 @@ export default {
 
       // Version endpoint
       if (url.pathname === "/version" && req.method === "GET") {
-        return json({ version: "r11.0-phase11" }, 200, env, req, { "x-req-id": reqId });
+        return json({ version: "r12.0-phase13" }, 200, env, req, { "x-req-id": reqId });
       }
 
       // Debug EI endpoint - returns basic info about the worker
       if (url.pathname === "/debug/ei" && req.method === "GET") {
-        return json({ worker: "ReflectivAI Gateway", version: "r11.0-phase11", endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"], timestamp: new Date().toISOString() }, 200, env, req, { "x-req-id": reqId });
+        return json({ worker: "ReflectivAI Gateway", version: "r12.0-phase13", endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"], timestamp: new Date().toISOString() }, 200, env, req, { "x-req-id": reqId });
       }
 
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
@@ -102,6 +120,16 @@ export default {
         const ip = req.headers.get("CF-Connecting-IP") || "0.0.0.0";
         const gate = await rateLimit(`${ip}:chat`, env);
         if (!gate.ok) {
+          // Update metrics for rate limiting
+          metrics.status = "rate_limited";
+          metrics.rate_limited = true;
+          metrics.response_time_ms = Date.now() - reqStart;
+          
+          console.log({
+            event: "request_metrics",
+            ...metrics
+          });
+          
           const retry = Number(env.RATELIMIT_RETRY_AFTER || 2);
           return json({ error: "rate_limited", retry_after_sec: retry }, 429, env, req, {
             "Retry-After": String(retry),
@@ -1821,6 +1849,18 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     const responseTime = Date.now() - reqStart;
+    
+    // Update and log final metrics
+    metrics.status = "success";
+    metrics.mode = mode;
+    metrics.response_time_ms = responseTime;
+    metrics.contract_violations = (validation.violations || []).length;
+    
+    console.log({
+      event: "request_metrics",
+      ...metrics
+    });
+    
     console.log({
       event: "chat_success",
       req_id: reqId,
@@ -1953,6 +1993,18 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }, 200, env, req);
   } catch (e) {
     const responseTime = Date.now() - reqStart;
+    
+    // Update metrics for error case
+    metrics.status = "error";
+    metrics.response_time_ms = responseTime;
+    metrics.error_type = e.message?.split('_')[0] || "unknown";
+    metrics.rate_limited = e.message?.includes('rate_limited') || false;
+    
+    console.log({
+      event: "request_metrics",
+      ...metrics
+    });
+    
     console.error("chat_error", {
       req_id: reqId,
       step: "general",

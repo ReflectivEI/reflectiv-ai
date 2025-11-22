@@ -16,40 +16,73 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-function makeRequest(payload) {
+function makeRequest(payload, maxRetries = 3) {
+  const delays = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
+
   return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'my-chat-agent-v2.tonyabdelmalak.workers.dev',
-      path: '/chat',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(JSON.stringify(payload))
-      },
-      timeout: 30000
-    };
+    let attempt = 0;
 
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          resolve({ status: res.statusCode, data: parsed });
-        } catch (e) {
-          resolve({ status: res.statusCode, data: null, error: e.message });
-        }
+    function attemptRequest() {
+      attempt++;
+
+      const options = {
+        hostname: 'my-chat-agent-v2.tonyabdelmalak.workers.dev',
+        path: '/chat',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(JSON.stringify(payload))
+        },
+        timeout: 30000
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            const result = { status: res.statusCode, data: parsed };
+
+            // Check if we should retry (429 errors)
+            if (res.statusCode === 429 && attempt <= maxRetries) {
+              const retryAfter = parsed.retry_after_sec ? parsed.retry_after_sec * 1000 : delays[attempt - 1] || 4000;
+              console.log(`   🔄 429 Rate limited, retrying in ${retryAfter}ms (attempt ${attempt}/${maxRetries})`);
+              setTimeout(attemptRequest, retryAfter);
+              return;
+            }
+
+            resolve(result);
+          } catch (e) {
+            resolve({ status: res.statusCode, data: null, error: e.message });
+          }
+        });
       });
-    });
 
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
+      req.on('error', (error) => {
+        if (attempt <= maxRetries) {
+          console.log(`   🔄 Network error, retrying in ${delays[attempt - 1] || 4000}ms (attempt ${attempt}/${maxRetries})`);
+          setTimeout(attemptRequest, delays[attempt - 1] || 4000);
+          return;
+        }
+        reject(error);
+      });
 
-    req.write(JSON.stringify(payload));
-    req.end();
+      req.on('timeout', () => {
+        req.destroy();
+        if (attempt <= maxRetries) {
+          console.log(`   🔄 Timeout, retrying in ${delays[attempt - 1] || 4000}ms (attempt ${attempt}/${maxRetries})`);
+          setTimeout(attemptRequest, delays[attempt - 1] || 4000);
+          return;
+        }
+        reject(new Error('Request timeout'));
+      });
+
+      req.write(JSON.stringify(payload));
+      req.end();
+    }
+
+    attemptRequest();
   });
 }
 

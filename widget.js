@@ -20,7 +20,7 @@
   const isDebugMode = () => new URLSearchParams(window.location.search).get('debug') === 'true';
 
   // Phase 7: Deployment safeguards
-  const WIDGET_VERSION = "11.0.0-phase11";
+  const WIDGET_VERSION = "12.0.0-phase13";
   const EMERGENCY_SAFE_MODE = false;
 
   // PHASE 8: Staging deployment simulation mocks
@@ -76,12 +76,12 @@
 
   // Expose simulation controls in debug mode
   if (isDebugMode()) {
-    window.__reflectivSimulate = function(type) {
+    window.__reflectivSimulate = function (type) {
       simulationMode = type;
       console.log(`[Simulation] Enabled: ${type}`);
       return `Simulation mode set to: ${type}. Next API call will be simulated.`;
     };
-    window.__reflectivSimulateOff = function() {
+    window.__reflectivSimulateOff = function () {
       simulationMode = null;
       console.log(`[Simulation] Disabled`);
       return "Simulation mode disabled.";
@@ -931,17 +931,17 @@
     // Validate strict contract
     let contractValid = true;
     let issues = [];
-    if (!challengeSection) { contractValid = false; issues.push({message: "Missing Challenge section.", sectionKey: "challenge"}); }
-    if (!repApproachSection) { contractValid = false; issues.push({message: "Missing Rep Approach section.", sectionKey: "repApproach"}); }
-    if (!impactSection) { contractValid = false; issues.push({message: "Missing Impact section.", sectionKey: "impact"}); }
-    if (!phrasingSection) { contractValid = false; issues.push({message: "Missing Suggested Phrasing section.", sectionKey: "suggestedPhrasing"}); }
+    if (!challengeSection) { contractValid = false; issues.push({ message: "Missing Challenge section.", sectionKey: "challenge" }); }
+    if (!repApproachSection) { contractValid = false; issues.push({ message: "Missing Rep Approach section.", sectionKey: "repApproach" }); }
+    if (!impactSection) { contractValid = false; issues.push({ message: "Missing Impact section.", sectionKey: "impact" }); }
+    if (!phrasingSection) { contractValid = false; issues.push({ message: "Missing Suggested Phrasing section.", sectionKey: "suggestedPhrasing" }); }
     // Check 3 bullets in Rep Approach
     const repText = repApproachSection || "";
     const bulletItems = parseSalesCoachBullets(repText);
     const bulletCount = bulletItems.length;
     if (repApproachSection && bulletCount !== 3) {
       contractValid = false;
-      issues.push({message: `Rep Approach should have 3 bullets (found ${bulletCount}).`, sectionKey: "repApproach"});
+      issues.push({ message: `Rep Approach should have 3 bullets (found ${bulletCount}).`, sectionKey: "repApproach" });
     }
     if (!contractValid) {
       // Update telemetry for contract violations
@@ -2877,7 +2877,7 @@ ${COMMON}`
       if (!base) throw new Error("worker_base_missing");
 
       const url = `${base}/chat`;
-      const payloadMode = currentMode === "sales-coach" ? "sales-simulation" : currentMode;
+      const payloadMode = currentMode; // Send the actual mode, not a remapped one
 
       // Retry logic with exponential backoff for 429/5xx errors
       const delays = [300, 800, 1500];
@@ -2946,6 +2946,16 @@ ${COMMON}`
 
           throw e;
         }
+      }
+
+      // Special handling for 429 rate limit errors
+      if (lastError && String(lastError).includes('_http_429')) {
+        // Return a special response that indicates rate limiting
+        const rateLimitResponse = "This mode is temporarily busy due to high demand. Please wait a moment and try again.";
+        rateLimitResponse._isRateLimited = true;
+        rateLimitResponse._citations = [];
+        rateLimitResponse._metrics = null;
+        return rateLimitResponse;
       }
 
       throw lastError || new Error(`${url}_failed_after_retries`);
@@ -3548,7 +3558,7 @@ Please provide your response again with all required fields including phrasing.`
   }
 
   // Phase 7: Performance stress testing stub
-  window.__reflectivStressTest = function(times = 50, mode = "sales-coach") {
+  window.__reflectivStressTest = function (times = 50, mode = "sales-coach") {
     if (!isDebugMode()) {
       console.warn('Stress test only available in debug mode (?debug=true)');
       return;

@@ -52,10 +52,10 @@ async function testHealthHead() {
   });
   const res = await worker.fetch(req, mockEnv, {});
   const text = await res.text();
-  
+
   assert(res.status === 200, "HEAD /health returns 200");
   assert(text === "", "HEAD /health returns empty body");
-  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "HEAD /health includes CORS headers");
 }
 
@@ -69,10 +69,10 @@ async function testHealthGet() {
   });
   const res = await worker.fetch(req, mockEnv, {});
   const text = await res.text();
-  
+
   assert(res.status === 200, "GET /health returns 200");
   assert(text === "ok", "GET /health returns 'ok'");
-  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "GET /health includes CORS headers");
 }
 
@@ -86,10 +86,10 @@ async function testVersion() {
   });
   const res = await worker.fetch(req, mockEnv, {});
   const data = await res.json();
-  
+
   assert(res.status === 200, "GET /version returns 200");
-  assertEquals(data.version, "r11.0-phase11", "GET /version returns correct version");
-  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+  assertEquals(data.version, "r12.0-phase13", "GET /version returns correct version");
+  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "GET /version includes CORS headers");
 }
 
@@ -103,14 +103,14 @@ async function testDebugEI() {
   });
   const res = await worker.fetch(req, mockEnv, {});
   const data = await res.json();
-  
+
   assert(res.status === 200, "GET /debug/ei returns 200");
   assertEquals(data.worker, "ReflectivAI Gateway", "GET /debug/ei returns worker name");
-  assertEquals(data.version, "r11.0-phase11", "GET /debug/ei returns correct version");
+  assertEquals(data.version, "r12.0-phase13", "GET /debug/ei returns correct version");
   assert(Array.isArray(data.endpoints), "GET /debug/ei returns endpoints array");
   assert(data.endpoints.includes("/health"), "GET /debug/ei lists /health endpoint");
   assert(data.endpoints.includes("/chat"), "GET /debug/ei lists /chat endpoint");
-  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "GET /debug/ei includes CORS headers");
 }
 
@@ -123,10 +123,10 @@ async function testCORSAllowed() {
     headers: { "Origin": "https://reflectivei.github.io" }
   });
   const res = await worker.fetch(req, mockEnv, {});
-  
-  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+
+  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "CORS sets origin for allowed origin");
-  assert(res.headers.get("Access-Control-Allow-Credentials") === "true", 
+  assert(res.headers.get("Access-Control-Allow-Credentials") === "true",
     "CORS allows credentials for specific origin");
   assert(res.headers.get("Vary") === "Origin", "CORS sets Vary: Origin");
 }
@@ -149,10 +149,10 @@ async function testCORSDenied() {
     headers: { "Origin": "https://not-allowed.com" }
   });
   const res = await worker.fetch(req, mockEnv, {});
-  
+
   console.warn = originalWarn; // Restore
 
-  assert(res.headers.get("Access-Control-Allow-Origin") === "null", 
+  assert(res.headers.get("Access-Control-Allow-Origin") === "null",
     "CORS denies unauthorized origin");
   assert(warnCalled, "CORS logs warning for denied origin");
   if (warnArgs) {
@@ -169,13 +169,13 @@ async function testCORSPreflight() {
     headers: { "Origin": "https://reflectivei.github.io" }
   });
   const res = await worker.fetch(req, mockEnv, {});
-  
+
   assert(res.status === 204, "OPTIONS returns 204");
-  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+  assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "OPTIONS includes CORS origin");
-  assert(res.headers.get("Access-Control-Allow-Methods").includes("POST"), 
+  assert(res.headers.get("Access-Control-Allow-Methods").includes("POST"),
     "OPTIONS allows POST method");
-  assert(res.headers.get("Access-Control-Max-Age") === "86400", 
+  assert(res.headers.get("Access-Control-Max-Age") === "86400",
     "OPTIONS sets max age");
 }
 
@@ -196,8 +196,8 @@ async function testAllEndpointsHaveCORS() {
       headers: { "Origin": "https://reflectivei.github.io" }
     });
     const res = await worker.fetch(req, mockEnv, {});
-    
-    assert(res.headers.has("Access-Control-Allow-Origin"), 
+
+    assert(res.headers.has("Access-Control-Allow-Origin"),
       `${endpoint.method} ${endpoint.path} includes CORS headers`);
   }
 }
@@ -213,9 +213,9 @@ async function testErrorsHaveCORS() {
   });
   const res404 = await worker.fetch(req404, mockEnv, {});
   const data404 = await res404.json();
-  
+
   assert(res404.status === 404, "Unknown endpoint returns 404");
-  assert(res404.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+  assert(res404.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "404 response includes CORS headers");
   assertEquals(data404.error, "not_found", "404 returns not_found error");
 
@@ -223,16 +223,16 @@ async function testErrorsHaveCORS() {
   const envNoKey = { ...mockEnv, PROVIDER_KEY: undefined };
   const req500 = new Request("http://test.com/chat", {
     method: "POST",
-    headers: { 
+    headers: {
       "Origin": "https://reflectivei.github.io",
       "Content-Type": "application/json"
     },
     body: JSON.stringify({ mode: "sales-simulation", user: "test" })
   });
   const res500 = await worker.fetch(req500, envNoKey, {});
-  
+
   assert(res500.status === 500, "Chat without PROVIDER_KEY returns 500");
-  assert(res500.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
+  assert(res500.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io",
     "500 response includes CORS headers");
 }
 
@@ -243,12 +243,12 @@ async function testProviderErrorHandling() {
   // This test verifies that the error handling logic is in place
   // In reality, we'd need to mock the providerChat function to test this fully
   // For now, we're just checking that the error handling code exists
-  
+
   // Read the worker.js file to verify error handling code
   const workerCode = await import("./worker.js");
   assert(typeof workerCode.default === "object", "Worker exports default object");
   assert(typeof workerCode.default.fetch === "function", "Worker has fetch function");
-  
+
   console.log("  ℹ Note: Full provider error testing requires mocking providerChat");
 }
 
@@ -271,7 +271,7 @@ async function runTests() {
     console.log("\n=== Test Summary ===");
     console.log(`Passed: ${testsPassed}`);
     console.log(`Failed: ${testsFailed}`);
-    
+
     if (testsFailed > 0) {
       process.exit(1);
     }
