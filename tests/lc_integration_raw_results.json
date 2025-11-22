@@ -1,0 +1,1207 @@
+{
+  "executionTime": "2025-11-15T03:11:58.697Z",
+  "httpCallCount": 20,
+  "totalTests": 20,
+  "results": [
+    {
+      "testId": "SC-01",
+      "mode": "sales-coach",
+      "persona": "hiv_fp_md_timepressed",
+      "disease": "hiv_im_decile3_prep_lowshare",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "sales-coach",
+        "disease": "hiv_im_decile3_prep_lowshare",
+        "persona": "hiv_fp_md_timepressed",
+        "goal": "Create urgency around PrEP gaps",
+        "messages": [
+          {
+            "role": "user",
+            "content": "We're seeing more STI testing in young MSM - what's your approach to PrEP?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "Challenge: The HCP may not be prioritizing PrEP prescriptions due to lack of awareness about the substantial risk of HIV in young MSM with recent STI diagnoses.\n\nRep Approach: • Discuss the importance of assessing sexual risk factors, including recent STI diagnoses, to identify individuals at substantial risk of HIV, as recommended for PrEP eligibility [HIV-PREP-ELIG-001].  • Highlight the efficacy and safety profile of Descovy (emtricitabine/tenofovir alafenamide) for PrEP in young MSM, excluding receptive vaginal sex, as indicated in the FDA label [HIV-PREP-TAF-002].  • Emphasize the need for renal function assessment before and during PrEP, considering eGFR thresholds per the FDA label, to ensure safe prescribing practices [HIV-PREP-SAFETY-003].\n\nImpact: By emphasizing the importance of risk assessment, the benefits of Descovy for PrEP, and the need for renal function monitoring, the HCP will be more likely to prioritize PrEP prescriptions for young MSM with recent STI diagnoses and commit to proactive Descovy prescribing.\n\nSuggested Phrasing: \"Given the increased STI testing in young MSM, I recommend we discuss how to identify and assess these individuals for PrEP eligibility, and consider Descovy as a safe and effective option for HIV prevention. \"",
+        "coach": {
+          "scores": {
+            "empathy": 4,
+            "clarity": 5,
+            "compliance": 4,
+            "discovery": 5,
+            "objection_handling": 4,
+            "confidence": 5,
+            "active_listening": 5,
+            "adaptability": 4,
+            "action_insight": 5,
+            "resilience": 4
+          },
+          "rationales": {
+            "empathy": "Acknowledge the HCP's concern about STI testing in young MSM",
+            "clarity": "Clearly explain the importance of PrEP in this population",
+            "compliance": "Emphasize the need for renal function assessment",
+            "discovery": "Highlight the benefits of Descovy for PrEP",
+            "objection_handling": "Address potential concerns about PrEP safety",
+            "confidence": "Confidently recommend Descovy for PrEP",
+            "active_listening": "Listen to the HCP's concerns and respond accordingly",
+            "adaptability": "Be flexible and adjust the approach as needed",
+            "action_insight": "Understand the HCP's thought process and adjust the approach accordingly",
+            "resilience": "Maintain a positive and professional demeanor despite potential objections"
+          },
+          "tips": [
+            "Tip 1: Use clear and concise language when discussing PrEP",
+            "Tip 2: Emphasize the importance of renal function assessment",
+            "Tip 3: Highlight the benefits of Descovy for PrEP"
+          ],
+          "rubric_version": "v2.0"
+        },
+        "plan": {
+          "id": "d506503c172aa93d"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:21.191Z"
+    },
+    {
+      "testId": "SC-02",
+      "mode": "sales-coach",
+      "persona": "hiv_id_md_guideline_strict",
+      "disease": "hiv_np_decile10_highshare_access",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "sales-coach",
+        "disease": "hiv_np_decile10_highshare_access",
+        "persona": "hiv_id_md_guideline_strict",
+        "goal": "Broaden appropriate Descovy use",
+        "messages": [
+          {
+            "role": "user",
+            "content": "How do you handle Descovy prescribing in your practice?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "Challenge: The HCP may not be prioritizing Descovy prescriptions due to lack of awareness about the substantial risk of HIV in certain patient populations.\n\nRep Approach: • Discuss the importance of assessing sexual and injection risk factors to identify individuals at substantial risk of HIV, as recommended for PrEP eligibility [HIV-PREP-ELIG-001].  • Highlight the efficacy and safety profile of Descovy (emtricitabine/tenofovir alafenamide) for PrEP, excluding receptive vaginal sex, as indicated in the FDA label [HIV-PREP-TAF-002].  • Emphasize the need for renal function assessment before and during PrEP, considering eGFR thresholds per the FDA label, to ensure safe prescribing practices [HIV-PREP-SAFETY-003].\n\nImpact: By emphasizing the importance of risk assessment, the benefits of Descovy for PrEP, and the need for renal function monitoring, the HCP will be more likely to prioritize PrEP prescriptions for at-risk patients and commit to proactive Descovy prescribing.\n\nSuggested Phrasing: \"Given the substantial risk of HIV in certain patient populations, I recommend we discuss how to identify and assess these individuals for PrEP eligibility, and consider Descovy as a safe and effective option for those at risk of HIV acquisition, excluding those at risk from receptive vaginal sex. \"",
+        "coach": {
+          "scores": {
+            "empathy": 4,
+            "clarity": 5,
+            "compliance": 4,
+            "discovery": 5,
+            "objection_handling": 4,
+            "confidence": 5,
+            "active_listening": 5,
+            "adaptability": 4,
+            "action_insight": 5,
+            "resilience": 4
+          },
+          "rationales": {
+            "empathy": "Acknowledging the HCP's concerns and validating their perspective.",
+            "clarity": "Clearly explaining the importance of risk assessment and Descovy's benefits for PrEP.",
+            "compliance": "Ensuring the HCP understands the FDA label and safety considerations.",
+            "discovery": "Highlighting the need for renal function assessment and monitoring.",
+            "objection_handling": "Addressing potential concerns about Descovy's safety profile.",
+            "confidence": "Confidently recommending Descovy for PrEP in at-risk patients.",
+            "active_listening": "Actively listening to the HCP's questions and concerns.",
+            "adaptability": "Adjusting the approach to meet the HCP's needs and preferences.",
+            "action_insight": "Providing actionable insights and recommendations for Descovy prescribing.",
+            "resilience": "Maintaining a positive and resilient attitude despite potential objections."
+          },
+          "tips": [
+            "Tip 1: Use clear and concise language when discussing Descovy's benefits and safety profile.",
+            "Tip 2: Emphasize the importance of renal function assessment and monitoring.",
+            "Tip 3: Address potential concerns about Descovy's safety profile and provide reassurance."
+          ],
+          "rubric_version": "v2.0"
+        },
+        "plan": {
+          "id": "350424677b34d427"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:25.058Z"
+    },
+    {
+      "testId": "SC-03",
+      "mode": "sales-coach",
+      "persona": "onco_hemonc_md_costtox",
+      "disease": "onc_md_decile10_io_adc_pathways",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "sales-coach",
+        "disease": "onc_md_decile10_io_adc_pathways",
+        "persona": "onco_hemonc_md_costtox",
+        "goal": "Define biomarker-driven ADC subset",
+        "messages": [
+          {
+            "role": "user",
+            "content": "What's your experience with ADCs in your patient population?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "Challenge: The oncologist may not be aware of the specific biomarker-driven ADC subset in their patient population, leading to suboptimal treatment decisions.\n\nRep Approach: • Discuss the importance of identifying a biomarker-driven ADC subset in the patient population, as this can inform treatment decisions and improve outcomes [onc_md_decile10_io_adc_pathways].  • Highlight the need for a comprehensive approach to ADC treatment, considering both the tumor's biology and the patient's overall health, as indicated in the clinical guidelines [onc_md_decile10_io_adc_pathways].  • Emphasize the importance of monitoring for potential toxicities and adjusting treatment plans accordingly, as per the FDA label and clinical guidelines [onc_md_decile10_io_adc_pathways].\n\nImpact: By identifying a biomarker-driven ADC subset, the oncologist will be able to make more informed treatment decisions, leading to improved patient outcomes and reduced toxicity.\n\nSuggested Phrasing: \"Given the heterogeneity of ADCs, I recommend we discuss how to identify a biomarker-driven subset in our patient population, and consider how this can inform our treatment decisions and improve outcomes. \"",
+        "coach": {
+          "scores": {
+            "empathy": 4,
+            "clarity": 5,
+            "compliance": 4,
+            "discovery": 5,
+            "objection_handling": 4,
+            "confidence": 5,
+            "active_listening": 5,
+            "adaptability": 4,
+            "action_insight": 5,
+            "resilience": 4
+          },
+          "rationales": {
+            "empathy": "Acknowledge the oncologist's experience and concerns",
+            "clarity": "Clearly explain the importance of biomarker-driven ADC subset",
+            "compliance": "Highlight the need for comprehensive treatment approach",
+            "discovery": "Emphasize the importance of monitoring for toxicities",
+            "objection_handling": "Address potential concerns about treatment decisions",
+            "confidence": "Confidently discuss the benefits of biomarker-driven ADC subset",
+            "active_listening": "Listen attentively to the oncologist's questions and concerns",
+            "adaptability": "Be flexible and adapt to the oncologist's needs and preferences",
+            "action_insight": "Provide actionable insights and recommendations",
+            "resilience": "Maintain a positive and resilient attitude despite potential objections"
+          },
+          "tips": [
+            "Tip 1: Use clear and concise language when discussing biomarker-driven ADC subset",
+            "Tip 2: Emphasize the importance of comprehensive treatment approach",
+            "Tip 3: Be prepared to address potential concerns about treatment decisions"
+          ],
+          "rubric_version": "v2.0"
+        },
+        "plan": {
+          "id": "d0e35409ab534b6e"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:28.866Z"
+    },
+    {
+      "testId": "SC-04",
+      "mode": "sales-coach",
+      "persona": "vax_peds_np_hesitancy",
+      "disease": "vac_np_decile5_primary_care_capture",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "sales-coach",
+        "disease": "vac_np_decile5_primary_care_capture",
+        "persona": "vax_peds_np_hesitancy",
+        "goal": "Standardize vaccination workflow",
+        "messages": [
+          {
+            "role": "user",
+            "content": "How do you manage vaccine series completion in your clinic?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "Challenge: The HCP may not be prioritizing vaccine series completion due to lack of awareness about the importance of standardizing vaccination workflows.\n\nRep Approach: • Discuss the importance of standardizing vaccination workflows to ensure timely completion of vaccine series, as recommended for primary care capture [vac_np_decile5_primary_care_capture].  • Highlight the benefits of implementing a structured approach to vaccine administration, including improved patient engagement and reduced missed opportunities for vaccination, as indicated in the CDC guidelines [CDC PrEP Guidelines 2024].  • Emphasize the need for regular monitoring and follow-up with patients to ensure completion of vaccine series, considering the potential consequences of incomplete vaccination, such as reduced vaccine efficacy and increased risk of vaccine-preventable diseases [CDC PrEP Guidelines 2024].\n\nImpact: By standardizing vaccination workflows and implementing a structured approach to vaccine administration, the HCP will be more likely to prioritize vaccine series completion and ensure timely completion of vaccine series, ultimately improving patient outcomes and reducing the risk of vaccine-preventable diseases.\n\nSuggested Phrasing: \"To improve vaccine series completion rates, I recommend we standardize our vaccination workflows and implement a structured approach to vaccine administration, including regular monitoring and follow-up with patients to ensure timely completion of vaccine series. \"",
+        "coach": {
+          "scores": {
+            "empathy": 4,
+            "clarity": 5,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 4,
+            "confidence": 5,
+            "active_listening": 4,
+            "adaptability": 4,
+            "action_insight": 5,
+            "resilience": 4
+          },
+          "rationales": {
+            "empathy": "The rep demonstrated understanding of the HCP's concerns and empathized with their challenges.",
+            "clarity": "The rep clearly explained the importance of standardizing vaccination workflows and the benefits of implementing a structured approach to vaccine administration.",
+            "compliance": "The rep emphasized the need for regular monitoring and follow-up with patients to ensure completion of vaccine series.",
+            "discovery": "The rep highlighted the potential consequences of incomplete vaccination, such as reduced vaccine efficacy and increased risk of vaccine-preventable diseases.",
+            "objection_handling": "The rep addressed potential objections by emphasizing the importance of standardizing vaccination workflows and implementing a structured approach to vaccine administration.",
+            "confidence": "The rep demonstrated confidence in their approach and provided clear guidance on how to improve vaccine series completion rates.",
+            "active_listening": "The rep actively listened to the HCP's concerns and responded accordingly.",
+            "adaptability": "The rep adapted their approach to the HCP's needs and concerns.",
+            "action_insight": "The rep provided actionable insights on how to improve vaccine series completion rates.",
+            "resilience": "The rep demonstrated resilience in the face of potential objections and continued to advocate for standardizing vaccination workflows."
+          },
+          "tips": [
+            "Tip 1: Standardize vaccination workflows to ensure timely completion of vaccine series.",
+            "Tip 2: Implement a structured approach to vaccine administration, including regular monitoring and follow-up with patients.",
+            "Tip 3: Emphasize the importance of completing vaccine series to improve patient outcomes and reduce the risk of vaccine-preventable diseases."
+          ],
+          "rubric_version": "v2.0"
+        },
+        "plan": {
+          "id": "6d21e6576d7f21d8"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:32.832Z"
+    },
+    {
+      "testId": "RP-01",
+      "mode": "role-play",
+      "persona": "hiv_fp_md_timepressed",
+      "disease": "hiv_im_decile3_prep_lowshare",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "role-play",
+        "disease": "hiv_im_decile3_prep_lowshare",
+        "persona": "hiv_fp_md_timepressed",
+        "goal": "HCP role-play dialogue",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Hi doctor, I wanted to talk about PrEP opportunities in your clinic"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "I'm doing well, thanks.  I have a few minutes before my next patient, what brings you by?  We've been seeing a lot of interest in PrEP lately, especially among our high-risk patients.  What specific questions or concerns do you have about implementing PrEP in our clinic?",
+        "coach": {
+          "overall": 86,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 4,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "Hi doctor, I wanted to talk about PrEP opportunities in your clinic",
+            "hcp_reply": "I'm doing well, thanks.  I have a few minutes before my next patient, what brings you by?  We've been seeing a lot of interest in PrEP lately, especially among our high-risk patients.  What specific questions or concerns do you have about implementing PrEP in our clinic?"
+          }
+        },
+        "plan": {
+          "id": "815043069ed26ddd"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:36.084Z"
+    },
+    {
+      "testId": "RP-02",
+      "mode": "role-play",
+      "persona": "hiv_id_md_guideline_strict",
+      "disease": "hiv_np_decile10_highshare_access",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "role-play",
+        "disease": "hiv_np_decile10_highshare_access",
+        "persona": "hiv_id_md_guideline_strict",
+        "goal": "HCP role-play dialogue",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Good morning Dr. Harper, thanks for your time. I wanted to discuss Descovy"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "Good morning, I'm doing well, thanks.  I have a few minutes before my next patient, what brings you by regarding Descovy?",
+        "coach": {
+          "overall": 77,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 4,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "Good morning Dr. Harper, thanks for your time. I wanted to discuss Descovy",
+            "hcp_reply": "Good morning, I'm doing well, thanks.  I have a few minutes before my next patient, what brings you by regarding Descovy?"
+          }
+        },
+        "plan": {
+          "id": "8b8b3e69b9c3928d"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:39.291Z"
+    },
+    {
+      "testId": "RP-03",
+      "mode": "role-play",
+      "persona": "onco_hemonc_md_costtox",
+      "disease": "onc_md_decile10_io_adc_pathways",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "role-play",
+        "disease": "onc_md_decile10_io_adc_pathways",
+        "persona": "onco_hemonc_md_costtox",
+        "goal": "HCP role-play dialogue",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Dr. Chen, do you have a few minutes to discuss our oncology pathway?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "I've got a few minutes before my next patient.  What's on your mind regarding our oncology pathway?",
+        "coach": {
+          "overall": 75,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 4,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "Dr. Chen, do you have a few minutes to discuss our oncology pathway?",
+            "hcp_reply": "I've got a few minutes before my next patient.  What's on your mind regarding our oncology pathway?"
+          }
+        },
+        "plan": {
+          "id": "dc87587d5a535837"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:42.497Z"
+    },
+    {
+      "testId": "RP-04",
+      "mode": "role-play",
+      "persona": "vax_peds_np_hesitancy",
+      "disease": "vac_np_decile5_primary_care_capture",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "role-play",
+        "disease": "vac_np_decile5_primary_care_capture",
+        "persona": "vax_peds_np_hesitancy",
+        "goal": "HCP role-play dialogue",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Hey Alex, quick question about flu shots for your pediatric patients"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "I'm good, thanks for asking.  Between you and me, it's been a busy morning with back-to-back appointments.  What can I help you with today?",
+        "coach": {
+          "overall": 78,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 4,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "Hey Alex, quick question about flu shots for your pediatric patients",
+            "hcp_reply": "I'm good, thanks for asking.  Between you and me, it's been a busy morning with back-to-back appointments.  What can I help you with today?"
+          }
+        },
+        "plan": {
+          "id": "14f0b01f4c46e851"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:45.692Z"
+    },
+    {
+      "testId": "EI-01",
+      "mode": "emotional-assessment",
+      "persona": "hiv_fp_md_timepressed",
+      "disease": "hiv_im_decile3_prep_lowshare",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "emotional-assessment",
+        "disease": "hiv_im_decile3_prep_lowshare",
+        "persona": "hiv_fp_md_timepressed",
+        "goal": "EI coaching on self-awareness",
+        "messages": [
+          {
+            "role": "user",
+            "content": "I felt the HCP was dismissive of my PrEP evidence. How should I handle that differently?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "I can sense the frustration in your voice.  Let's break down what happened in the Triple-Loop Reflection framework.  **Loop 1 (Task Outcome):** Did you accomplish the communication objective?  In this case, it seems like the HCP's dismissiveness might have derailed the conversation.  What do you think could have been done differently to maintain the momentum?  **Loop 2 (Emotional Regulation):** How did you manage stress, tone, emotional responses?  When faced with dismissal, it's natural to feel defensive or frustrated.  What did you notice about your tone just now?  Were there any physical sensations or emotions that arose in response to the HCP's reaction?  **Loop 3 (Mindset Reframing):** What beliefs or patterns should change for future conversations?  When someone challenges or dismisses your evidence, it can be tempting to take it personally.  However, as a healthcare professional, it's essential to separate the issue from the person.  What assumption did you hold about this HCP that shaped your approach?  Was it that they were resistant to PrEP or that they didn't value evidence-based medicine?  To handle this situation differently, consider the following: * Take a deep breath and pause for a moment before responding.  This can help you regulate your tone and emotions.  * Acknowledge the HCP's concerns and validate their perspective.  This can help build rapport and create a safe space for discussion.  * Reframe the conversation by focusing on the evidence and the benefits of PrEP.  If objections are requests for clarity, how would you rephrase your message to address their concerns?",
+        "coach": {
+          "overall": 59,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 4,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "I felt the HCP was dismissive of my PrEP evidence. How should I handle that differently?",
+            "hcp_reply": "I can sense the frustration in your voice.  Let's break down what happened in the Triple-Loop Reflection framework.  **Loop 1 (Task Outcome):** Did you accomplish the communication objective?  In this case, it seems like the HCP's dismissiveness might have derailed the conversation.  What do you think could have been done differently to maintain the momentum?  **Loop 2 (Emotional Regulation):** How did you manage stress, tone, emotional responses?  When faced with dismissal, it's natural to feel defensive or frustrated.  What did you notice about your tone just now?  Were there any physical sensations or emotions that arose in response to the HCP's reaction?  **Loop 3 (Mindset Reframing):** What beliefs or patterns should change for future conversations?  When someone challenges or dismisses your evidence, it can be tempting to take it personally.  However, as a healthcare professional, it's essential to separate the issue from the person.  What assumption did you hold about this HCP that shaped your approach?  Was it that they were resistant to PrEP or that they didn't value evidence-based medicine?  To handle this situation differently, consider the following: * Take a deep breath and pause for a moment before responding.  This can help you regulate your tone and emotions.  * Acknowledge the HCP's concerns and validate their perspective.  This can help build rapport and create a safe space for discussion.  * Reframe the conversation by focusing on the evidence and the benefits of PrEP.  If objections are requests for clarity, how would you rephrase your message to address their concerns?"
+          }
+        },
+        "plan": {
+          "id": "f45082ddfa6548d7"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:51.779Z"
+    },
+    {
+      "testId": "EI-02",
+      "mode": "emotional-assessment",
+      "persona": "hiv_id_md_guideline_strict",
+      "disease": "hiv_np_decile10_highshare_access",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "emotional-assessment",
+        "disease": "hiv_np_decile10_highshare_access",
+        "persona": "hiv_id_md_guideline_strict",
+        "goal": "EI coaching on emotional regulation",
+        "messages": [
+          {
+            "role": "user",
+            "content": "The doctor challenged my data on Descovy safety. I got defensive. What can I learn?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "It takes a lot of courage to acknowledge getting defensive, especially when it comes to sensitive topics like patient safety.  Let's break this down using the Triple-Loop Reflection framework.  **Loop 1 (Task Outcome):** Did you accomplish the communication objective?  In this case, it seems like the conversation didn't go as planned, and you might have missed an opportunity to address the doctor's concerns effectively.  **Loop 2 (Emotional Regulation):** How did you manage stress, tone, and emotional responses?  Getting defensive often indicates that you felt threatened or attacked.  This can lead to a breakdown in communication and a loss of credibility.  Reflecting on this, what did you notice about your tone just now?  What emotion are you holding as you plan your next response?  **Loop 3 (Mindset Reframing):** What beliefs or patterns should change for future conversations?  Consider this: what assumption did you hold about this doctor that shaped your approach?  Was it that they were attacking your data or your expertise?  If objections are requests for clarity, how would you rephrase your response to focus on the doctor's concerns rather than taking it personally?  To deepen your metacognition, ask yourself: What would change if you paused for two seconds before responding to the doctor's challenge?  How might that shift your tone and approach?  Remember, effective communication is not about winning an argument, but about understanding and addressing the doctor's concerns.  By acknowledging your defensiveness and reframing your approach, you can create a more constructive dialogue and build trust with the doctor.",
+        "coach": {
+          "overall": 59,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "The doctor challenged my data on Descovy safety. I got defensive. What can I learn?",
+            "hcp_reply": "It takes a lot of courage to acknowledge getting defensive, especially when it comes to sensitive topics like patient safety.  Let's break this down using the Triple-Loop Reflection framework.  **Loop 1 (Task Outcome):** Did you accomplish the communication objective?  In this case, it seems like the conversation didn't go as planned, and you might have missed an opportunity to address the doctor's concerns effectively.  **Loop 2 (Emotional Regulation):** How did you manage stress, tone, and emotional responses?  Getting defensive often indicates that you felt threatened or attacked.  This can lead to a breakdown in communication and a loss of credibility.  Reflecting on this, what did you notice about your tone just now?  What emotion are you holding as you plan your next response?  **Loop 3 (Mindset Reframing):** What beliefs or patterns should change for future conversations?  Consider this: what assumption did you hold about this doctor that shaped your approach?  Was it that they were attacking your data or your expertise?  If objections are requests for clarity, how would you rephrase your response to focus on the doctor's concerns rather than taking it personally?  To deepen your metacognition, ask yourself: What would change if you paused for two seconds before responding to the doctor's challenge?  How might that shift your tone and approach?  Remember, effective communication is not about winning an argument, but about understanding and addressing the doctor's concerns.  By acknowledging your defensiveness and reframing your approach, you can create a more constructive dialogue and build trust with the doctor."
+          }
+        },
+        "plan": {
+          "id": "71785d870947dc70"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:10:57.387Z"
+    },
+    {
+      "testId": "EI-03",
+      "mode": "emotional-assessment",
+      "persona": "onco_hemonc_md_costtox",
+      "disease": "onc_md_decile10_io_adc_pathways",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "emotional-assessment",
+        "disease": "onc_md_decile10_io_adc_pathways",
+        "persona": "onco_hemonc_md_costtox",
+        "goal": "EI coaching on discovery",
+        "messages": [
+          {
+            "role": "user",
+            "content": "I'm not sure how to connect ADC benefits to their workflow. How do I ask better questions?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "It sounds like you're feeling a bit stuck on how to effectively communicate the benefits of ADC to the HCP.  Let's break this down and explore some strategies for asking better questions.  As you reflect on your last conversation, what did you notice about your tone when discussing ADC benefits?  Were you feeling a bit anxious or uncertain about how to connect the dots for the HCP?  (Self-Awareness) Now, let's consider the HCP's perspective.  How might they have perceived your last statement about ADC benefits?  What might be driving their resistance or skepticism?  (Perspective-Taking) To ask better questions, try reframing your approach.  Instead of asking yes/no questions, ask open-ended ones that encourage the HCP to share their thoughts and concerns.  For example, \"Can you help me understand how you currently manage [specific challenge] in your practice? \" or \"What are your biggest pain points when it comes to [related issue]? \" As you ask these questions, pay attention to your emotional regulation.  Where do you feel tension when hearing the HCP's concerns or objections?  What would change if you paused for two seconds before responding?  (Regulation) To deepen your metacognition, ask yourself: What assumption did I hold about this HCP that shaped my approach to discussing ADC benefits?  If objections are requests for clarity, how would I rephrase my questions to better understand their needs and concerns?  (Reframing) Now, let's try to reframe your question-asking approach.  Instead of asking, \"How can I connect ADC benefits to their workflow? \", try asking, \"What are the biggest challenges you face in your current workflow, and how might ADC benefits address those pain points? \" This approach shows that you're genuinely interested in understanding their needs and concerns, rather than just pushing a specific product or solution.",
+        "coach": {
+          "overall": 48,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "I'm not sure how to connect ADC benefits to their workflow. How do I ask better questions?",
+            "hcp_reply": "It sounds like you're feeling a bit stuck on how to effectively communicate the benefits of ADC to the HCP.  Let's break this down and explore some strategies for asking better questions.  As you reflect on your last conversation, what did you notice about your tone when discussing ADC benefits?  Were you feeling a bit anxious or uncertain about how to connect the dots for the HCP?  (Self-Awareness) Now, let's consider the HCP's perspective.  How might they have perceived your last statement about ADC benefits?  What might be driving their resistance or skepticism?  (Perspective-Taking) To ask better questions, try reframing your approach.  Instead of asking yes/no questions, ask open-ended ones that encourage the HCP to share their thoughts and concerns.  For example, \"Can you help me understand how you currently manage [specific challenge] in your practice? \" or \"What are your biggest pain points when it comes to [related issue]? \" As you ask these questions, pay attention to your emotional regulation.  Where do you feel tension when hearing the HCP's concerns or objections?  What would change if you paused for two seconds before responding?  (Regulation) To deepen your metacognition, ask yourself: What assumption did I hold about this HCP that shaped my approach to discussing ADC benefits?  If objections are requests for clarity, how would I rephrase my questions to better understand their needs and concerns?  (Reframing) Now, let's try to reframe your question-asking approach.  Instead of asking, \"How can I connect ADC benefits to their workflow? \", try asking, \"What are the biggest challenges you face in your current workflow, and how might ADC benefits address those pain points? \" This approach shows that you're genuinely interested in understanding their needs and concerns, rather than just pushing a specific product or solution."
+          }
+        },
+        "plan": {
+          "id": "bef22002a0e9ab2d"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:03.211Z"
+    },
+    {
+      "testId": "EI-04",
+      "mode": "emotional-assessment",
+      "persona": "vax_peds_np_hesitancy",
+      "disease": "vac_np_decile5_primary_care_capture",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "emotional-assessment",
+        "disease": "vac_np_decile5_primary_care_capture",
+        "persona": "vax_peds_np_hesitancy",
+        "goal": "EI coaching on adaptability",
+        "messages": [
+          {
+            "role": "user",
+            "content": "The clinic seems too busy for a new vaccine protocol. How do I adapt my approach?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "It sounds like you're facing a challenging situation.  Let's take a step back and reflect on your approach.  What did you notice about your tone just now?  Were you feeling frustrated or concerned about the clinic's resistance to the new vaccine protocol?  As you plan your next response, what emotion are you holding onto?  Is it a sense of urgency to implement the protocol, or perhaps a feeling of being misunderstood?  Being aware of your emotions can help you adjust your approach to better connect with the clinic staff.  From the clinic's perspective, they might perceive your message as yet another added task to their already busy schedule.  What might be driving their resistance?  Are they concerned about the impact on their workflow, or perhaps they're unsure about the benefits of the new protocol?  Taking a moment to consider their perspective can help you tailor your message to address their specific concerns.  As you reflect on your approach, what do you notice about how you respond when someone challenges your evidence?  Do you tend to become more defensive or try to provide more information?  Being aware of these patterns can help you adapt your approach to build trust and credibility with the clinic staff.  Let's reframe the situation: what assumption did you hold about the clinic that shaped your approach?  Were you assuming they would be receptive to the new protocol, or perhaps that they would be resistant?  If objections are requests for clarity, how would you rephrase your message to address their concerns?  As you move forward, where do you feel tension when hearing that objection?  What would change if you paused for two seconds before responding?  Taking a deep breath and pausing can help you respond more thoughtfully and build a stronger connection with the clinic staff.",
+        "coach": {
+          "overall": 48,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "The clinic seems too busy for a new vaccine protocol. How do I adapt my approach?",
+            "hcp_reply": "It sounds like you're facing a challenging situation.  Let's take a step back and reflect on your approach.  What did you notice about your tone just now?  Were you feeling frustrated or concerned about the clinic's resistance to the new vaccine protocol?  As you plan your next response, what emotion are you holding onto?  Is it a sense of urgency to implement the protocol, or perhaps a feeling of being misunderstood?  Being aware of your emotions can help you adjust your approach to better connect with the clinic staff.  From the clinic's perspective, they might perceive your message as yet another added task to their already busy schedule.  What might be driving their resistance?  Are they concerned about the impact on their workflow, or perhaps they're unsure about the benefits of the new protocol?  Taking a moment to consider their perspective can help you tailor your message to address their specific concerns.  As you reflect on your approach, what do you notice about how you respond when someone challenges your evidence?  Do you tend to become more defensive or try to provide more information?  Being aware of these patterns can help you adapt your approach to build trust and credibility with the clinic staff.  Let's reframe the situation: what assumption did you hold about the clinic that shaped your approach?  Were you assuming they would be receptive to the new protocol, or perhaps that they would be resistant?  If objections are requests for clarity, how would you rephrase your message to address their concerns?  As you move forward, where do you feel tension when hearing that objection?  What would change if you paused for two seconds before responding?  Taking a deep breath and pausing can help you respond more thoughtfully and build a stronger connection with the clinic staff."
+          }
+        },
+        "plan": {
+          "id": "d42be9cf201dca90"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:09.057Z"
+    },
+    {
+      "testId": "PK-01",
+      "mode": "product-knowledge",
+      "persona": "hiv_fp_md_timepressed",
+      "disease": "hiv_im_decile3_prep_lowshare",
+      "httpStatus": 200,
+      "retriesNeeded": 2,
+      "requestPayload": {
+        "mode": "product-knowledge",
+        "disease": "hiv_im_decile3_prep_lowshare",
+        "persona": "hiv_fp_md_timepressed",
+        "goal": "Clinical knowledge on renal safety",
+        "messages": [
+          {
+            "role": "user",
+            "content": "What are the renal safety considerations for Descovy vs TDF?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Renal Safety Considerations for Descovy vs TDF** Descovy (emtricitabine/tenofovir alafenamide, TAF) and Truvada (emtricitabine/tenofovir disoproxil fumarate, TDF) are both widely used antiretroviral therapies (ART) for HIV treatment and pre-exposure prophylaxis (PrEP).  While both medications contain tenofovir, a key difference lies in their renal safety profiles.  **Tenofovir Disoproxil Fumarate (TDF)** TDF is a prodrug of tenofovir, which is primarily excreted by the kidneys.  TDF's renal safety profile has been extensively studied, and it is associated with a higher risk of renal impairment compared to TAF.  * **Renal Toxicity:** TDF has been linked to a higher incidence of renal impairment, including acute kidney injury (AKI) and chronic kidney disease (CKD) [1].  * **Estimated Glomerular Filtration Rate (eGFR):** TDF can cause a decline in eGFR, particularly in patients with pre-existing renal impairment [2].  * **Risk Factors:** Older age, lower body weight, and pre-existing renal impairment are risk factors for TDF-associated renal toxicity [3].  **Tenofovir Alafenamide (TAF)** TAF is a more recent formulation of tenofovir, which has a lower risk of renal toxicity compared to TDF.  * **Renal Safety:** TAF has been shown to have a more favorable renal safety profile, with a lower incidence of renal impairment and AKI [4].  * **eGFR:** TAF has a smaller impact on eGFR compared to TDF, even in patients with pre-existing renal impairment [5].  * **Risk Factors:** TAF's renal safety profile is less affected by age, body weight, and pre-existing renal impairment [6].  **Clinical Implications** When choosing between Descovy (TAF) and Truvada (TDF), consider the following: * **Renal Function:** Patients with pre-existing renal impairment or those at risk for renal impairment may benefit from TAF's more favorable renal safety profile.  * **Age and Body Weight:** Older patients or those with lower body weight may be more susceptible to TDF-associated renal toxicity, making TAF a better option.  * **Treatment History:** Patients who have experienced renal toxicity with TDF may benefit from switching to TAF.  **Conclusion** Descovy (TAF) has a more favorable renal safety profile compared to Truvada (TDF).  When choosing between these medications, consider the patient's renal function, age, body weight, and treatment history to minimize the risk of renal impairment.  References: [1] **Kirk et al. ** (2017).  Tenofovir disoproxil fumarate and renal function in HIV-infected adults: a systematic review and meta-analysis.  *Journal of Acquired Immune Deficiency Syndromes*, 74(2), 147-155.",
+        "coach": {
+          "overall": 48,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "What are the renal safety considerations for Descovy vs TDF?",
+            "hcp_reply": "**Renal Safety Considerations for Descovy vs TDF** Descovy (emtricitabine/tenofovir alafenamide, TAF) and Truvada (emtricitabine/tenofovir disoproxil fumarate, TDF) are both widely used antiretroviral therapies (ART) for HIV treatment and pre-exposure prophylaxis (PrEP).  While both medications contain tenofovir, a key difference lies in their renal safety profiles.  **Tenofovir Disoproxil Fumarate (TDF)** TDF is a prodrug of tenofovir, which is primarily excreted by the kidneys.  TDF's renal safety profile has been extensively studied, and it is associated with a higher risk of renal impairment compared to TAF.  * **Renal Toxicity:** TDF has been linked to a higher incidence of renal impairment, including acute kidney injury (AKI) and chronic kidney disease (CKD) [1].  * **Estimated Glomerular Filtration Rate (eGFR):** TDF can cause a decline in eGFR, particularly in patients with pre-existing renal impairment [2].  * **Risk Factors:** Older age, lower body weight, and pre-existing renal impairment are risk factors for TDF-associated renal toxicity [3].  **Tenofovir Alafenamide (TAF)** TAF is a more recent formulation of tenofovir, which has a lower risk of renal toxicity compared to TDF.  * **Renal Safety:** TAF has been shown to have a more favorable renal safety profile, with a lower incidence of renal impairment and AKI [4].  * **eGFR:** TAF has a smaller impact on eGFR compared to TDF, even in patients with pre-existing renal impairment [5].  * **Risk Factors:** TAF's renal safety profile is less affected by age, body weight, and pre-existing renal impairment [6].  **Clinical Implications** When choosing between Descovy (TAF) and Truvada (TDF), consider the following: * **Renal Function:** Patients with pre-existing renal impairment or those at risk for renal impairment may benefit from TAF's more favorable renal safety profile.  * **Age and Body Weight:** Older patients or those with lower body weight may be more susceptible to TDF-associated renal toxicity, making TAF a better option.  * **Treatment History:** Patients who have experienced renal toxicity with TDF may benefit from switching to TAF.  **Conclusion** Descovy (TAF) has a more favorable renal safety profile compared to Truvada (TDF).  When choosing between these medications, consider the patient's renal function, age, body weight, and treatment history to minimize the risk of renal impairment.  References: [1] **Kirk et al. ** (2017).  Tenofovir disoproxil fumarate and renal function in HIV-infected adults: a systematic review and meta-analysis.  *Journal of Acquired Immune Deficiency Syndromes*, 74(2), 147-155."
+          }
+        },
+        "plan": {
+          "id": "ba1635267f90a388"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:17.501Z"
+    },
+    {
+      "testId": "PK-02",
+      "mode": "product-knowledge",
+      "persona": "hiv_id_md_guideline_strict",
+      "disease": "hiv_np_decile10_highshare_access",
+      "httpStatus": 200,
+      "retriesNeeded": 0,
+      "requestPayload": {
+        "mode": "product-knowledge",
+        "disease": "hiv_np_decile10_highshare_access",
+        "persona": "hiv_id_md_guideline_strict",
+        "goal": "Clinical knowledge on CAB/RPV",
+        "messages": [
+          {
+            "role": "user",
+            "content": "How does cabotegravir/rilpivirine compare to oral regimens in terms of durability?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Cabotegravir/Rilpivirine (Cabenuva) vs.  Oral Regimens: Durability Comparison** Cabotegravir/rilpivirine (Cabenuva) is a long-acting, injectable antiretroviral therapy (ART) regimen for the treatment of HIV-1 infection in adults with no current or prior resistance to either component.  When comparing the durability of Cabenuva to oral regimens, several studies have demonstrated its sustained efficacy and favorable safety profile.  **Key Studies:** 1.  **FLAIR Study (2020)**: A 48-week, open-label, randomized trial comparing Cabenuva to oral cabotegravir/rilpivirine (CAB/RPV) in 618 treatment-experienced adults.  The study showed that Cabenuva maintained high viral suppression rates (95. 6% vs.  93. 5%, p=0. 23) and demonstrated non-inferiority to oral CAB/RPV [1].  2.  **ATLAS Study (2020)**: A 96-week, open-label, randomized trial evaluating the efficacy and safety of Cabenuva in 618 treatment-naïve adults.  The study demonstrated that Cabenuva maintained high viral suppression rates (93. 5% vs.  92. 4%, p=0. 35) and showed non-inferiority to oral CAB/RPV [2].  3.  **ATLAS-2M Study (2020)**: A 48-week, open-label, randomized trial comparing the efficacy and safety of Cabenuva administered every 2 months vs.  every 4 weeks in 618 treatment-naïve adults.",
+        "coach": {
+          "overall": 87,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "How does cabotegravir/rilpivirine compare to oral regimens in terms of durability?",
+            "hcp_reply": "**Cabotegravir/Rilpivirine (Cabenuva) vs.  Oral Regimens: Durability Comparison** Cabotegravir/rilpivirine (Cabenuva) is a long-acting, injectable antiretroviral therapy (ART) regimen for the treatment of HIV-1 infection in adults with no current or prior resistance to either component.  When comparing the durability of Cabenuva to oral regimens, several studies have demonstrated its sustained efficacy and favorable safety profile.  **Key Studies:** 1.  **FLAIR Study (2020)**: A 48-week, open-label, randomized trial comparing Cabenuva to oral cabotegravir/rilpivirine (CAB/RPV) in 618 treatment-experienced adults.  The study showed that Cabenuva maintained high viral suppression rates (95. 6% vs.  93. 5%, p=0. 23) and demonstrated non-inferiority to oral CAB/RPV [1].  2.  **ATLAS Study (2020)**: A 96-week, open-label, randomized trial evaluating the efficacy and safety of Cabenuva in 618 treatment-naïve adults.  The study demonstrated that Cabenuva maintained high viral suppression rates (93. 5% vs.  92. 4%, p=0. 35) and showed non-inferiority to oral CAB/RPV [2].  3.  **ATLAS-2M Study (2020)**: A 48-week, open-label, randomized trial comparing the efficacy and safety of Cabenuva administered every 2 months vs.  every 4 weeks in 618 treatment-naïve adults."
+          }
+        },
+        "plan": {
+          "id": "58f51d2b350f7d79"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:21.865Z"
+    },
+    {
+      "testId": "PK-03",
+      "mode": "product-knowledge",
+      "persona": "onco_hemonc_md_costtox",
+      "disease": "onc_md_decile10_io_adc_pathways",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "product-knowledge",
+        "disease": "onc_md_decile10_io_adc_pathways",
+        "persona": "onco_hemonc_md_costtox",
+        "goal": "Clinical knowledge on ADC biomarkers",
+        "messages": [
+          {
+            "role": "user",
+            "content": "What biomarkers predict ADC response in solid tumors?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Biomarkers Predicting ADC Response in Solid Tumors** ADC (Anti-Drug Conjugate) therapy has emerged as a promising treatment option for various solid tumors.  The effectiveness of ADCs depends on several factors, including the expression of target antigens, the presence of efflux pumps, and the tumor microenvironment.  Several biomarkers have been identified to predict ADC response in solid tumors.  Here are some key biomarkers: **1.  Target Antigen Expression** * **HER2** (Human Epidermal Growth Factor Receptor 2): Overexpression of HER2 is a well-established biomarker for ADC response in breast cancer, particularly for trastuzumab emtansine (T-DM1).  * **EGFR** (Epidermal Growth Factor Receptor): EGFR overexpression is a biomarker for ADC response in non-small cell lung cancer (NSCLC) and other solid tumors, such as colorectal cancer.  * **CD30**: CD30 expression is a biomarker for ADC response in Hodgkin lymphoma and certain types of non-Hodgkin lymphoma, such as anaplastic large cell lymphoma.  **2.  Efflux Pump Expression** * **P-glycoprotein (P-gp)**: P-gp overexpression is a biomarker for ADC resistance in various solid tumors, including breast, lung, and colorectal cancer.  * **Multidrug resistance-associated protein 1 (MRP1)**: MRP1 overexpression is a biomarker for ADC resistance in breast and lung cancer.  **3.  Tumor Microenvironment** * **Tumor-infiltrating lymphocytes (TILs)**: High TILs are associated with improved ADC response in various solid tumors, including breast, lung, and colorectal cancer.  * **Tumor-associated macrophages (TAMs)**: High TAMs are associated with poor ADC response in certain solid tumors, such as breast and lung cancer.  **4.  Other Biomarkers** * **Ki-67**: High Ki-67 expression is associated with poor ADC response in various solid tumors, including breast and lung cancer.  * **p53**: Mutations in the p53 gene are associated with poor ADC response in certain solid tumors, such as breast and lung cancer.  **Clinical Implications** * **Biomarker testing**: Biomarker testing should be performed before ADC therapy to identify patients who are likely to benefit from treatment.  * **Personalized medicine**: ADC therapy should be tailored to individual patients based on their biomarker profile.  * **Monitoring response**: Biomarkers should be monitored during treatment to assess ADC response and adjust therapy as needed.  **References** * [1] FDA Label - T-DM1 (https://www.",
+        "coach": {
+          "overall": 48,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "What biomarkers predict ADC response in solid tumors?",
+            "hcp_reply": "**Biomarkers Predicting ADC Response in Solid Tumors** ADC (Anti-Drug Conjugate) therapy has emerged as a promising treatment option for various solid tumors.  The effectiveness of ADCs depends on several factors, including the expression of target antigens, the presence of efflux pumps, and the tumor microenvironment.  Several biomarkers have been identified to predict ADC response in solid tumors.  Here are some key biomarkers: **1.  Target Antigen Expression** * **HER2** (Human Epidermal Growth Factor Receptor 2): Overexpression of HER2 is a well-established biomarker for ADC response in breast cancer, particularly for trastuzumab emtansine (T-DM1).  * **EGFR** (Epidermal Growth Factor Receptor): EGFR overexpression is a biomarker for ADC response in non-small cell lung cancer (NSCLC) and other solid tumors, such as colorectal cancer.  * **CD30**: CD30 expression is a biomarker for ADC response in Hodgkin lymphoma and certain types of non-Hodgkin lymphoma, such as anaplastic large cell lymphoma.  **2.  Efflux Pump Expression** * **P-glycoprotein (P-gp)**: P-gp overexpression is a biomarker for ADC resistance in various solid tumors, including breast, lung, and colorectal cancer.  * **Multidrug resistance-associated protein 1 (MRP1)**: MRP1 overexpression is a biomarker for ADC resistance in breast and lung cancer.  **3.  Tumor Microenvironment** * **Tumor-infiltrating lymphocytes (TILs)**: High TILs are associated with improved ADC response in various solid tumors, including breast, lung, and colorectal cancer.  * **Tumor-associated macrophages (TAMs)**: High TAMs are associated with poor ADC response in certain solid tumors, such as breast and lung cancer.  **4.  Other Biomarkers** * **Ki-67**: High Ki-67 expression is associated with poor ADC response in various solid tumors, including breast and lung cancer.  * **p53**: Mutations in the p53 gene are associated with poor ADC response in certain solid tumors, such as breast and lung cancer.  **Clinical Implications** * **Biomarker testing**: Biomarker testing should be performed before ADC therapy to identify patients who are likely to benefit from treatment.  * **Personalized medicine**: ADC therapy should be tailored to individual patients based on their biomarker profile.  * **Monitoring response**: Biomarkers should be monitored during treatment to assess ADC response and adjust therapy as needed.  **References** * [1] FDA Label - T-DM1 (https://www."
+          }
+        },
+        "plan": {
+          "id": "d035a6c2d997ce62"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:27.968Z"
+    },
+    {
+      "testId": "PK-04",
+      "mode": "product-knowledge",
+      "persona": "vax_peds_np_hesitancy",
+      "disease": "vac_np_decile5_primary_care_capture",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "product-knowledge",
+        "disease": "vac_np_decile5_primary_care_capture",
+        "persona": "vax_peds_np_hesitancy",
+        "goal": "Clinical knowledge on vaccine efficacy",
+        "messages": [
+          {
+            "role": "user",
+            "content": "How do vaccine efficacy rates compare across different age groups?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Vaccine Efficacy Rates Across Age Groups: A Comprehensive Overview** Vaccine efficacy rates can vary significantly across different age groups due to factors such as immune system development, underlying health conditions, and exposure to pathogens.  In this response, we will explore the vaccine efficacy rates across various age groups, focusing on the context of primary care and pediatric populations.  **General Considerations** Vaccine efficacy rates are typically measured by comparing the incidence of disease in vaccinated individuals to that in unvaccinated individuals.  The efficacy rate is usually expressed as a percentage, indicating the reduction in disease incidence among vaccinated individuals.  **Pediatric Age Groups** 1.  **Infants (0-12 months):** Vaccine efficacy rates tend to be lower in infants due to their immature immune systems.  For example: * Rotavirus vaccine efficacy: 70-80% [1] * Hepatitis B vaccine efficacy: 85-95% [2] 2.  **Children (1-12 years):** Vaccine efficacy rates generally increase with age as the immune system matures.  For example: * Measles, Mumps, and Rubella (MMR) vaccine efficacy: 90-95% [3] * Varicella vaccine efficacy: 85-90% [4] 3.  **Adolescents (13-18 years):** Vaccine efficacy rates may be influenced by factors such as vaccine type, dosing schedule, and individual immune response.  For example: * Human Papillomavirus (HPV) vaccine efficacy: 90-95% [5] * Tdap vaccine efficacy: 80-90% [6] **Adult Age Groups** 1.  **Young Adults (19-39 years):** Vaccine efficacy rates tend to be high in young adults, with some exceptions.  For example: * Influenza vaccine efficacy: 40-60% [7] * Meningococcal vaccine efficacy: 80-90% [8] 2.  **Middle-Aged Adults (40-64 years):** Vaccine efficacy rates may decrease with age due to declining immune function.  For example: * Pneumococcal vaccine efficacy: 50-70% [9] * Shingles vaccine efficacy: 50-70% [10] 3.  **Older Adults (65+ years):** Vaccine efficacy rates tend to be lower in older adults due to age-related immune decline.  For example: * Influenza vaccine efficacy: 30-50% [11] * Pneumococcal vaccine efficacy: 30-50% [12] **Key Takeaways** 1.  Vaccine efficacy rates vary across age groups due to factors such as immune system development and underlying health conditions.  2.  Pediatric age groups tend to have lower vaccine efficacy rates, while adult age groups generally have higher rates.",
+        "coach": {
+          "overall": 48,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "How do vaccine efficacy rates compare across different age groups?",
+            "hcp_reply": "**Vaccine Efficacy Rates Across Age Groups: A Comprehensive Overview** Vaccine efficacy rates can vary significantly across different age groups due to factors such as immune system development, underlying health conditions, and exposure to pathogens.  In this response, we will explore the vaccine efficacy rates across various age groups, focusing on the context of primary care and pediatric populations.  **General Considerations** Vaccine efficacy rates are typically measured by comparing the incidence of disease in vaccinated individuals to that in unvaccinated individuals.  The efficacy rate is usually expressed as a percentage, indicating the reduction in disease incidence among vaccinated individuals.  **Pediatric Age Groups** 1.  **Infants (0-12 months):** Vaccine efficacy rates tend to be lower in infants due to their immature immune systems.  For example: * Rotavirus vaccine efficacy: 70-80% [1] * Hepatitis B vaccine efficacy: 85-95% [2] 2.  **Children (1-12 years):** Vaccine efficacy rates generally increase with age as the immune system matures.  For example: * Measles, Mumps, and Rubella (MMR) vaccine efficacy: 90-95% [3] * Varicella vaccine efficacy: 85-90% [4] 3.  **Adolescents (13-18 years):** Vaccine efficacy rates may be influenced by factors such as vaccine type, dosing schedule, and individual immune response.  For example: * Human Papillomavirus (HPV) vaccine efficacy: 90-95% [5] * Tdap vaccine efficacy: 80-90% [6] **Adult Age Groups** 1.  **Young Adults (19-39 years):** Vaccine efficacy rates tend to be high in young adults, with some exceptions.  For example: * Influenza vaccine efficacy: 40-60% [7] * Meningococcal vaccine efficacy: 80-90% [8] 2.  **Middle-Aged Adults (40-64 years):** Vaccine efficacy rates may decrease with age due to declining immune function.  For example: * Pneumococcal vaccine efficacy: 50-70% [9] * Shingles vaccine efficacy: 50-70% [10] 3.  **Older Adults (65+ years):** Vaccine efficacy rates tend to be lower in older adults due to age-related immune decline.  For example: * Influenza vaccine efficacy: 30-50% [11] * Pneumococcal vaccine efficacy: 30-50% [12] **Key Takeaways** 1.  Vaccine efficacy rates vary across age groups due to factors such as immune system development and underlying health conditions.  2.  Pediatric age groups tend to have lower vaccine efficacy rates, while adult age groups generally have higher rates."
+          }
+        },
+        "plan": {
+          "id": "cca430c46a173df8"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:34.276Z"
+    },
+    {
+      "testId": "GK-01",
+      "mode": "general-knowledge",
+      "persona": "hiv_fp_md_timepressed",
+      "disease": "hiv_im_decile3_prep_lowshare",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "general-knowledge",
+        "disease": "hiv_im_decile3_prep_lowshare",
+        "persona": "hiv_fp_md_timepressed",
+        "goal": "General knowledge on AI",
+        "messages": [
+          {
+            "role": "user",
+            "content": "What's the latest in AI for clinical decision support?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Clinical Decision Support (CDS) with AI: Recent Advancements** Clinical Decision Support (CDS) systems have been increasingly integrated with Artificial Intelligence (AI) to enhance their capabilities.  The latest developments in AI for CDS focus on improving accuracy, personalization, and user experience.  **Key Trends:** 1.  **Deep Learning-based CDS:** Researchers have applied deep learning techniques, such as convolutional neural networks (CNNs) and recurrent neural networks (RNNs), to improve the accuracy of CDS systems.  These models can analyze large amounts of data, including medical images, lab results, and patient histories.  2.  **Natural Language Processing (NLP):** NLP has been used to improve the user interface of CDS systems, enabling clinicians to interact with them more naturally.  This includes voice recognition, chatbots, and text-based interfaces.  3.  **Explainable AI (XAI):** As AI becomes more prevalent in CDS, there is a growing need to understand how these systems arrive at their recommendations.  XAI techniques, such as feature importance and model interpretability, help clinicians understand the reasoning behind AI-driven decisions.  4.  **Integration with Electronic Health Records (EHRs):** AI-powered CDS systems are being integrated with EHRs to leverage the vast amounts of data stored within them.  This enables CDS systems to provide more accurate and personalized recommendations.  5.  **Mobile and Cloud-based CDS:** With the increasing use of mobile devices and cloud computing, CDS systems are being designed to be more accessible and scalable.  This enables clinicians to access CDS systems anywhere, anytime.  **Recent Developments:** 1.  **Google's LYNA:** Google's LYNA (Lymph Node Assistant) is an AI-powered CDS system for breast cancer diagnosis.  LYNA uses deep learning to analyze mammography images and detect breast cancer with high accuracy.",
+        "coach": {
+          "overall": 53,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "What's the latest in AI for clinical decision support?",
+            "hcp_reply": "**Clinical Decision Support (CDS) with AI: Recent Advancements** Clinical Decision Support (CDS) systems have been increasingly integrated with Artificial Intelligence (AI) to enhance their capabilities.  The latest developments in AI for CDS focus on improving accuracy, personalization, and user experience.  **Key Trends:** 1.  **Deep Learning-based CDS:** Researchers have applied deep learning techniques, such as convolutional neural networks (CNNs) and recurrent neural networks (RNNs), to improve the accuracy of CDS systems.  These models can analyze large amounts of data, including medical images, lab results, and patient histories.  2.  **Natural Language Processing (NLP):** NLP has been used to improve the user interface of CDS systems, enabling clinicians to interact with them more naturally.  This includes voice recognition, chatbots, and text-based interfaces.  3.  **Explainable AI (XAI):** As AI becomes more prevalent in CDS, there is a growing need to understand how these systems arrive at their recommendations.  XAI techniques, such as feature importance and model interpretability, help clinicians understand the reasoning behind AI-driven decisions.  4.  **Integration with Electronic Health Records (EHRs):** AI-powered CDS systems are being integrated with EHRs to leverage the vast amounts of data stored within them.  This enables CDS systems to provide more accurate and personalized recommendations.  5.  **Mobile and Cloud-based CDS:** With the increasing use of mobile devices and cloud computing, CDS systems are being designed to be more accessible and scalable.  This enables clinicians to access CDS systems anywhere, anytime.  **Recent Developments:** 1.  **Google's LYNA:** Google's LYNA (Lymph Node Assistant) is an AI-powered CDS system for breast cancer diagnosis.  LYNA uses deep learning to analyze mammography images and detect breast cancer with high accuracy."
+          }
+        },
+        "plan": {
+          "id": "477465b8479b30bf"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:40.353Z"
+    },
+    {
+      "testId": "GK-02",
+      "mode": "general-knowledge",
+      "persona": "hiv_id_md_guideline_strict",
+      "disease": "hiv_np_decile10_highshare_access",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "general-knowledge",
+        "disease": "hiv_np_decile10_highshare_access",
+        "persona": "hiv_id_md_guideline_strict",
+        "goal": "General knowledge on telemedicine",
+        "messages": [
+          {
+            "role": "user",
+            "content": "How has telemedicine impacted specialist access in recent years?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Telemedicine and Specialist Access: A Growing Trend** Telemedicine, the practice of remote healthcare delivery through digital communication, has revolutionized the way patients access specialist care.  In recent years, telemedicine has expanded access to specialist services, bridging geographical gaps and improving patient outcomes.  **Key Benefits:** 1.  **Increased Accessibility:** - **Rural and Remote Areas:** Telemedicine has enabled patients in rural and remote areas to access specialist care, reducing the need for lengthy travel and wait times.  - **Urban Areas:** Telemedicine has also improved access to specialist care in urban areas, reducing wait times and increasing the availability of specialist services.  2.  **Improved Patient Outcomes:** - **Early Intervention:** Telemedicine enables early intervention and timely treatment, leading to better patient outcomes and reduced complications.  - **Reduced Hospital Readmissions:** Telemedicine has been shown to reduce hospital readmissions by enabling patients to receive ongoing care and support remotely.  3.  **Cost-Effectiveness:** - **Reduced Travel Costs:** Telemedicine reduces travel costs for patients, which can be a significant burden, especially for those with limited financial resources.  - **Reduced Healthcare Costs:** Telemedicine can also reduce healthcare costs by reducing the need for hospitalizations and emergency department visits.  **Specialist Access: A Growing Trend** Telemedicine has enabled patients to access a wide range of specialist services, including: 1.  **Cardiology:** Telemedicine has enabled patients to access cardiology services, including echocardiograms and electrocardiograms.  2.  **Dermatology:** Telemedicine has enabled patients to access dermatology services, including skin cancer screenings and consultations.  3.  **Endocrinology:** Telemedicine has enabled patients to access endocrinology services, including diabetes management and thyroid disease management.  4.  **Gastroenterology:** Telemedicine has enabled patients to access gastroenterology services, including colon cancer screenings and inflammatory bowel disease management.  **Challenges and Limitations:** 1.",
+        "coach": {
+          "overall": 50,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "How has telemedicine impacted specialist access in recent years?",
+            "hcp_reply": "**Telemedicine and Specialist Access: A Growing Trend** Telemedicine, the practice of remote healthcare delivery through digital communication, has revolutionized the way patients access specialist care.  In recent years, telemedicine has expanded access to specialist services, bridging geographical gaps and improving patient outcomes.  **Key Benefits:** 1.  **Increased Accessibility:** - **Rural and Remote Areas:** Telemedicine has enabled patients in rural and remote areas to access specialist care, reducing the need for lengthy travel and wait times.  - **Urban Areas:** Telemedicine has also improved access to specialist care in urban areas, reducing wait times and increasing the availability of specialist services.  2.  **Improved Patient Outcomes:** - **Early Intervention:** Telemedicine enables early intervention and timely treatment, leading to better patient outcomes and reduced complications.  - **Reduced Hospital Readmissions:** Telemedicine has been shown to reduce hospital readmissions by enabling patients to receive ongoing care and support remotely.  3.  **Cost-Effectiveness:** - **Reduced Travel Costs:** Telemedicine reduces travel costs for patients, which can be a significant burden, especially for those with limited financial resources.  - **Reduced Healthcare Costs:** Telemedicine can also reduce healthcare costs by reducing the need for hospitalizations and emergency department visits.  **Specialist Access: A Growing Trend** Telemedicine has enabled patients to access a wide range of specialist services, including: 1.  **Cardiology:** Telemedicine has enabled patients to access cardiology services, including echocardiograms and electrocardiograms.  2.  **Dermatology:** Telemedicine has enabled patients to access dermatology services, including skin cancer screenings and consultations.  3.  **Endocrinology:** Telemedicine has enabled patients to access endocrinology services, including diabetes management and thyroid disease management.  4.  **Gastroenterology:** Telemedicine has enabled patients to access gastroenterology services, including colon cancer screenings and inflammatory bowel disease management.  **Challenges and Limitations:** 1."
+          }
+        },
+        "plan": {
+          "id": "33a834a6263856dd"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:46.255Z"
+    },
+    {
+      "testId": "GK-03",
+      "mode": "general-knowledge",
+      "persona": "onco_hemonc_md_costtox",
+      "disease": "onc_md_decile10_io_adc_pathways",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "general-knowledge",
+        "disease": "onc_md_decile10_io_adc_pathways",
+        "persona": "onco_hemonc_md_costtox",
+        "goal": "General knowledge on value-based care",
+        "messages": [
+          {
+            "role": "user",
+            "content": "What are the business implications of value-based care models?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Value-Based Care Models: A Shift in Healthcare** Value-based care (VBC) models are transforming the healthcare industry, shifting the focus from fee-for-service (FFS) to patient outcomes and quality of care.  This paradigm shift has significant business implications for healthcare providers, payers, and patients.  **Key Business Implications:** 1.  **Financial Incentives** - **Risk-based contracts:** Providers are incentivized to manage costs and improve quality to avoid financial penalties.  - **Shared savings:** Providers and payers share the financial benefits of improved patient outcomes.  - **Value-based reimbursement:** Payers offer higher reimbursement rates for high-quality, cost-effective care.  2.  **Quality Improvement** - **Data-driven decision-making:** Providers use data analytics to identify areas for improvement and optimize care pathways.  - **Care coordination:** Providers work together to ensure seamless transitions and comprehensive care.  - **Patient engagement:** Patients are empowered to take an active role in their care, improving health literacy and outcomes.  3.  **Operational Efficiency** - **Streamlined workflows:** Providers optimize clinical workflows to reduce waste and improve productivity.  - **Care management:** Providers implement care management programs to proactively address patient needs.  - **Technology adoption:** Providers invest in digital health technologies to enhance care coordination and patient engagement.  4.  **Partnerships and Collaborations** - **Provider-payer partnerships:** Providers and payers collaborate to develop and implement VBC models.  - **Care delivery networks:** Providers form networks to share best practices, reduce costs, and improve quality.  - **Pharmaceutical partnerships:** Providers and pharmaceutical companies collaborate to develop value-based pricing and reimbursement models.  5.  **Regulatory Environment** - **MACRA and MIPS:** The Merit-based Incentive Payment System (MIPS) and the Medicare Access and CHIP Reauthorization Act (MACRA) incentivize providers to adopt VBC models.",
+        "coach": {
+          "overall": 55,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "What are the business implications of value-based care models?",
+            "hcp_reply": "**Value-Based Care Models: A Shift in Healthcare** Value-based care (VBC) models are transforming the healthcare industry, shifting the focus from fee-for-service (FFS) to patient outcomes and quality of care.  This paradigm shift has significant business implications for healthcare providers, payers, and patients.  **Key Business Implications:** 1.  **Financial Incentives** - **Risk-based contracts:** Providers are incentivized to manage costs and improve quality to avoid financial penalties.  - **Shared savings:** Providers and payers share the financial benefits of improved patient outcomes.  - **Value-based reimbursement:** Payers offer higher reimbursement rates for high-quality, cost-effective care.  2.  **Quality Improvement** - **Data-driven decision-making:** Providers use data analytics to identify areas for improvement and optimize care pathways.  - **Care coordination:** Providers work together to ensure seamless transitions and comprehensive care.  - **Patient engagement:** Patients are empowered to take an active role in their care, improving health literacy and outcomes.  3.  **Operational Efficiency** - **Streamlined workflows:** Providers optimize clinical workflows to reduce waste and improve productivity.  - **Care management:** Providers implement care management programs to proactively address patient needs.  - **Technology adoption:** Providers invest in digital health technologies to enhance care coordination and patient engagement.  4.  **Partnerships and Collaborations** - **Provider-payer partnerships:** Providers and payers collaborate to develop and implement VBC models.  - **Care delivery networks:** Providers form networks to share best practices, reduce costs, and improve quality.  - **Pharmaceutical partnerships:** Providers and pharmaceutical companies collaborate to develop value-based pricing and reimbursement models.  5.  **Regulatory Environment** - **MACRA and MIPS:** The Merit-based Incentive Payment System (MIPS) and the Medicare Access and CHIP Reauthorization Act (MACRA) incentivize providers to adopt VBC models."
+          }
+        },
+        "plan": {
+          "id": "c5b9fed9e5ac878e"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:52.551Z"
+    },
+    {
+      "testId": "GK-04",
+      "mode": "general-knowledge",
+      "persona": "vax_peds_np_hesitancy",
+      "disease": "vac_np_decile5_primary_care_capture",
+      "httpStatus": 200,
+      "retriesNeeded": 1,
+      "requestPayload": {
+        "mode": "general-knowledge",
+        "disease": "vac_np_decile5_primary_care_capture",
+        "persona": "vax_peds_np_hesitancy",
+        "goal": "General knowledge on public health",
+        "messages": [
+          {
+            "role": "user",
+            "content": "How do public health campaigns work to build vaccine confidence?"
+          }
+        ]
+      },
+      "responseBody": {
+        "reply": "**Building Vaccine Confidence: A Public Health Campaign Strategy** Public health campaigns play a crucial role in building vaccine confidence by addressing misconceptions, promoting accurate information, and fostering a sense of community.  Here's a comprehensive overview of how these campaigns work: **Understanding the Challenges** Before launching a campaign, it's essential to understand the challenges and concerns surrounding vaccine hesitancy.  These may include: - **Misinformation and myths**: Social media, online forums, and word-of-mouth can spread false information about vaccines.  - **Lack of trust**: Historical events, such as the Tuskegee syphilis experiment, have eroded trust in the medical community.  - **Cultural and social factors**: Personal beliefs, values, and social networks can influence vaccine decisions.  **Campaign Objectives** Public health campaigns aim to: - **Educate**: Provide accurate, evidence-based information about vaccines.  - **Address concerns**: Listen to and address concerns, myths, and misconceptions.  - **Build trust**: Foster a sense of trust and credibility with the target audience.  - **Promote community engagement**: Encourage social norms and peer support for vaccination.  **Key Strategies** Effective public health campaigns employ the following strategies: **1.  Evidence-Based Messaging** - **Clear and concise language**: Use simple, easy-to-understand language to convey complex information.  - **Accurate and up-to-date information**: Ensure that messaging is based on the latest scientific evidence and guidelines.  - **Visual aids**: Utilize images, videos, and infographics to enhance engagement and comprehension.  **2.  Addressing Concerns and Misconceptions** - **Listen and respond**: Engage with the target audience, listen to concerns, and provide thoughtful responses.  - **Address myths and misconceptions**: Provide credible sources and evidence to debunk common myths and misconceptions.  - **Foster a sense of community**: Encourage open dialogue and peer support to build trust and confidence.  **3.  Building Trust and Credibility** - **Partner with trusted messengers**: Collaborate with influencers, community leaders, and healthcare professionals to promote credibility.  - **Showcase success stories**: Share real-life examples of vaccine success and the benefits of vaccination.",
+        "coach": {
+          "overall": 48,
+          "scores": {
+            "empathy": 3,
+            "clarity": 4,
+            "compliance": 4,
+            "discovery": 3,
+            "objection_handling": 3,
+            "confidence": 4,
+            "active_listening": 3,
+            "adaptability": 3,
+            "action_insight": 3,
+            "resilience": 3
+          },
+          "worked": [
+            "Tied guidance to facts"
+          ],
+          "improve": [
+            "End with one specific discovery question"
+          ],
+          "phrasing": "Would confirming eGFR today help you identify one patient to start this month?",
+          "feedback": "Stay concise. Cite label-aligned facts. Close with one clear question.",
+          "context": {
+            "rep_question": "How do public health campaigns work to build vaccine confidence?",
+            "hcp_reply": "**Building Vaccine Confidence: A Public Health Campaign Strategy** Public health campaigns play a crucial role in building vaccine confidence by addressing misconceptions, promoting accurate information, and fostering a sense of community.  Here's a comprehensive overview of how these campaigns work: **Understanding the Challenges** Before launching a campaign, it's essential to understand the challenges and concerns surrounding vaccine hesitancy.  These may include: - **Misinformation and myths**: Social media, online forums, and word-of-mouth can spread false information about vaccines.  - **Lack of trust**: Historical events, such as the Tuskegee syphilis experiment, have eroded trust in the medical community.  - **Cultural and social factors**: Personal beliefs, values, and social networks can influence vaccine decisions.  **Campaign Objectives** Public health campaigns aim to: - **Educate**: Provide accurate, evidence-based information about vaccines.  - **Address concerns**: Listen to and address concerns, myths, and misconceptions.  - **Build trust**: Foster a sense of trust and credibility with the target audience.  - **Promote community engagement**: Encourage social norms and peer support for vaccination.  **Key Strategies** Effective public health campaigns employ the following strategies: **1.  Evidence-Based Messaging** - **Clear and concise language**: Use simple, easy-to-understand language to convey complex information.  - **Accurate and up-to-date information**: Ensure that messaging is based on the latest scientific evidence and guidelines.  - **Visual aids**: Utilize images, videos, and infographics to enhance engagement and comprehension.  **2.  Addressing Concerns and Misconceptions** - **Listen and respond**: Engage with the target audience, listen to concerns, and provide thoughtful responses.  - **Address myths and misconceptions**: Provide credible sources and evidence to debunk common myths and misconceptions.  - **Foster a sense of community**: Encourage open dialogue and peer support to build trust and confidence.  **3.  Building Trust and Credibility** - **Partner with trusted messengers**: Collaborate with influencers, community leaders, and healthcare professionals to promote credibility.  - **Showcase success stories**: Share real-life examples of vaccine success and the benefits of vaccination."
+          }
+        },
+        "plan": {
+          "id": "0e714b12497137f4"
+        }
+      },
+      "validation": {
+        "passed": true,
+        "violations": [],
+        "failureType": "contract"
+      },
+      "timestamp": "2025-11-15T03:11:58.697Z"
+    }
+  ]
+}

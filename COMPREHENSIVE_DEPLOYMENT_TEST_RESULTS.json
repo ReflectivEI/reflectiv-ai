@@ -1,0 +1,116 @@
+{
+  "timestamp": "2025-11-12T23:42:37.359477",
+  "total_tests": 18,
+  "passed": 18,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "Worker health endpoint",
+      "passed": true,
+      "details": "Status: 200",
+      "response_excerpt": "ok"
+    },
+    {
+      "name": "Sales Coach - HIV",
+      "passed": true,
+      "details": "1674ms \u2713",
+      "response_excerpt": "{'reply_length': 1215, 'metrics': ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience']}"
+    },
+    {
+      "name": "Sales Coach - Oncology",
+      "passed": true,
+      "details": "1995ms \u2713",
+      "response_excerpt": "{'reply_length': 1257, 'metrics': ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience']}"
+    },
+    {
+      "name": "Sales Coach - Cardiovascular",
+      "passed": true,
+      "details": "2293ms \u2713",
+      "response_excerpt": "{'reply_length': 1221, 'metrics': ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience']}"
+    },
+    {
+      "name": "Sales Coach - COVID-19",
+      "passed": true,
+      "details": "3340ms \u2713",
+      "response_excerpt": "{'reply_length': 1315, 'metrics': ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience']}"
+    },
+    {
+      "name": "Sales Coach - Vaccines",
+      "passed": true,
+      "details": "2105ms \u2713",
+      "response_excerpt": "{'reply_length': 1487, 'metrics': ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience']}"
+    },
+    {
+      "name": "Role Play - Difficult HCP",
+      "passed": true,
+      "details": "1681ms \u2713",
+      "response_excerpt": "{'reply_preview': \"I'm glad you're interested in improving patient outcomes.  From my perspective, we evaluate high-ris\"}"
+    },
+    {
+      "name": "Role Play - Engaged Physician",
+      "passed": true,
+      "details": "966ms \u2713",
+      "response_excerpt": "{'reply_preview': \"I'm always interested in exploring ways to improve patient outcomes.  In oncology, we're seeing sign\"}"
+    },
+    {
+      "name": "Role Play - Busy NP",
+      "passed": true,
+      "details": "1206ms \u2713",
+      "response_excerpt": "{'reply_preview': \"I'm always looking for ways to improve patient outcomes.  With the flu season approaching, I've been\"}"
+    },
+    {
+      "name": "Emotional Assessment",
+      "passed": true,
+      "details": "7290ms \u2713",
+      "response_excerpt": "{'metrics': ['empathy', 'clarity', 'compliance', 'discovery', 'objection_handling', 'confidence', 'active_listening', 'adaptability', 'action_insight', 'resilience']}"
+    },
+    {
+      "name": "Product Knowledge - HIV",
+      "passed": true,
+      "details": "3680ms \u2713",
+      "response_excerpt": "{'reply_preview': \"**PrEP Eligibility Criteria:** The key eligibility criteria for Pre-Exposure Prophylaxis (PrEP) are based on the individual's risk of acquiring HIV.  \"}"
+    },
+    {
+      "name": "Product Knowledge - Oncology",
+      "passed": true,
+      "details": "4218ms \u2713",
+      "response_excerpt": "{'reply_preview': '**Immunotherapy for Lung Cancer: Latest Options** Lung cancer is a leading cause of cancer-related deaths worldwide.  Immunotherapy has revolutionized'}"
+    },
+    {
+      "name": "Product Knowledge - Cardiovascular",
+      "passed": true,
+      "details": "2518ms \u2713",
+      "response_excerpt": "{'reply_preview': '**Introduction to SGLT2 Inhibitors in Heart Failure** SGLT2 inhibitors, a class of medications initially developed for the treatment of type 2 diabete'}"
+    },
+    {
+      "name": "Product Knowledge - COVID-19",
+      "passed": true,
+      "details": "4328ms \u2713",
+      "response_excerpt": "{'reply_preview': '**Current Treatment Options for Hospitalized COVID-19 Patients** Hospitalized COVID-19 patients require timely and effective treatment to manage their'}"
+    },
+    {
+      "name": "Product Knowledge - Vaccines",
+      "passed": true,
+      "details": "2461ms \u2713",
+      "response_excerpt": "{'reply_preview': '**HPV Vaccination Schedule:** The Centers for Disease Control and Prevention (CDC) recommends the following HPV vaccination schedule: * **Children age'}"
+    },
+    {
+      "name": "Schema validation - sales-coach",
+      "passed": true,
+      "details": "\u2713",
+      "response_excerpt": "{'coach_keys': ['scores', 'rationales', 'tips', 'rubric_version']}"
+    },
+    {
+      "name": "Schema validation - role-play",
+      "passed": true,
+      "details": "\u2713",
+      "response_excerpt": "{'coach_keys': ['overall', 'scores', 'worked', 'improve', 'phrasing', 'feedback', 'context']}"
+    },
+    {
+      "name": "Schema validation - emotional-assessment",
+      "passed": true,
+      "details": "\u2713",
+      "response_excerpt": "{'coach_keys': ['overall', 'scores', 'worked', 'improve', 'phrasing', 'feedback', 'context']}"
+    }
+  ]
+}

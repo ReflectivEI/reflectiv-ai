@@ -1,0 +1,520 @@
+{
+  "facts": [
+    {
+      "id": "HIV-PREP-ELIG-001",
+      "ta": "HIV",
+      "topic": "PrEP Eligibility",
+      "text": "PrEP is recommended for individuals at substantial risk of HIV acquisition, including those with sexual partners of unknown HIV status, inconsistent condom use, or recent STI diagnoses.",
+      "cites": [
+        "CDC PrEP Guidelines 2024"
+      ]
+    },
+    {
+      "id": "HIV-PREP-TAF-002",
+      "ta": "HIV",
+      "topic": "Descovy for PrEP",
+      "text": "Descovy (emtricitabine/tenofovir alafenamide) is indicated for HIV PrEP in at-risk adults and adolescents weighing ≥35 kg, excluding individuals assigned female at birth at risk from receptive vaginal sex.",
+      "cites": [
+        "FDA Label - Descovy PrEP",
+        "DISCOVER Trial"
+      ]
+    },
+    {
+      "id": "HIV-PREP-SAFETY-003",
+      "ta": "HIV",
+      "topic": "Renal Safety Monitoring",
+      "text": "Assess renal function (eGFR, CrCl) and urinalysis before PrEP initiation and monitor every 3-6 months during treatment. Consider dose adjustment or discontinuation if eGFR <50 mL/min.",
+      "cites": [
+        "FDA Label - Descovy",
+        "CDC PrEP Guidelines 2024"
+      ]
+    },
+    {
+      "id": "HIV-PREP-APRETUDE-004",
+      "ta": "HIV",
+      "topic": "Apretude (CAB-LA)",
+      "text": "Apretude (cabotegravir long-acting injectable) is indicated for PrEP in at-risk adults and adolescents weighing ≥35 kg, administered as 600 mg IM every 2 months after oral lead-in or initial injections.",
+      "cites": [
+        "FDA Label - Apretude",
+        "HPTN 083, HPTN 084 Trials"
+      ]
+    },
+    {
+      "id": "HIV-TREAT-BIKTARVY-005",
+      "ta": "HIV",
+      "topic": "Biktarvy for Treatment",
+      "text": "Biktarvy (bictegravir/emtricitabine/tenofovir alafenamide) is a complete once-daily single-tablet regimen for treatment-naïve or virologically suppressed adults, demonstrating high barrier to resistance and favorable safety profile.",
+      "cites": [
+        "FDA Label - Biktarvy",
+        "Study 1489, Study 1490"
+      ]
+    },
+    {
+      "id": "HIV-TREAT-CAB-006",
+      "ta": "HIV",
+      "topic": "Cabenuva Long-Acting",
+      "text": "Cabenuva (cabotegravir/rilpivirine long-acting) is a complete monthly or every-2-month injectable regimen for virologically suppressed adults with no current or prior resistance to either component, requiring adherence and injection site management.",
+      "cites": [
+        "FDA Label - Cabenuva",
+        "ATLAS, FLAIR Trials"
+      ]
+    },
+    {
+      "id": "HIV-TREAT-RESISTANCE-007",
+      "ta": "HIV",
+      "topic": "Resistance Testing",
+      "text": "Genotypic resistance testing is recommended before initiating or modifying ART to guide regimen selection, particularly for integrase strand transfer inhibitor (INSTI) resistance mutations.",
+      "cites": [
+        "DHHS Guidelines 2024",
+        "IAS-USA Recommendations"
+      ]
+    },
+    {
+      "id": "HIV-ADHERENCE-008",
+      "ta": "HIV",
+      "topic": "Adherence and Viral Suppression",
+      "text": "Sustained viral suppression (HIV RNA <50 copies/mL) requires >95% adherence to ART. Long-acting regimens may improve adherence for patients facing daily pill burden challenges.",
+      "cites": [
+        "DHHS Guidelines 2024",
+        "Clinical Adherence Studies"
+      ]
+    },
+    {
+      "id": "HIV-PREP-LAB-009",
+      "ta": "HIV",
+      "topic": "PrEP Laboratory Monitoring",
+      "text": "Before PrEP initiation, confirm negative HIV test, assess HBV status, and perform STI screening. Repeat HIV testing every 3 months and STI screening every 6-12 months during PrEP use.",
+      "cites": [
+        "CDC PrEP Guidelines 2024",
+        "USPSTF Recommendations"
+      ]
+    },
+    {
+      "id": "HIV-PREP-ADHERENCE-010",
+      "ta": "HIV",
+      "topic": "PrEP Adherence Strategies",
+      "text": "Daily oral PrEP requires 4-7 doses per week for protective efficacy. Event-driven (on-demand) dosing may be appropriate for cisgender men who have sex with men with predictable sexual activity.",
+      "cites": [
+        "IPERGAY Study",
+        "CDC PrEP Guidelines 2024"
+      ]
+    },
+    {
+      "id": "ONC-IO-CHECKPOINT-001",
+      "ta": "Oncology",
+      "topic": "Immune Checkpoint Inhibitors",
+      "text": "Immune checkpoint inhibitors (anti-PD-1, anti-PD-L1, anti-CTLA-4) enhance T-cell mediated anti-tumor immunity and have transformed treatment across multiple solid tumor types, with efficacy often correlating with PD-L1 expression and tumor mutational burden.",
+      "cites": [
+        "NCCN Guidelines - Multiple Tumor Types",
+        "FDA Labels"
+      ]
+    },
+    {
+      "id": "ONC-IO-TOXICITY-002",
+      "ta": "Oncology",
+      "topic": "Immune-Related Adverse Events",
+      "text": "Immune-related adverse events (irAEs) can affect any organ system, most commonly skin, GI, endocrine, and hepatic. Early recognition and corticosteroid management are critical; severe (Grade 3-4) irAEs require treatment interruption and specialist consultation.",
+      "cites": [
+        "ASCO irAE Management Guidelines",
+        "NCCN IO Toxicity Management"
+      ]
+    },
+    {
+      "id": "ONC-ADC-MECHANISMS-003",
+      "ta": "Oncology",
+      "topic": "Antibody-Drug Conjugates",
+      "text": "Antibody-drug conjugates (ADCs) combine targeted monoclonal antibodies with cytotoxic payloads, delivering chemotherapy selectively to tumor cells expressing specific antigens (e.g., HER2, Trop-2, NECTIN-4).",
+      "cites": [
+        "FDA Labels - ADCs",
+        "NCCN Guidelines"
+      ]
+    },
+    {
+      "id": "ONC-ADC-TOXICITY-004",
+      "ta": "Oncology",
+      "topic": "ADC Adverse Event Management",
+      "text": "ADC-associated toxicities include neutropenia, peripheral neuropathy, ocular toxicity, and interstitial lung disease (ILD). Prophylactic growth factor support, dose modifications, and ophthalmologic monitoring may be required.",
+      "cites": [
+        "FDA Labels - ADCs",
+        "Clinical Practice Guidelines"
+      ]
+    },
+    {
+      "id": "ONC-BIOMARKER-PD-L1-005",
+      "ta": "Oncology",
+      "topic": "PD-L1 Testing",
+      "text": "PD-L1 immunohistochemistry (IHC) expression levels guide patient selection for certain IO therapies. Tumor Proportion Score (TPS) ≥50% or Combined Positive Score (CPS) thresholds vary by indication and agent.",
+      "cites": [
+        "NCCN NSCLC Guidelines",
+        "FDA Companion Diagnostic Approvals"
+      ]
+    },
+    {
+      "id": "ONC-BIOMARKER-TMB-006",
+      "ta": "Oncology",
+      "topic": "Tumor Mutational Burden",
+      "text": "Tumor mutational burden (TMB-High, ≥10 mutations/megabase) is an FDA-approved biomarker for pembrolizumab monotherapy in advanced solid tumors after prior treatment, indicating potential for enhanced IO response.",
+      "cites": [
+        "FDA Label - Pembrolizumab",
+        "KEYNOTE-158 Trial"
+      ]
+    },
+    {
+      "id": "ONC-ORAL-ONCOLYTIC-007",
+      "ta": "Oncology",
+      "topic": "Oral Oncolytic Adherence",
+      "text": "Oral oncolytics require patient education on dosing schedules, drug-drug interactions, food effects, and toxicity self-monitoring. Specialty pharmacy support and early refill coordination reduce treatment interruptions.",
+      "cites": [
+        "ASCO/ONS Oral Chemotherapy Standards",
+        "NCCN Patient Education"
+      ]
+    },
+    {
+      "id": "ONC-ORAL-TOXICITY-008",
+      "ta": "Oncology",
+      "topic": "Oral TKI Toxicity Management",
+      "text": "Tyrosine kinase inhibitors (TKIs) commonly cause diarrhea, rash, hypertension, and hand-foot syndrome. Dose modifications and supportive care (antidiarrheals, topical steroids, antihypertensives) maintain treatment continuity.",
+      "cites": [
+        "NCCN Guidelines - Supportive Care",
+        "FDA Labels"
+      ]
+    },
+    {
+      "id": "ONC-PATHWAY-INTEGRATION-009",
+      "ta": "Oncology",
+      "topic": "Clinical Pathway Integration",
+      "text": "Evidence-based clinical pathways standardize treatment selection per NCCN categories of evidence and preference, optimizing outcomes while managing cost and toxicity. Pathway adherence requires EHR integration and multidisciplinary tumor board alignment.",
+      "cites": [
+        "ASCO Quality Oncology Practice Initiative",
+        "NCCN Clinical Pathways"
+      ]
+    },
+    {
+      "id": "ONC-SURVIVORSHIP-010",
+      "ta": "Oncology",
+      "topic": "Survivorship Care Planning",
+      "text": "Survivorship care plans document treatment history, potential late effects, surveillance schedules, and transition to primary care. Addressing long-term toxicities (neuropathy, cardiotoxicity, secondary malignancies) is essential.",
+      "cites": [
+        "ASCO Survivorship Guidelines",
+        "NCCN Survivorship Guidelines"
+      ]
+    },
+    {
+      "id": "CV-GDMT-HFREF-001",
+      "ta": "Cardiovascular",
+      "topic": "HFrEF Guideline-Directed Medical Therapy",
+      "text": "Guideline-directed medical therapy (GDMT) for HFrEF includes four pillars: ACE-I/ARB/ARNI, beta-blockers, MRAs, and SGLT2 inhibitors, each providing mortality and hospitalization benefits with additive effects.",
+      "cites": [
+        "ACC/AHA Heart Failure Guidelines 2022",
+        "ESC HF Guidelines 2021"
+      ]
+    },
+    {
+      "id": "CV-ARNI-ENTRESTO-002",
+      "ta": "Cardiovascular",
+      "topic": "Sacubitril/Valsartan (Entresto)",
+      "text": "Sacubitril/valsartan (ARNI) is superior to enalapril in reducing cardiovascular death and HF hospitalization in HFrEF patients (NYHA Class II-IV, EF ≤40%). Requires 36-hour ACE-I washout to avoid angioedema.",
+      "cites": [
+        "PARADIGM-HF Trial",
+        "FDA Label - Entresto"
+      ]
+    },
+    {
+      "id": "CV-SGLT2-HF-003",
+      "ta": "Cardiovascular",
+      "topic": "SGLT2 Inhibitors in Heart Failure",
+      "text": "SGLT2 inhibitors (dapagliflozin, empagliflozin) reduce HF hospitalization and cardiovascular death in HFrEF and HFpEF, independent of diabetes status. Benefits include diuresis, improved renal outcomes, and metabolic effects.",
+      "cites": [
+        "DAPA-HF Trial",
+        "EMPEROR-Reduced",
+        "ACC/AHA Guidelines"
+      ]
+    },
+    {
+      "id": "CV-SGLT2-CKD-004",
+      "ta": "Cardiovascular",
+      "topic": "SGLT2i in Chronic Kidney Disease",
+      "text": "SGLT2 inhibitors slow CKD progression (eGFR decline, ESKD, CV/renal death) in patients with and without diabetes, including CKD Stage 3-4 (eGFR ≥20 mL/min). Initiation safe despite transient eGFR dip.",
+      "cites": [
+        "DAPA-CKD Trial",
+        "EMPA-KIDNEY",
+        "KDIGO 2022 Guidelines"
+      ]
+    },
+    {
+      "id": "CV-SGLT2-SAFETY-005",
+      "ta": "Cardiovascular",
+      "topic": "SGLT2i Safety and Sick Day Rules",
+      "text": "SGLT2 inhibitors carry risks of euglycemic DKA (rare), genital mycotic infections, and volume depletion. Educate patients on sick day rules: withhold during acute illness, dehydration, or fasting to prevent DKA.",
+      "cites": [
+        "FDA Safety Communications",
+        "Endocrine Society Clinical Practice Guidelines"
+      ]
+    },
+    {
+      "id": "CV-MRA-SPIRONOLACTONE-006",
+      "ta": "Cardiovascular",
+      "topic": "Mineralocorticoid Receptor Antagonists",
+      "text": "Spironolactone and eplerenone reduce mortality in HFrEF (NYHA Class II-IV) when added to ACE-I and beta-blockers. Monitor potassium and renal function; avoid if K+ >5.0 mEq/L or CrCl <30 mL/min.",
+      "cites": [
+        "RALES Trial",
+        "EMPHASIS-HF",
+        "ACC/AHA Guidelines"
+      ]
+    },
+    {
+      "id": "CV-BETA-BLOCKER-007",
+      "ta": "Cardiovascular",
+      "topic": "Beta-Blockers in HFrEF",
+      "text": "Evidence-based beta-blockers (carvedilol, metoprolol succinate, bisoprolol) reduce mortality and hospitalization in stable HFrEF. Initiate at low dose and titrate to target or maximum tolerated dose over weeks.",
+      "cites": [
+        "MERIT-HF Trial",
+        "COPERNICUS Trial",
+        "ACC/AHA Guidelines"
+      ]
+    },
+    {
+      "id": "CV-POST-MI-TRANSITION-008",
+      "ta": "Cardiovascular",
+      "topic": "Post-MI Discharge GDMT",
+      "text": "Post-MI patients with reduced EF should receive GDMT before discharge, including ARNI (if EF ≤40%), beta-blockers, SGLT2i, and statins. Early initiation (within 48-72 hours) improves adherence and outcomes.",
+      "cites": [
+        "ACC/AHA STEMI Guidelines",
+        "ESC Acute MI Guidelines"
+      ]
+    },
+    {
+      "id": "CV-TITRATION-CALENDAR-009",
+      "ta": "Cardiovascular",
+      "topic": "GDMT Titration Protocols",
+      "text": "Structured titration protocols with defined follow-up intervals (2-4 weeks) optimize GDMT dosing. Nurse-led HF clinics and remote monitoring support safe up-titration while managing hypotension, bradycardia, and renal function.",
+      "cites": [
+        "ACC/AHA HF Performance Measures",
+        "HF Society Clinical Practice"
+      ]
+    },
+    {
+      "id": "CV-READMISSION-PREVENTION-010",
+      "ta": "Cardiovascular",
+      "topic": "HF Readmission Reduction Strategies",
+      "text": "Transitional care interventions (7-day follow-up, medication reconciliation, patient education, telemonitoring) reduce 30-day HF readmissions. Pharmacy support for copay assistance and prior authorization streamlines GDMT access.",
+      "cites": [
+        "ACC/AHA Quality Measures",
+        "CMS Hospital Readmissions Reduction Program"
+      ]
+    },
+    {
+      "id": "COVID-PAXLOVID-INDICATIONS-001",
+      "ta": "COVID-19",
+      "topic": "Paxlovid Indications and Efficacy",
+      "text": "Nirmatrelvir/ritonavir (Paxlovid) is authorized for treatment of mild-to-moderate COVID-19 in high-risk adults and pediatric patients (≥12 years, ≥40 kg) within 5 days of symptom onset, reducing hospitalization/death by ~89% when started early.",
+      "cites": [
+        "FDA EUA - Paxlovid",
+        "EPIC-HR Trial",
+        "NIH COVID-19 Treatment Guidelines"
+      ]
+    },
+    {
+      "id": "COVID-PAXLOVID-DDI-002",
+      "ta": "COVID-19",
+      "topic": "Paxlovid Drug-Drug Interactions",
+      "text": "Ritonavir is a strong CYP3A4 inhibitor, causing significant drug-drug interactions with statins, immunosuppressants, anticoagulants, and calcium channel blockers. Review medication list and consider dose adjustments or temporary holds during 5-day course.",
+      "cites": [
+        "FDA EUA - Paxlovid DDI Table",
+        "Liverpool COVID-19 Drug Interactions Checker"
+      ]
+    },
+    {
+      "id": "COVID-PAXLOVID-REBOUND-003",
+      "ta": "COVID-19",
+      "topic": "COVID-19 Rebound Phenomenon",
+      "text": "Viral and symptom rebound (2-8 days post-treatment) occurs in ~5-10% of Paxlovid-treated patients. Patients should be counseled to isolate if symptoms return and seek re-evaluation; no evidence supports extended or repeat courses.",
+      "cites": [
+        "CDC COVID-19 Clinical Guidance",
+        "NIH Treatment Guidelines"
+      ]
+    },
+    {
+      "id": "COVID-REMDESIVIR-OUTPATIENT-004",
+      "ta": "COVID-19",
+      "topic": "Remdesivir Outpatient Infusion",
+      "text": "Remdesivir 3-day IV course (200 mg day 1, 100 mg days 2-3) is authorized for non-hospitalized high-risk COVID-19 patients within 7 days of symptom onset, reducing hospitalization by 87% in PINETREE trial. Requires infusion capacity.",
+      "cites": [
+        "FDA EUA - Remdesivir",
+        "PINETREE Trial",
+        "NIH Guidelines"
+      ]
+    },
+    {
+      "id": "COVID-HIGH-RISK-CRITERIA-005",
+      "ta": "COVID-19",
+      "topic": "High-Risk Patient Criteria",
+      "text": "High-risk criteria for severe COVID-19 include age ≥65, immunosuppression, obesity (BMI ≥35), chronic lung disease, diabetes, cardiovascular disease, chronic kidney disease, and pregnancy. These patients benefit most from early antiviral treatment.",
+      "cites": [
+        "NIH COVID-19 Treatment Guidelines",
+        "CDC High-Risk Populations"
+      ]
+    },
+    {
+      "id": "COVID-MOLNUPIRAVIR-006",
+      "ta": "COVID-19",
+      "topic": "Molnupiravir Alternative Therapy",
+      "text": "Molnupiravir is authorized for high-risk adults when Paxlovid and remdesivir are not accessible or clinically appropriate. Efficacy (30% hospitalization reduction) is lower than Paxlovid; avoid in pregnancy due to genotoxicity concerns.",
+      "cites": [
+        "FDA EUA - Molnupiravir",
+        "MOVe-OUT Trial",
+        "NIH Guidelines"
+      ]
+    },
+    {
+      "id": "COVID-INITIATION-TIMING-007",
+      "ta": "COVID-19",
+      "topic": "Early Treatment Initiation",
+      "text": "Antiviral efficacy decreases significantly after 5 days of symptoms. Clinical workflows should enable same-day or next-day evaluation, testing, and treatment initiation for high-risk patients to maximize benefit.",
+      "cites": [
+        "NIH Treatment Guidelines",
+        "CDC Clinical Guidance"
+      ]
+    },
+    {
+      "id": "COVID-HOME-INFUSION-008",
+      "ta": "COVID-19",
+      "topic": "Hospital-at-Home and Infusion Access",
+      "text": "Home infusion services enable remdesivir administration for patients with transport barriers or post-discharge needs. Coordination with home health vendors and discharge planning optimizes access and reduces readmissions.",
+      "cites": [
+        "CMS Hospital-at-Home Waiver Guidance",
+        "Infusion Nursing Standards"
+      ]
+    },
+    {
+      "id": "COVID-IMMUNOCOMPROMISED-009",
+      "ta": "COVID-19",
+      "topic": "Immunocompromised Patient Considerations",
+      "text": "Immunocompromised patients (transplant, chemotherapy, HIV with low CD4) may have prolonged viral replication and benefit from extended antiviral courses. Infectious disease consultation is recommended for complex cases.",
+      "cites": [
+        "NIH Guidelines - Special Populations",
+        "IDSA COVID-19 Treatment Guidelines"
+      ]
+    },
+    {
+      "id": "COVID-MONOCLONAL-ANTIBODIES-010",
+      "ta": "COVID-19",
+      "topic": "Monoclonal Antibody Considerations",
+      "text": "Bebtelovimab and other monoclonal antibodies have limited activity against current Omicron subvariants. Verify current CDC and NIH guidance on authorized mAbs based on regional variant surveillance before prescribing.",
+      "cites": [
+        "NIH COVID-19 Treatment Guidelines",
+        "CDC Variant Surveillance"
+      ]
+    },
+    {
+      "id": "VAC-FLU-RECOMMENDATIONS-001",
+      "ta": "Vaccines",
+      "topic": "Annual Influenza Vaccination",
+      "text": "Annual influenza vaccination is recommended for all persons ≥6 months of age. Inactivated influenza vaccine (IIV) and recombinant influenza vaccine (RIV) are preferred over live attenuated vaccine (LAIV) for most populations.",
+      "cites": [
+        "CDC ACIP Influenza Recommendations 2024-2025",
+        "MMWR"
+      ]
+    },
+    {
+      "id": "VAC-FLU-HIGH-DOSE-002",
+      "ta": "Vaccines",
+      "topic": "Enhanced Flu Vaccines for Older Adults",
+      "text": "Adults ≥65 years should receive high-dose inactivated (Fluzone High-Dose), recombinant (Flublok), or adjuvanted (Fluad) influenza vaccines, which provide superior immunogenicity and efficacy compared to standard-dose vaccines.",
+      "cites": [
+        "CDC ACIP Recommendations",
+        "FDA Approvals - Enhanced Flu Vaccines"
+      ]
+    },
+    {
+      "id": "VAC-FLU-TIMING-003",
+      "ta": "Vaccines",
+      "topic": "Optimal Timing for Flu Vaccination",
+      "text": "Influenza vaccination should ideally occur by end of October, but vaccination throughout the influenza season (into January or later) is beneficial. Early vaccination (July-August) may result in waning immunity before season peak.",
+      "cites": [
+        "CDC ACIP Influenza Recommendations",
+        "MMWR"
+      ]
+    },
+    {
+      "id": "VAC-PNEUMOCOCCAL-ADULTS-004",
+      "ta": "Vaccines",
+      "topic": "Pneumococcal Vaccination for Adults",
+      "text": "Adults ≥65 years should receive pneumococcal vaccination with PCV15 or PCV20. If PCV15 is used, follow with PPSV23 ≥1 year later. Adults 19-64 with chronic conditions or immunocompromising conditions also require pneumococcal vaccination.",
+      "cites": [
+        "CDC ACIP Pneumococcal Recommendations",
+        "MMWR 2022"
+      ]
+    },
+    {
+      "id": "VAC-RSV-OLDER-ADULTS-005",
+      "ta": "Vaccines",
+      "topic": "RSV Vaccination for Older Adults",
+      "text": "A single dose of RSV vaccine (RSVPreF3 or RSVpreF) is recommended for adults ≥60 years using shared clinical decision-making, particularly for those with chronic cardiopulmonary disease or residing in long-term care facilities.",
+      "cites": [
+        "CDC ACIP RSV Recommendations 2023",
+        "FDA Approvals - RSV Vaccines"
+      ]
+    },
+    {
+      "id": "VAC-SHINGLES-SHINGRIX-006",
+      "ta": "Vaccines",
+      "topic": "Shingles Vaccination (Shingrix)",
+      "text": "Recombinant zoster vaccine (RZV, Shingrix) is recommended for adults ≥50 years as a 2-dose series (0, 2-6 months), providing >90% efficacy against shingles and postherpetic neuralgia. Preferred over live zoster vaccine (ZVL).",
+      "cites": [
+        "CDC ACIP Herpes Zoster Recommendations",
+        "Shingrix Efficacy Trials"
+      ]
+    },
+    {
+      "id": "VAC-VIS-DOCUMENTATION-007",
+      "ta": "Vaccines",
+      "topic": "Vaccine Information Statements (VIS)",
+      "text": "Federal law requires providing current VIS documents before administering ACIP-recommended vaccines and documenting VIS edition date, vaccine administration date, manufacturer, lot number, and administrator in the patient record.",
+      "cites": [
+        "CDC VIS Requirements",
+        "National Childhood Vaccine Injury Act"
+      ]
+    },
+    {
+      "id": "VAC-STANDING-ORDERS-008",
+      "ta": "Vaccines",
+      "topic": "Standing Orders for Vaccination",
+      "text": "Standing orders allow nurses and pharmacists to assess and vaccinate patients without individual physician orders, increasing vaccination rates. Protocols must comply with state scope-of-practice laws and include contraindication screening.",
+      "cites": [
+        "CDC Standing Orders Best Practices",
+        "AMA Policy on Standing Orders"
+      ]
+    },
+    {
+      "id": "VAC-IMMUNOCOMPROMISED-009",
+      "ta": "Vaccines",
+      "topic": "Vaccination in Immunocompromised Patients",
+      "text": "Immunocompromised patients (transplant, HIV, chemotherapy, immunosuppressive therapy) should receive inactivated vaccines per accelerated schedules and higher doses where indicated (e.g., double-dose hepatitis B). Live vaccines are generally contraindicated.",
+      "cites": [
+        "CDC ACIP Immunocompromised Recommendations",
+        "IDSA Vaccination Guidelines"
+      ]
+    },
+    {
+      "id": "VAC-RECALL-SYSTEMS-010",
+      "ta": "Vaccines",
+      "topic": "Reminder-Recall Systems",
+      "text": "EHR-integrated reminder-recall systems using SMS, phone calls, or patient portals improve vaccination coverage. Automated reminders 1-2 weeks before due dates and missed-dose outreach increase completion rates for multi-dose series.",
+      "cites": [
+        "CDC Community Guide - Vaccination",
+        "AHRQ Health IT Tools"
+      ]
+    },
+    {
+      "id": "DIABETES-MGMT-001",
+      "ta": "Diabetes",
+      "topic": "Diabetes Management",
+      "text": "Effective diabetes management requires a comprehensive approach including lifestyle modifications, glycemic control, cardiovascular risk reduction, and regular monitoring. Key strategies include healthy eating, physical activity, medication adherence, and routine check-ups.",
+      "cites": [
+        "ADA Standards of Care 2024",
+        "AHA/ACC Diabetes Guidelines"
+      ]
+    }
+  ]
+}

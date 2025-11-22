@@ -1,0 +1,60 @@
+{
+  "timestamp": "2025-11-12T23:16:25.699Z",
+  "url": "https://reflectivei.github.io/reflectiv-ai/",
+  "tests": [
+    {
+      "name": "Page loads",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Select Product Knowledge mode",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Send product question",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Product Knowledge response received",
+      "status": "PASS",
+      "details": {
+        "preview": "AssistantIndication for Descovy (Emtricitabine/Tenofovir Alafenamide) Descovy (emtricitabine/tenofovir alafenamide) is a fixed-dose combination medication indicated for the following indications: 1.  ",
+        "length": 1367
+      }
+    },
+    {
+      "name": "Citations in PK response (optional)",
+      "status": "PASS",
+      "details": {
+        "note": "Response received successfully - citations not required for this query",
+        "found": 0
+      }
+    }
+  ],
+  "screenshots": [
+    "./test-screenshots-pk/pk_mode_selected_1762989392092.png",
+    "./test-screenshots-pk/pk_response_1762989396166.png",
+    "./test-screenshots-pk/final_state_1762989396645.png"
+  ],
+  "consoleLogs": [
+    "[CONSOLE WARN] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation",
+    "[CONSOLE LOG] [Citations] Loaded 5 references",
+    "[CONSOLE LOG] [DEBUG] About to run initial health check...",
+    "[CONSOLE LOG] [DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+    "[CONSOLE LOG] [DEBUG] Health check PASSED, isHealthy set to TRUE",
+    "[CONSOLE LOG] [DEBUG] Initial health check complete, result: true , isHealthy: true",
+    "[CONSOLE LOG] [DEBUG] Send button clicked!",
+    "[CONSOLE LOG] [DEBUG] Message text: What is the indication for this medication?",
+    "[CONSOLE LOG] [DEBUG] sendMessage() called with text: What is the indication for this medication?",
+    "[CONSOLE LOG] [DEBUG] isSending: false , isHealthy: true",
+    "[CONSOLE LOG] [DEBUG] Passed health gate, proceeding with send",
+    "[CONSOLE LOG] [Auto-Detect] Switched from product-knowledge → product-knowledge for general question",
+    "[CONSOLE TABLE] JSHandle@array"
+  ],
+  "totalTests": 5,
+  "passed": 5,
+  "failed": 0
+}

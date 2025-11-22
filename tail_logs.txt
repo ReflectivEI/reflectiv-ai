@@ -1,0 +1,542 @@
+Debugger listening on ws://127.0.0.1:59820/0a0dcce9-86fa-47fd-a061-5a2df2a43c35
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+Debugger listening on ws://127.0.0.1:59823/50aafd3d-1c6f-465a-b950-c13f3519289d
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+Debugger listening on ws://127.0.0.1:59825/000c4751-5e94-4ec3-ad99-c935693d978f
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+{
+    "wallTime": 901,
+    "cpuTime": 5,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "7dd6a20b-8a7b-43b9-b317-87fa4ba40198"
+    },
+    "scriptName": "my-chat-agent-v2",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [
+        {
+            "message": [
+                {
+                    "event": "startup_config",
+                    "key_pool_size": 3,
+                    "cors_allowlist_size": 9,
+                    "rotation_strategy": "session"
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025694641
+        },
+        {
+            "message": [
+                {
+                    "event": "chat_request",
+                    "req_id": "de785fe4112ff4f9",
+                    "mode": "sales-coach",
+                    "has_plan": false,
+                    "has_history": true,
+                    "disease": null,
+                    "persona": null
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025694641
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Raw reply before processing:",
+                "Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about renal monitoring in their oncology practice.\n\nRep Approach:\n• Discuss the importance of assessing renal function (eGFR, CrCl) before and during PrEP, as recommended for safe prescribing practices, to identify potential kidney issues [HIV-PREP-SAFETY-003].\n• Emphasize the need for regular urinalysis monitoring every 3-6 months during PrEP treatment to ensure early detection of kidney problems, as indicated in the FDA label"
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Reply after normalization:",
+                "Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about renal monitoring in their oncology practice.\n\nRep Approach:\n• Discuss the importance of assessing renal function (eGFR, CrCl) before and during PrEP, as recommended for safe prescribing practices, to identify potential kidney issues [HIV-PREP-SAFETY-003].\n• Emphasize the need for regular urinalysis monitoring every 3-6 months during PrEP treatment to ensure early detection of kidney problems, as indicated in the FDA label"
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Section detection:",
+                {
+                    "hasChallenge": true,
+                    "hasRepApproach": true,
+                    "hasImpact": true,
+                    "hasSuggested": true
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[FALLBACK] SKIPPED - Suggested Phrasing already present"
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Before capSentences - length:",
+                1285,
+                "cap:",
+                5
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Before capSentences - has 'Suggested Phrasing':",
+                true
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] After capSentences - length:",
+                964
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] After capSentences - has 'Suggested Phrasing':",
+                false
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                {
+                    "event": "validation_check",
+                    "mode": "sales-coach",
+                    "warnings": [
+                        "missing_suggested_phrasing_section"
+                    ],
+                    "violations": [],
+                    "reply_length": 964
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                {
+                    "event": "schema_validation_failed",
+                    "mode": "sales-coach",
+                    "missing_fields": [
+                        "worked",
+                        "improve",
+                        "feedback"
+                    ],
+                    "coach_keys": [
+                        "scores",
+                        "rationales",
+                        "tips",
+                        "rubric_version"
+                    ]
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                {
+                    "event": "chat_success",
+                    "req_id": "de785fe4112ff4f9",
+                    "mode": "sales-coach",
+                    "duration_ms": 898,
+                    "reply_length": 964,
+                    "has_coach": true,
+                    "plan_id": "685cbbae903f5518"
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] FINAL reply length:",
+                964
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] FINAL has 'Suggested Phrasing':",
+                false
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] FINAL reply preview:",
+                "Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about renal monitoring in their oncology practice.\n\nRep Approach: • Discuss the importance of assessing renal function (eGFR, CrCl) before and during PrEP, as recommended for safe prescribing practices, to identify potential kidney issues [HIV-PREP-SAFETY-003].  • Emphasize the need for regular urinalysis monitoring every 3-6 months during PrEP treatment to ensure early detection of kidney problems, as indicated in the FDA label [HIV-PREP-SAFETY-003].  • Highlight the importance of dose adjustment or discontinuation if eGFR <"
+            ],
+            "level": "log",
+            "timestamp": 1763025695539
+        }
+    ],
+    "eventTimestamp": 1763025694639,
+    "event": {
+        "request": {
+            "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+            "method": "POST",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "75.54.113.187",
+                "cf-ipcountry": "US",
+                "cf-ray": "99dd331f7ba92f02",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "content-length": "183",
+                "content-type": "application/json",
+                "host": "my-chat-agent-v2.tonyabdelmalak.workers.dev",
+                "user-agent": "curl/8.7.1",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "75.54.113.187"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 10,
+                "colo": "LAX",
+                "asn": 7018,
+                "asOrganization": "AT&T Enterprises, LLC",
+                "country": "US",
+                "isEUCountry": false,
+                "city": "Los Angeles",
+                "continent": "NA",
+                "region": "California",
+                "regionCode": "CA",
+                "timezone": "America/Los_Angeles",
+                "longitude": "-118.24368",
+                "latitude": "34.05223",
+                "postalCode": "90012",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "fkS8xufrWMz9BVDHeuCHgp2Kf6SwKfDbfSvpUFkhkb0=",
+                "tlsClientCiphersSha1": "De6XredN64ifthhYZ0E1e9w8cms=",
+                "tlsClientExtensionsSha1": "Ub+nUmIm1U57hdNSUph0R+kx9Gc=",
+                "tlsClientExtensionsSha1Le": "NMNf2YIpLBhtroOEBooGFi+jtJ8=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "44b64c3a07c9329ed11474f554d4a2225c43047c3dcb7ecfabf4dab72165920a7cb6f8818a29070f73fb42e3511aa0ca",
+                    "serverHandshake": "8a028acb2dcba1d96dc322bb6cb51ee2bc527c96189221cb5168da025abe40603aaf09c11745dd9accc8d19a422945ba",
+                    "clientFinished": "2b0c7c76186918f5b91923e5776e48326f4c774b7f34f9fdd5ab7ae82832b60aee77fffaeba7739a723820d59977bf15",
+                    "serverFinished": "2b790845238477f7a6a2012f147cdfaa6349fe6b7aba50800f149a6449243fcb0dc7a712c641c95b7e5791cb9e1d0806"
+                },
+                "tlsClientHelloLength": "344",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": ""
+                },
+                "verifiedBotCategory": ""
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 954,
+    "cpuTime": 3,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "7dd6a20b-8a7b-43b9-b317-87fa4ba40198"
+    },
+    "scriptName": "my-chat-agent-v2",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [
+        {
+            "message": [
+                {
+                    "event": "startup_config",
+                    "key_pool_size": 3,
+                    "cors_allowlist_size": 9,
+                    "rotation_strategy": "session"
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025701861
+        },
+        {
+            "message": [
+                {
+                    "event": "chat_request",
+                    "req_id": "711a32c4a81ba041",
+                    "mode": "sales-coach",
+                    "has_plan": false,
+                    "has_history": true,
+                    "disease": null,
+                    "persona": null
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025701861
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Raw reply before processing:",
+                "Challenge: The HCP may be uncertain about the effectiveness of adherence support strategies for at-risk HIV patients, potentially impacting PrEP prescription rates.\n\nRep Approach:\n• Discuss the importance of sustained viral suppression, requiring >95% adherence to ART, and how long-acting regimens like Apretude (cabotegravir long-acting injectable) may improve adherence for patients facing daily pill burden challenges [HIV-ADHERENCE-008].\n• Highlight the benefits of Apretude for PrEP, administer"
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Reply after normalization:",
+                "Challenge: The HCP may be uncertain about the effectiveness of adherence support strategies for at-risk HIV patients, potentially impacting PrEP prescription rates.\n\nRep Approach:\n• Discuss the importance of sustained viral suppression, requiring >95% adherence to ART, and how long-acting regimens like Apretude (cabotegravir long-acting injectable) may improve adherence for patients facing daily pill burden challenges [HIV-ADHERENCE-008].\n• Highlight the benefits of Apretude for PrEP, administer"
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Section detection:",
+                {
+                    "hasChallenge": true,
+                    "hasRepApproach": true,
+                    "hasImpact": true,
+                    "hasSuggested": true
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[FALLBACK] SKIPPED - Suggested Phrasing already present"
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Before capSentences - length:",
+                1345,
+                "cap:",
+                5
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] Before capSentences - has 'Suggested Phrasing':",
+                true
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] After capSentences - length:",
+                1108
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] After capSentences - has 'Suggested Phrasing':",
+                false
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                {
+                    "event": "validation_check",
+                    "mode": "sales-coach",
+                    "warnings": [
+                        "missing_suggested_phrasing_section"
+                    ],
+                    "violations": [],
+                    "reply_length": 1108
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                {
+                    "event": "schema_validation_failed",
+                    "mode": "sales-coach",
+                    "missing_fields": [
+                        "worked",
+                        "improve",
+                        "feedback"
+                    ],
+                    "coach_keys": [
+                        "scores",
+                        "rationales",
+                        "tips",
+                        "rubric_version"
+                    ]
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                {
+                    "event": "chat_success",
+                    "req_id": "711a32c4a81ba041",
+                    "mode": "sales-coach",
+                    "duration_ms": 951,
+                    "reply_length": 1108,
+                    "has_coach": true,
+                    "plan_id": "8eda09933c977445"
+                }
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] FINAL reply length:",
+                1108
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] FINAL has 'Suggested Phrasing':",
+                false
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        },
+        {
+            "message": [
+                "[SALES-COACH DEBUG] FINAL reply preview:",
+                "Challenge: The HCP may be uncertain about the effectiveness of adherence support strategies for at-risk HIV patients, potentially impacting PrEP prescription rates.\n\nRep Approach: • Discuss the importance of sustained viral suppression, requiring >95% adherence to ART, and how long-acting regimens like Apretude (cabotegravir long-acting injectable) may improve adherence for patients facing daily pill burden challenges [HIV-ADHERENCE-008].  • Highlight the benefits of Apretude for PrEP, administered as 600 mg IM every 2 months after oral lead-in or initial injections, as indicated in the FDA la"
+            ],
+            "level": "log",
+            "timestamp": 1763025702812
+        }
+    ],
+    "eventTimestamp": 1763025701861,
+    "event": {
+        "request": {
+            "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+            "method": "POST",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "75.54.113.187",
+                "cf-ipcountry": "US",
+                "cf-ray": "99dd334c9e76aef8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "content-length": "169",
+                "content-type": "application/json",
+                "host": "my-chat-agent-v2.tonyabdelmalak.workers.dev",
+                "user-agent": "curl/8.7.1",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "75.54.113.187"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 11,
+                "colo": "LAX",
+                "asn": 7018,
+                "asOrganization": "AT&T Enterprises, LLC",
+                "country": "US",
+                "isEUCountry": false,
+                "city": "Los Angeles",
+                "continent": "NA",
+                "region": "California",
+                "regionCode": "CA",
+                "timezone": "America/Los_Angeles",
+                "longitude": "-118.24368",
+                "latitude": "34.05223",
+                "postalCode": "90012",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "mDCyywfsGZQWCleh6qULfg1LWh5zyEc7QpRlCwUK4e4=",
+                "tlsClientCiphersSha1": "De6XredN64ifthhYZ0E1e9w8cms=",
+                "tlsClientExtensionsSha1": "Ub+nUmIm1U57hdNSUph0R+kx9Gc=",
+                "tlsClientExtensionsSha1Le": "NMNf2YIpLBhtroOEBooGFi+jtJ8=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "8b20590f775703fd542861684e2e5c220daf2f3065d5635424b025a0d10c4961e6bce8aaf900c2d5d98dce0d6ee5f237",
+                    "serverHandshake": "24a613793b1ddce9a788101844c6b5fd738910bb235544ebcad546fce994e91f6886dff2fdfdb220588d577d56506620",
+                    "clientFinished": "56a5664a16ec7007c1702d1e09b51ada07d69779a9766632d6c082fbcbf7d23202536e8824cd7a57448a3889cecc525c",
+                    "serverFinished": "8c34659d0349c093c47fe001f5584bf70f78c04208c70d95893b1e70a6af8090e02a6976f48e70fa916b9b9541014c82"
+                },
+                "tlsClientHelloLength": "344",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": ""
+                },
+                "verifiedBotCategory": ""
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+Waiting for the debugger to disconnect...
+Waiting for the debugger to disconnect...
+Waiting for the debugger to disconnect...

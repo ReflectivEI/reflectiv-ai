@@ -1,0 +1,487 @@
+{
+  "timestamp": "2025-11-13T00:27:42.700Z",
+  "diseaseStates": {
+    "HIV": {
+      "disease": "HIV",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "userMessage": "Hi, I'd like to discuss PrEP with you",
+          "labelsFound": 2,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 2,
+          "userMessage": "What concerns do you have about prescribing PrEP?",
+          "labelsFound": 4,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 3,
+          "userMessage": "How do you currently assess patient risk factors?",
+          "labelsFound": 6,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 4,
+          "userMessage": "Let me share some recent efficacy data from the FDA label",
+          "labelsFound": 8,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 5,
+          "userMessage": "Would you be open to a follow-up discussion next month?",
+          "labelsFound": 10,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        }
+      ],
+      "repHcpLabeling": {
+        "correct": 17,
+        "incorrect": 0,
+        "missing": 13
+      },
+      "feedbackCoachUpdates": [
+        {
+          "turn": 1,
+          "elements": [
+            {
+              "text": "Sales Coach",
+              "visible": false,
+              "backgroundColor": "rgb(255, 240, 204)"
+            },
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 4 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 3 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 4 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 3 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 4 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 3 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 4 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 3 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Close with a clear discovery questionReference label or guidelinesTie points to clinical cues\n              Strategy: Use one idea per sentence\n              Suggested Phrasing:G",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "elements": [
+            {
+              "text": "Sales Coach",
+              "visible": false,
+              "backgroundColor": "rgb(255, 240, 204)"
+            },
+            {
+              "text": "Sales Coach",
+              "visible": false,
+              "backgroundColor": "rgb(255, 240, 204)"
+            },
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 5,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        }
+      ],
+      "eiMetricsDisplayed": [],
+      "errors": [],
+      "screenshots": [
+        "./test-screenshots-disease-states/HIV_01_disease_selected_1762993672334.png",
+        "./test-screenshots-disease-states/HIV_turn_1_complete_1762993677772.png",
+        "./test-screenshots-disease-states/HIV_turn_2_complete_1762993683074.png",
+        "./test-screenshots-disease-states/HIV_turn_3_complete_1762993688341.png",
+        "./test-screenshots-disease-states/HIV_turn_4_complete_1762993693740.png",
+        "./test-screenshots-disease-states/HIV_turn_5_complete_1762993699023.png"
+      ]
+    },
+    "Oncology": {
+      "disease": "Oncology",
+      "turns": [
+        {
+          "turnNumber": 1,
+          "userMessage": "Good morning, I wanted to discuss our oncology treatment options",
+          "labelsFound": 12,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 2,
+          "userMessage": "What's your current approach for first-line therapy?",
+          "labelsFound": 14,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 3,
+          "userMessage": "Have you seen challenges with patient adherence?",
+          "labelsFound": 16,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 4,
+          "userMessage": "Our data shows improved outcomes in this patient population",
+          "labelsFound": 18,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        },
+        {
+          "turnNumber": 5,
+          "userMessage": "Can I schedule a time to review the clinical trial results?",
+          "labelsFound": 20,
+          "feedbackCoachVisible": true,
+          "eiMetricsCount": 0
+        }
+      ],
+      "repHcpLabeling": {
+        "correct": 23,
+        "incorrect": 0,
+        "missing": 57
+      },
+      "feedbackCoachUpdates": [
+        {
+          "turn": 1,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        },
+        {
+          "turn": 5,
+          "elements": [
+            {
+              "text": "Coach Feedback\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n       ",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n            empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2\n            \n              Focus: ",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "empathy: 2 clarity: 3 compliance: 5 discovery: 2 objection_handling: 4 confidence: 4 active_listening: 2 adaptability: 3 action_insight: 2 resilience: 2",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "\n              Focus: Reference label or guidelinesTie points to clinical cues\n              Strategy: End with one specific questionUse one idea per sentence\n              Suggested Phrasing:Would it",
+              "visible": false,
+              "backgroundColor": "rgba(0, 0, 0, 0)"
+            },
+            {
+              "text": "",
+              "visible": false,
+              "backgroundColor": "rgb(255, 251, 232)"
+            }
+          ]
+        }
+      ],
+      "eiMetricsDisplayed": [],
+      "errors": [],
+      "screenshots": [
+        "./test-screenshots-disease-states/Oncology_01_disease_selected_1762993701756.png",
+        "./test-screenshots-disease-states/Oncology_turn_1_complete_1762993706989.png",
+        "./test-screenshots-disease-states/Oncology_turn_2_complete_1762993712255.png",
+        "./test-screenshots-disease-states/Oncology_turn_3_complete_1762993717506.png",
+        "./test-screenshots-disease-states/Oncology_turn_4_complete_1762993722762.png",
+        "./test-screenshots-disease-states/Oncology_turn_5_complete_1762993728130.png"
+      ]
+    }
+  },
+  "globalIssues": [],
+  "totalTurns": 10,
+  "errorsFound": []
+}

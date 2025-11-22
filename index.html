@@ -9,14 +9,14 @@
   <link rel="icon" type="image/png" href="logo-modern.png">
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
-  <!-- Allows Tailwind CDN + Google Fonts + your Worker -->
+  <!-- Allows Tailwind CDN + Google Fonts + your Worker + Cloudflare Access -->
   <meta http-equiv="Content-Security-Policy" content="
           default-src 'self';
           img-src 'self' data:;
           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
           font-src  'self' https://fonts.gstatic.com;
           script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
-          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+          connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev https://*.cloudflareaccess.com
         ">
 
   <!-- Performance: preconnect for Google Fonts -->
@@ -550,7 +550,7 @@
 
   <!-- Coach script: context helpers first, then widget -->
   <script src="assets/chat/ei-context.js?v=1"></script>
-  <script defer src="widget.js?v=20251110-1243"></script>
+  <script defer src="widget.js?v=20251117-0001"></script>
 
   <!-- Ensure Alora sits on top -->
   <style>
@@ -619,59 +619,46 @@
 
   <!-- ===== Hero ===== -->
   <section class="py-16 md:py-24 bg-white" id="home">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
-      <div class="grid-mobile-center">
-        <span class="text-sm font-semibold uppercase text-accent-teal tracking-widest mb-3 block">AI Sales Enablement
-          for Life Sciences</span>
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">Connect and Convert with
-          Intelligence</h1>
-        <p class="text-lg sm:text-xl text-gray-600 mb-8">ReflectivAI blends clinical accuracy, emotional intelligence,
-          and adaptive AI coaching so every HCP conversation feels authentic, confident, and compliant.</p>
-        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 md:gap-10 items-start">
+      <!-- Left Column: Text + CTAs + Image (Flexbox for vertical alignment) -->
+      <div class="grid-mobile-center flex flex-col h-full">
+        <!-- Text Block -->
+        <div class="flex-shrink-0">
+          <span class="text-sm font-semibold uppercase text-accent-teal tracking-widest mb-3 block">AI Sales Enablement
+            for Life Sciences</span>
+          <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">Connect and Convert with
+            Intelligence</h1>
+          <p class="text-lg sm:text-xl text-gray-600 mb-8">ReflectivAI blends clinical accuracy, emotional intelligence,
+            and adaptive AI coaching so every HCP conversation feels authentic, confident, and compliant.</p>
+        </div>
+
+        <!-- CTA Buttons - Centered -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-10 justify-center md:justify-start">
           <a href="#contact"
-            class="px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.02] text-center">Request
+            class="px-8 py-3 rounded-full primary-dark text-white font-bold shadow-xl hover:bg-indigo-900 transition transform hover:scale-[1.02] text-center inline-block">Request
             a Demo</a>
           <a id="openCoach" href="#simulations"
-            class="px-8 py-3 rounded-full bg-white text-primary-dark border-2 border-primary-dark font-bold hover:bg-gray-50 transition text-center">Explore
+            class="px-8 py-3 rounded-full bg-white text-primary-dark border-4 font-bold hover:bg-indigo-50 hover:text-indigo-900 transition text-center inline-block"
+            style="border-color: #1E3A8A;">Explore
             Platform</a>
         </div>
-        <div class="rounded-xl px-6 py-5 mt-2 w-full max-w-md mx-auto" style="background:#15395b;">
-          <ul class="space-y-4">
-            <li class="flex items-center">
-              <span class="inline-flex items-center justify-center w-9 h-9 rounded-full" style="background:#06B6D4;">
-                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M5 13l4 4L19 7"></path>
-                </svg>
-              </span>
-              <span class="text-white font-semibold">Always Compliant</span>
-              <span class="text-white ml-2 font-normal">Label-only content with automated guardrails.</span>
-            </li>
-            <li class="flex items-center">
-              <span class="inline-flex items-center justify-center w-9 h-9 rounded-full" style="background:#06B6D4;">
-                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M13 2L2 13m0 0h7m-7 0v7"></path>
-                </svg>
-              </span>
-              <span class="text-white font-semibold">Instantly Scalable</span>
-              <span class="text-white ml-2 font-normal">Deploy across your entire field force in days.</span>
-            </li>
-            <li class="flex items-center">
-              <span class="inline-flex items-center justify-center w-9 h-9 rounded-full" style="background:#06B6D4;">
-                <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M3 17v-2a4 4 0 014-4h10a4 4 0 014 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </span>
-              <span class="text-white font-semibold">Measurable Impact</span>
-              <span class="text-white ml-2 font-normal">Track EI growth and business outcomes together.</span>
-            </li>
-          </ul>
+        
+        <!-- Hero Image Below CTA Buttons -->
+        <div class="w-full flex-shrink-0">
+          <div class="rounded-xl overflow-hidden shadow-xl">
+            <img src="assets/hero-image.png" alt="HCP conversation with analytics overlay"
+              class="w-full h-auto object-cover"
+              onerror="this.onerror=null;this.src='https://via.placeholder.com/560x350?text=Image+Not+Found';this.alt='Image not found';" />
+          </div>
         </div>
       </div>
-      <div class="rounded-xl overflow-hidden shadow-2xl mt-8 md:mt-0" aria-hidden="true">
-        <img src="assets/hero-image.png" alt="HCP conversation with analytics overlay"
-          class="w-full h-auto object-cover"
-          onerror="this.onerror=null;this.src='https://via.placeholder.com/600x320?text=Image+Not+Found';this.alt='Image not found';" />
+
+      <!-- Right Column: Main Hero Image (Reduced height to align with left column) -->
+      <div class="rounded-xl overflow-hidden shadow-2xl mt-8 md:mt-0"
+        style="height:auto;display:flex;align-items:stretch;aspect-ratio:3/4;" aria-hidden="true">
+        <img src="assets/site_image 1.png" alt="ReflectivAI Platform Overview" class="w-full h-full object-cover"
+          style="object-position:center top;"
+          onerror="this.onerror=null;this.src='https://via.placeholder.com/500x650?text=Image+Not+Found';this.alt='Image not found';" />
       </div>
     </div>
   </section>
@@ -815,97 +802,46 @@
         Integrated tools designed for high-stakes life science interactions.
       </p>
 
-      <!-- Four primary modules -->
+      <!-- Four primary modules + Images -->
       <div class="grid md:grid-cols-3 gap-8">
         <!-- Sales Coach Card -->
-        <div
-          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Coach</h3>
-          <p class="text-gray-600 mb-4">
-            Practice high-stakes calls in oncology, vaccines, and other therapeutic areas with adaptive AI personas.
-            Each simulation tracks not just what you say, but how you say it—measuring empathy, tone, and active
-            listening alongside clinical accuracy.
-          </p>
+          <p class="text-gray-600 mb-4">Practice high-stakes calls in oncology, vaccines, and other therapeutic areas with adaptive AI personas. Each simulation tracks not just what you say, but how you say it—measuring empathy, tone, and active listening alongside clinical accuracy.</p>
           <ul class="space-y-2 text-sm text-gray-700">
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Dynamic HCP personas by specialty</span>
-            </li>
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Real-time objection handling</span>
-            </li>
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>EI assessment on every exchange</span>
-            </li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Dynamic HCP personas by specialty</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Real-time objection handling</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>EI assessment on every exchange</span></li>
           </ul>
         </div>
 
         <!-- Product Knowledge Card -->
-        <div
-          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
               <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Product Knowledge</h3>
-          <p class="text-gray-600 mb-4">
-            Train on complex clinical data and regulatory messaging with compliance and real-time correction built in.
-            The Coach evaluates accuracy while simultaneously teaching how to communicate complex science with clarity
-            and empathy.
-          </p>
+          <p class="text-gray-600 mb-4">Train on complex clinical data and regulatory messaging with compliance and real-time correction built in. The Coach evaluates accuracy while simultaneously teaching how to communicate complex science with clarity and empathy.</p>
           <ul class="space-y-2 text-sm text-gray-700">
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Label-compliant messaging only</span>
-            </li>
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Simplify complex science effectively</span>
-            </li>
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Instant correction and guidance</span>
-            </li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Label-compliant messaging only</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Simplify complex science effectively</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Instant correction and guidance</span></li>
           </ul>
         </div>
 
-        <!-- EI Analytics & Relationship Intelligence Card -->
         <!-- Role Play Card -->
-        <div
-          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
               <path d="M8 15c1.333-2 6.667-2 8 0" stroke="currentColor" stroke-width="2" fill="none" />
               <circle cx="9" cy="10" r="1" fill="currentColor" />
@@ -913,60 +849,333 @@
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Role Play</h3>
-          <p class="text-gray-600 mb-4">
-            Hone your skills and emotional awareness in a safe, judgment-free practice arena. Role Play lets you
-            rehearse complex scenarios and experiment with authentic, EI-driven communication before entering formal
-            evaluation. No scoring—just pure practice fostering confidence, conversational agility, and more human
-            connections.
-          </p>
+          <p class="text-gray-600 mb-4">Hone your skills and emotional awareness in a safe, judgment-free practice arena. Role Play lets you rehearse complex scenarios and experiment with authentic, EI-driven communication before entering formal evaluation. No scoring—just pure practice fostering confidence, conversational agility, and more human connections.</p>
           <ul class="space-y-2 text-sm text-gray-700">
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Unlimited open-ended practice sessions</span>
-            </li>
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Explore scenarios by specialty or challenge</span>
-            </li>
-            <li class="flex items-start">
-              <svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span>Build fluency, emotional agility, and confidence—risk-free</span>
-            </li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Unlimited open-ended practice sessions</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Explore scenarios by specialty or challenge</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Build fluency, emotional agility, and confidence—risk-free</span></li>
           </ul>
         </div>
-        <div
-          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+
+        <!-- Image: Left (below Sales Coach) -->
+        <div class="rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:scale-[1.02]">
+          <img src="assets/site_image7.png" alt="ReflectivAI Platform Interface" class="w-full h-auto object-cover" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x320?text=Image+Not+Found';this.alt='Image not found';" />
+        </div>
+
+        <!-- Relationship Intelligence Card (Moved to Middle) -->
+        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 19h16"></path>
               <path d="M7 15l3-6 4 5 3-9"></path>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Relationship Intelligence</h3>
-          <p class="text-gray-600 mb-4">
-            Track behavioral blind spots and conversational patterns. Understand empathy, tone calibration, and
-            conversational agility with granular data. ReflectivAI captures EI metrics that traditional training misses,
-            helping reps build authentic connections.
-          </p>
+          <p class="text-gray-600 mb-4">Track behavioral blind spots and conversational patterns. Understand empathy, tone calibration, and conversational agility with granular data. ReflectivAI captures EI metrics that traditional training misses, helping reps build authentic connections.</p>
           <ul class="list-disc list-inside text-left mx-auto" style="max-width:320px;">
             <li>Empathy &amp; tone scoring</li>
             <li>Active listening analysis</li>
             <li>Conversational agility tracking</li>
           </ul>
         </div>
+
+        <!-- Image: Right (below Role Play) -->
+        <div class="rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:scale-[1.02]">
+          <img src="assets/site_image3.png" alt="ReflectivAI Analytics Dashboard" class="w-full h-auto object-cover" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x320?text=Image+Not+Found';this.alt='Image not found';" />
+        </div>
       </div>
     </div>
   </section>
+
+  <!-- Metric Card Modal -->
+  <div id="metricModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4" style="backdrop-filter: blur(4px);">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 opacity-0" id="metricModalContent">
+      <!-- Modal content will be injected here -->
+    </div>
+  </div>
+
+  <script>
+    // EI Metric Data with all details
+    const metricsData = [
+      {
+        id: 'accuracy',
+        title: 'Accuracy Index',
+        score: '94%',
+        icon: '🎯',
+        color: '#0ea5e9', // sky-500
+        bgColor: 'from-sky-50 to-white',
+        borderColor: 'border-sky-200',
+        definition: 'Measures the percentage of precise, clinically correct responses in calls.',
+        calculation: '(Correct responses / Total responses) × 100',
+        goodIndicators: 'Always references approved sources; details match label; catches and self-corrects errors.',
+        sampleDialogue: '"Doctor, based on the latest clinical guidelines, here\'s how this dosing schedule can work well for your patients."'
+      },
+      {
+        id: 'readiness',
+        title: 'Readiness Velocity',
+        score: '1.4x',
+        icon: '⚡',
+        color: '#8b5cf6', // violet-500
+        bgColor: 'from-violet-50 to-white',
+        borderColor: 'border-violet-200',
+        definition: 'Captures progress speed in learning and applying sales techniques.',
+        calculation: '(Role play completions + skill improvements) / Time spent training',
+        goodIndicators: 'Rapid mastery of new messaging; adapts quickly to feedback; frequent scenario completions.',
+        sampleDialogue: '"Thanks for the feedback—I\'ve been updating how I explain the data so it\'s clearer and more relevant."'
+      },
+      {
+        id: 'empathy',
+        title: 'Empathy Index',
+        score: '88%',
+        icon: '💙',
+        color: '#14b8a6', // teal-500
+        bgColor: 'from-teal-50 to-white',
+        borderColor: 'border-teal-200',
+        definition: 'Scores ability to perceive and respond to HCP emotions and concerns.',
+        calculation: '(Empathetic responses / Opportunities) × 100',
+        goodIndicators: 'Notices HCP\'s tone or hesitation; validates concerns before replying; adapts message to emotional cues.',
+        sampleDialogue: '"I hear you\'re concerned about side effects—let me walk you through the most recent safety information."'
+      },
+      {
+        id: 'compliance',
+        title: 'Compliance Score',
+        score: '100%',
+        icon: '✓',
+        color: '#10b981', // emerald-500
+        bgColor: 'from-emerald-50 to-white',
+        borderColor: 'border-emerald-200',
+        definition: 'Tracks adherence to approved messaging and regulatory guidelines.',
+        calculation: '(Total compliant exchanges / All exchanges) × 100',
+        goodIndicators: 'No off-label claims; follows label guardrails; quickly adjusts to in-call compliance feedback.',
+        sampleDialogue: '"Per the product label, this medication is approved for type 2 diabetes only. I\'m happy to share the key study details."'
+      },
+      {
+        id: 'confidence',
+        title: 'Confidence Level',
+        score: '8.5/10',
+        icon: '💪',
+        color: '#f59e0b', // amber-500
+        bgColor: 'from-amber-50 to-white',
+        borderColor: 'border-amber-200',
+        definition: 'Assesses composure, credibility, and self-assurance during presentations.',
+        calculation: 'Averaged observed confidence behaviors across interactions (scale 1–10)',
+        goodIndicators: 'Speaks smoothly; maintains eye contact; stays on message despite pushback.',
+        sampleDialogue: '"From my experience, I\'m confident this therapy offers meaningful benefits that can improve patient outcomes."'
+      },
+      {
+        id: 'clarity',
+        title: 'Clarity Index',
+        score: '92%',
+        icon: '💡',
+        color: '#3b82f6', // blue-500
+        bgColor: 'from-blue-50 to-white',
+        borderColor: 'border-blue-200',
+        definition: 'Measures how clearly information is explained to busy HCPs.',
+        calculation: '(Clear explanations / Total exchanges) × 100',
+        goodIndicators: 'Summarizes research in simple terms; avoids jargon; provides short, digestible takeaways.',
+        sampleDialogue: '"To put it simply, this treatment targets inflammation without suppressing your patient\'s immune system."'
+      },
+      {
+        id: 'objection',
+        title: 'Objection Handling',
+        score: '85%',
+        icon: '🛡️',
+        color: '#ef4444', // red-500
+        bgColor: 'from-red-50 to-white',
+        borderColor: 'border-red-200',
+        definition: 'Reflects skill in acknowledging and resolving HCP concerns.',
+        calculation: '(Successful objection resolutions / Total objections) × 100',
+        goodIndicators: 'Listens carefully; reframes objections constructively; offers evidence-based answers.',
+        sampleDialogue: '"Doctor, I noticed you hesitated on that point—would it help if I shared more specifics from the clinical trial?"'
+      },
+      {
+        id: 'discovery',
+        title: 'Discovery Index',
+        score: '78%',
+        icon: '🔍',
+        color: '#a855f7', // purple-500
+        bgColor: 'from-purple-50 to-white',
+        borderColor: 'border-purple-200',
+        definition: 'Scores effectiveness in uncovering HCP needs and priorities.',
+        calculation: '(Probing questions / Opportunities to discover) × 100',
+        goodIndicators: 'Uses open-ended questions; clarifies patient challenges; asks for details on prescribing habits.',
+        sampleDialogue: '"Could you tell me what factors are most important to you when selecting a treatment for this condition?"'
+      },
+      {
+        id: 'listening',
+        title: 'Active Listening',
+        score: '90%',
+        icon: '👂',
+        color: '#ec4899', // pink-500
+        bgColor: 'from-pink-50 to-white',
+        borderColor: 'border-pink-200',
+        definition: 'Assesses attentiveness and ability to confirm and respond to HCP points.',
+        calculation: '(Active listening behaviors / Total exchanges) × 100',
+        goodIndicators: 'Paraphrases HCP statements; checks for clarity; reacts to both words and emotions.',
+        sampleDialogue: '"So you\'re seeing these side effects mostly in younger patients, is that right?"'
+      },
+      {
+        id: 'adaptability',
+        title: 'Emotional Adaptability',
+        score: '83%',
+        icon: '🔄',
+        color: '#6366f1', // indigo-500
+        bgColor: 'from-indigo-50 to-white',
+        borderColor: 'border-indigo-200',
+        definition: 'Measures ability to flex communication style based on HCP attitude and energy.',
+        calculation: '(Adaptive responses / Opportunities to adapt) × 100',
+        goodIndicators: 'Changes pace when needed; softens tone under stress; expresses flexibility.',
+        sampleDialogue: '"I can tell you\'re busy, so I\'ll keep this brief and focus on what matters most to your practice."'
+      }
+    ];
+
+    // Generate cards
+    function generateMetricCards() {
+      const grid = document.getElementById('metricCardsGrid');
+      if (!grid) return;
+
+      metricsData.forEach((metric, index) => {
+        const card = document.createElement('div');
+        // Match original dark navy card style from screenshot
+        card.className = `metric-card bg-[#1e3a5f]/80 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-white/10 hover:shadow-2xl hover:border-accent-teal/60 transition-all duration-300 cursor-pointer transform hover:scale-105 opacity-0 text-center`;
+        card.style.animation = `fadeInUp 0.5s ease-out ${index * 0.15}s forwards`;
+        card.setAttribute('data-metric-id', metric.id);
+        
+        card.innerHTML = `
+          <div class="flex flex-col items-center justify-center h-full">
+            <div class="text-2xl font-bold text-accent-teal mb-2">${metric.score}</div>
+            <p class="text-sm font-semibold uppercase text-indigo-100">${metric.title}</p>
+          </div>
+        `;
+
+        card.addEventListener('click', () => openMetricModal(metric));
+        grid.appendChild(card);
+      });
+    }
+
+    // Open modal with metric details
+    function openMetricModal(metric) {
+      const modal = document.getElementById('metricModal');
+      const content = document.getElementById('metricModalContent');
+      
+      content.innerHTML = `
+        <div class="sticky top-0 bg-gradient-to-r from-[#0f2747] to-[#1e3a5f] text-white p-6 rounded-t-2xl flex justify-between items-center">
+          <div class="flex items-center gap-4">
+            <span class="text-4xl">${metric.icon}</span>
+            <div>
+              <h2 class="text-2xl font-bold">${metric.title}</h2>
+              <div class="inline-block px-3 py-1 rounded-full text-sm font-semibold mt-1" style="background-color: rgba(255,255,255,0.2)">
+                ${metric.score}
+              </div>
+            </div>
+          </div>
+          <button onclick="closeMetricModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="p-8 space-y-6">
+          <div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${metric.color}"></span>
+              Definition
+            </h3>
+            <p class="text-gray-700 leading-relaxed">${metric.definition}</p>
+          </div>
+          
+          <div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${metric.color}"></span>
+              Calculation
+            </h3>
+            <p class="text-gray-700 leading-relaxed font-mono text-sm bg-gray-50 p-3 rounded-lg">${metric.calculation}</p>
+          </div>
+          
+          <div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${metric.color}"></span>
+              Good Indicators
+            </h3>
+            <p class="text-gray-700 leading-relaxed">${metric.goodIndicators}</p>
+          </div>
+          
+          <div class="bg-gradient-to-br ${metric.bgColor} p-6 rounded-xl border-2 ${metric.borderColor}">
+            <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${metric.color}"></span>
+              Sample Sales Dialogue
+            </h3>
+            <p class="text-gray-800 italic leading-relaxed text-lg">${metric.sampleDialogue}</p>
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => {
+        content.classList.remove('scale-95', 'opacity-0');
+        content.classList.add('scale-100', 'opacity-100');
+      }, 10);
+    }
+
+    // Close modal
+    function closeMetricModal() {
+      const modal = document.getElementById('metricModal');
+      const content = document.getElementById('metricModalContent');
+      
+      content.classList.add('scale-95', 'opacity-0');
+      content.classList.remove('scale-100', 'opacity-100');
+      
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }, 300);
+    }
+
+    // Click outside modal to close
+    document.getElementById('metricModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'metricModal') {
+        closeMetricModal();
+      }
+    });
+
+    // Generate cards on page load
+    document.addEventListener('DOMContentLoaded', generateMetricCards);
+  </script>
+
+  <style>
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .metric-card {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+    
+    .metric-card:hover::before {
+      left: 100%;
+    }
+  </style>
 
   <!-- END: Platform Modules Section -->
 
@@ -1071,52 +1280,28 @@
   </section>
   <!-- END: EI Coaching Section -->
 
-  <!-- BEGIN: Performance Analytics Section -->
+  <!-- BEGIN: Performance Analytics Section with 10 Clickable Metric Cards -->
   <section id="analytics" class="py-16 md:py-24 text-white" style="background-color:#0f2747;">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-12">
         <h2 class="text-4xl font-extrabold mb-4">Performance Analytics & Coaching Intelligence</h2>
         <div class="w-20 mx-auto section-separator" style="background-color:white"></div>
-        <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes.</p>
-        <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with
-          EI-driven metrics.</p>
+        <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with EI-driven metrics.</p>
         <div class="mt-6">
-          <a href="analytics.html" target="_blank"
-            class="inline-flex items-center px-6 py-3 rounded-full bg-accent-teal text-white font-semibold hover:bg-teal-600 transition shadow-lg">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-              </path>
-            </svg>
+          <a href="analytics.html" target="_blank" class="inline-flex items-center px-6 py-3 rounded-full bg-accent-teal text-white font-semibold hover:bg-teal-600 transition shadow-lg">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             Export Sample Analytics Report (PDF)
           </a>
         </div>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
-        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-          <div class="text-2xl font-bold text-accent-teal mb-2">94%</div>
-          <p class="text-sm font-semibold uppercase text-indigo-100">Accuracy Index</p>
-        </div>
-        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-          <div class="text-2xl font-bold text-accent-teal mb-2">1.4x</div>
-          <p class="text-sm font-semibold uppercase text-indigo-100">Readiness Velocity</p>
-        </div>
-        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-          <div class="text-2xl font-bold text-accent-teal mb-2">Empathy</div>
-          <p class="text-sm font-semibold uppercase text-indigo-100">Coaching Index</p>
-        </div>
-        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-          <div class="text-2xl font-bold text-accent-teal mb-2">Compliance</div>
-          <p class="text-sm font-semibold uppercase text-indigo-100">Guardrails</p>
-        </div>
-        <div class="bg-white/10 p-6 rounded-xl shadow-lg border border-white/20">
-          <div class="text-2xl font-bold text-accent-teal mb-2">Confidence</div>
-          <p class="text-sm font-semibold uppercase text-indigo-100">Delta</p>
-        </div>
+      <!-- 10 Clickable EI Metric Cards (2 rows of 5) -->
+      <div id="metricCardsGrid" class="grid grid-cols-2 md:grid-cols-5 gap-6 max-w-6xl mx-auto">
+        <!-- Cards will be dynamically generated by JavaScript below -->
       </div>
     </div>
   </section>
+  <!-- END: Performance Analytics Section -->
 
   <!-- ===== Therapeutic Areas & Personas ===== -->
   <section id="therapeutic-areas" class="py-16 bg-white">
@@ -1714,6 +1899,33 @@
   </script>
 
   <script src="assets/chat/about-ei-modal.js?v=1"></script>
+
+  <!-- Initialize ReflectivAI Chat Widget -->
+  <script type="module">
+    import { createBus } from './assets/chat/core/eventBus.js';
+    import { createModeStore } from './assets/chat/core/modeStore.js';
+    import { createModeSwitcher } from './assets/chat/core/switcher.js';
+
+    // Initialize core chat system
+    const bus = createBus();
+    const store = createModeStore(bus);
+    const switcher = createModeSwitcher({ bus, store });
+
+    // Make globally available for debugging
+    window.ReflectivChat = { bus, store, switcher };
+
+    // Auto-initialize when coach modal opens
+    document.addEventListener('click', async (e) => {
+      if (e.target.matches('[data-open-coach], [data-coach]') || 
+          e.target.closest('[data-open-coach], [data-coach]')) {
+        const modal = document.getElementById('coachModal');
+        if (modal && !modal.dataset.initialized) {
+          modal.dataset.initialized = 'true';
+          await switcher.switchMode('sales-coach'); // Default mode
+        }
+      }
+    });
+  </script>
 
   <script>
     (function () {

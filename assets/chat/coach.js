@@ -36,21 +36,22 @@
   // ---------- constants ----------
   // WORKFLOW-BASED UI MODE MAPPING
   // These are the 3 workflow labels shown to users:
-  // - "Sales Coach & Call Prep" → backend mode: "sales-simulation"
+  // - "Sales Coach & Call Prep" → backend mode: "sales-coach"
   // - "Role Play w/ HCP" → backend mode: "role-play"
   // - "EI & Product Knowledge" → backend modes: "emotional-assessment" + "product-knowledge"
   const WORKFLOW_MODES = [
-    { key: "sales-coach", label: "Sales Coach & Call Prep", backendMode: "sales-simulation" },
+    { key: "sales-coach", label: "Sales Coach & Call Prep", backendMode: "sales-coach" },
     { key: "role-play", label: "Role Play w/ HCP", backendMode: "role-play" },
     { key: "ei-pk", label: "EI & Product Knowledge", backendModes: ["emotional-assessment", "product-knowledge"] }
   ];
-  
-  // Legacy backend mode constants (DO NOT CHANGE - used by Worker)
+
+  // Backend mode constants (DO NOT CHANGE - used by Worker)
   const BACKEND_MODES = {
     EMOTIONAL_ASSESSMENT: "emotional-assessment",
     PRODUCT_KNOWLEDGE: "product-knowledge",
-    SALES_SIMULATION: "sales-simulation",
-    ROLE_PLAY: "role-play"
+    SALES_COACH: "sales-coach",
+    ROLE_PLAY: "role-play",
+    GENERAL_KNOWLEDGE: "general-knowledge"
   };
   const EI_PROFILES = [
     { key: "difficult",   label: "Difficult HCP" },
@@ -77,8 +78,9 @@
     history: {               // Per-mode conversation history
       "emotional-assessment": [],
       "product-knowledge": [],
-      "sales-simulation": [],
-      "role-play": []
+      "sales-coach": [],
+      "role-play": [],
+      "general-knowledge": []
     }
   };
 
@@ -571,6 +573,22 @@
       message: text,
       sessionId: state.sessionId
     };
+
+    // For EI mode, load and include EI framework context if available
+    if (state.backendMode === "emotional-assessment") {
+      try {
+        if (typeof EIContext !== "undefined" && EIContext?.getSystemExtras) {
+          const eiExtras = await EIContext.getSystemExtras().catch(() => null);
+          if (eiExtras) {
+            payload.eiContext = eiExtras.slice(0, 8000);
+          }
+        }
+      } catch (e) {
+        console.warn("[coach] Failed to load EI context:", e.message);
+        // Continue without EI context rather than failing the request
+      }
+    }
+
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

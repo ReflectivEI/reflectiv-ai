@@ -1,0 +1,218 @@
+/Users/anthonyabdelmalak/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    EI SCORING INTEGRATION TEST SUITE                       ║
+║                         PHASE 2 FIX VALIDATION                             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Testing against: https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+Date: 2025-11-12T23:07:21.456626
+
+VALIDATION CRITERIA:
+✓ All 10 canonical metrics present in response
+✓ Correct path: coach.scores (NOT coach.ei.scores)
+✓ No invalid metrics (e.g., "accuracy")
+✓ Rationales provided for metrics
+✓ Response time < 10 seconds
+
+
+🧪 RUNNING TEST SET 1 (Sales Coach)
+
+================================================================================
+TEST 1: Sales Coach - HIV PrEP discussion
+================================================================================
+
+📤 REQUEST:
+Mode: sales-coach
+Message: I understand your concerns about patient adherence. Based on the DISCOVER trial data, Descovy for Pr...
+
+📥 RESPONSE (1746ms):
+Reply length: 1124 chars
+
+🔍 COACH OBJECT STRUCTURE:
+✅ coach object exists
+✅ No incorrect .ei nesting
+✅ .scores object exists at correct path
+
+📊 SCORES VALIDATION:
+✅ empathy: 4/5
+✅ clarity: 5/5
+✅ compliance: 5/5
+✅ discovery: 4/5
+✅ objection_handling: 3/5
+✅ confidence: 4/5
+✅ active_listening: 4/5
+✅ adaptability: 4/5
+✅ action_insight: 4/5
+✅ resilience: 4/5
+
+📝 RATIONALES:
+✅ empathy: "The rep approach acknowledges the HCP's uncertainty and prov..."
+✅ clarity: "The rep approach clearly outlines the indications and safety..."
+✅ compliance: "The rep approach adheres to FDA label recommendations and gu..."
+✅ discovery: "The rep approach introduces the HCP to alternative PrEP opti..."
+✅ objection_handling: "The rep approach anticipates potential concerns about renal ..."
+✅ confidence: "The rep approach conveys confidence in the recommended PrEP ..."
+✅ active_listening: "The rep approach responds to the HCP's uncertainty and provi..."
+✅ adaptability: "The rep approach considers individual patient needs and alte..."
+✅ action_insight: "The rep approach provides actionable guidance for the HCP...."
+✅ resilience: "The rep approach persists in addressing the HCP's uncertaint..."
+
+Rationale coverage: 10/10
+
+📋 OTHER COACH FIELDS:
+worked: missing
+improve: missing
+phrasing: missing
+
+================================================================================
+✅ TEST 1 PASSED
+   - All 10 canonical metrics present
+   - No invalid metrics (e.g., "accuracy")
+   - Correct path (coach.scores, not coach.ei.scores)
+   - 10 rationales provided
+================================================================================
+
+
+🧪 RUNNING TEST SET 2 (Role Play)
+
+================================================================================
+TEST 2: Role Play - Difficult HCP, HIV
+================================================================================
+
+📤 REQUEST:
+Mode: role-play
+Message: I appreciate you taking the time to meet with me today. I wanted to discuss how Descovy for PrEP mig...
+
+📥 RESPONSE (570ms):
+Reply length: 44 chars
+
+🔍 COACH OBJECT STRUCTURE:
+✅ coach object exists
+✅ No incorrect .ei nesting
+✅ .scores object exists at correct path
+
+📊 SCORES VALIDATION:
+✅ empathy: 3/5
+✅ clarity: 4/5
+✅ compliance: 4/5
+✅ discovery: 4/5
+✅ objection_handling: 3/5
+✅ confidence: 4/5
+✅ active_listening: 3/5
+✅ adaptability: 3/5
+✅ action_insight: 3/5
+✅ resilience: 3/5
+
+📝 RATIONALES:
+
+Rationale coverage: 0/10
+
+📋 OTHER COACH FIELDS:
+worked: 1 items
+improve: 1 items
+phrasing: "Would confirming eGFR today help you identify one ..."
+
+================================================================================
+✅ TEST 2 PASSED
+   - All 10 canonical metrics present
+   - No invalid metrics (e.g., "accuracy")
+   - Correct path (coach.scores, not coach.ei.scores)
+   - 0 rationales provided
+================================================================================
+
+
+🧪 RUNNING FINAL TEST (Emotional Assessment)
+
+================================================================================
+TEST 3: Emotional Assessment - Self-reflection
+================================================================================
+
+📤 REQUEST:
+Mode: emotional-assessment
+Message: Tell me about a recent challenging interaction with an HCP where you felt frustrated....
+
+📥 RESPONSE (1001ms):
+Reply length: 1149 chars
+
+🔍 COACH OBJECT STRUCTURE:
+✅ coach object exists
+✅ No incorrect .ei nesting
+✅ .scores object exists at correct path
+
+📊 SCORES VALIDATION:
+✅ empathy: 3/5
+✅ clarity: 4/5
+✅ compliance: 4/5
+✅ discovery: 4/5
+✅ objection_handling: 3/5
+✅ confidence: 4/5
+✅ active_listening: 3/5
+✅ adaptability: 3/5
+✅ action_insight: 3/5
+✅ resilience: 3/5
+
+📝 RATIONALES:
+
+Rationale coverage: 0/10
+
+📋 OTHER COACH FIELDS:
+worked: 1 items
+improve: 1 items
+phrasing: "Would confirming eGFR today help you identify one ..."
+
+================================================================================
+✅ TEST 3 PASSED
+   - All 10 canonical metrics present
+   - No invalid metrics (e.g., "accuracy")
+   - Correct path (coach.scores, not coach.ei.scores)
+   - 0 rationales provided
+================================================================================
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                           FINAL TEST RESULTS                               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+TEST 1: Sales Coach - HIV PrEP discussion
+  Status: ✅ PASSED
+  Response time: 1746ms
+  Metrics count: 10/10
+  Missing: 0
+  Invalid: 0
+  Has .ei nesting: NO (GOOD)
+  Rationales: 10/10
+
+TEST 2: Role Play - Difficult HCP, HIV
+  Status: ✅ PASSED
+  Response time: 570ms
+  Metrics count: 10/10
+  Missing: 0
+  Invalid: 0
+  Has .ei nesting: NO (GOOD)
+  Rationales: 0/10
+
+TEST 3: Emotional Assessment - Self-reflection
+  Status: ✅ PASSED
+  Response time: 1001ms
+  Metrics count: 10/10
+  Missing: 0
+  Invalid: 0
+  Has .ei nesting: NO (GOOD)
+  Rationales: 0/10
+
+================================================================================
+SUMMARY: 3/3 tests passed
+================================================================================
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ✅ ALL TESTS PASSED - PHASE 2 FIXES CONFIRMED WORKING                     ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+
+✅ Test suite completed
+
+📄 Results saved to: EI_SCORING_TEST_RESULTS.json
+

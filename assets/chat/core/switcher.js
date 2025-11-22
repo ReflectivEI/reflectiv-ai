@@ -2,8 +2,9 @@ import { createDisposer } from './disposables.js';
 const loaders = {
   'role-play':               () => import('../modes/rolePlay.js'),
   'sales-coach':             () => import('../modes/salesCoach.js'),
-  'emotional-intelligence':  () => import('../modes/emotionalIntelligence.js'),
+  'emotional-assessment':    () => import('../modes/emotionalIntelligence.js'),
   'product-knowledge':       () => import('../modes/productKnowledge.js'),
+  'general-knowledge':       () => import('../modes/productKnowledge.js'),
 };
 export function createModeSwitcher({bus, store}){
   let active=null;

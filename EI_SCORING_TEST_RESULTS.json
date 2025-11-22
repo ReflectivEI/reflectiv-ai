@@ -1,0 +1,77 @@
+{
+  "timestamp": "2025-11-12T23:07:28.790731",
+  "worker_url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
+  "results": [
+    {
+      "success": true,
+      "testNumber": 1,
+      "scenario": "Sales Coach - HIV PrEP discussion",
+      "metrics": {
+        "empathy": 4,
+        "clarity": 5,
+        "compliance": 5,
+        "discovery": 4,
+        "objection_handling": 3,
+        "confidence": 4,
+        "active_listening": 4,
+        "adaptability": 4,
+        "action_insight": 4,
+        "resilience": 4
+      },
+      "missingMetrics": [],
+      "invalidMetrics": [],
+      "hasEiNesting": false,
+      "rationaleCount": 10,
+      "elapsed": 1746.4802265167236
+    },
+    {
+      "success": true,
+      "testNumber": 2,
+      "scenario": "Role Play - Difficult HCP, HIV",
+      "metrics": {
+        "empathy": 3,
+        "clarity": 4,
+        "compliance": 4,
+        "discovery": 4,
+        "objection_handling": 3,
+        "confidence": 4,
+        "active_listening": 3,
+        "adaptability": 3,
+        "action_insight": 3,
+        "resilience": 3
+      },
+      "missingMetrics": [],
+      "invalidMetrics": [],
+      "hasEiNesting": false,
+      "rationaleCount": 0,
+      "elapsed": 569.9920654296875
+    },
+    {
+      "success": true,
+      "testNumber": 3,
+      "scenario": "Emotional Assessment - Self-reflection",
+      "metrics": {
+        "empathy": 3,
+        "clarity": 4,
+        "compliance": 4,
+        "discovery": 4,
+        "objection_handling": 3,
+        "confidence": 4,
+        "active_listening": 3,
+        "adaptability": 3,
+        "action_insight": 3,
+        "resilience": 3
+      },
+      "missingMetrics": [],
+      "invalidMetrics": [],
+      "hasEiNesting": false,
+      "rationaleCount": 0,
+      "elapsed": 1001.1708736419678
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}

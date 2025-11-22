@@ -1,0 +1,72 @@
+Debugger listening on ws://127.0.0.1:63402/e7d1e78a-c060-4c22-a6f7-836573186931
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+Loading main coaching site...
+Selecting HIV disease state...
+Selecting Role Play mode...
+Checking if widget is visible...
+Widget visible: true
+
+========== TURN 1 ==========
+Sending message: "Turn 1: Tell me about HIV treatment adherence."
+Turn 1 - Found 2 messages
+✅ Message 1 (user): Label "You" (class: speaker rep)
+✅ Message 2 (assistant): Label "Assistant" (class: speaker hcp)
+Turn 1 Summary: 2 labeled, 0 missing (100%)
+
+========== TURN 2 ==========
+Sending message: "Turn 2: Tell me about HIV treatment adherence."
+Turn 2 - Found 4 messages
+✅ Message 1 (user): Label "You" (class: speaker rep)
+✅ Message 2 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 3 (user): Label "You" (class: speaker rep)
+✅ Message 4 (assistant): Label "Assistant" (class: speaker hcp)
+Turn 2 Summary: 4 labeled, 0 missing (100%)
+
+========== TURN 3 ==========
+Sending message: "Turn 3: Tell me about HIV treatment adherence."
+Turn 3 - Found 6 messages
+✅ Message 1 (user): Label "You" (class: speaker rep)
+✅ Message 2 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 3 (user): Label "You" (class: speaker rep)
+✅ Message 4 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 5 (user): Label "You" (class: speaker rep)
+✅ Message 6 (assistant): Label "Assistant" (class: speaker hcp)
+Turn 3 Summary: 6 labeled, 0 missing (100%)
+
+========== TURN 4 ==========
+Sending message: "Turn 4: Tell me about HIV treatment adherence."
+Turn 4 - Found 8 messages
+✅ Message 1 (user): Label "You" (class: speaker rep)
+✅ Message 2 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 3 (user): Label "You" (class: speaker rep)
+✅ Message 4 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 5 (user): Label "You" (class: speaker rep)
+✅ Message 6 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 7 (user): Label "You" (class: speaker rep)
+✅ Message 8 (assistant): Label "Assistant" (class: speaker hcp)
+Turn 4 Summary: 8 labeled, 0 missing (100%)
+
+========== TURN 5 ==========
+Sending message: "Turn 5: Tell me about HIV treatment adherence."
+Turn 5 - Found 10 messages
+✅ Message 1 (user): Label "You" (class: speaker rep)
+✅ Message 2 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 3 (user): Label "You" (class: speaker rep)
+✅ Message 4 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 5 (user): Label "You" (class: speaker rep)
+✅ Message 6 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 7 (user): Label "You" (class: speaker rep)
+✅ Message 8 (assistant): Label "Assistant" (class: speaker hcp)
+✅ Message 9 (user): Label "You" (class: speaker rep)
+✅ Message 10 (assistant): Label "Assistant" (class: speaker hcp)
+Turn 5 Summary: 10 labeled, 0 missing (100%)
+
+========== FINAL SUMMARY ==========
+Total Messages: 30
+Labels Found: 30
+Labels Missing: 0
+Success Rate: 100%
+
+✅ Test complete. Browser will stay open for 30 seconds for manual inspection.
+Waiting for the debugger to disconnect...

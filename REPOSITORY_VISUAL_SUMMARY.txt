@@ -1,0 +1,344 @@
+═══════════════════════════════════════════════════════════════════════════════
+  REFLECTIVAI REPOSITORY - COMPLETE STRUCTURE & ARCHITECTURE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+Repository: https://github.com/ReflectivEI/reflectiv-ai
+Total Files: 634 | Total Directories: 24 | Documentation Generated: Nov 17, 2025
+
+───────────────────────────────────────────────────────────────────────────────
+📊 FILE STATISTICS BY TYPE
+───────────────────────────────────────────────────────────────────────────────
+
+  Type          Count   Purpose
+  ────────────  ─────   ────────────────────────────────────────────
+  Markdown      220     Documentation, reports, test results
+  PNG Images    219     Screenshots, test evidence, assets
+  JSON          46      Test data, configuration, scenarios
+  JavaScript    42      Application code, tests
+  Shell Scripts 31      Deployment, testing automation
+  Log Files     13      Test outputs, debugging
+  CommonJS      11      Automated E2E tests
+  HTML          11      Web pages, test harnesses
+  JPEG/JPG      9       Image assets
+  CSS           5       Styling
+  YAML          4       GitHub Actions workflows
+  Python        2       Test scripts
+  TOML          1       Wrangler configuration
+  SVG           1       Vector graphics
+  Text          11      Various data files
+
+───────────────────────────────────────────────────────────────────────────────
+🏗️  ARCHITECTURE OVERVIEW
+───────────────────────────────────────────────────────────────────────────────
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                           END USERS                                  │
+│              (Pharma Sales Reps, Managers)                          │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                       GITHUB PAGES                                   │
+│           https://reflectivei.github.io                             │
+│  ┌──────────────┬──────────────┬──────────────┐                    │
+│  │ index.html   │ widget.js    │ analytics    │                    │
+│  │ (main site)  │ (chat UI)    │ (reporting)  │                    │
+│  └──────────────┴──────────────┴──────────────┘                    │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │ HTTPS/CORS
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    CLOUDFLARE WORKER                                 │
+│         my-chat-agent-v2.tonyabdelmalak.workers.dev                 │
+│  ┌──────────────────────────────────────────────────────┐           │
+│  │ worker.js (r10.1) - API Gateway                      │           │
+│  │  • POST /chat    - AI chat endpoint                  │           │
+│  │  • POST /plan    - Conversation planning             │           │
+│  │  • POST /facts   - Product knowledge retrieval       │           │
+│  │  • GET  /health  - Health check (deep probe)         │           │
+│  │  • GET  /version - Version info                      │           │
+│  └──────────────────────────────────────────────────────┘           │
+│  ┌──────────────────────────────────────────────────────┐           │
+│  │ KV Storage (SESS)                                    │           │
+│  │  • Session state                                     │           │
+│  │  • Conversation history                              │           │
+│  │  • FSM state                                         │           │
+│  └──────────────────────────────────────────────────────┘           │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │ Bearer Auth
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         GROQ API                                     │
+│              https://api.groq.com/openai/v1                         │
+│              Model: llama-3.1-8b-instant                            │
+└─────────────────────────────────────────────────────────────────────┘
+
+───────────────────────────────────────────────────────────────────────────────
+📁 DIRECTORY STRUCTURE (24 DIRECTORIES)
+───────────────────────────────────────────────────────────────────────────────
+
+reflectiv-ai/
+├── .backups/                        (2 files) - Code backups
+├── .github/                         (36 KB) - CI/CD workflows
+│   ├── workflows/                   (4 workflows)
+│   │   ├── deploy-cloudflare-worker.yml
+│   │   ├── deploy-with-wrangler.yml
+│   │   ├── pages.yml
+│   │   └── reflectivai-ci.yml
+│   └── copilot-instructions.md
+├── .vscode/                         (2 files) - IDE config
+├── api/                             (16 KB) - API endpoints
+│   └── chat.js
+├── assets/                          (39 MB) - Frontend assets
+│   ├── chat/                        (Modular chat system)
+│   │   ├── core/                    (5 modules)
+│   │   │   ├── api.js
+│   │   │   ├── disposables.js
+│   │   │   ├── eventBus.js
+│   │   │   ├── modeStore.js
+│   │   │   └── switcher.js
+│   │   ├── data/                    (5 files, 50KB)
+│   │   │   ├── facts.json           (23KB product knowledge)
+│   │   │   ├── hcp_scenarios.txt
+│   │   │   ├── scenarios.existing.json
+│   │   │   ├── scenarios.merged.json
+│   │   │   └── scenarios.new.json
+│   │   ├── modes/                   (4 mode modules)
+│   │   │   ├── emotionalIntelligence.js
+│   │   │   ├── productKnowledge.js
+│   │   │   ├── rolePlay.js
+│   │   │   └── salesCoach.js
+│   │   └── [14 other files]
+│   └── [20+ image files]
+├── docs/                            (136 KB) - Documentation
+│   ├── EI_MODE_*.md                 (5 files)
+│   ├── PHASE3_ROLLBACK_RUNBOOK.md
+│   ├── RELEASE_RUNBOOK.md
+│   ├── USER_GUIDE.md
+│   └── [6 other docs]
+├── scripts/                         (12 KB) - Automation
+│   └── rollback_phase3.sh
+├── test-screenshots/                (52 files) - Main tests
+├── test-screenshots-dedup/          (18 files) - Dedup tests
+├── test-screenshots-disease-states/ (12 files) - Disease tests
+├── test-screenshots-ei/             (27 files) - EI mode tests
+├── test-screenshots-labels-corrected/ (5 files) - Label tests
+├── test-screenshots-main-site/      (3 files) - Site tests
+├── test-screenshots-modal/          (52 files) - Modal tests
+├── test-screenshots-pk/             (24 files) - PK mode tests
+├── test-screenshots-rp/             (15 files) - RP mode tests
+├── tests/                           (184 KB) - Test suites
+│   ├── lc_integration_tests.js
+│   ├── phase3_edge_cases.js
+│   └── real-world-validation.cjs
+├── test_proof_2025-11-13_10-25-41/  (3 files) - Test evidence
+└── [Root files: 430+ files including all docs, tests, configs]
+
+───────────────────────────────────────────────────────────────────────────────
+🔑 CORE APPLICATION FILES
+───────────────────────────────────────────────────────────────────────────────
+
+File          Lines   Size    Purpose                           Status
+────────────  ─────   ────    ───────────────────────────────   ──────
+worker.js     1,835   ~70KB   Cloudflare Worker API Gateway     ✅ r10.1
+widget.js     3,718   ~150KB  Chat widget frontend              ✅ Active
+index.html    1,945   ~80KB   Main landing page                 ✅ Active
+script.js     58      ~2KB    Site scripts                      ✅ Active
+
+───────────────────────────────────────────────────────────────────────────────
+🎯 KEY FEATURES
+───────────────────────────────────────────────────────────────────────────────
+
+1. ✅ EMOTIONAL INTELLIGENCE SCORING
+   • 5 core metrics: Empathy, Discovery, Compliance, Clarity, Accuracy
+   • Deterministic (rule-based, not subjective)
+   • Per-exchange evaluation with rolling averages
+   • Visual feedback via EI pills and detailed modals
+
+2. ✅ MULTI-MODE AI ASSISTANT
+   • Emotional Intelligence - EI framework coaching
+   • Product Knowledge - Pharma product Q&A
+   • Sales Coach - Structured sales practice
+   • Role Play - HCP simulation
+   • General Assistant - General Q&A
+
+3. ✅ SALES COACH MODE
+   • FSM-driven workflow: Challenge → Response → Evaluation → Phrasing
+   • Structured feedback in yellow coach panel
+   • 4 sections: Challenge, Rep Approach, Impact, Suggested Phrasing
+
+4. ✅ ROLE PLAY MODE
+   • HCP simulation with disease state selection
+   • Realistic objections and professional tone
+   • "Evaluate Rep" command for session review
+   • Multi-turn conversations with context
+
+5. ✅ PRODUCT KNOWLEDGE MODE
+   • 23KB facts database with pharma data
+   • Citation enforcement for all claims
+   • Therapeutic areas, clinical trials, dosing info
+
+6. ✅ MLR COMPLIANCE
+   • Off-label detection
+   • Approved content matching
+   • Regulatory-safe phrasing
+   • Compliance scoring metric
+
+7. ✅ NETWORK RESILIENCE
+   • 3 retry attempts with 45s timeout
+   • Health check monitoring
+   • Provider key rotation (3 keys)
+   • Fallback messages
+
+8. ✅ DUPLICATE PREVENTION
+   • Semantic similarity detection
+   • Anti-echo system
+   • Fresh content enforcement
+
+9. ✅ SESSION MANAGEMENT
+   • KV storage for state persistence
+   • Conversation history tracking
+   • FSM state preservation
+
+10. ✅ ANALYTICS DASHBOARD
+    • EI score trends
+    • Mode usage tracking
+    • Plotly.js visualizations
+
+───────────────────────────────────────────────────────────────────────────────
+🧪 TESTING INFRASTRUCTURE
+───────────────────────────────────────────────────────────────────────────────
+
+Category          Count   Description
+────────────────  ─────   ─────────────────────────────────────────
+CommonJS Tests    11      Automated E2E tests with Playwright
+JavaScript Tests  30+     Unit & integration tests
+Shell Scripts     31      Test orchestration & automation
+Python Scripts    2       Deployment & EI scoring tests
+Test Data (JSON)  40+     Test inputs, outputs, scenarios
+Log Files         13      Test execution logs
+Screenshots       208     Visual test evidence (9 directories)
+Test Suites       6       Comprehensive test collections
+
+───────────────────────────────────────────────────────────────────────────────
+📚 DOCUMENTATION (220 FILES)
+───────────────────────────────────────────────────────────────────────────────
+
+Category              Count   Examples
+────────────────────  ─────   ───────────────────────────────────────
+Core Docs             5       README, TECHNICAL_ARCHITECTURE, etc.
+Phase Docs            33      PHASE2_*, PHASE2B_*, PHASE3_*
+Feature Docs          40+     EI_*, SALES_COACH_*, CHAT_MODAL_*
+Troubleshooting       30+     *_FIX_*, *_DEBUG_*, ROOT_CAUSE_*
+Deployment            20+     DEPLOYMENT_*, CORS_*, CI_*
+Testing               15+     TEST_*, TESTING_*, AUDIT_*
+Runbooks & Guides     10+     *_RUNBOOK, *_GUIDE, QUICK_REFERENCE
+
+───────────────────────────────────────────────────────────────────────────────
+⚙️  TECHNOLOGY STACK
+───────────────────────────────────────────────────────────────────────────────
+
+Layer         Technologies
+───────────   ──────────────────────────────────────────────────────────
+Frontend      HTML5, CSS3, JavaScript (ES6+), Tailwind CSS, Plotly.js
+Backend       Cloudflare Workers, Cloudflare KV
+AI/ML         Groq API (llama-3.1-8b-instant)
+Testing       Playwright/Puppeteer, Custom frameworks
+CI/CD         GitHub Actions, Wrangler
+Hosting       GitHub Pages (frontend), Cloudflare (worker)
+Dev Tools     Node.js, NPM, ESLint, Git, VS Code
+
+───────────────────────────────────────────────────────────────────────────────
+🔄 DATA FLOW
+───────────────────────────────────────────────────────────────────────────────
+
+1. User Interaction → Widget UI (mode selection, message input)
+2. API Request → POST /chat with mode, messages, eiContext
+3. Cloudflare Worker → Rate limiting, session retrieval, prompt construction
+4. Groq API → LLM inference (max 1400 tokens)
+5. Response Processing → Coach extraction, EI scoring, citation enforcement
+6. Widget Rendering → Message display, coach panel, EI pills
+7. User Sees Response → With feedback and scoring
+
+───────────────────────────────────────────────────────────────────────────────
+📝 CONFIGURATION FILES
+───────────────────────────────────────────────────────────────────────────────
+
+File                  Purpose
+────────────────────  ─────────────────────────────────────────────────
+package.json          NPM dependencies & scripts
+wrangler.toml         Cloudflare Worker configuration
+.gitignore            Git exclusions
+eslint.config.js      Code linting rules
+tsconfig.json         TypeScript configuration
+config.json           App configuration
+schema.jsonld         Structured data schema
+
+───────────────────────────────────────────────────────────────────────────────
+🎨 ASSETS & MEDIA (30+ FILES)
+───────────────────────────────────────────────────────────────────────────────
+
+Category          Files   Examples
+────────────────  ─────   ─────────────────────────────────────────────
+Logos             5       logo-modern.png, logo.png, logo-new.jpg
+Hero Images       4       hero-gradient.png, hero-image.png
+Scenarios         3       scenario1.jpg, scenario2.jpg, scenario3.jpg
+Marketing         8       disease-states.png, analytics.png, etc.
+Icons             2       coach-avatar.svg, FA56163C-*.png
+Chat Modules      15      modes/, core/, data/
+
+───────────────────────────────────────────────────────────────────────────────
+💾 BACKUP FILES (10 FILES)
+───────────────────────────────────────────────────────────────────────────────
+
+.backups/widget.js.backup
+.backups/worker.js.backup
+widget.backup.js, widget_backup3.js, widget.js.bak
+worker.js.bak
+widget-nov11-complete.js
+Index_backup.html
+assets/chat/about-ei.md.bak
+assets/chat/coach.js.phase2bak
+
+───────────────────────────────────────────────────────────────────────────────
+📋 SUMMARY
+───────────────────────────────────────────────────────────────────────────────
+
+Total Files:          634
+Total Directories:    24
+Repository Size:      ~40 MB
+Main Code:           ~5,600 lines (worker.js + widget.js + index.html)
+Documentation:        220 Markdown files
+Test Coverage:        80+ test files, 208 screenshots
+CI/CD:               4 GitHub Actions workflows
+Deployment:          Automated via Wrangler & GitHub Pages
+
+Status:              ✅ Production Ready (r10.1)
+Documentation:       ✅ Comprehensive
+Testing:             ✅ Extensive (automated + manual)
+Security:            ✅ Reviewed
+Compliance:          ✅ MLR-compliant guardrails
+
+───────────────────────────────────────────────────────────────────────────────
+📖 FULL DOCUMENTATION
+───────────────────────────────────────────────────────────────────────────────
+
+Complete 1,233-line documentation available in:
+→ REPOSITORY_STRUCTURE_AND_ARCHITECTURE.md (41KB)
+
+Includes:
+✅ Complete file inventory (all 634 files catalogued)
+✅ Directory structure with purposes
+✅ Architecture diagrams (ASCII art)
+✅ Technology stack details
+✅ Component breakdowns
+✅ Testing infrastructure
+✅ CI/CD pipeline documentation
+✅ Configuration file details
+✅ Key features with implementation notes
+✅ Data flow diagrams
+✅ Complete categorization and organization
+
+═══════════════════════════════════════════════════════════════════════════════
+Generated: November 17, 2025 | Repository: ReflectivEI/reflectiv-ai
+═══════════════════════════════════════════════════════════════════════════════

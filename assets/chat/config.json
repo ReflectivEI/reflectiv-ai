@@ -2,16 +2,18 @@
 {
   "version": "2025-10-14",
   "schemaVersion": "coach-v2",
-  "model": "llama-3.1-70b-versatile",
+  "model": "llama-3.1-8b-instant",
   "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
-  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
-  "stream": true,
+  "workerUrlFallback": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
+  "stream": false,
   "modes": [
+    "sales-coach",
+    "role-play",
     "emotional-assessment",
     "product-knowledge",
-    "sales-simulation"
+    "general-knowledge"
   ],
-  "defaultMode": "sales-simulation",
+  "defaultMode": "sales-coach",
   "analyticsEndpoint": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
   "brand": { "accent": "#2f3a4f", "radius": "14px" },
   "scenariosUrl": "assets/chat/data/scenarios.merged.json",

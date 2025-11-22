@@ -1,3 +1,9 @@
 node_modules/
 npm-debug.log
 .DS_Store
+
+# Vercel (not used - Cloudflare Workers only)
+.vercel
+.vercelignore
+vercel.json
+wrangler.toml.bak

@@ -1,0 +1,204 @@
+{
+  "timestamp": "2025-11-12T23:11:15.985Z",
+  "url": "https://reflectivei.github.io/reflectiv-ai/",
+  "tests": [
+    {
+      "name": "Page loads",
+      "status": "PASS",
+      "details": {
+        "url": "https://reflectivei.github.io/reflectiv-ai/"
+      }
+    },
+    {
+      "name": "Select EI mode",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Send emotional message",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "10 EI pills appeared",
+      "status": "PASS",
+      "details": {
+        "pills": [
+          {
+            "metric": "empathy",
+            "text": "Empathy\n            3/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "clarity",
+            "text": "Clarity\n            4/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "compliance",
+            "text": "Compliance\n            3/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "discovery",
+            "text": "Discovery\n            4/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "objection_handling",
+            "text": "Objection Handling\n            2/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "confidence",
+            "text": "Confidence\n            3/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "active_listening",
+            "text": "Active Listening\n            3/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "adaptability",
+            "text": "Adaptability\n            2/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "action_insight",
+            "text": "Action Insight\n            3/5",
+            "hasGradient": true
+          },
+          {
+            "metric": "resilience",
+            "text": "Resilience\n            2/5",
+            "hasGradient": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "Modal content for empathy",
+      "status": "PASS",
+      "details": {
+        "title": "Empathy Score",
+        "textLength": 1022,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for clarity",
+      "status": "PASS",
+      "details": {
+        "title": "Clarity Index",
+        "textLength": 872,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for compliance",
+      "status": "PASS",
+      "details": {
+        "title": "Compliance Accuracy",
+        "textLength": 815,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for discovery",
+      "status": "PASS",
+      "details": {
+        "title": "Discovery Effectiveness",
+        "textLength": 892,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for objection_handling",
+      "status": "PASS",
+      "details": {
+        "title": "Objection Handling Score",
+        "textLength": 900,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for confidence",
+      "status": "PASS",
+      "details": {
+        "title": "Confidence/Readiness Index",
+        "textLength": 874,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for active_listening",
+      "status": "PASS",
+      "details": {
+        "title": "Active Listening Ratio",
+        "textLength": 920,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for adaptability",
+      "status": "PASS",
+      "details": {
+        "title": "Emotional Adaptability Score",
+        "textLength": 959,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for action_insight",
+      "status": "PASS",
+      "details": {
+        "title": "Action/Insight Ratio",
+        "textLength": 891,
+        "hasAllSections": true
+      }
+    },
+    {
+      "name": "Modal content for resilience",
+      "status": "PASS",
+      "details": {
+        "title": "Resilience/Regulation Index",
+        "textLength": 904,
+        "hasAllSections": true
+      }
+    }
+  ],
+  "screenshots": [
+    "./test-screenshots-modal/ei_mode_selected_1762989082565.png",
+    "./test-screenshots-modal/pills_appeared_1762989092624.png",
+    "./test-screenshots-modal/modal_empathy_1762989093594.png",
+    "./test-screenshots-modal/modal_clarity_1762989094859.png",
+    "./test-screenshots-modal/modal_compliance_1762989096132.png",
+    "./test-screenshots-modal/modal_discovery_1762989097399.png",
+    "./test-screenshots-modal/modal_objection_handling_1762989098655.png",
+    "./test-screenshots-modal/modal_confidence_1762989099910.png",
+    "./test-screenshots-modal/modal_active_listening_1762989101232.png",
+    "./test-screenshots-modal/modal_adaptability_1762989102538.png",
+    "./test-screenshots-modal/modal_action_insight_1762989103816.png",
+    "./test-screenshots-modal/modal_resilience_1762989105127.png",
+    "./test-screenshots-modal/final_state_1762989105900.png"
+  ],
+  "consoleLogs": [
+    "[CONSOLE WARN] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation",
+    "[CONSOLE LOG] [Citations] Loaded 5 references",
+    "[CONSOLE LOG] [DEBUG] About to run initial health check...",
+    "[CONSOLE LOG] [DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+    "[CONSOLE LOG] [DEBUG] Health check PASSED, isHealthy set to TRUE",
+    "[CONSOLE LOG] [DEBUG] Initial health check complete, result: true , isHealthy: true",
+    "[CONSOLE LOG] [DEBUG] Send button clicked!",
+    "[CONSOLE LOG] [DEBUG] Message text: I feel overwhelmed with work stress",
+    "[CONSOLE LOG] [DEBUG] sendMessage() called with text: I feel overwhelmed with work stress",
+    "[CONSOLE LOG] [DEBUG] isSending: false , isHealthy: true",
+    "[CONSOLE LOG] [DEBUG] Passed health gate, proceeding with send",
+    "[CONSOLE TABLE] JSHandle@array"
+  ],
+  "totalTests": 14,
+  "passed": 14,
+  "failed": 0,
+  "skipped": 0
+}

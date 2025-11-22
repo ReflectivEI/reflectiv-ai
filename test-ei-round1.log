@@ -1,0 +1,71 @@
+Debugger listening on ws://127.0.0.1:60374/618a6ce7-6558-464f-aa35-8ebe42af52c6
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+🚀 Starting EI Pills Test...
+URL: https://reflectivei.github.io/reflectiv-ai/
+Time: 2025-11-12T22:56:16.343Z
+
+
+[TEST 1] Loading page...
+[CONSOLE WARN] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+[CONSOLE LOG] [Citations] Loaded 5 references
+[CONSOLE LOG] [DEBUG] About to run initial health check...
+[CONSOLE LOG] [DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health
+[CONSOLE LOG] [DEBUG] Health check PASSED, isHealthy set to TRUE
+[CONSOLE LOG] [DEBUG] Initial health check complete, result: true , isHealthy: true
+📸 Screenshot: test-screenshots-ei/ei_test_1_loaded_1762988183610.png
+[PASS] Page loaded
+
+[TEST 2] Select Emotional Intelligence mode...
+📸 Screenshot: test-screenshots-ei/ei_test_2_mode_selected_1762988185384.png
+[PASS] EI mode selected
+
+[TEST 3] Send emotional message...
+📸 Screenshot: test-screenshots-ei/ei_test_3_message_entered_1762988186525.png
+[CONSOLE LOG] [EI TEST] Clicking send button...
+[CONSOLE LOG] [DEBUG] Send button clicked!
+[CONSOLE LOG] [DEBUG] Message text: I felt really frustrated and overwhelmed when the HCP dismissed my product information
+[CONSOLE LOG] [DEBUG] sendMessage() called with text: I felt really frustrated and overwhelmed when the HCP dismissed my product information
+[CONSOLE LOG] [DEBUG] isSending: false , isHealthy: true
+[CONSOLE LOG] [DEBUG] Passed health gate, proceeding with send
+[CONSOLE TABLE] JSHandle@array
+📸 Screenshot: test-screenshots-ei/ei_test_3_message_sent_1762988188197.png
+[PASS] Message sent
+⏳ Waiting for AI response with EI pills...
+📸 Screenshot: test-screenshots-ei/ei_test_4_response_received_1762988191862.png
+[PASS] Response received
+
+[TEST 4] Checking for EI pills...
+[CONSOLE LOG] [EI TEST] Found pills: 10
+Found 10 EI pills
+[PASS] 10 EI pills present
+📸 Screenshot: test-screenshots-ei/ei_test_4_pills_found_1762988192509.png
+
+[TEST 5] Checking pill gradients...
+[PASS] Pills have gradient backgrounds
+
+[TEST 6] Testing pill click for modal...
+[CONSOLE LOG] [EI TEST] Clicking first pill: 
+            Empathy
+            3/5
+          
+📸 Screenshot: test-screenshots-ei/ei_test_6_pill_clicked_1762988194160.png
+[CONSOLE LOG] [EI TEST] Modal exists: true
+[PASS] Modal opens on pill click
+📸 Screenshot: test-screenshots-ei/ei_test_6_modal_open_1762988194805.png
+📸 Screenshot: test-screenshots-ei/ei_test_final_1762988195945.png
+
+============================================================
+EI PILLS TEST SUMMARY
+============================================================
+Total Tests: 7
+✅ Passed: 7
+❌ Failed: 0
+⏭️  Skipped: 0
+
+📸 Screenshots: 9
+📋 Console Logs: 16
+============================================================
+
+✅ Results saved to: test-ei-results.json
+Waiting for the debugger to disconnect...

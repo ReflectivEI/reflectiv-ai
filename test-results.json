@@ -1,0 +1,729 @@
+{
+  "timestamp": "2025-11-12T23:04:13.257Z",
+  "url": "https://reflectivei.github.io/reflectiv-ai/",
+  "tests": [
+    {
+      "name": "Page loads",
+      "status": "PASS",
+      "details": {
+        "url": "https://reflectivei.github.io/reflectiv-ai/"
+      },
+      "timestamp": "2025-11-12T23:04:19.792Z"
+    },
+    {
+      "name": "widget.js loaded",
+      "status": "PASS",
+      "details": {
+        "url": "https://reflectivei.github.io/reflectiv-ai/widget.js?v=20251110-1243",
+        "status": 200
+      },
+      "timestamp": "2025-11-12T23:04:19.792Z"
+    },
+    {
+      "name": "Widget appears on page",
+      "status": "PASS",
+      "details": {},
+      "timestamp": "2025-11-12T23:04:19.796Z"
+    },
+    {
+      "name": "Dropdown has 5 modes",
+      "status": "PASS",
+      "details": {
+        "modes": [
+          "Emotional Intelligence",
+          "Product Knowledge",
+          "Sales Coach",
+          "Role Play",
+          "General Assistant"
+        ],
+        "expected": [
+          "Emotional Intelligence",
+          "Product Knowledge",
+          "Sales Coach",
+          "Role Play",
+          "General Assistant"
+        ]
+      },
+      "timestamp": "2025-11-12T23:04:20.434Z"
+    },
+    {
+      "name": "Select Sales Coach mode",
+      "status": "PASS",
+      "details": {},
+      "timestamp": "2025-11-12T23:04:22.081Z"
+    },
+    {
+      "name": "Send test message",
+      "status": "PASS",
+      "details": {
+        "message": "I struggle with HCP objections about drug cost"
+      },
+      "timestamp": "2025-11-12T23:04:24.968Z"
+    },
+    {
+      "name": "Response received",
+      "status": "PASS",
+      "details": {},
+      "timestamp": "2025-11-12T23:04:27.620Z"
+    },
+    {
+      "name": "10 EI pills present",
+      "status": "FAIL",
+      "details": {
+        "found": 0,
+        "expected": 10,
+        "pills": []
+      },
+      "timestamp": "2025-11-12T23:04:27.622Z"
+    },
+    {
+      "name": "Pills have gradient backgrounds",
+      "status": "FAIL",
+      "details": {
+        "reason": "No gradients detected",
+        "backgrounds": []
+      },
+      "timestamp": "2025-11-12T23:04:27.624Z"
+    },
+    {
+      "name": "Modal opens on pill click",
+      "status": "FAIL",
+      "details": {
+        "reason": "#metric-modal not found after click"
+      },
+      "timestamp": "2025-11-12T23:04:29.269Z"
+    },
+    {
+      "name": "Citations present",
+      "status": "PASS",
+      "details": {
+        "count": 3,
+        "citations": [
+          {
+            "text": "[001]",
+            "href": "https://www.cdc.gov/hiv/guidelines/preventing.html",
+            "style": "background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd"
+          },
+          {
+            "text": "[002]",
+            "href": "https://www.accessdata.fda.gov/drugsatfda_docs/label/2024/208215s022lbl.pdf",
+            "style": "background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd"
+          },
+          {
+            "text": "[003]",
+            "href": "https://www.cdc.gov/hiv/pdf/risk/prep/cdc-hiv-prep-guidelines-2021.pdf",
+            "style": "background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd"
+          }
+        ]
+      },
+      "timestamp": "2025-11-12T23:04:29.270Z"
+    },
+    {
+      "name": "General Assistant mode works",
+      "status": "FAIL",
+      "details": {
+        "error": "Waiting failed: 30000ms exceeded"
+      },
+      "timestamp": "2025-11-12T23:05:03.081Z"
+    }
+  ],
+  "consoleLogs": [
+    {
+      "type": "warn",
+      "text": "cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation",
+      "timestamp": "2025-11-12T23:04:15.833Z"
+    },
+    {
+      "type": "log",
+      "text": "[Citations] Loaded 5 references",
+      "timestamp": "2025-11-12T23:04:16.969Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] About to run initial health check...",
+      "timestamp": "2025-11-12T23:04:16.972Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+      "timestamp": "2025-11-12T23:04:16.973Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Health check PASSED, isHealthy set to TRUE",
+      "timestamp": "2025-11-12T23:04:17.029Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Initial health check complete, result: true , isHealthy: true",
+      "timestamp": "2025-11-12T23:04:17.030Z"
+    },
+    {
+      "type": "log",
+      "text": "[TEST] Found send button: JSHandle@node",
+      "timestamp": "2025-11-12T23:04:23.307Z"
+    },
+    {
+      "type": "log",
+      "text": "[TEST] Clicking send button...",
+      "timestamp": "2025-11-12T23:04:23.307Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Send button clicked!",
+      "timestamp": "2025-11-12T23:04:23.308Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Message text: I struggle with HCP objections about drug cost",
+      "timestamp": "2025-11-12T23:04:23.308Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] sendMessage() called with text: I struggle with HCP objections about drug cost",
+      "timestamp": "2025-11-12T23:04:23.309Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] isSending: false , isHealthy: true",
+      "timestamp": "2025-11-12T23:04:23.310Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Passed health gate, proceeding with send",
+      "timestamp": "2025-11-12T23:04:23.310Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] ========== SALES COACH MESSAGE ==========",
+      "timestamp": "2025-11-12T23:04:25.806Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] currentMode: sales-simulation",
+      "timestamp": "2025-11-12T23:04:25.806Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] m.role: assistant",
+      "timestamp": "2025-11-12T23:04:25.807Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] Has cached HTML? false",
+      "timestamp": "2025-11-12T23:04:25.807Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] rawContent preview: Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.  Rep Approach: • Discuss the long-term cost-effectiveness of PrEP, as recommended for individuals",
+      "timestamp": "2025-11-12T23:04:25.808Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] normalized preview: Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.  Rep Approach: • Discuss the long-term cost-effectiveness of PrEP, as recommended for individuals",
+      "timestamp": "2025-11-12T23:04:25.809Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] NO CACHE - Formatting now...",
+      "timestamp": "2025-11-12T23:04:25.809Z"
+    },
+    {
+      "type": "log",
+      "text": "[Sales Coach Format] Input text: Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.  Rep Approach: • Discuss the long-term cost-effectiveness of PrEP, as recommended for individuals",
+      "timestamp": "2025-11-12T23:04:25.810Z"
+    },
+    {
+      "type": "log",
+      "text": "[Sales Coach Format] Matches: JSHandle@object",
+      "timestamp": "2025-11-12T23:04:25.810Z"
+    },
+    {
+      "type": "log",
+      "text": "[Sales Coach Format] Successfully formatted 2948 chars",
+      "timestamp": "2025-11-12T23:04:25.811Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] Cached HTML length: 2948",
+      "timestamp": "2025-11-12T23:04:25.811Z"
+    },
+    {
+      "type": "log",
+      "text": "[renderMessages] Cached HTML preview: <div class=\"sales-sim-section\"><div class=\"section-header\"><strong>Challenge:</strong></div><div class=\"section-content\">The HCP may be hesitant to prescribe PrEP due to concerns about the cost of the medication.</div></div>\n\n<div class=\"sales-sim-section\"><div class=\"section-header\"><strong>Rep App",
+      "timestamp": "2025-11-12T23:04:25.811Z"
+    },
+    {
+      "type": "table",
+      "text": "JSHandle@array",
+      "timestamp": "2025-11-12T23:04:25.812Z"
+    },
+    {
+      "type": "log",
+      "text": "[TEST] Found send button for General mode: JSHandle@node",
+      "timestamp": "2025-11-12T23:04:32.075Z"
+    },
+    {
+      "type": "log",
+      "text": "[TEST] Clicking send button for General mode...",
+      "timestamp": "2025-11-12T23:04:32.075Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Send button clicked!",
+      "timestamp": "2025-11-12T23:04:32.076Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Message text: What's the capital of France?",
+      "timestamp": "2025-11-12T23:04:32.076Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] sendMessage() called with text: What's the capital of France?",
+      "timestamp": "2025-11-12T23:04:32.077Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] isSending: false , isHealthy: true",
+      "timestamp": "2025-11-12T23:04:32.077Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Passed health gate, proceeding with send",
+      "timestamp": "2025-11-12T23:04:32.078Z"
+    },
+    {
+      "type": "log",
+      "text": "[Auto-Detect] Switched from general-knowledge → product-knowledge for general question",
+      "timestamp": "2025-11-12T23:04:32.079Z"
+    },
+    {
+      "type": "table",
+      "text": "JSHandle@array",
+      "timestamp": "2025-11-12T23:04:33.042Z"
+    }
+  ],
+  "networkCalls": [
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:14.476Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:15.542Z"
+    },
+    {
+      "type": "request",
+      "url": "https://cdn.tailwindcss.com/",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:15.556Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/hero-image.png",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:15.556Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei-modal.js?v=1",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:15.557Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/hero-image.png",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:15.562Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei-modal.js?v=1",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:15.600Z"
+    },
+    {
+      "type": "response",
+      "url": "https://cdn.tailwindcss.com/",
+      "status": 302,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:15.670Z"
+    },
+    {
+      "type": "request",
+      "url": "https://cdn.tailwindcss.com/3.4.17",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:15.670Z"
+    },
+    {
+      "type": "response",
+      "url": "https://cdn.tailwindcss.com/3.4.17",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:15.749Z"
+    },
+    {
+      "type": "request",
+      "url": "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:15.835Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/styles.css?v=20251021B",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:15.835Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.css?v=20251021-4",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:15.836Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/styles.css?v=20251021B",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:15.891Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.css?v=20251021-4",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:15.893Z"
+    },
+    {
+      "type": "response",
+      "url": "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.023Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/ei-context.js?v=1",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.024Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/ei-context.js?v=1",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.110Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.js?v=20251110-1243",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.218Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.218Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.219Z"
+    },
+    {
+      "type": "request",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.280Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.js?v=20251110-1243",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.298Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/config.json",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.311Z"
+    },
+    {
+      "type": "response",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.428Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/config.json",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.451Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/system.md",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.452Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/system.md",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.580Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei.md",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.602Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei.md",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.757Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/data/scenarios.merged.json",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.767Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/data/scenarios.merged.json",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.912Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/citations.json?1762988656922",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.924Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.924Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.925Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/citations.json?1762988656922",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:16.949Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:16.986Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:17.029Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei.md",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:23.324Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/config.json",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:23.325Z"
+    },
+    {
+      "type": "request",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/persona.json",
+      "method": "GET",
+      "timestamp": "2025-11-12T23:04:23.325Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei.md",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:23.325Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/config.json",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:23.326Z"
+    },
+    {
+      "type": "response",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/persona.json",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:23.326Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "method": "OPTIONS",
+      "timestamp": "2025-11-12T23:04:23.334Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "method": "POST",
+      "timestamp": "2025-11-12T23:04:23.346Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "status": 204,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:23.350Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:24.967Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "method": "POST",
+      "timestamp": "2025-11-12T23:04:24.967Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:25.805Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
+      "method": "OPTIONS",
+      "timestamp": "2025-11-12T23:04:25.812Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
+      "method": "POST",
+      "timestamp": "2025-11-12T23:04:25.823Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
+      "status": 204,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:25.823Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:25.836Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "method": "POST",
+      "timestamp": "2025-11-12T23:04:32.079Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:33.039Z"
+    },
+    {
+      "type": "request",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
+      "method": "POST",
+      "timestamp": "2025-11-12T23:04:33.062Z"
+    },
+    {
+      "type": "response",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/coach-metrics",
+      "status": 200,
+      "statusText": "",
+      "timestamp": "2025-11-12T23:04:33.068Z"
+    }
+  ],
+  "errors": [],
+  "screenshots": [
+    {
+      "name": "test_1_page_loaded",
+      "filepath": "test-screenshots/test_1_page_loaded_1762988659078.png"
+    },
+    {
+      "name": "test_3_widget_visible",
+      "filepath": "test-screenshots/test_3_widget_visible_1762988659797.png"
+    },
+    {
+      "name": "test_5_sales_coach_selected",
+      "filepath": "test-screenshots/test_5_sales_coach_selected_1762988661437.png"
+    },
+    {
+      "name": "test_6_message_entered",
+      "filepath": "test-screenshots/test_6_message_entered_1762988662584.png"
+    },
+    {
+      "name": "test_6_message_sent",
+      "filepath": "test-screenshots/test_6_message_sent_1762988664327.png"
+    },
+    {
+      "name": "test_6_response_received",
+      "filepath": "test-screenshots/test_6_response_received_1762988666978.png"
+    },
+    {
+      "name": "test_9_modal_opened",
+      "filepath": "test-screenshots/test_9_modal_opened_1762988668627.png"
+    },
+    {
+      "name": "test_10_citations",
+      "filepath": "test-screenshots/test_10_citations_1762988669270.png"
+    },
+    {
+      "name": "test_11_general_mode_selected",
+      "filepath": "test-screenshots/test_11_general_mode_selected_1762988670932.png"
+    },
+    {
+      "name": "final_state",
+      "filepath": "test-screenshots/final_state_1762988703082.png"
+    }
+  ]
+}

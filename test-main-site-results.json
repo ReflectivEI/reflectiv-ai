@@ -1,0 +1,382 @@
+{
+  "timestamp": "2025-11-13T00:24:55.121Z",
+  "url": "https://reflectivei.github.io/reflectiv-ai/",
+  "tests": [
+    {
+      "name": "Main site loads",
+      "status": "PASS",
+      "details": {
+        "url": "https://reflectivei.github.io/reflectiv-ai/"
+      }
+    },
+    {
+      "name": "Page has content",
+      "status": "PASS",
+      "details": {
+        "title": "ReflectivAI – AI Sales Enablement for Life Sciences",
+        "hasBody": true,
+        "bodyHTML": "\n  <noscript>\n    <div style=\"background:#0f2747;color:#fff;padding:10px 16px;text-align:center\">\n      JavaScript is required to use ReflectivAI’s interactive coach and help assistant.\n    </div>\n  </noscript>\n\n  <!-- Header & Navigation (Navy bg, Teal underline) -->\n  <header class=\"site_header fixed top-0 left-0 w-full z-50\">\n    <nav class=\"nav\" aria-label=\"Primary\">\n      <!-- Brand -->\n      <a href=\"#home\" class=\"brand\" aria-label=\"ReflectivAI home\">\n        <img src=\"logo-modern.png\" alt",
+        "allElements": 492,
+        "headings": [
+          "Connect and Convert with\n          Intelligence",
+          "Traditional Training vs ReflectivAI Impact",
+          "Traditional Training",
+          "ReflectivAI Impact",
+          "Platform Modules",
+          "Sales Coach",
+          "Product Knowledge",
+          "Role Play",
+          "Relationship Intelligence",
+          "EI-Driven Coaching",
+          "How the Coach Works",
+          "Real-Time, Actionable Coaching",
+          "Performance Analytics & Coaching Intelligence",
+          "Train by Therapeutic Area",
+          "Practice with Realistic Personas",
+          "Ethics, Privacy & Governance",
+          "Let's Redefine Your Sales Training",
+          "Coach Feedback"
+        ],
+        "buttons": [
+          "",
+          "Oncology",
+          "Vaccines",
+          "HIV PrEP",
+          "Cardiology",
+          "Pulmonology",
+          "Hepatitis B",
+          "+ Custom Scenarios",
+          "Internal Medicine MD",
+          "Oncologist",
+          "Nurse Practitioner (NP)",
+          "Infectious Disease Specialist",
+          "Cardiologist",
+          "Physician Assistant (PA)",
+          "Close",
+          "OK",
+          "Request Demo",
+          "Close",
+          "Close",
+          "Send",
+          "",
+          "×",
+          "Send",
+          "Close"
+        ],
+        "inputs": [
+          "text",
+          "email",
+          "textarea",
+          "hidden",
+          "Type your message…",
+          "Ask about ReflectivAI…"
+        ],
+        "scripts": [
+          "https://cdn.tailwindcss.com/",
+          "https://reflectivei.github.io/reflectiv-ai/assets/chat/ei-context.js?v=1",
+          "https://reflectivei.github.io/reflectiv-ai/widget.js?v=20251110-1243",
+          "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei-modal.js?v=1"
+        ]
+      }
+    },
+    {
+      "name": "Yellow Feedback Coach panel found",
+      "status": "PASS",
+      "details": {
+        "found": true,
+        "text": "\n      \n        AI Sales Enablement\n          for Life Sciences\n        Connect and Convert with\n          Intelligence\n        ReflectivAI blends clinical accuracy, emotional intelligence,\n          ",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "classList": [
+          "max-w-7xl",
+          "mx-auto",
+          "px-4",
+          "sm:px-6",
+          "lg:px-8",
+          "grid",
+          "md:grid-cols-2",
+          "gap-12",
+          "items-center"
+        ]
+      }
+    },
+    {
+      "name": "Disease state selector found",
+      "status": "PASS",
+      "details": {
+        "found": true,
+        "options": [
+          "Select…",
+          "HIV",
+          "Oncology",
+          "Vaccines",
+          "COVID-19",
+          "Cardiovascular"
+        ],
+        "id": "cw-disease",
+        "class": ""
+      }
+    },
+    {
+      "name": "EI metrics visible on page",
+      "status": "PASS",
+      "details": {
+        "metricsInText": [
+          "empathy",
+          "clarity",
+          "compliance",
+          "discovery",
+          "objection",
+          "confidence",
+          "listening",
+          "adaptability",
+          "action",
+          "rapport"
+        ],
+        "metricElements": 0,
+        "elementDetails": []
+      }
+    },
+    {
+      "name": "Chat widget present",
+      "status": "PASS",
+      "details": {
+        "found": true,
+        "visible": false,
+        "html": "<div class=\"reflectiv-chat\"><div class=\"chat-toolbar\"><div class=\"sim-controls\"><label for=\"cw-mode\">Learning Center</label><select id=\"cw-mode\"><option value=\"Emotional Intelligence\">Emotional Intelligence</option><option value=\"Product Knowledge\">Product Knowledge</option><option value=\"Sales Coac"
+      }
+    }
+  ],
+  "screenshots": [
+    "./test-screenshots-main-site/01_page_loaded_1762993503596.png",
+    "./test-screenshots-main-site/02_feedback_coach_found_1762993504907.png",
+    "./test-screenshots-main-site/03_final_state_1762993505802.png"
+  ],
+  "consoleLogs": [
+    {
+      "type": "warn",
+      "text": "cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation",
+      "timestamp": "2025-11-13T00:24:59.321Z"
+    },
+    {
+      "type": "log",
+      "text": "[Citations] Loaded 5 references",
+      "timestamp": "2025-11-13T00:25:00.860Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] About to run initial health check...",
+      "timestamp": "2025-11-13T00:25:00.864Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+      "timestamp": "2025-11-13T00:25:00.865Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Health check PASSED, isHealthy set to TRUE",
+      "timestamp": "2025-11-13T00:25:01.137Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Initial health check complete, result: true , isHealthy: true",
+      "timestamp": "2025-11-13T00:25:01.138Z"
+    }
+  ],
+  "networkCalls": [
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://cdn.tailwindcss.com/",
+      "method": "GET"
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei-modal.js?v=1",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://cdn.tailwindcss.com/",
+      "status": 302
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://cdn.tailwindcss.com/3.4.17",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei-modal.js?v=1",
+      "status": 200
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://cdn.tailwindcss.com/3.4.17",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap",
+      "method": "GET"
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/styles.css?v=20251021B",
+      "method": "GET"
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.css?v=20251021-4",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/styles.css?v=20251021B",
+      "status": 200
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.css?v=20251021-4",
+      "status": 200
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/ei-context.js?v=1",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/ei-context.js?v=1",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.js?v=20251110-1243",
+      "method": "GET"
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "method": "GET"
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/hero-image.png",
+      "method": "GET"
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/widget.js?v=20251110-1243",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/config.json",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "status": 200
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "status": 200
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/config.json",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/system.md",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/system.md",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei.md",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/hero-image.png",
+      "status": 200
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/about-ei.md",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/data/scenarios.merged.json",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/assets/chat/data/scenarios.merged.json",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/citations.json?1762993500579",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/citations.json?1762993500579",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+      "status": 200
+    },
+    {
+      "type": "REQUEST",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "method": "GET"
+    },
+    {
+      "type": "RESPONSE",
+      "url": "https://reflectivei.github.io/reflectiv-ai/logo-modern.png",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "totalTests": 6,
+  "passed": 6,
+  "failed": 0
+}

@@ -1,0 +1,266 @@
+{
+  "timestamp": "2025-11-12T22:58:29.994Z",
+  "url": "https://reflectivei.github.io/reflectiv-ai/",
+  "tests": [
+    {
+      "name": "Page loaded",
+      "status": "PASS",
+      "details": {},
+      "timestamp": "2025-11-12T22:58:37.342Z"
+    },
+    {
+      "name": "EI mode selected",
+      "status": "PASS",
+      "details": {},
+      "timestamp": "2025-11-12T22:58:39.084Z"
+    },
+    {
+      "name": "Message sent",
+      "status": "PASS",
+      "details": {
+        "message": "I felt really frustrated and overwhelmed when the HCP dismissed my product information"
+      },
+      "timestamp": "2025-11-12T22:58:42.151Z"
+    },
+    {
+      "name": "Response received",
+      "status": "PASS",
+      "details": {},
+      "timestamp": "2025-11-12T22:58:45.805Z"
+    },
+    {
+      "name": "10 EI pills present",
+      "status": "PASS",
+      "details": {
+        "pills": [
+          {
+            "text": "Empathy\n            3/5",
+            "metric": "empathy",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(16, 185, 129) 0%, rgb(5, 150, 105) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Clarity\n            3/5",
+            "metric": "clarity",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(139, 92, 246) 0%, rgb(124, 58, 237) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Compliance\n            3/5",
+            "metric": "compliance",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(239, 68, 68) 0%, rgb(220, 38, 38) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Discovery\n            4/5",
+            "metric": "discovery",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Objection Handling\n            4/5",
+            "metric": "objection_handling",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(245, 158, 11) 0%, rgb(217, 119, 6) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Confidence\n            4/5",
+            "metric": "confidence",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(8, 145, 178) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Active Listening\n            3/5",
+            "metric": "active_listening",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(20, 184, 166) 0%, rgb(13, 148, 136) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Adaptability\n            3/5",
+            "metric": "adaptability",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(236, 72, 153) 0%, rgb(219, 39, 119) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Action Insight\n            3/5",
+            "metric": "action_insight",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(249, 115, 22) 0%, rgb(234, 88, 12) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          },
+          {
+            "text": "Resilience\n            3/5",
+            "metric": "resilience",
+            "classList": [
+              "ei-pill"
+            ],
+            "computedBackground": "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(99, 102, 241) 0%, rgb(79, 70, 229) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+          }
+        ]
+      },
+      "timestamp": "2025-11-12T22:58:45.807Z"
+    },
+    {
+      "name": "Pills have gradient backgrounds",
+      "status": "PASS",
+      "details": {
+        "sampleBackgrounds": [
+          "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(16, 185, 129) 0%, rgb(5, 150, 105) 100%) repeat scroll 0% 0% / auto padding-box border-box",
+          "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(139, 92, 246) 0%, rgb(124, 58, 237) 100%) repeat scroll 0% 0% / auto padding-box border-box",
+          "rgba(0, 0, 0, 0) linear-gradient(135deg, rgb(239, 68, 68) 0%, rgb(220, 38, 38) 100%) repeat scroll 0% 0% / auto padding-box border-box"
+        ]
+      },
+      "timestamp": "2025-11-12T22:58:46.452Z"
+    },
+    {
+      "name": "Modal opens on pill click",
+      "status": "PASS",
+      "details": {
+        "modal": {
+          "visible": true,
+          "title": "Empathy Score",
+          "hasDefinition": false,
+          "hasButton": true
+        }
+      },
+      "timestamp": "2025-11-12T22:58:48.070Z"
+    }
+  ],
+  "consoleLogs": [
+    {
+      "type": "warn",
+      "text": "cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation",
+      "timestamp": "2025-11-12T22:58:32.520Z"
+    },
+    {
+      "type": "log",
+      "text": "[Citations] Loaded 5 references",
+      "timestamp": "2025-11-12T22:58:33.928Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] About to run initial health check...",
+      "timestamp": "2025-11-12T22:58:33.932Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] checkHealth() called, healthUrl: https://my-chat-agent-v2.tonyabdelmalak.workers.dev/health",
+      "timestamp": "2025-11-12T22:58:33.933Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Health check PASSED, isHealthy set to TRUE",
+      "timestamp": "2025-11-12T22:58:34.107Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Initial health check complete, result: true , isHealthy: true",
+      "timestamp": "2025-11-12T22:58:34.108Z"
+    },
+    {
+      "type": "log",
+      "text": "[EI TEST] Clicking send button...",
+      "timestamp": "2025-11-12T22:58:40.361Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Send button clicked!",
+      "timestamp": "2025-11-12T22:58:40.362Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Message text: I felt really frustrated and overwhelmed when the HCP dismissed my product information",
+      "timestamp": "2025-11-12T22:58:40.363Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] sendMessage() called with text: I felt really frustrated and overwhelmed when the HCP dismissed my product information",
+      "timestamp": "2025-11-12T22:58:40.363Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] isSending: false , isHealthy: true",
+      "timestamp": "2025-11-12T22:58:40.364Z"
+    },
+    {
+      "type": "log",
+      "text": "[DEBUG] Passed health gate, proceeding with send",
+      "timestamp": "2025-11-12T22:58:40.365Z"
+    },
+    {
+      "type": "table",
+      "text": "JSHandle@array",
+      "timestamp": "2025-11-12T22:58:41.541Z"
+    },
+    {
+      "type": "log",
+      "text": "[EI TEST] Found pills: 10",
+      "timestamp": "2025-11-12T22:58:45.806Z"
+    },
+    {
+      "type": "log",
+      "text": "[EI TEST] Clicking first pill: \n            Empathy\n            3/5\n          ",
+      "timestamp": "2025-11-12T22:58:46.453Z"
+    },
+    {
+      "type": "log",
+      "text": "[EI TEST] Modal exists: true",
+      "timestamp": "2025-11-12T22:58:48.068Z"
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "ei_test_1_loaded",
+      "filepath": "test-screenshots-ei/ei_test_1_loaded_1762988316595.png"
+    },
+    {
+      "name": "ei_test_2_mode_selected",
+      "filepath": "test-screenshots-ei/ei_test_2_mode_selected_1762988318344.png"
+    },
+    {
+      "name": "ei_test_3_message_entered",
+      "filepath": "test-screenshots-ei/ei_test_3_message_entered_1762988319587.png"
+    },
+    {
+      "name": "ei_test_3_message_sent",
+      "filepath": "test-screenshots-ei/ei_test_3_message_sent_1762988321382.png"
+    },
+    {
+      "name": "ei_test_4_response_received",
+      "filepath": "test-screenshots-ei/ei_test_4_response_received_1762988325160.png"
+    },
+    {
+      "name": "ei_test_4_pills_found",
+      "filepath": "test-screenshots-ei/ei_test_4_pills_found_1762988325807.png"
+    },
+    {
+      "name": "ei_test_6_pill_clicked",
+      "filepath": "test-screenshots-ei/ei_test_6_pill_clicked_1762988327455.png"
+    },
+    {
+      "name": "ei_test_6_modal_open",
+      "filepath": "test-screenshots-ei/ei_test_6_modal_open_1762988328070.png"
+    },
+    {
+      "name": "ei_test_final",
+      "filepath": "test-screenshots-ei/ei_test_final_1762988329204.png"
+    }
+  ]
+}

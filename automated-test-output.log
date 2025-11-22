@@ -1,0 +1,73 @@
+Debugger listening on ws://127.0.0.1:59550/10fa7eed-4576-435b-8bb9-56e26d1be7e8
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+🚀 Starting Automated Tests...
+URL: https://reflectivei.github.io/reflectiv-ai/
+Time: 2025-11-12T22:07:51.383Z
+
+
+[TEST 1] Page loads...
+[CONSOLE WARN] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+[CONSOLE LOG] [Citations] Loaded 5 references
+📸 Screenshot: test-screenshots/test_1_page_loaded_1762985281510.png
+[PASS] Page loads
+
+[TEST 2] Check widget.js loaded...
+[PASS] widget.js loaded
+
+[TEST 3] Check widget appears...
+[PASS] Widget appears on page
+📸 Screenshot: test-screenshots/test_3_widget_visible_1762985285851.png
+
+[TEST 4] Check dropdown has 5 modes...
+[PASS] Dropdown has 5 modes
+
+[TEST 5] Select Sales Coach mode...
+📸 Screenshot: test-screenshots/test_5_sales_coach_selected_1762985287794.png
+[PASS] Select Sales Coach mode
+
+[TEST 6] Send test message...
+📸 Screenshot: test-screenshots/test_6_message_entered_1762985289540.png
+📸 Screenshot: test-screenshots/test_6_message_sent_1762985291290.png
+[PASS] Send test message
+⏳ Waiting for AI response...
+[FAIL] Send test message / Response
+
+[TEST 7] Check for EI pills...
+[FAIL] 10 EI pills present
+
+[TEST 8] Check pill gradients...
+[FAIL] Pills have gradient backgrounds
+
+[TEST 9] Click first EI pill...
+📸 Screenshot: test-screenshots/test_9_modal_opened_1762985323077.png
+[FAIL] Modal opens on pill click
+
+[TEST 10] Check for citations...
+[SKIP] Citations present
+
+[TEST 11] Test General Assistant mode...
+📸 Screenshot: test-screenshots/test_11_general_mode_selected_1762985324801.png
+[FAIL] General Assistant mode works
+📸 Screenshot: test-screenshots/final_state_1762985357025.png
+
+📝 Generating reports...
+✅ JSON results saved to: ./test-results.json
+✅ Markdown report saved to: ./TEST_CYCLE_1_AUTOMATED_REPORT.md
+
+============================================================
+TEST SUMMARY
+============================================================
+Total Tests: 12
+✅ Passed: 6
+❌ Failed: 5
+⏭️  Skipped: 1
+
+📸 Screenshots: 8
+📋 Console Logs: 2
+🌐 Network Calls: 38
+💥 JavaScript Errors: 0
+============================================================
+
+📄 Full report: ./TEST_CYCLE_1_AUTOMATED_REPORT.md
+Waiting for the debugger to disconnect...

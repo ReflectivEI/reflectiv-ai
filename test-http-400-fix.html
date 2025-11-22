@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test - HTTP 400 Fix Verification</title>
+    <link rel="stylesheet" href="widget.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-info {
+            background: #f0f0f0;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .error-log {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Widget Test - HTTP 400 Fix Verification</h1>
+    
+    <div class="test-info">
+        <h2>Testing Instructions</h2>
+        <ol>
+            <li>Open browser DevTools (F12) and go to Network tab</li>
+            <li>Type a message and click Send</li>
+            <li>Check the /chat request in Network tab</li>
+            <li>Look at the request payload - should include disease, persona, goal fields</li>
+            <li>Check status - should be 200, not 400</li>
+        </ol>
+        
+        <p><strong>Expected Payload:</strong></p>
+        <pre>{
+  "messages": [...],
+  "mode": "sales-coach",
+  "disease": "",
+  "persona": "",
+  "goal": "",
+  "scenarioId": null
+}</pre>
+    </div>
+
+    <div id="error-log-container">
+        <h3>Console Log Monitor</h3>
+        <div id="error-log" class="error-log"></div>
+    </div>
+
+    <!-- Widget Container -->
+    <div id="reflectiv-widget"></div>
+    
+    <!-- Configuration -->
+    <script>
+        // Monitor console errors
+        const errorLog = document.getElementById('error-log');
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        function logToPage(type, ...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            const entry = document.createElement('div');
+            entry.style.marginBottom = '5px';
+            entry.style.padding = '5px';
+            entry.style.borderLeft = type === 'error' ? '3px solid red' : '3px solid orange';
+            entry.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()} - ${message}`;
+            errorLog.appendChild(entry);
+            errorLog.scrollTop = errorLog.scrollHeight;
+        }
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            logToPage('error', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            logToPage('warn', ...args);
+        };
+        
+        // Intercept fetch to log requests
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const [url, options] = args;
+            
+            if (url.includes('/chat')) {
+                console.log('📤 Sending request to /chat');
+                console.log('📦 Payload:', options?.body ? JSON.parse(options.body) : 'No body');
+            }
+            
+            try {
+                const response = await originalFetch.apply(this, args);
+                
+                if (url.includes('/chat')) {
+                    if (response.ok) {
+                        console.log('✅ Response OK:', response.status);
+                        errorLog.className = 'error-log success';
+                    } else {
+                        console.error('❌ Response Error:', response.status);
+                        errorLog.className = 'error-log error';
+                    }
+                }
+                
+                return response;
+            } catch (error) {
+                if (url.includes('/chat')) {
+                    console.error('❌ Fetch failed:', error);
+                    errorLog.className = 'error-log error';
+                }
+                throw error;
+            }
+        };
+        
+        // Set worker URL
+        window.WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
+        window.COACH_ENDPOINT = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev/chat';
+        
+        console.log('🚀 Test page loaded');
+        console.log('🔧 Worker URL:', window.WORKER_URL);
+    </script>
+    
+    <!-- Load the FIXED widget -->
+    <script src="widget.js"></script>
+    
+    <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 5px;">
+        <h3>What to Look For</h3>
+        <ul>
+            <li><strong>✅ SUCCESS</strong>: Status 200, payload includes disease/persona/goal (even if empty "")</li>
+            <li><strong>❌ FAILURE</strong>: Status 400, payload missing disease/persona/goal fields</li>
+            <li><strong>ℹ️ Note</strong>: content_script.js errors are from browser extensions - ignore them</li>
+        </ul>
+    </div>
+</body>
+</html>

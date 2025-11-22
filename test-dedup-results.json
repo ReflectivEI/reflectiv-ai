@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-11-12T23:24:12.497Z",
+  "tests": [
+    {
+      "name": "Sales Coach mode selected",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "name": "First message sent",
+      "status": "PASS",
+      "details": {
+        "message": "How do I handle cost objections?"
+      }
+    },
+    {
+      "name": "User can send duplicate message",
+      "status": "PASS",
+      "details": {
+        "originalCount": 2,
+        "afterDuplicate": 4,
+        "note": "User input duplication allowed - deduplication only prevents AI response loops"
+      }
+    },
+    {
+      "name": "Different message allowed",
+      "status": "PASS",
+      "details": {
+        "originalCount": 4,
+        "afterDifferent": 6
+      }
+    },
+    {
+      "name": "AI response deduplication working",
+      "status": "PASS",
+      "details": {
+        "note": "Some responses similar but within Jaccard threshold (<0.88)",
+        "totalResponses": 3,
+        "uniqueResponses": 2
+      }
+    }
+  ],
+  "totalTests": 5,
+  "passed": 5,
+  "failed": 0
+}

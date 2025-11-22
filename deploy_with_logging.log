@@ -1,0 +1,41 @@
+Debugger listening on ws://127.0.0.1:59794/fe6548ed-ddd6-4907-a22c-1cb8916fc292
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+Debugger listening on ws://127.0.0.1:59798/082f0168-bc4d-43c6-b097-f075c3a9dbd0
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+Debugger listening on ws://127.0.0.1:59800/e711de56-50d1-4e76-982d-da53e5f073b9
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+
+ ⛅️ wrangler 4.47.0
+───────────────────
+Total Upload: 83.27 KiB / gzip: 26.52 KiB
+Your Worker has access to the following bindings:
+Binding                                                                           Resource                  
+env.PROVIDER_URL ("https://api.groq.com/openai/v1/chat/c...")                     Environment Variable      
+env.PROVIDER_MODEL ("llama-3.1-8b-instant")                                       Environment Variable      
+env.PROVIDER_MODEL_HCP ("llama-3.1-8b-instant")                                   Environment Variable      
+env.PROVIDER_MODEL_COACH ("llama-3.1-8b-instant")                                 Environment Variable      
+env.PROVIDER_SIG ("groq:llama-3.1-8b-instant")                                    Environment Variable      
+env.MAX_CHARS_CONTEXT ("12000")                                                   Environment Variable      
+env.RESPONSE_TTL_SECONDS ("86400")                                                Environment Variable      
+env.CORS_ORIGINS ("https://reflectivei.github.io,https:/...")                     Environment Variable      
+env.RATELIMIT_RATE ("10")                                                         Environment Variable      
+env.RATELIMIT_BURST ("4")                                                         Environment Variable      
+env.RATELIMIT_RATE_TONY ("10")                                                    Environment Variable      
+env.RATELIMIT_BURST_TONY ("4")                                                    Environment Variable      
+env.RATELIMIT_RATE_REFLECTIVAI ("10")                                             Environment Variable      
+env.RATELIMIT_BURST_REFLECTIVAI ("4")                                             Environment Variable      
+env.RATELIMIT_RETRY_AFTER ("2")                                                   Environment Variable      
+env.TONY_SYSTEM_URL ("https://raw.githubusercontent.com/ton...")                  Environment Variable      
+env.TONY_KB_URL ("https://raw.githubusercontent.com/ton...")                      Environment Variable      
+env.TONY_PERSONA_URL ("https://raw.githubusercontent.com/ton...")                 Environment Variable      
+
+Uploaded my-chat-agent-v2 (4.13 sec)
+Deployed my-chat-agent-v2 triggers (1.32 sec)
+  https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+Current Version ID: 7dd6a20b-8a7b-43b9-b317-87fa4ba40198
+Waiting for the debugger to disconnect...
+Waiting for the debugger to disconnect...
+Waiting for the debugger to disconnect...
