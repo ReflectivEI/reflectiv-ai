@@ -1833,14 +1833,19 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     });
 
     // Distinguish provider errors from client bad_request errors
+    // Provider errors include:
+    // 1. Errors thrown by providerChat (start with "provider_")
+    // 2. Network/fetch failures when calling provider API
+    // 3. Missing API key configuration
     const isProviderError = e.message && (
       e.message.startsWith("provider_") ||
       e.message === "plan_generation_failed" ||
       e.message === "NO_PROVIDER_KEY" ||
       // Network failures when calling provider API
-      e.message.includes("fetch failed") ||
-      e.message.includes("network error") ||
-      e.name === "TypeError" && e.stack?.includes("providerChat")
+      // Note: We check the stack trace to ensure it's a network error from providerChat,
+      // not from other parts of the code. This is necessary because fetch errors are generic.
+      (e.message.includes("fetch failed") || e.message.includes("network error") || e.name === "TypeError") &&
+      e.stack?.includes("providerChat")
     );
 
     const isPlanError = e.message === "no_active_plan_or_facts" || e.message === "invalid_plan_structure" || e.message === "no_facts_for_mode";

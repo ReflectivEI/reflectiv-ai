@@ -15,16 +15,19 @@ const mockEnv = {
   RATELIMIT_BURST: '100'   // High burst for testing
 };
 
-// Import worker module (assuming it's importable)
-let worker;
-try {
-  // Try dynamic import for ES modules
-  worker = await import('../worker.js');
-} catch (e) {
-  console.error('Failed to import worker.js:', e.message);
-  console.log('Skipping tests - worker.js not importable in test environment');
-  process.exit(0);
+// Import worker module
+async function loadWorker() {
+  try {
+    // Dynamic import for ES modules
+    return await import('../worker.js');
+  } catch (e) {
+    console.error('Failed to import worker.js:', e.message);
+    console.log('Skipping tests - worker.js not importable in test environment');
+    process.exit(0);
+  }
 }
+
+const worker = await loadWorker();
 
 /**
  * Helper to create a mock Request object
@@ -178,10 +181,11 @@ async function runTests() {
   let passed = 0;
   let failed = 0;
   
-  for (const test of testCases) {
+  for (let testIndex = 0; testIndex < testCases.length; testIndex++) {
+    const test = testCases[testIndex];
     try {
       // Add delay to avoid rate limiting in tests
-      if (testCases.indexOf(test) > 0) {
+      if (testIndex > 0) {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
