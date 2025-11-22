@@ -767,7 +767,13 @@ async function postChat(req, env) {
           const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
           return dOk;
         });
-        const facts = factsRes.slice(0, 8);
+        
+        // CONTEXT EDGE CASES: Always ensure fallback facts, never empty array
+        let facts = factsRes.slice(0, 8);
+        if (facts.length === 0) {
+          // Fallback to first 8 facts from FACTS_DB if filter yields empty array
+          facts = FACTS_DB.slice(0, 8);
+        }
 
         activePlan = {
           planId: cryptoRandomId(),
