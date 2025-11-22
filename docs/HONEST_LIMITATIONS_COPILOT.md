@@ -107,7 +107,7 @@ const data = await chat({mode, messages:[{role:'user',content:msg}], signal});
 
 ## 4. Sales Coach vs UI Expectations
 
-### Status: CONTRACT DEFINED, UI PARSING UNKNOWN
+### Status: ✅ ALREADY IMPLEMENTED CORRECTLY
 
 **Worker contract (worker.js:1016-1065):**
 
@@ -129,31 +129,27 @@ const data = await chat({mode, messages:[{role:'user',content:msg}], signal});
 }</coach>
 ```
 
-**UI expectation (from problem statement):**
+**UI Implementation:**
 
-**Main chat card:**
-- Challenge
-- Rep Approach (2-3 bullets, disease + HCP-profile aware)
-- Impact
-- Suggested Phrasing
+**Main chat card (widget.js:996-1023):**
+- ✅ Challenge section (line 998)
+- ✅ Rep Approach with bullets (lines 1002-1012)
+- ✅ Impact section (line 1017)
+- ✅ Suggested Phrasing section (lines 1020-1022)
 
-**Side panel:**
-- "What worked"
-- "What to improve"
-- "Suggested phrasing"
+**Side panel (widget.js:2370-2385):**
+- ✅ Performance Metrics (10 EI pills in grid layout)
+- ✅ "What worked" list (extracted from coach.worked)
+- ✅ "What to improve" list (extracted from coach.improve)
+- ✅ "Suggested phrasing" (extracted from coach.phrasing)
 
-**Gap:** Need to trace widget.js to confirm:
-1. Main card parsing extracts all 4 sections correctly
-2. Side panel extracts "worked", "improve", and "phrasing" from coach object
-3. Whether "Suggested phrasing" appears in both main card AND side panel or just one
-
-**Action needed:** Inspect widget.js rendering code to verify UI implementation matches contract.
+**Conclusion:** UI perfectly matches the worker contract. All 4 sections displayed in main card, side panel shows feedback details and EI metrics.
 
 ---
 
 ## 5. EI Pill Display
 
-### Status: 10 METRICS DEFINED, UI RENDERING UNKNOWN
+### Status: ✅ ALREADY IMPLEMENTED WITH ALL 10 METRICS
 
 **Worker defines 10 metrics (worker.js:701-706):**
 ```javascript
@@ -173,19 +169,19 @@ const requiredMetrics = [
 
 **Each metric scored 1-5 (worker.js:703-705)**
 
-**Gap:** Need to inspect widget.js to determine:
-1. How many pills are currently rendered (5 or 10)?
-2. Which metrics are displayed?
-3. CSS styling for pills
-4. Layout handling for 10 pills vs 5
+**UI Implementation (widget.js:460-479):**
+- ✅ All 10 pills rendered in two rows of 5 columns each
+- ✅ Row 1: empathy, clarity, compliance, discovery, objection_handling
+- ✅ Row 2: confidence, active_listening, adaptability, action_insight, resilience
+- ✅ Individual gradient colors for each metric (lines 1803-1812)
+- ✅ Grid layout with CSS grid (line 1797)
+- ✅ Responsive design for mobile (3 columns on small screens, line 1815)
 
-**From problem statement:** User expects 10 EI metric pills, not 5.
+**Pills appear in both modes:**
+- ✅ Sales Coach mode (side panel, line 2377)
+- ✅ EI mode (if coach object returned)
 
-**Action needed:** 
-1. Find pill rendering code in widget.js
-2. Verify all 10 metrics are displayed
-3. Check CSS supports 10-pill layout
-4. Ensure pills appear in both Sales Coach and EI modes
+**Conclusion:** All 10 EI metrics are displayed correctly with beautiful gradient-coded pills. No changes needed.
 
 ---
 

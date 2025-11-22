@@ -150,9 +150,23 @@ if (mode === "role-play") {
 const requiredMetrics = ["empathy","clarity","compliance","discovery","objection_handling","confidence","active_listening","adaptability","action_insight","resilience"];
 ```
 
-### Widget Parsing (widget.js)
+### Widget Parsing and Display
 
-The widget parses the Sales Coach response but exact parsing logic is embedded in the monolithic widget.js file. Need to trace through to identify line numbers for card rendering and pill display.
+**Main Chat Card (widget.js lines 996-1023):**
+The widget parses and displays the 4-section Sales Coach response:
+- Challenge (line 998)
+- Rep Approach with bullets (lines 1002-1012)
+- Impact (line 1017)
+- Suggested Phrasing (lines 1020-1022)
+
+**Side Panel (widget.js lines 2370-2385):**
+The side panel displays coach feedback extracted from the `<coach>` block:
+- **Performance Metrics:** All 10 EI pills in grid layout (line 2377)
+- **What worked:** Array from coach.worked (line 2380)
+- **What to improve:** Array from coach.improve (line 2381)
+- **Suggested phrasing:** String from coach.phrasing (line 2382)
+
+**Status:** ✅ UI implementation is COMPLETE and matches the worker contract perfectly.
 
 ---
 
@@ -174,7 +188,17 @@ The widget parses the Sales Coach response but exact parsing logic is embedded i
 
 **Scale:** 1-5 for each metric (line 703-705)
 
-**Current state in UI:** Need to inspect widget.js rendering code to determine if UI displays all 10 metrics or a subset.
+**UI Display (widget.js lines 460-479):**
+All 10 metrics displayed in two rows with 5 columns each:
+- Row 1 (lines 464-468): empathy, clarity, compliance, discovery, objection_handling
+- Row 2 (lines 471-475): confidence, active_listening, adaptability, action_insight, resilience
+
+**CSS (widget.js lines 1797-1812):**
+- Grid layout with 5 columns per row (line 1797)
+- Individual gradient colors for each metric (lines 1803-1812)
+- Responsive design for mobile: 3 columns on small screens (line 1815)
+
+**Status:** ✅ UI displays all 10 EI metrics correctly with beautiful gradient-coded pills.
 
 ---
 
