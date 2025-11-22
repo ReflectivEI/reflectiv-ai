@@ -61,7 +61,9 @@ const data = await chat({mode, messages:[{role:'user',content:msg}], signal});
 
 ## 3. EI Context Wiring
 
-### Status: MODULE EXISTS BUT NOT WIRED
+### Status: ✅ FIXED
+
+**Previous state:** MODULE EXISTS BUT NOT WIRED
 
 **Components:**
 
@@ -71,26 +73,35 @@ const data = await chat({mode, messages:[{role:'user',content:msg}], signal});
 - ✅ Loads persona.json (line 18-20)
 - ✅ Exposes getSystemExtras() to build context string (line 30-48)
 - ✅ Truncates safely to ~13KB (lines 32-34)
-- ❌ NEVER CALLED by any mode module
+- ✅ NOW CALLED by emotionalIntelligence.js (FIXED)
 
 **Frontend (emotionalIntelligence.js):**
-- ❌ Does NOT import ei-context.js
-- ❌ Does NOT call EIContext.getSystemExtras()
-- ❌ Does NOT pass EI context to chat() function
+- ✅ NOW imports and calls EIContext.getSystemExtras() (lines 25-30) (FIXED)
+- ✅ Passes EI context to chat() function (line 31) (FIXED)
 
 **Frontend (api.js):**
-- ❌ chat() function signature doesn't accept eiContext parameter
-- ❌ Doesn't include eiContext in request body sent to worker
+- ✅ chat() function NOW accepts eiContext parameter (line 126) (FIXED)
+- ✅ Includes eiContext in request body sent to worker (lines 140-143) (FIXED)
 
 **Backend (worker.js):**
-- ❌ /chat endpoint doesn't read eiContext from request body
-- ❌ eiPrompt is static and doesn't incorporate dynamic context
-- ❌ No mechanism to embed about-ei.md content into prompt
+- ✅ /chat endpoint NOW reads eiContext from request body (lines 936, 948) (FIXED)
+- ✅ eiPrompt NOW incorporates dynamic EI context when provided (lines 1156-1203) (FIXED)
+- ✅ Falls back to hardcoded CASEL framework if eiContext not provided (backward compatible) (FIXED)
 
-**Fix required:**
-1. emotionalIntelligence.js: Load and pass EI context to chat()
-2. api.js: Accept optional eiContext parameter and include in payload
-3. worker.js: Read eiContext from body and embed in prompt for emotional-assessment mode
+**Fix applied:**
+1. ✅ emotionalIntelligence.js: Loads and passes EI context to chat() (lines 25-31)
+2. ✅ api.js: Accepts optional eiContext parameter and includes in payload (lines 126, 140-143)
+3. ✅ worker.js: Reads eiContext from body and embeds in prompt for emotional-assessment mode (lines 936, 948, 1156-1203)
+
+**Files modified:**
+- `assets/chat/modes/emotionalIntelligence.js` - Added EI context loading
+- `assets/chat/core/api.js` - Extended chat() to accept eiContext parameter
+- `worker.js` - Added eiContext extraction and embedding in eiPrompt
+
+**Testing:**
+- ✅ All existing tests pass (12/12)
+- ✅ Backward compatible (works without eiContext)
+- ✅ Safe fallback to hardcoded framework if loading fails
 
 ---
 
