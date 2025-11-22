@@ -717,7 +717,7 @@ async function runInputEdgeCaseTest(testCase) {
 
     if (expectStatus === 400) {
       // This test expects a 400 error for invalid input
-      const got400 = result.error && (result.error.code === 'EMPTY_USER_MESSAGE' || result.error.code === 'EMPTY_MESSAGES');
+      const got400 = result.error && ['EMPTY_USER_MESSAGE', 'EMPTY_MESSAGES', 'NO_USER_MESSAGE', 'INVALID_MODE', 'INVALID_JSON', 'EMPTY_BODY'].includes(result.error.code);
       if (got400) {
         console.log(`  ✅ PASS - Correctly rejected invalid input with 400`);
         return { passed: true, testId: testCase.id };

@@ -1008,14 +1008,6 @@ async function postChat(req, env) {
       mode = "sales-coach";
     }
 
-    // Validate mode is present and non-empty (after normalization and defaults)
-    if (!mode || String(mode).trim() === "") {
-      console.error("chat_error", { req_id: reqId, step: "request_validation", message: "missing_or_empty_mode", mode });
-      return json({
-        error: { type: "bad_request", code: "INVALID_MODE", message: "Mode is required and cannot be empty" }
-      }, 400, env, req, { "x-req-id": reqId });
-    }
-
     // Validate user message is not empty
     if (!user || String(user).trim() === "") {
       console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_user_message", format: body.messages ? "widget" : "reflectiv", body });
