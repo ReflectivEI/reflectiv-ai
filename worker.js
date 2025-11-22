@@ -1163,15 +1163,19 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `MISSION: Help the rep develop emotional intelligence through reflective practice based on about-ei.md framework.`,
       ``,
       // Include actual EI framework content if provided from frontend
-      eiContext ? `EI FRAMEWORK CONTENT:\n${eiContext}\n` : '',
-      eiContext ? `` : `FOCUS AREAS (CASEL SEL Competencies):
-- Self-Awareness: Recognizing emotions, triggers, communication patterns
-- Self-Regulation: Managing stress, tone, composure under pressure
-- Empathy/Social Awareness: Acknowledging HCP perspective, validating concerns
-- Clarity: Concise messaging without jargon
-- Relationship Skills: Building rapport, navigating disagreement
-- Responsible Decision-Making/Compliance: Balancing empathy with ethical boundaries`,
-      ``,
+      ...(eiContext ? [
+        `EI FRAMEWORK CONTENT:\n${eiContext}`,
+        ``
+      ] : [
+        `FOCUS AREAS (CASEL SEL Competencies):`,
+        `- Self-Awareness: Recognizing emotions, triggers, communication patterns`,
+        `- Self-Regulation: Managing stress, tone, composure under pressure`,
+        `- Empathy/Social Awareness: Acknowledging HCP perspective, validating concerns`,
+        `- Clarity: Concise messaging without jargon`,
+        `- Relationship Skills: Building rapport, navigating disagreement`,
+        `- Responsible Decision-Making/Compliance: Balancing empathy with ethical boundaries`,
+        ``
+      ]),
       `TRIPLE-LOOP REFLECTION ARCHITECTURE:`,
       `Loop 1 (Task Outcome): Did they accomplish the communication objective?`,
       `Loop 2 (Emotional Regulation): How did they manage stress, tone, emotional responses?`,
@@ -1196,7 +1200,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Provide sales coaching or product info`,
       `- Include coach scores or rubrics`,
       `- Use structured Challenge/Rep Approach format`
-    ].filter(Boolean).join("\n");
+    ].join("\n");
 
     const pkPrompt = [
       `You are ReflectivAI, an advanced AI knowledge partner for life sciences professionals.`,
