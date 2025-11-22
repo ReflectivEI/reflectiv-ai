@@ -2953,14 +2953,14 @@ ${COMMON}`
               if (jsonResponse.reply !== undefined) {
                 // Return object with reply text and coach data
                 return {
-                  text: jsonResponse.reply,
+                  text: jsonResponse.reply || "",
                   _coachData: jsonResponse.coach || null,
                   _isStructured: true
                 };
               }
-            } catch {
+            } catch (parseErr) {
               // If not JSON or doesn't have reply field, treat as legacy plain text
-              console.warn('[callModel] Response is not JSON or missing reply field, treating as plain text');
+              console.warn('[callModel] Response is not JSON or missing reply field, treating as plain text', parseErr.message);
             }
 
             // Legacy: return just the text string
@@ -3348,17 +3348,21 @@ ${detail}`;
         // Handle structured response (new format) or plain text (legacy)
         let raw, coachFromWorker;
         if (response && typeof response === 'object' && response._isStructured) {
-          raw = response.text;
-          coachFromWorker = response._coachData;
-        } else {
+          raw = response.text || "";
+          coachFromWorker = response._coachData || null;
+        } else if (response && typeof response === 'string') {
           // Legacy plain text response
           raw = response;
+          coachFromWorker = null;
+        } else {
+          // Unexpected response type
+          raw = "";
           coachFromWorker = null;
         }
 
         // If response is empty or null, throw error instead of degrading to legacy
         if (!raw || !raw.trim()) {
-          console.error("[coach] empty_response_from_worker mode=" + currentMode);
+          console.error("[coach] empty_response_from_worker mode=" + currentMode, "response_type=", typeof response);
           showToast("Received empty response from server. Please retry.", "error");
           return;
         }
@@ -3568,10 +3572,19 @@ Please provide your response again with all required fields including phrasing.`
         let errorMessage = "Failed to send message. ";
         
         // Extract worker error details if present
-        const workerErrorMatch = e.message?.match(/Worker error \(HTTP \d+\): (.+)/);
+        const workerErrorMatch = e.message?.match(/Worker error \(HTTP (\d+)\): (.+)/);
         if (workerErrorMatch) {
-          // Use the detailed worker error message
-          errorMessage += workerErrorMatch[1];
+          const httpStatus = workerErrorMatch[1];
+          const details = workerErrorMatch[2];
+          
+          // Provide user-friendly message for common HTTP errors
+          if (httpStatus === '429') {
+            errorMessage += "Too many requests. Please wait a moment and try again.";
+          } else if (httpStatus === '503' || httpStatus === '502') {
+            errorMessage += "Service temporarily unavailable. Please try again in a moment.";
+          } else {
+            errorMessage += details;
+          }
         } else if (e.message?.includes('authentication_required')) {
           errorMessage += "Authentication required - please check access permissions.";
         } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')) {
