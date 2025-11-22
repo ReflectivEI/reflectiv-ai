@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-12T23:18:50.916Z",
+  "timestamp": "2025-11-17T03:51:05.730Z",
   "tests": [
     {
       "name": "Page loads",
@@ -18,15 +18,25 @@
     },
     {
       "name": "Role Play response received",
-      "status": "PASS",
+      "status": "FAIL",
       "details": {
-        "totalMessages": 1,
-        "preview": "HCPI've got a few minutes, what's on your mind?",
-        "length": 47
+        "response": {
+          "totalMessages": 1,
+          "allMessages": [
+            {
+              "text": "HCP[object Object]",
+              "length": 18
+            }
+          ],
+          "lastMessage": {
+            "text": "HCP[object Object]",
+            "length": 18
+          }
+        }
       }
     }
   ],
   "totalTests": 4,
-  "passed": 4,
-  "failed": 0
+  "passed": 3,
+  "failed": 1
 }

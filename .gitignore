@@ -1,3 +1,29 @@
 node_modules/
 npm-debug.log
 .DS_Store
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Wrangler cache
+.wrangler/
+
+# Test outputs and screenshots
+test-screenshots*/
+test_proof_*/
+*.log
+*.tmp
+tmp_*.txt
+
+# Backup files
+*.bak
+*.backup.*
+*backup*.js
+*backup*.html
+*backup*.toml
+*-backup.*
+
+# OS files
+.DS_Store
+Thumbs.db

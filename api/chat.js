@@ -263,6 +263,11 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
+  const path = (req.url || "").split("?")[0];
+  if (req.method === "GET" && path.endsWith("/health")) {
+    return res.status(200).json({ status: "ok" });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }

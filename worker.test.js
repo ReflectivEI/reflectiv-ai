@@ -112,7 +112,7 @@ async function testExistingEndpoints() {
   const data2 = await res2.json();
   
   assert(res2.status === 200, "/version returns 200");
-  assert(data2.version === "r10.1", "/version returns correct version");
+  assert(data2.version === "r11.0-phase11", "/version returns correct version");
 
   // Test 404
   const req3 = new Request("http://test.com/nonexistent", {

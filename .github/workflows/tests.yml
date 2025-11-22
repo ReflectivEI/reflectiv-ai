@@ -1,0 +1,39 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run parsing tests
+      run: npm run test:parsing
+
+    - name: Run cross-mode tests
+      run: npm run test:cross-mode
+
+    - name: Run parser module tests
+      run: npm run test:parsers
+
+    - name: Run integration tests
+      run: npm run test:integration
+
+    - name: Run full Phase 2 test suite
+      run: npm run test:phase2

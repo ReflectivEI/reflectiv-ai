@@ -30,39 +30,34 @@
 
 ## DETAILED FINDINGS
 
-### 1. MODE SWITCHING & CHAT RESET BUG ❌ CRITICAL
+### 1. MODE SWITCHING & CHAT RESET BUG ✅ RESOLVED
 
-**Location:** `widget.js` lines 1815-1891 (applyModeVisibility function)
+**Location:** `widget.js` lines 2080-2140 (applyModeVisibility function)
 
-**Issue:** When switching between modes, the conversation history is NOT cleared for sales-simulation and role-play modes.
+**Status:** Fixed in the latest rollout. The dropdown handler now tracks `previousMode` and compares it against the normalized internal mode (sales-simulation → sales-coach alias), clearing all cached conversation state whenever the mode identity changes.
 
-**Current Code:**
+**Code:**
 ```javascript
 function applyModeVisibility() {
   const lc = modeSel.value;
+  const previousMode = currentMode;
   currentMode = LC_TO_INTERNAL[lc];
 
-  // ... visibility toggles ...
-
-  // Only clears for PK and EI modes:
-  if (currentMode === "product-knowledge" || currentMode === "emotional-assessment") {
+  // CRITICAL FIX: Always clear conversation and reset state when mode changes
+  if (previousMode !== currentMode) {
     currentScenarioId = null;
     conversation = [];
-    renderMessages();
-    renderCoach();
-    renderMeta();
+    repOnlyPanelHTML = "";
+    feedbackDisplayElem.innerHTML = "";
   }
+  // ... existing visibility toggles ...
 }
 ```
 
-**Problem:** Sales Simulation and Role Play modes do NOT clear `conversation = []` when switching TO them.
-
 **Impact:**
-- Users see stale messages from previous mode
-- Confusion about what mode they're in
-- Potential context contamination
-
-**Fix Required:** Clear conversation for ALL mode switches
+- Mode switches now fully clear conversation history, rep feedback, and scenario state before rendering.
+- Sales coach logic treats `sales-simulation` as the same internal `sales-coach` mode, so historical references to the old label no longer defeat the reset logic.
+- Role-play sessions are now insulated from prior-mode context, closing the loop on prior regression findings.
 
 ---
 

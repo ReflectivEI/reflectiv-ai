@@ -66,7 +66,10 @@ async function runTest(testName, payload, validations) {
     
     if (response.status !== 200) {
       console.log(`❌ FAILED - HTTP ${response.status}`);
-      if (response.error) console.log(`   Error: ${response.error}`);
+      if (response.data) {
+        console.log(`   Response: ${JSON.stringify(response.data, null, 2)}`);
+      }
+      if (response.error) console.log(`   Parse Error: ${response.error}`);
       testsFailed++;
       return false;
     }

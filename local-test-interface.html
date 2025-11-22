@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReflectivAI Local Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, textarea, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .status {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success { background-color: #d4edda; color: #155724; }
+        .status.error { background-color: #f8d7da; color: #721c24; }
+        .status.warning { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 ReflectivAI Local Test Interface</h1>
+        <p>Test your worker locally at <strong>http://localhost:8787</strong></p>
+
+        <div id="status" class="status" style="display: none;"></div>
+
+        <form id="testForm">
+            <div class="form-group">
+                <label for="mode">Mode:</label>
+                <select id="mode" name="mode">
+                    <option value="sales-coach">Sales Coach</option>
+                    <option value="role-play">Role Play</option>
+                    <option value="emotional-assessment">Emotional Assessment</option>
+                    <option value="product-knowledge">Product Knowledge</option>
+                    <option value="general-knowledge">General Knowledge</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="user">User Message:</label>
+                <textarea id="user" name="user" placeholder="Enter your test message here...">I'm concerned about patient adherence to PrEP therapy. What strategies can help improve compliance?</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="disease">Disease (optional):</label>
+                <input type="text" id="disease" name="disease" placeholder="e.g., HIV, COVID-19" value="HIV">
+            </div>
+
+            <button type="submit" id="submitBtn">Send Test Request</button>
+        </form>
+
+        <div id="response" class="response" style="display: none;"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('testForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const responseDiv = document.getElementById('response');
+        const statusDiv = document.getElementById('status');
+
+        function showStatus(message, type = 'success') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showResponse(data, isError = false) {
+            responseDiv.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            responseDiv.className = `response ${isError ? 'error' : ''}`;
+            responseDiv.style.display = 'block';
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const payload = {
+                mode: formData.get('mode'),
+                user: formData.get('user'),
+                disease: formData.get('disease') || undefined
+            };
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Testing...';
+            responseDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('http://localhost:8787/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'http://localhost:3000'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('✅ Test successful!', 'success');
+                    showResponse(data);
+                } else {
+                    showStatus(`❌ Error: ${response.status}`, 'error');
+                    showResponse(data, true);
+                }
+
+            } catch (error) {
+                showStatus('❌ Network error - is wrangler running?', 'error');
+                showResponse(`Error: ${error.message}\n\nMake sure to run: wrangler dev`, true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Test Request';
+            }
+        });
+
+        // Check if worker is running on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('http://localhost:8787/chat', {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://localhost:3000'
+                    }
+                });
+                if (response.ok) {
+                    showStatus('✅ Worker is running locally', 'success');
+                }
+            } catch (error) {
+                showStatus('⚠️ Worker not detected - run "wrangler dev" first', 'warning');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReflectivAI Local Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f0f0f0; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, textarea, input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        textarea { min-height: 80px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .response { background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 20px; white-space: pre-wrap; font-family: monospace; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .status { padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 ReflectivAI Local Test</h1>
+        <p><strong>Worker URL:</strong> http://localhost:8787</p>
+        <p><strong>Status:</strong> <span id="status">Checking...</span></p>
+    </div>
+
+    <div class="container">
+        <h2>Test Form</h2>
+        <form id="testForm">
+            <label>Mode:</label>
+            <select id="mode">
+                <option value="sales-coach">Sales Coach</option>
+                <option value="role-play">Role Play</option>
+                <option value="emotional-assessment">Emotional Assessment</option>
+                <option value="product-knowledge">Product Knowledge</option>
+                <option value="general-knowledge">General Knowledge</option>
+            </select>
+
+            <label>Message:</label>
+            <textarea id="message" placeholder="Enter your test message...">How should I approach an HCP who is resistant to new treatments?</textarea>
+
+            <label>Disease (optional):</label>
+            <input type="text" id="disease" placeholder="e.g., HIV, oncology">
+
+            <button type="submit" id="submitBtn">Test</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Response</h2>
+        <div id="response" class="response">Response will appear here...</div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const form = document.getElementById('testForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const responseEl = document.getElementById('response');
+
+        // Check server status
+        async function checkStatus() {
+            try {
+                const response = await fetch('http://localhost:8787/chat', {
+                    method: 'OPTIONS',
+                    headers: { 'Origin': 'http://localhost:3000' }
+                });
+                statusEl.textContent = response.ok ? '✅ Running' : '❌ Not responding';
+                statusEl.style.color = response.ok ? 'green' : 'red';
+            } catch (e) {
+                statusEl.textContent = '❌ Not running';
+                statusEl.style.color = 'red';
+            }
+        }
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const mode = document.getElementById('mode').value;
+            const message = document.getElementById('message').value;
+            const disease = document.getElementById('disease').value;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Testing...';
+            responseEl.textContent = 'Sending request...';
+            responseEl.className = 'response';
+
+            try {
+                const payload = { mode, user: message };
+                if (disease) payload.disease = disease;
+
+                const response = await fetch('http://localhost:8787/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'http://localhost:3000'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseEl.className = 'response success';
+                    responseEl.textContent = '✅ SUCCESS\n\n' + JSON.stringify(data, null, 2);
+                } else {
+                    responseEl.className = 'response error';
+                    responseEl.textContent = `❌ ERROR (${response.status})\n\n` + JSON.stringify(data, null, 2);
+                }
+
+            } catch (error) {
+                responseEl.className = 'response error';
+                responseEl.textContent = `❌ NETWORK ERROR\n\n${error.message}\n\nMake sure wrangler is running:\n./start-local-test.sh`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Test';
+            }
+        });
+
+        // Check status on load
+        checkStatus();
+        setInterval(checkStatus, 3000);
+    </script>
+</body>
+</html>

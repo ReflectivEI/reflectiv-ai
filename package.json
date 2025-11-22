@@ -7,6 +7,18 @@
   "scripts": {
     "test": "node worker.test.js",
     "test:cors": "node worker.cors.test.js",
-    "test:all": "node worker.cors.test.js && node worker.test.js"
+    "test:all": "node worker.cors.test.js && node worker.test.js",
+    "test:parsing": "node tests/formatting.salesCoach.test.cjs",
+    "test:cross-mode": "node tests/crossModeStability.test.cjs",
+    "test:parsers": "node tests/parserModule.test.cjs",
+    "test:integration": "node tests/integration.test.cjs",
+    "test:phase2": "npm run test:parsing && npm run test:cross-mode && npm run test:parsers && npm run test:integration",
+    "test:phase8": "node test_phase8.cjs",
+    "build:css": "tailwindcss -i src/tailwind.css -o assets/css/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18"
   }
 }

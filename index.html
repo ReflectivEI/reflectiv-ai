@@ -9,13 +9,13 @@
   <link rel="icon" type="image/png" href="logo-modern.png">
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
-  <!-- Allows Tailwind CDN + Google Fonts + your Worker -->
+  <!-- Allows Google Fonts + your Worker -->
   <meta http-equiv="Content-Security-Policy" content="
           default-src 'self';
           img-src 'self' data:;
           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
           font-src  'self' https://fonts.gstatic.com;
-          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
+          script-src 'self' 'unsafe-inline';
           connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev
         ">
 
@@ -23,8 +23,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/tailwind.css">
 
   <!-- Type + quick utilities -->
   <style>
@@ -549,7 +548,7 @@
 
   <!-- Coach script: context helpers first, then widget -->
   <script src="assets/chat/ei-context.js?v=1"></script>
-  <script defer src="widget.js?v=20251116-0600"></script>
+  <script defer src="widget.js?v=20251121-0001"></script>
 
   <!-- Ensure Alora sits on top -->
   <style>
@@ -641,7 +640,7 @@
             style="border-color: #1E3A8A;">Explore
             Platform</a>
         </div>
-        
+
         <!-- Hero Image Below CTA Buttons -->
         <div class="w-full flex-shrink-0">
           <div class="rounded-xl overflow-hidden shadow-xl">
@@ -804,43 +803,71 @@
       <!-- Four primary modules + Images -->
       <div class="grid md:grid-cols-3 gap-8">
         <!-- Sales Coach Card -->
-        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div
+          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Sales Coach</h3>
-          <p class="text-gray-600 mb-4">Practice high-stakes calls in oncology, vaccines, and other therapeutic areas with adaptive AI personas. Each simulation tracks not just what you say, but how you say it—measuring empathy, tone, and active listening alongside clinical accuracy.</p>
+          <p class="text-gray-600 mb-4">Practice high-stakes calls in oncology, vaccines, and other therapeutic areas
+            with adaptive AI personas. Each simulation tracks not just what you say, but how you say it—measuring
+            empathy, tone, and active listening alongside clinical accuracy.</p>
           <ul class="space-y-2 text-sm text-gray-700">
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Dynamic HCP personas by specialty</span></li>
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Real-time objection handling</span></li>
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>EI assessment on every exchange</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Dynamic HCP personas by specialty</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Real-time objection handling</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>EI assessment on every exchange</span></li>
           </ul>
         </div>
 
         <!-- Product Knowledge Card -->
-        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div
+          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
               <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
               <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Product Knowledge</h3>
-          <p class="text-gray-600 mb-4">Train on complex clinical data and regulatory messaging with compliance and real-time correction built in. The Coach evaluates accuracy while simultaneously teaching how to communicate complex science with clarity and empathy.</p>
+          <p class="text-gray-600 mb-4">Train on complex clinical data and regulatory messaging with compliance and
+            real-time correction built in. The Coach evaluates accuracy while simultaneously teaching how to communicate
+            complex science with clarity and empathy.</p>
           <ul class="space-y-2 text-sm text-gray-700">
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Label-compliant messaging only</span></li>
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Simplify complex science effectively</span></li>
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Instant correction and guidance</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Label-compliant messaging only</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Simplify complex science effectively</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Instant correction and guidance</span></li>
           </ul>
         </div>
 
         <!-- Role Play Card -->
-        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div
+          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
               <path d="M8 15c1.333-2 6.667-2 8 0" stroke="currentColor" stroke-width="2" fill="none" />
               <circle cx="9" cy="10" r="1" fill="currentColor" />
@@ -848,29 +875,46 @@
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Role Play</h3>
-          <p class="text-gray-600 mb-4">Hone your skills and emotional awareness in a safe, judgment-free practice arena. Role Play lets you rehearse complex scenarios and experiment with authentic, EI-driven communication before entering formal evaluation. No scoring—just pure practice fostering confidence, conversational agility, and more human connections.</p>
+          <p class="text-gray-600 mb-4">Hone your skills and emotional awareness in a safe, judgment-free practice
+            arena. Role Play lets you rehearse complex scenarios and experiment with authentic, EI-driven communication
+            before entering formal evaluation. No scoring—just pure practice fostering confidence, conversational
+            agility, and more human connections.</p>
           <ul class="space-y-2 text-sm text-gray-700">
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Unlimited open-ended practice sessions</span></li>
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Explore scenarios by specialty or challenge</span></li>
-            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Build fluency, emotional agility, and confidence—risk-free</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Unlimited open-ended practice sessions</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Explore scenarios by specialty or challenge</span></li>
+            <li class="flex items-start"><svg class="h-4 w-4 text-accent-teal mr-2 mt-0.5 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg><span>Build fluency, emotional agility, and confidence—risk-free</span></li>
           </ul>
         </div>
 
         <!-- Image: Left (below Sales Coach) -->
         <div class="rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:scale-[1.02]">
-          <img src="assets/site_image7.png" alt="ReflectivAI Platform Interface" class="w-full h-auto object-cover" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x320?text=Image+Not+Found';this.alt='Image not found';" />
+          <img src="assets/site_image7.png" alt="ReflectivAI Platform Interface" class="w-full h-auto object-cover"
+            onerror="this.onerror=null;this.src='https://via.placeholder.com/400x320?text=Image+Not+Found';this.alt='Image not found';" />
         </div>
 
         <!-- Relationship Intelligence Card (Moved to Middle) -->
-        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
+        <div
+          class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition transform hover:scale-[1.01]">
           <div class="w-12 h-12 accent-teal rounded-xl flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
               <path d="M4 19h16"></path>
               <path d="M7 15l3-6 4 5 3-9"></path>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-3">Relationship Intelligence</h3>
-          <p class="text-gray-600 mb-4">Track behavioral blind spots and conversational patterns. Understand empathy, tone calibration, and conversational agility with granular data. ReflectivAI captures EI metrics that traditional training misses, helping reps build authentic connections.</p>
+          <p class="text-gray-600 mb-4">Track behavioral blind spots and conversational patterns. Understand empathy,
+            tone calibration, and conversational agility with granular data. ReflectivAI captures EI metrics that
+            traditional training misses, helping reps build authentic connections.</p>
           <ul class="list-disc list-inside text-left mx-auto" style="max-width:320px;">
             <li>Empathy &amp; tone scoring</li>
             <li>Active listening analysis</li>
@@ -880,15 +924,19 @@
 
         <!-- Image: Right (below Role Play) -->
         <div class="rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:scale-[1.02]">
-          <img src="assets/site_image3.png" alt="ReflectivAI Analytics Dashboard" class="w-full h-auto object-cover" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x320?text=Image+Not+Found';this.alt='Image not found';" />
+          <img src="assets/site_image3.png" alt="ReflectivAI Analytics Dashboard" class="w-full h-auto object-cover"
+            onerror="this.onerror=null;this.src='https://via.placeholder.com/400x320?text=Image+Not+Found';this.alt='Image not found';" />
         </div>
       </div>
     </div>
   </section>
 
   <!-- Metric Card Modal -->
-  <div id="metricModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4" style="backdrop-filter: blur(4px);">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 opacity-0" id="metricModalContent">
+  <div id="metricModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4"
+    style="backdrop-filter: blur(4px);">
+    <div
+      class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 opacity-0"
+      id="metricModalContent">
       <!-- Modal content will be injected here -->
     </div>
   </div>
@@ -1039,7 +1087,7 @@
         card.className = `metric-card bg-[#1e3a5f]/80 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-white/10 hover:shadow-2xl hover:border-accent-teal/60 transition-all duration-300 cursor-pointer transform hover:scale-105 opacity-0 text-center`;
         card.style.animation = `fadeInUp 0.5s ease-out ${index * 0.15}s forwards`;
         card.setAttribute('data-metric-id', metric.id);
-        
+
         card.innerHTML = `
           <div class="flex flex-col items-center justify-center h-full">
             <div class="text-2xl font-bold text-accent-teal mb-2">${metric.score}</div>
@@ -1056,7 +1104,7 @@
     function openMetricModal(metric) {
       const modal = document.getElementById('metricModal');
       const content = document.getElementById('metricModalContent');
-      
+
       content.innerHTML = `
         <div class="sticky top-0 bg-gradient-to-r from-[#0f2747] to-[#1e3a5f] text-white p-6 rounded-t-2xl flex justify-between items-center">
           <div class="flex items-center gap-4">
@@ -1074,7 +1122,7 @@
             </svg>
           </button>
         </div>
-        
+
         <div class="p-8 space-y-6">
           <div>
             <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -1083,7 +1131,7 @@
             </h3>
             <p class="text-gray-700 leading-relaxed">${metric.definition}</p>
           </div>
-          
+
           <div>
             <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
               <span class="w-2 h-2 rounded-full" style="background-color: ${metric.color}"></span>
@@ -1091,7 +1139,7 @@
             </h3>
             <p class="text-gray-700 leading-relaxed font-mono text-sm bg-gray-50 p-3 rounded-lg">${metric.calculation}</p>
           </div>
-          
+
           <div>
             <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
               <span class="w-2 h-2 rounded-full" style="background-color: ${metric.color}"></span>
@@ -1099,7 +1147,7 @@
             </h3>
             <p class="text-gray-700 leading-relaxed">${metric.goodIndicators}</p>
           </div>
-          
+
           <div class="bg-gradient-to-br ${metric.bgColor} p-6 rounded-xl border-2 ${metric.borderColor}">
             <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
               <span class="w-2 h-2 rounded-full" style="background-color: ${metric.color}"></span>
@@ -1122,10 +1170,10 @@
     function closeMetricModal() {
       const modal = document.getElementById('metricModal');
       const content = document.getElementById('metricModalContent');
-      
+
       content.classList.add('scale-95', 'opacity-0');
       content.classList.remove('scale-100', 'opacity-100');
-      
+
       setTimeout(() => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
@@ -1149,17 +1197,18 @@
         opacity: 0;
         transform: translateY(20px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
       }
     }
-    
+
     .metric-card {
       position: relative;
       overflow: hidden;
     }
-    
+
     .metric-card::before {
       content: '';
       position: absolute;
@@ -1167,10 +1216,10 @@
       left: -100%;
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
       transition: left 0.5s;
     }
-    
+
     .metric-card:hover::before {
       left: 100%;
     }
@@ -1285,10 +1334,16 @@
       <div class="text-center mb-12">
         <h2 class="text-4xl font-extrabold mb-4">Performance Analytics & Coaching Intelligence</h2>
         <div class="w-20 mx-auto section-separator" style="background-color:white"></div>
-        <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with EI-driven metrics.</p>
+        <p class="text-xl text-indigo-200 max-w-3xl mx-auto">Turn training data into measurable business outcomes with
+          EI-driven metrics.</p>
         <div class="mt-6">
-          <a href="analytics.html" target="_blank" class="inline-flex items-center px-6 py-3 rounded-full bg-accent-teal text-white font-semibold hover:bg-teal-600 transition shadow-lg">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <a href="analytics.html" target="_blank"
+            class="inline-flex items-center px-6 py-3 rounded-full bg-accent-teal text-white font-semibold hover:bg-teal-600 transition shadow-lg">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+              </path>
+            </svg>
             Export Sample Analytics Report (PDF)
           </a>
         </div>
@@ -1915,8 +1970,8 @@
 
     // Auto-initialize when coach modal opens
     document.addEventListener('click', async (e) => {
-      if (e.target.matches('[data-open-coach], [data-coach]') || 
-          e.target.closest('[data-open-coach], [data-coach]')) {
+      if (e.target.matches('[data-open-coach], [data-coach]') ||
+        e.target.closest('[data-open-coach], [data-coach]')) {
         const modal = document.getElementById('coachModal');
         if (modal && !modal.dataset.initialized) {
           modal.dataset.initialized = 'true';

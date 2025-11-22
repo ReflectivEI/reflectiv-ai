@@ -88,7 +88,7 @@ async function testVersion() {
   const data = await res.json();
   
   assert(res.status === 200, "GET /version returns 200");
-  assertEquals(data.version, "r10.1", "GET /version returns correct version");
+  assertEquals(data.version, "r11.0-phase11", "GET /version returns correct version");
   assert(res.headers.get("Access-Control-Allow-Origin") === "https://reflectivei.github.io", 
     "GET /version includes CORS headers");
 }
@@ -106,7 +106,7 @@ async function testDebugEI() {
   
   assert(res.status === 200, "GET /debug/ei returns 200");
   assertEquals(data.worker, "ReflectivAI Gateway", "GET /debug/ei returns worker name");
-  assertEquals(data.version, "r10.1", "GET /debug/ei returns correct version");
+  assertEquals(data.version, "r11.0-phase11", "GET /debug/ei returns correct version");
   assert(Array.isArray(data.endpoints), "GET /debug/ei returns endpoints array");
   assert(data.endpoints.includes("/health"), "GET /debug/ei lists /health endpoint");
   assert(data.endpoints.includes("/chat"), "GET /debug/ei lists /chat endpoint");

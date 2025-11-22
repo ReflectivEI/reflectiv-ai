@@ -17,6 +17,87 @@
 (function () {
   // ---------- safe bootstrapping ----------
   let mount = null;
+  const isDebugMode = () => new URLSearchParams(window.location.search).get('debug') === 'true';
+
+  // Phase 7: Deployment safeguards
+  const WIDGET_VERSION = "11.0.0-phase11";
+  const EMERGENCY_SAFE_MODE = false;
+
+  // PHASE 8: Staging deployment simulation mocks
+  function mockWorkerResponse(type) {
+    if (!isDebugMode()) return null; // Only in debug mode
+
+    switch (type) {
+      case 'slow':
+        return new Promise(resolve => setTimeout(() => resolve({
+          role: "assistant",
+          content: "This is a simulated slow response from the worker.",
+          citations: [],
+          metrics: { simulated: true, type: 'slow' }
+        }), 5000));
+
+      case 'malformed_json':
+        return Promise.resolve("invalid json response");
+
+      case '400':
+        return Promise.reject(new Error('400 Bad Request'));
+
+      case '429':
+        return Promise.reject(new Error('429 Too Many Requests'));
+
+      case '500':
+        return Promise.reject(new Error('500 Internal Server Error'));
+
+      case 'partial_sse':
+        return Promise.resolve({
+          role: "assistant",
+          content: "This response was cut off mid-sentence and",
+          citations: [],
+          metrics: { simulated: true, type: 'partial_sse' }
+        });
+
+      default:
+        return null;
+    }
+  }
+
+  function mockSSEChunkFailure() {
+    if (!isDebugMode()) return null;
+    return Promise.resolve("data: {\"role\":\"assistant\",\"content\":\"Partial chunk\"}\n\ndata: [incomplete]");
+  }
+
+  function mockJSONFailure() {
+    if (!isDebugMode()) return null;
+    return Promise.resolve("{ \"role\": \"assistant\", \"content\": \"Malformed JSON response\" ");
+  }
+
+  // PHASE 8: Staging deployment simulation
+  let simulationMode = null;
+
+  // Expose simulation controls in debug mode
+  if (isDebugMode()) {
+    window.__reflectivSimulate = function(type) {
+      simulationMode = type;
+      console.log(`[Simulation] Enabled: ${type}`);
+      return `Simulation mode set to: ${type}. Next API call will be simulated.`;
+    };
+    window.__reflectivSimulateOff = function() {
+      simulationMode = null;
+      console.log(`[Simulation] Disabled`);
+      return "Simulation mode disabled.";
+    };
+  }
+
+  const contractTelemetry = {
+    totalMessages: 0,
+    issuesByMode: {
+      'sales-coach': {},
+      'role-play': {},
+      'product-knowledge': {},
+      'emotional-assessment': {},
+      'general-knowledge': {}
+    }
+  };
 
   function onReady(fn) {
     if (document.readyState === "loading") {
@@ -102,10 +183,6 @@
   let currentTelemetry = null;
   const textEncoder = new TextEncoder(); // Reusable encoder for byte length calculations
 
-  function isDebugMode() {
-    return /[?&]debug=1/.test(window.location.search);
-  }
-
   function initTelemetry() {
     debugMode = isDebugMode();
     currentTelemetry = {
@@ -129,7 +206,16 @@
     const firstChunk = t.t_first_chunk > 0 ? ((t.t_first_chunk - t.t_open) / 1000).toFixed(1) : "–.–";
     const done = t.t_done > 0 ? ((t.t_done - t.t_open) / 1000).toFixed(1) : "–.–";
 
-    telemetryFooter.textContent = `TTFB/FirstChunk/Done: ${ttfb}s / ${firstChunk}s / ${done}s • retries:${t.retries} • ${t.httpStatus || "—"}`;
+    // Calculate contract violation summary
+    const contractSummary = Object.entries(contractTelemetry.issuesByMode)
+      .map(([mode, issues]) => {
+        const total = Object.values(issues).reduce((sum, count) => sum + count, 0);
+        return total > 0 ? `${mode}:${total}` : null;
+      })
+      .filter(Boolean)
+      .join(' ') || 'none';
+
+    telemetryFooter.textContent = `TTFB/FirstChunk/Done: ${ttfb}s / ${firstChunk}s / ${done}s • retries:${t.retries} • ${t.httpStatus || "—"} • contracts: ${contractSummary} • safe-mode: ${EMERGENCY_SAFE_MODE ? 'on' : 'off'}`;
   }
 
   function logTelemetry() {
@@ -200,7 +286,7 @@
       const resp = await fetch('./citations.json?' + Date.now());
       if (resp.ok) {
         citationsDb = await resp.json();
-        console.log('[Citations] Loaded', Object.keys(citationsDb).length, 'references');
+        if (isDebugMode()) console.log('[Citations] Loaded', Object.keys(citationsDb).length, 'references');
       }
     } catch (e) {
       console.warn('[Citations] Failed to load citations.json:', e);
@@ -707,6 +793,84 @@
     return String(text).replace(/\bMy\s*Approach\b/gi, "Rep Approach");
   }
 
+  function parseSalesCoachBullets(text) {
+    if (!text) return [];
+    const bulletPattern = "(?:[•●○\\-\\*]|\\d+[\\.\\)])";
+    const bulletRegex = new RegExp(`^${bulletPattern}\\s*(.+)$`);
+    const sameLineRegex = new RegExp(`^Rep Approach:\\s*${bulletPattern}\\s*(.+)$`, "i");
+    const inlineMarkerPattern = "(?:[•●○*])";
+
+    let base = String(text)
+      .split(/\r?\n/)
+      .map((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+        const liMatch = trimmed.match(/<li[^>]*>([\s\S]*?)<\/li>/i);
+        if (liMatch) {
+          return liMatch[1].replace(/<[^>]+>/g, "").trim();
+        }
+        const bulletMatch = trimmed.match(bulletRegex);
+        if (bulletMatch) {
+          return bulletMatch[1].trim();
+        }
+        const sameLineMatch = trimmed.match(sameLineRegex);
+        if (sameLineMatch) {
+          return sameLineMatch[1].trim();
+        }
+        const entityMatch = trimmed.match(/^&bull;\s*(.+)$/i);
+        if (entityMatch) {
+          return entityMatch[1].trim();
+        }
+        // Accept semicolon-separated bullets on a single line
+        if (/;/.test(trimmed) && trimmed.startsWith('Rep Approach:')) {
+          return trimmed.replace(/^Rep Approach:\s*/i, '').split(';').map(b => b.trim()).filter(Boolean);
+        }
+        return null;
+      })
+      .flat()
+      .filter(Boolean);
+    if (base.length >= 3) return base;
+    // Accept bullets separated by semicolons anywhere
+    if (typeof text === 'string' && text.includes(';')) {
+      const semis = text.split(';').map(b => b.replace(/^Rep Approach:\s*/i, '').trim()).filter(Boolean);
+      if (semis.length >= 3) return semis;
+    }
+    const inline = [];
+    const inlineRegex = new RegExp(`${inlineMarkerPattern}\\s*(.*?)(?=(?:\\s${inlineMarkerPattern})|$)`, "g");
+    let match;
+    while ((match = inlineRegex.exec(String(text))) !== null) {
+      const candidate = match[1].trim();
+      if (candidate) inline.push(candidate);
+    }
+    if (inline.length) return inline;
+    return base;
+  }
+
+  function escapeRegExp(str) {
+    return String(str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function extractLabeledSection(text, header, nextHeaders = []) {
+    if (!text) return null;
+    // Relaxed: allow case-insensitive, optional whitespace, and minor punctuation (colon, dash, etc.)
+    const relaxedHeader = header.replace(/[:\-]+$/, '').replace(/\s+/g, '\\s*');
+    const headerRegex = new RegExp(relaxedHeader + '\\s*[:\-]?\\s*', 'i');
+    const headerMatch = headerRegex.exec(text);
+    if (!headerMatch) return null;
+    const start = headerMatch.index + headerMatch[0].length;
+    const after = text.slice(start);
+    let end = after.length;
+    for (const next of nextHeaders) {
+      const relaxedNext = next.replace(/[:\-]+$/, '').replace(/\s+/g, '\\s*');
+      const nextRegex = new RegExp(relaxedNext + '\\s*[:\-]?\\s*', 'i');
+      const nextMatch = nextRegex.exec(after);
+      if (nextMatch && nextMatch.index >= 0 && nextMatch.index < end) {
+        end = nextMatch.index;
+      }
+    }
+    return after.slice(0, end).trim();
+  }
+
   /**
    * formatSalesCoachReply - Format sales-coach responses with proper structure
    * Expected format:
@@ -721,15 +885,17 @@
    * Suggested Phrasing: "[text]"
    */
   function formatSalesCoachReply(text) {
-    if (!text) return "";
+    if (!text) return "<div class='sales-sim-section' style='background:#fff8e1;padding:12px;border:2px solid #e0b200;border-radius:6px'><strong style='color:#b38300'>⚠ Contract Warning (sales-coach)</strong><div style='margin-top:4px'>No response text provided.</div></div>";
 
-    console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
+    if (isDebugMode()) console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
 
     let html = "";
 
     // DEDUPLICATION: LLM sometimes repeats sections 2-3x - remove duplicates first
     // Look for patterns like "Challenge: X... Challenge: X..." and keep only first occurrence
     let cleanedText = text;
+
+    cleanedText = cleanedText.replace(/<coach>[\s\S]*?<\/coach>/gi, '').trim();
 
     // Remove duplicate "Challenge:" sections
     const challengeRegex = /(Challenge:\s*.+?)(\s+Challenge:)/is;
@@ -757,52 +923,44 @@
 
     // Strict contract enforcement: 4 headers in order, 3 bullets, phrasing
     // Relaxed regex to handle variations in formatting
-    const challengeMatch = cleanedText.match(/Challenge\s*:\s*([\s\S]*?)(?=\n\s*(?:Rep Approach|Impact|Suggested Phrasing):|$)/i);
-    const repApproachMatch = cleanedText.match(/Rep Approach\s*:\s*([\s\S]*?)(?=\n\s*(?:Impact|Suggested Phrasing):|$)/i);
-    const impactMatch = cleanedText.match(/Impact\s*:\s*([\s\S]*?)(?=\n\s*Suggested Phrasing:|$)/i);
-    // More flexible phrasing regex: allow any text after the colon, with or without quotes
-    const phrasingMatch = cleanedText.match(/Suggested\s+Phrasing\s*:\s*([\s\S]*?)(?=\n\s*(?:Challenge|Rep Approach|Impact):|$)/i);
+    const challengeSection = extractLabeledSection(cleanedText, "Challenge:", ["Rep Approach:", "Impact:", "Suggested Phrasing:"]);
+    const repApproachSection = extractLabeledSection(cleanedText, "Rep Approach:", ["Impact:", "Suggested Phrasing:"]);
+    const impactSection = extractLabeledSection(cleanedText, "Impact:", ["Suggested Phrasing:"]);
+    const phrasingSection = extractLabeledSection(cleanedText, "Suggested Phrasing:", []);
 
     // Validate strict contract
     let contractValid = true;
-    let errorMsg = "";
-    if (!challengeMatch) { contractValid = false; errorMsg += "Missing Challenge section.\n"; }
-    if (!repApproachMatch) { contractValid = false; errorMsg += "Missing Rep Approach section.\n"; }
-    if (!impactMatch) { contractValid = false; errorMsg += "Missing Impact section.\n"; }
-    if (!phrasingMatch) { contractValid = false; errorMsg += "Missing Suggested Phrasing section.\n"; }
+    let issues = [];
+    if (!challengeSection) { contractValid = false; issues.push({message: "Missing Challenge section.", sectionKey: "challenge"}); }
+    if (!repApproachSection) { contractValid = false; issues.push({message: "Missing Rep Approach section.", sectionKey: "repApproach"}); }
+    if (!impactSection) { contractValid = false; issues.push({message: "Missing Impact section.", sectionKey: "impact"}); }
+    if (!phrasingSection) { contractValid = false; issues.push({message: "Missing Suggested Phrasing section.", sectionKey: "suggestedPhrasing"}); }
     // Check 3 bullets in Rep Approach
-    let bulletCount = 0;
-    if (repApproachMatch) {
-      const repText = repApproachMatch[1].trim();
-      const bullets = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
-        .map(b => b.replace(/^[\t ]*[•●○\-]\s+/, '').trim())
-        .filter(b => b.length > 0 && b.length < 500);
-      bulletCount = bullets.length;
-      if (bulletCount !== 3) { contractValid = false; errorMsg += `Rep Approach must have exactly 3 bullets (found ${bulletCount}).\n`; }
+    const repText = repApproachSection || "";
+    const bulletItems = parseSalesCoachBullets(repText);
+    const bulletCount = bulletItems.length;
+    if (repApproachSection && bulletCount !== 3) {
+      contractValid = false;
+      issues.push({message: `Rep Approach should have 3 bullets (found ${bulletCount}).`, sectionKey: "repApproach"});
     }
     if (!contractValid) {
-      return `<div class="sales-sim-section" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
-        <strong style="color:#c00">⚠️ Format Error:</strong> Sales Coach response violated contract.<br>
-        <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">${esc(errorMsg)}</pre>
-        <details style="margin-top:8px">
-          <summary style="cursor:pointer;color:#666">Show raw response</summary>
-          <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px">${esc(text)}</div>
-        </details>
-      </div>`;
+      // Update telemetry for contract violations
+      issues.forEach(issue => {
+        const key = issue.sectionKey || 'general';
+        contractTelemetry.issuesByMode['sales-coach'][key] = (contractTelemetry.issuesByMode['sales-coach'][key] || 0) + 1;
+      });
+      updateDebugFooter();
+      return renderContractWarningCard('sales-coach', issues, text);
     }
     // Render sections if valid
-    html += `<div class="sales-sim-section"><div class="section-header"><strong>Challenge:</strong></div><div class="section-content">${convertCitations(esc(challengeMatch[1].trim()))}</div></div>\n\n`;
-    const repText = repApproachMatch[1].trim();
-    const bulletItems = (repText.match(/^[\t ]*[•●○\-]\s+.+$/gm) || [])
-      .map(b => b.replace(/^[\t ]*[•●○\-]\s+/, '').trim())
-      .filter(b => b.length > 0 && b.length < 500);
+    html += `<div class="sales-sim-section"><div class="section-header"><strong>Challenge:</strong></div><div class="section-content">${convertCitations(esc((challengeSection || "").trim()))}</div></div>\n\n`;
     html += `<div class="sales-sim-section"><div class="section-header"><strong>Rep Approach:</strong></div><ul class="section-bullets">`;
     bulletItems.forEach(bullet => {
       html += `<li>${convertCitations(esc(bullet))}</li>`;
     });
     html += `</ul></div>\n\n`;
-    html += `<div class="sales-sim-section"><div class="section-header"><strong>Impact:</strong></div><div class="section-content">${convertCitations(esc(impactMatch[1].trim()))}</div></div>\n\n`;
-    const phrasingText = phrasingMatch[1].trim().replace(/^['"\s]+|['"]\s*$/g, '').trim();
+    html += `<div class="sales-sim-section"><div class="section-header"><strong>Impact:</strong></div><div class="section-content">${convertCitations(esc((impactSection || "").trim()))}</div></div>\n\n`;
+    const phrasingText = (phrasingSection || "").replace(/^['"\s]+|['"]\s*$/g, '').trim();
     html += `<div class="sales-sim-section"><div class="section-header"><strong>Suggested Phrasing:</strong></div><div class="section-quote">"${convertCitations(esc(phrasingText))}"</div></div>`;
     return html;
   }
@@ -967,15 +1125,44 @@
     return e;
   }
 
+  // Phase 7: Automatic fallback HTML builder
+  function createFallbackHTML(rawText, mode, error) {
+    if (isDebugMode()) {
+      console.warn(`[Fallback] Formatting failed for ${mode} mode:`, error);
+    }
+
+    // Sanitize the raw text to prevent HTML/script injection
+    const sanitized = esc(String(rawText || ''));
+
+    return `<div class="reflectiv-fallback" style="background:#fff8e1;border:1px solid #e0b200;padding:12px;border-radius:6px;margin:8px 0;font-size:14px;line-height:1.4">
+  <p style="margin:0 0 8px 0;color:#b38300"><strong>⚠ Unable to fully format this response.</strong></p>
+  <p style="margin:0 0 8px 0">Showing raw output:</p>
+  <pre style="background:#fff;border:1px solid #eed;padding:8px;border-radius:4px;margin:0;max-height:200px;overflow:auto;white-space:pre-wrap">${sanitized}</pre>
+</div>`;
+  }
+
   // Soft contract warning card (non-network) for mode outputs
   function renderContractWarningCard(mode, issues, raw) {
     const card = document.createElement('div');
     card.className = 'contract-warning-card';
     card.style.cssText = 'background:#fff8e1;border:1px solid #e0b200;padding:10px 12px;border-radius:6px;margin:8px 0;font-size:12px;line-height:1.4';
+
+    // Map section keys to human-readable labels
+    const sectionLabels = {
+      'challenge': 'Challenge',
+      'repApproach': 'Rep Approach',
+      'impact': 'Impact',
+      'suggestedPhrasing': 'Suggested Phrasing',
+      'general': 'General'
+    };
+
     const title = `<strong style="color:#b38300">⚠ Contract Warning (${mode})</strong>`;
-    const list = `<ul style="margin:6px 0 8px;padding-left:18px">${issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
-    const details = `<details style="font-size:11px"><summary style="cursor:pointer;color:#7a6400">Show raw</summary><div style="margin-top:6px;max-height:160px;overflow:auto;background:#fff;border:1px solid #eed;padding:6px;border-radius:4px">${esc(raw)}</div></details>`;
-    card.innerHTML = `${title}<div style="margin-top:4px">Response violated one or more contract constraints but transport was OK.</div>${list}${details}`;
+    const list = `<ul style="margin:6px 0 8px;padding-left:18px">${issues.map(i => {
+      const sectionLabel = i.sectionKey ? sectionLabels[i.sectionKey] || i.sectionKey : '';
+      return `<li>${esc(i.message)}${sectionLabel ? ` <span style='color:#b38300;font-weight:600'>(Section: ${esc(sectionLabel)})</span>` : ''}</li>`;
+    }).join('')}</ul>`;
+    const details = `<details style="font-size:11px"><summary style="cursor:pointer;color:#7a6400">Show raw response</summary><div style="margin-top:6px;max-height:160px;overflow:auto;background:#fff;border:1px solid #eed;padding:6px;border-radius:4px">${esc(raw)}</div></details>`;
+    card.innerHTML = `${title}<div style="margin-top:4px">Response format doesn't match expected structure, but the message was delivered successfully.</div>${list}${details}`;
     return card;
   }
 
@@ -1022,6 +1209,11 @@
         .replace(/\n{3,}/g, '\n\n')
         .trim();
       const meta = (typeof input === 'string') ? { mode: 'role-play', issues, raw: text } : { mode: 'role-play', issues, raw: input?.raw || text };
+      // Update telemetry for contract violations
+      issues.forEach(issue => {
+        contractTelemetry.issuesByMode['role-play']['general'] = (contractTelemetry.issuesByMode['role-play']['general'] || 0) + 1;
+      });
+      updateDebugFooter();
       return { cleaned, issues, meta };
     }
     return { cleaned: text, issues: [], meta: null };
@@ -1878,6 +2070,25 @@ ${COMMON}`
       msgsEl.innerHTML = "";
 
       for (const m of conversation) {
+        if (!m || !m.role || !m.content) continue;
+
+        // Increment telemetry for assistant messages only
+        if (m.role === 'assistant') {
+          contractTelemetry.totalMessages = (contractTelemetry.totalMessages || 0) + 1;
+
+          // Log summary every 5 messages in debug mode
+          if (isDebugMode() && contractTelemetry.totalMessages % 5 === 0) {
+            const contractSummary = Object.entries(contractTelemetry.issuesByMode)
+              .map(([mode, issues]) => {
+                const total = Object.values(issues).reduce((sum, count) => sum + count, 0);
+                return total > 0 ? `${mode}:${total}` : null;
+              })
+              .filter(Boolean)
+              .join(', ') || 'none';
+            console.log(`[Contract Telemetry] ${contractTelemetry.totalMessages} messages processed, violations: ${contractSummary}`);
+          }
+        }
+
         const row = el("div", `message ${m.role}`);
         const c = el("div", "content");
 
@@ -1920,33 +2131,60 @@ ${COMMON}`
         const normalized = normalizeGuidanceLabels(rawContent);
 
         // Use special formatting for sales-coach mode AND role-play HCP responses
-        if (currentMode === "sales-coach" && m.role === "assistant") {
-          console.log('[renderMessages] ========== SALES COACH MESSAGE ==========');
-          console.log('[renderMessages] currentMode:', currentMode);
-          console.log('[renderMessages] m.role:', m.role);
-          console.log('[renderMessages] Has cached HTML?', !!m._formattedHTML);
-          console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
-          console.log('[renderMessages] normalized preview:', normalized.substring(0, 200));
+        if (EMERGENCY_SAFE_MODE) {
+          // Phase 7: Emergency safe mode - skip all parsing, use basic markdown only
+          if (isDebugMode()) console.log('[Safe Mode] Using emergency safe mode - basic markdown only');
+          try {
+            body.innerHTML = md(normalized);
+          } catch (error) {
+            body.innerHTML = createFallbackHTML(normalized, 'safe-mode', error);
+          }
+        } else if (currentMode === "sales-coach" && m.role === "assistant") {
+          if (isDebugMode()) {
+            console.log('[renderMessages] ========== SALES COACH MESSAGE ==========');
+            console.log('[renderMessages] currentMode:', currentMode);
+            console.log('[renderMessages] m.role:', m.role);
+            console.log('[renderMessages] Has cached HTML?', !!m._formattedHTML);
+            console.log('[renderMessages] rawContent preview:', rawContent.substring(0, 200));
+            console.log('[renderMessages] normalized preview:', normalized.substring(0, 200));
+          }
 
           // Cache formatted HTML to avoid re-parsing on every render
           if (!m._formattedHTML) {
-            console.log('[renderMessages] NO CACHE - Formatting now...');
-            m._formattedHTML = formatSalesCoachReply(normalized);
-            console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
-            console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
+            if (isDebugMode()) console.log('[renderMessages] NO CACHE - Formatting now...');
+            const startTime = performance.now();
+            try {
+              m._formattedHTML = formatSalesCoachReply(normalized);
+            } catch (error) {
+              m._formattedHTML = createFallbackHTML(normalized, 'sales-coach', error);
+            }
+            const endTime = performance.now();
+            if (isDebugMode()) {
+              console.log('[renderMessages] Formatting completed in', (endTime - startTime).toFixed(2), 'ms');
+              console.log('[renderMessages] Cached HTML length:', m._formattedHTML.length);
+              console.log('[renderMessages] Cached HTML preview:', m._formattedHTML.substring(0, 300));
+            }
           } else {
-            console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
+            if (isDebugMode()) console.log('[renderMessages] USING CACHED HTML - length:', m._formattedHTML.length);
           }
           body.innerHTML = m._formattedHTML;
         } else if (currentMode === "role-play" && (m.role === "assistant" || m._speaker === "hcp")) {
           // Format HCP responses in Role Play mode with clean structure
-          console.log('[renderMessages] Formatting HCP response in role-play mode');
+          if (isDebugMode()) console.log('[renderMessages] Formatting HCP response in role-play mode');
           if (!m._formattedHTML) {
-            m._formattedHTML = md(normalized); // Use markdown formatter for clean structure
+            try {
+              m._formattedHTML = md(normalized); // Use markdown formatter for clean structure
+            } catch (error) {
+              m._formattedHTML = createFallbackHTML(normalized, 'role-play', error);
+            }
           }
           body.innerHTML = m._formattedHTML;
         } else {
-          body.innerHTML = md(normalized);
+          try {
+            body.innerHTML = md(normalized);
+          } catch (error) {
+            body.innerHTML = createFallbackHTML(normalized, currentMode, error);
+          }
         }
 
         c.appendChild(body);
@@ -2599,6 +2837,31 @@ ${COMMON}`
   }
 
   async function callModel(messages, scenarioContext = null) {
+    // PHASE 8: Check for simulation mode first
+    if (simulationMode && isDebugMode()) {
+      console.log(`[Simulation] Using mock response for: ${simulationMode}`);
+      const mockResponse = mockWorkerResponse(simulationMode);
+      if (mockResponse) {
+        // Reset simulation mode after use
+        const mode = simulationMode;
+        simulationMode = null;
+
+        // Handle mock response
+        if (mode === 'malformed_json') {
+          throw new Error('Invalid JSON response from server');
+        } else if (mode === '400' || mode === '429' || mode === '500') {
+          throw new Error(mode);
+        }
+
+        // For successful mocks, return the content
+        const result = await mockResponse;
+        const rawText = result.content;
+        rawText._citations = result.citations || [];
+        rawText._metrics = result.metrics;
+        return rawText;
+      }
+    }
+
     // Initialize telemetry
     initTelemetry();
     currentTelemetry.t_open = Date.now();
@@ -2614,6 +2877,7 @@ ${COMMON}`
       if (!base) throw new Error("worker_base_missing");
 
       const url = `${base}/chat`;
+      const payloadMode = currentMode === "sales-coach" ? "sales-simulation" : currentMode;
 
       // Retry logic with exponential backoff for 429/5xx errors
       const delays = [300, 800, 1500];
@@ -2629,7 +2893,7 @@ ${COMMON}`
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               messages,
-              mode: currentMode,
+              mode: payloadMode,
               scenario: scenarioContext
             }),
             signal: controller.signal
@@ -2642,15 +2906,22 @@ ${COMMON}`
             currentTelemetry.t_first_chunk = Date.now();
             currentTelemetry.t_done = Date.now();
             currentTelemetry.httpStatus = r.status.toString();
-            const text = await r.text();
-            currentTelemetry.bytes_rx = new TextEncoder().encode(text).length;
-            currentTelemetry.tokens_rx = Math.ceil(text.length / 4); // rough estimate
+
+            // PHASE 8: Handle new standardized response format
+            const responseData = await r.json();
+            currentTelemetry.bytes_rx = new TextEncoder().encode(JSON.stringify(responseData)).length;
+            currentTelemetry.tokens_rx = Math.ceil(responseData.content.length / 4); // rough estimate
             updateDebugFooter();
 
             // Remove typing indicator
             removeTypingIndicator(typingIndicator);
 
-            return text;
+            // Extract content and attach metadata for processing
+            const rawText = responseData.content;
+            rawText._citations = responseData.citations || [];
+            rawText._metrics = responseData.metrics;
+
+            return rawText;
           }
 
           // Check if we should retry (429 or 5xx errors)
@@ -2682,45 +2953,6 @@ ${COMMON}`
       // Ensure typing indicator is removed
       removeTypingIndicator(typingIndicator);
     }
-  }
-
-  /**
-   * Load citations database from citations.json
-   */
-  async function loadCitations() {
-    try {
-      const resp = await fetch('./citations.json?' + Date.now());
-      if (resp.ok) {
-        citationsDb = await resp.json();
-        console.log('[Citations] Loaded', Object.keys(citationsDb).length, 'references');
-      }
-    } catch (e) {
-      console.warn('[Citations] Failed to load citations.json:', e);
-    }
-  }
-
-  /**
-   * Convert citation codes [HIV-PREP-001] to clickable footnote links
-   * This version escapes the text first, then unescapes and converts citations
-   * @param {string} text - Text containing citation codes
-   * @returns {string} HTML with citation codes converted to links
-   */
-  function convertCitations(text) {
-    if (!text) return text;
-
-    // Match citation codes like [HIV-PREP-001] or [HIV-TREAT-TAF-001]
-    // Works on both escaped and unescaped text
-    return text.replace(/\[([A-Z]{3,}-[A-Z]{2,}-[A-Z0-9-]{3,})\]/g, (match, code) => {
-      const citation = citationsDb[code];
-      if (!citation) {
-        // Unknown code - show as-is but styled
-        return `<span style="background:#fee;padding:2px 4px;border-radius:3px;font-size:11px;color:#c00" title="Citation not found">${match}</span>`;
-      }
-
-      // Create clickable footnote link
-      const tooltip = citation.apa || `${citation.source}, ${citation.year}`;
-      return `<a href="${citation.url}" target="_blank" rel="noopener" style="background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-decoration:none;border:1px solid #bae6fd" title="${esc(tooltip)}">[${code.split('-').pop()}]</a>`;
-    });
   }
 
   // Show retry button UI
@@ -3262,6 +3494,17 @@ Please provide your response again with all required fields including phrasing.`
 
   // ---------- init ----------
   async function init() {
+    // Phase 7: Version collision detection
+    if (window.ReflectivAIWidgetVersion && window.ReflectivAIWidgetVersion !== WIDGET_VERSION) {
+      if (isDebugMode()) {
+        console.warn(`[ReflectivAI] Version collision detected! Loaded: ${WIDGET_VERSION}, Existing: ${window.ReflectivAIWidgetVersion}`);
+      }
+    }
+    window.ReflectivAIWidgetVersion = WIDGET_VERSION;
+    if (isDebugMode()) {
+      console.log(`[ReflectivAI] Widget version loaded: ${WIDGET_VERSION}`);
+    }
+
     try {
       try {
         cfg = await fetchLocal("./assets/chat/config.json");
@@ -3303,6 +3546,52 @@ Please provide your response again with all required fields including phrasing.`
       startHealthRetry();
     }
   }
+
+  // Phase 7: Performance stress testing stub
+  window.__reflectivStressTest = function(times = 50, mode = "sales-coach") {
+    if (!isDebugMode()) {
+      console.warn('Stress test only available in debug mode (?debug=true)');
+      return;
+    }
+
+    console.log(`[Stress Test] Starting ${times} iterations for ${mode} mode...`);
+    const testData = {
+      'sales-coach': "Challenge: The HCP may be hesitant to prescribe PrEP due to concerns about potential toxicity associated with ADC (antiretroviral drugs) in PrEP. Rep Approach: • Discuss the importance of weighing the benefits of PrEP against the potential risks, as indicated in the FDA label for Descovy (emtricitabine/tenofovir alafenamide). • Address specific concerns about ADC toxicity by reviewing the safety profile and long-term data. • Emphasize that PrEP is generally well-tolerated with a favorable risk-benefit profile. Impact: Effective PrEP implementation can significantly reduce HIV transmission rates in high-risk populations. Suggested Phrasing: 'While ADC toxicity is a valid concern, the benefits of PrEP in preventing HIV far outweigh the risks for most patients.'",
+      'role-play': "I understand your concern about PrEP adherence. Based on the patient's history of inconsistent medication taking, I'd recommend starting with a once-daily regimen and providing clear education about the importance of adherence for HIV prevention.",
+      'product-knowledge': "Mechanism of Action: ADCs combine monoclonal antibodies with cytotoxic drugs. The antibody targets cancer cells, delivering the chemotherapy directly to tumor sites. This targeted approach minimizes systemic toxicity while maximizing therapeutic effect.",
+      'emotional-assessment': "It sounds like you're feeling frustrated with this interaction. Let's break it down: you demonstrated good active listening initially, but the conversation became more directive than collaborative. This is common when we're trying to solve problems quickly.",
+      'general-knowledge': "HIV transmission occurs through exchange of bodily fluids. The most common routes are sexual contact, sharing needles, and mother-to-child transmission. Prevention strategies include condom use, PrEP, and harm reduction programs."
+    };
+
+    const sampleText = testData[mode] || testData['sales-coach'];
+    const startTime = performance.now();
+    let totalFormattingTime = 0;
+    let errors = 0;
+
+    for (let i = 0; i < times; i++) {
+      const formatStart = performance.now();
+      try {
+        if (mode === 'sales-coach') {
+          formatSalesCoachReply(sampleText);
+        } else {
+          md(sampleText);
+        }
+      } catch (e) {
+        errors++;
+      }
+      const formatEnd = performance.now();
+      totalFormattingTime += (formatEnd - formatStart);
+    }
+
+    const endTime = performance.now();
+    const totalTime = endTime - startTime;
+    const avgFormatTime = totalFormattingTime / times;
+
+    console.log(`[Stress Test] Completed ${times} iterations in ${totalTime.toFixed(2)}ms`);
+    console.log(`[Stress Test] Average format time: ${avgFormatTime.toFixed(3)}ms per message`);
+    console.log(`[Stress Test] Errors: ${errors}`);
+    console.log(`[Stress Test] Throughput: ${(times / (totalTime / 1000)).toFixed(1)} messages/sec`);
+  };
 
   // ---------- start ----------
   waitForMount(init);

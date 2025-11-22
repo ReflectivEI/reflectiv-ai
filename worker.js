@@ -1,6 +1,6 @@
 
 /**
- * Cloudflare Worker — ReflectivAI Gateway (r10.1)
+ * Cloudflare Worker — ReflectivAI Gateway (r11.0-phase11)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET/HEAD /health, GET /version, GET /debug/ei
  * Inlined: FACTS_DB, FSM, PLAN_SCHEMA, COACH_SCHEMA, extractCoach()
  *
@@ -88,12 +88,12 @@ export default {
 
       // Version endpoint
       if (url.pathname === "/version" && req.method === "GET") {
-        return json({ version: "r10.1" }, 200, env, req, { "x-req-id": reqId });
+        return json({ version: "r11.0-phase11" }, 200, env, req, { "x-req-id": reqId });
       }
 
       // Debug EI endpoint - returns basic info about the worker
       if (url.pathname === "/debug/ei" && req.method === "GET") {
-        return json({ worker: "ReflectivAI Gateway", version: "r10.1", endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"], timestamp: new Date().toISOString() }, 200, env, req, { "x-req-id": reqId });
+        return json({ worker: "ReflectivAI Gateway", version: "r11.0-phase11", endpoints: ["/health", "/version", "/debug/ei", "/facts", "/plan", "/chat"], timestamp: new Date().toISOString() }, 200, env, req, { "x-req-id": reqId });
       }
 
       if (url.pathname === "/facts" && req.method === "POST") return postFacts(req, env);
@@ -261,24 +261,37 @@ const COACH_SCHEMA = {
 
 /* ------------------------------ Helpers ------------------------------------ */
 
+const FALLBACK_CORS_ORIGINS = [
+  "https://reflectivei.github.io",
+  "https://reflectivai.github.io",
+  "https://tonyabdelmalak.github.io",
+  "https://tonyabdelmalak.com",
+  "https://www.tonyabdelmalak.com",
+  "https://reflectivai.com",
+  "https://www.reflectivai.com"
+];
+
 /**
  * CORS configuration and header builder.
  *
- * IMPORTANT: CORS_ORIGINS must include https://reflectivei.github.io for GitHub Pages deployment.
+ * IMPORTANT: CORS_ORIGINS should still enumerate every frontend that needs access.
+ * FALLBACK_CORS_ORIGINS keeps the most common public origins whitelisted even if the env var is missing.
  *
  * When an origin is allowed, we echo it back in Access-Control-Allow-Origin.
  * When an origin is denied, we log a warning and return "null" to block the request.
  */
 function cors(env, req) {
   const reqOrigin = req.headers.get("Origin") || "";
-  const allowed = String(env.CORS_ORIGINS || "")
+  const configured = String(env.CORS_ORIGINS || "")
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
+  const allowed = Array.from(new Set([...configured, ...FALLBACK_CORS_ORIGINS]));
 
-  // If no allowlist is configured, allow any origin
-  // If allowlist exists, check if request origin is in the list
-  const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
+  // Requests without an Origin header (server-to-server tooling) stay allowed;
+  // browser requests must match the compiled allowlist.
+  const hasOrigin = Boolean(reqOrigin);
+  const isAllowed = !hasOrigin || allowed.includes(reqOrigin);
 
   // Log CORS denials for diagnostics
   if (!isAllowed && reqOrigin) {
@@ -562,6 +575,106 @@ async function postPlan(req, env) {
 
 /* ------------------------------ Validators --------------------------------- */
 
+function truncateWords(text, limit) {
+  if (!text) return '';
+  const normalized = String(text).replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  const words = normalized.split(' ');
+  if (words.length <= limit) return words.join(' ');
+  return words.slice(0, limit).join(' ') + '...';
+}
+
+function buildSalesFallbackChallenge(context) {
+  const { user, facts } = context || {};
+  const base = user || (facts?.[0]?.topic ? `Clarify ${facts[0].topic}` : 'Clarify the HCP concern');
+  return `Challenge: ${truncateWords(base, 30)}`;
+}
+
+function buildSalesFallbackRepApproach(context) {
+  const facts = Array.isArray(context?.facts) ? context.facts.slice(0, 3) : [];
+  const bullets = [];
+  for (let i = 0; i < 3; i += 1) {
+    const fact = facts[i];
+    if (fact) {
+      const snippet = truncateWords(fact.text, 35);
+      bullets.push(`• ${snippet} [${fact.id}]`);
+    } else {
+      if (i === 0) {
+        bullets.push('• Highlight the key eligibility criteria backed by label guidance.');
+      } else if (i === 1) {
+        bullets.push('• Reinforce supporting clinical rationale and why the therapy fits this practice.');
+      } else {
+        bullets.push('• Emphasize safety and monitoring to mitigate risks and increase comfort.');
+      }
+    }
+  }
+  return `Rep Approach:\n${bullets.join('\n')}`;
+}
+
+function buildSalesFallbackImpact(context) {
+  const facts = Array.isArray(context?.facts) ? context.facts : [];
+  if (facts.length) {
+    const snippet = truncateWords(facts[0].text, 30);
+    return `Impact: Emphasizing ${snippet.toLowerCase()} helps the HCP link the evidence to patient benefit and commit to action.`;
+  }
+  return 'Impact: Clarifying the clinical benefit increases HCP confidence and the likelihood of prescribing.';
+}
+
+function buildSalesFallbackSuggestedPhrasing(context) {
+  const facts = Array.isArray(context?.facts) ? context.facts : [];
+  const topic = facts[0]?.topic?.toLowerCase() || 'this therapy';
+  return `Suggested Phrasing: "Would you like to review how ${topic} fits your patients and agree on the next step?"`;
+}
+
+function buildSalesFinalThought(context) {
+  const facts = Array.isArray(context?.facts) ? context.facts : [];
+  const topic = facts[0]?.topic?.toLowerCase() || 'these considerations';
+  return `Final Thought: Keeping ${topic} front of mind anchors the conversation around actionable next steps.`;
+}
+
+function ensureSalesCoachStructure(reply, context) {
+  const segments = [];
+  if (!/Challenge:/i.test(reply)) segments.push(buildSalesFallbackChallenge(context));
+  if (!/Rep Approach:/i.test(reply)) segments.push(buildSalesFallbackRepApproach(context));
+  if (!/Impact:/i.test(reply)) segments.push(buildSalesFallbackImpact(context));
+  if (!/Suggested Phrasing:/i.test(reply)) segments.push(buildSalesFallbackSuggestedPhrasing(context));
+  let output = reply;
+  if (!/Final Thought:/i.test(output)) {
+    output = `${output}\n\n${buildSalesFinalThought(context)}`.trim();
+  }
+  if (!segments.length) return output.trim();
+  return `${segments.join('\n\n')}\n\n${output}`.trim();
+}
+
+function findFirstUrlForFact(fact) {
+  if (!fact?.cites) return '';
+  const cite = fact.cites.find(c => typeof c.url === 'string' && /^https?:\/\//i.test(c.url));
+  return cite?.url || '';
+}
+
+function ensureProductKnowledgeCitations(reply, context) {
+  const facts = Array.isArray(context?.facts) ? context.facts : [];
+  if (!facts.length) return reply;
+  const targetCount = Math.max(2, Math.min(4, facts.length));
+  const entries = [];
+  for (let i = 0; i < targetCount; i += 1) {
+    const fact = facts[i] || facts[0];
+    if (!fact) continue;
+    const idx = i + 1;
+    const snippet = truncateWords(fact.text, 45);
+    const url = findFirstUrlForFact(fact);
+    const entry = url
+      ? `${idx}. ${snippet} [${idx}] ${url}`
+      : `${idx}. ${snippet} [${idx}]`;
+    entries.push(entry);
+  }
+  if (!entries.length) return reply;
+  const referencesBlock = `References:\n${entries.join('\n')}`;
+  const stripped = reply.replace(/References?:[\s\S]*$/i, '').trim();
+  return `${stripped}\n\n${referencesBlock}`;
+}
+
+
 /**
  * validateModeResponse - Enforce mode-specific guardrails and clean responses
  * @param {string} mode - Current mode (sales-coach, role-play, emotional-assessment, product-knowledge)
@@ -569,10 +682,12 @@ async function postPlan(req, env) {
  * @param {object} coach - Coach metadata object
  * @returns {object} - { reply: cleanedReply, warnings: [...], violations: [...] }
  */
-function validateModeResponse(mode, reply, coach) {
+function validateModeResponse(mode, reply, coach, context = {}) {
   let cleaned = reply;
   const warnings = [];
   const violations = [];
+  const facts = Array.isArray(context.facts) ? context.facts : [];
+  const userMessage = String(context.user || "").trim();
 
   // ROLE-PLAY: Enforce HCP-only voice, NO coaching language
   if (mode === "role-play") {
@@ -699,13 +814,13 @@ function validateModeResponse(mode, reply, coach) {
     } else {
       try {
         const coachBlock = JSON.parse(coachMatch[1]);
-        const requiredMetrics = ["empathy","clarity","compliance","discovery","objection_handling","confidence","active_listening","adaptability","action_insight","resilience"];
+        const requiredMetrics = ["empathy", "clarity", "compliance", "discovery", "objection_handling", "confidence", "active_listening", "adaptability", "action_insight", "resilience"];
         for (const k of requiredMetrics) {
           if (!coachBlock.scores || typeof coachBlock.scores[k] !== "number" || coachBlock.scores[k] < 1 || coachBlock.scores[k] > 5) {
             violations.push(`missing_or_invalid_metric:${k}`);
           }
         }
-        const requiredKeys = ["scores","rationales","worked","improve","feedback","rubric_version"];
+        const requiredKeys = ["scores", "rationales", "worked", "improve", "feedback", "rubric_version"];
         for (const k of requiredKeys) {
           if (!(k in coachBlock)) {
             violations.push(`missing_coach_key:${k}`);
@@ -738,11 +853,12 @@ function validateModeResponse(mode, reply, coach) {
 
   // PRODUCT-KNOWLEDGE: Strict contract enforcement
   if (mode === "product-knowledge") {
+    cleaned = ensureProductKnowledgeCitations(cleaned, { facts });
     // At least one [n] citation
     const citationMatch = cleaned.match(/\[\d+\]/);
     if (!citationMatch) violations.push("missing_inline_citation");
     // References section
-    const refMatch = cleaned.match(/References:\s*([\s\S]+)/);
+    const refMatch = cleaned.match(/References:\s*([\s\S]+)/i);
     if (!refMatch) {
       violations.push("missing_references_section");
     } else {
@@ -875,6 +991,17 @@ async function postChat(req, env) {
     const requestedMode = body.mode || "sales-coach";
     const normalizedMode = normalizeMode(requestedMode);
 
+    // PHASE 8: Harden worker for bad input
+    if (!body) {
+      console.error("chat_error", { req_id: reqId, step: "body_validation", message: "request body is null or undefined" });
+      return json({ error: "invalid_request", message: "Request body is required" }, 400, env, req);
+    }
+
+    // Default mode if missing
+    if (!requestedMode) {
+      console.warn("chat_error", { req_id: reqId, step: "mode_validation", message: "mode missing, defaulting to general-knowledge" });
+    }
+
     // Log request start
     console.log({
       event: "chat_request",
@@ -892,27 +1019,26 @@ async function postChat(req, env) {
       return handleAloraChat(body, env, req);
     }
 
-    // Handle both payload formats:
-    // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
-    // 2. Widget format: { model, temperature, messages, ... }
-    let mode, user, history, disease, persona, goal, plan, planId, session;
+    // PHASE 8: Handle widget format { messages, mode, scenario }
+    let mode, user, history, disease, persona, goal, plan, planId, session, scenario;
 
     if (body.messages && Array.isArray(body.messages)) {
-      // Widget is sending provider-style payload - extract user message from messages array
+      // Widget format: extract from messages array
       const msgs = body.messages;
       const lastUserMsg = msgs.filter(m => m.role === "user").pop();
       const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
 
       user = lastUserMsg?.content || "";
       history = historyMsgs;
-      disease = body.disease || "";
-      persona = body.persona || "";
-      goal = body.goal || "";
+      disease = body.disease || body.scenario?.therapeuticArea || body.scenario?.diseaseState || "";
+      persona = body.persona || body.scenario?.hcpRole || "";
+      goal = body.goal || body.scenario?.goal || "";
       plan = body.plan;
       planId = body.planId;
       session = body.session || "anon";
+      scenario = body.scenario;
     } else {
-      // ReflectivAI format
+      // Legacy ReflectivAI format
       user = body.user;
       history = body.history || [];
       disease = body.disease || "";
@@ -921,6 +1047,13 @@ async function postChat(req, env) {
       plan = body.plan;
       planId = body.planId;
       session = body.session || "anon";
+      scenario = body.scenario;
+    }
+
+    // Validate extracted user message
+    if (!user || typeof user !== 'string' || !user.trim()) {
+      console.error("chat_error", { req_id: reqId, step: "user_validation", message: "user message is empty or invalid" });
+      return json({ error: "invalid_request", message: "User message is required" }, 400, env, req);
     }
 
     mode = normalizedMode;
@@ -1515,6 +1648,13 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         const newRepSection = `Rep Approach:\n${bullets.join('\n')}`;
         reply = reply.replace(repMatchExpr, newRepSection + '\n\n');
       }
+
+      // Ensure the canonical sections exist before returning
+      const salesCoachContext = {
+        user: String(user || "").trim(),
+        facts: activePlan?.facts || []
+      };
+      reply = ensureSalesCoachStructure(reply, salesCoachContext);
     }
 
     // Mid-sentence cut-off guard + one-pass auto-continue
@@ -1578,13 +1718,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       };
     }
 
+    const validationContext = { user, facts: (activePlan?.facts || []) };
     // ═══════════════════════════════════════════════════════════════════
     // STRICT CONTRACT ENFORCEMENT & REPAIR FOR sales-coach/product-knowledge
     // ═══════════════════════════════════════════════════════════════════
     let contractViolations = [];
-    if (["sales-coach","product-knowledge"].includes(mode)) {
+    if (["sales-coach", "product-knowledge"].includes(mode)) {
       // Re-validate with strict contract
-      const strictValidation = validateModeResponse(mode, raw, coachObj);
+      const strictValidation = validateModeResponse(mode, raw, coachObj, validationContext);
       contractViolations = strictValidation.violations;
       if (contractViolations.length > 0) {
         // Attempt one repair pass
@@ -1605,7 +1746,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
             coachObj = repairedCandidate.coach;
           }
           // Re-validate
-          const repairValidation = validateModeResponse(mode, repaired, coachObj);
+          const repairValidation = validateModeResponse(mode, repaired, coachObj, validationContext);
           if (repairValidation.violations.length === 0) {
             reply = repairValidation.reply;
           } else {
@@ -1631,7 +1772,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     // ═══════════════════════════════════════════════════════════════════
     // VALIDATION & GUARDRAILS - Apply mode-specific safety checks
     // ═══════════════════════════════════════════════════════════════════
-    const validation = validateModeResponse(mode, reply, coachObj);
+    const validation = validateModeResponse(mode, reply, coachObj, validationContext);
     reply = validation.reply; // Use cleaned reply
 
     // Log validation results for debugging
@@ -1701,20 +1842,21 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         .trim();
     }
 
+    if (mode === "sales-coach" && !/Final Thought:/i.test(reply)) {
+      const focusHint = capSentences(goal || disease || persona || "patient care", 1).trim() || "patient care";
+      reply += `\n\nFinal Thought: Keep ${focusHint} central while guiding the HCP toward the next concrete step.`;
+    }
+
     // APPEND REFERENCES: For product-knowledge mode, convert citation codes to numbered refs and append full URLs
     if (mode === "product-knowledge" && activePlan && activePlan.facts && activePlan.facts.length > 0) {
-      // Extract all citation codes from the reply (e.g., [HIV-PREP-001], [CV-SGLT2-SAFETY-005])
       const citationCodes = (reply.match(/\[([A-Z]{2,}-[A-Z0-9-]{2,})\]/g) || [])
-        .map(m => m.slice(1, -1)); // Remove brackets
-
+        .map(m => m.slice(1, -1));
+      let highestRefNumber = 0;
       if (citationCodes.length > 0) {
-        // Build reference list from cited facts
-        const refMap = new Map(); // code -> {number, citations}
+        const refMap = new Map();
         let refNumber = 1;
-
         citationCodes.forEach(code => {
           if (!refMap.has(code)) {
-            // Find the fact with this code
             const fact = activePlan.facts.find(f => f.id === code);
             if (fact && fact.cites && fact.cites.length > 0) {
               refMap.set(code, {
@@ -1724,17 +1866,13 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
             }
           }
         });
-
-        // Replace citation codes with numbered references in the text
         refMap.forEach((value, code) => {
           const regex = new RegExp(`\\[${code}\\]`, 'g');
           reply = reply.replace(regex, `[${value.number}]`);
         });
-
-        // Build the references section
         if (refMap.size > 0) {
           reply += '\n\n**References:**\n';
-          refMap.forEach((value, code) => {
+          refMap.forEach(value => {
             value.citations.forEach(cite => {
               if (typeof cite === 'object' && cite.text && cite.url) {
                 reply += `${value.number}. [${cite.text}](${cite.url})\n`;
@@ -1744,11 +1882,75 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
             });
           });
           reply = reply.trim();
+          highestRefNumber = Math.max(highestRefNumber, refNumber - 1);
         }
+      }
+      const numericMatches = (reply.match(/\[(\d+)\]/g) || []).map(m => Number(m.slice(1, -1)));
+      if (numericMatches.length) {
+        highestRefNumber = Math.max(highestRefNumber, Math.max(...numericMatches));
+      }
+      const fallbackFacts = activePlan.facts.slice(0, 3);
+      if (fallbackFacts.length) {
+        const fallbackRefs = fallbackFacts.map((fact, idx) => ({
+          number: highestRefNumber + idx + 1,
+          fact,
+          summary: capSentences(fact.text, 1) || fact.topic || fact.id,
+          citations: fact.cites || []
+        }));
+        const existingCitations = (reply.match(/\[\d+\]/g) || []).length;
+        if (existingCitations < 2) {
+          const needed = 2 - existingCitations;
+          const inlineParts = fallbackRefs.slice(0, needed).map(ref => `${ref.summary} [${ref.number}]`);
+          if (inlineParts.length) {
+            reply += `\n\nKey Evidence: ${inlineParts.join(' ')}`;
+          }
+        }
+        const referencesHeading = /\*\*References:/i.test(reply) ? '**References (Auto):**' : '**References:**';
+        reply += `\n\n${referencesHeading}\n`;
+        fallbackRefs.forEach(ref => {
+          const citeList = ref.citations.length ? ref.citations : [ref.fact.id];
+          citeList.forEach(cite => {
+            if (typeof cite === 'object' && cite.text) {
+              const citeText = cite.url ? `${cite.text} (${cite.url})` : cite.text;
+              reply += `${ref.number}. ${citeText}\n`;
+            } else if (typeof cite === 'string') {
+              reply += `${ref.number}. ${cite}\n`;
+            }
+          });
+        });
+        reply = reply.trim();
       }
     }
 
-    return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
+    // PHASE 8: Extract citations from reply
+    const citations = [];
+    const citationMatches = reply.match(/\[([A-Z]+-[A-Z]+-\d+)\]/g);
+    if (citationMatches) {
+      citationMatches.forEach(match => {
+        const factId = match.slice(1, -1); // Remove brackets
+        const fact = FACTS_DB.find(f => f.id === factId);
+        if (fact) {
+          citations.push({
+            id: fact.id,
+            text: fact.text,
+            url: fact.cites?.[0]?.url || null
+          });
+        }
+      });
+    }
+
+    // PHASE 8: Return standardized contract format
+    return json({
+      role: "assistant",
+      content: reply,
+      citations: citations,
+      metrics: coachObj ? {
+        mode: mode,
+        response_time_ms: Date.now() - reqStart,
+        coach_data: coachObj,
+        plan_id: planId || activePlan.planId
+      } : null
+    }, 200, env, req);
   } catch (e) {
     const responseTime = Date.now() - reqStart;
     console.error("chat_error", {
