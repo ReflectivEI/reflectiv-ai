@@ -898,7 +898,7 @@ async function postChat(req, env) {
     // Handle both payload formats:
     // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
     // 2. Widget format: { model, temperature, messages, ... }
-    let mode, user, history, disease, persona, goal, plan, planId, session;
+    let mode, user, history, disease, persona, goal, plan, planId, session, eiContext;
 
     if (body.messages && Array.isArray(body.messages)) {
       // Widget is sending provider-style payload - extract user message from messages array
@@ -933,6 +933,7 @@ async function postChat(req, env) {
       plan = body.plan;
       planId = body.planId;
       session = body.session || "anon";
+      eiContext = body.eiContext || null;  // Extract EI context if provided
     } else {
       // ReflectivAI format
       mode = body.mode || "sales-coach";
@@ -944,6 +945,7 @@ async function postChat(req, env) {
       plan = body.plan;
       planId = body.planId;
       session = body.session || "anon";
+      eiContext = body.eiContext || null;  // Extract EI context if provided
     }
 
     // CRITICAL: Normalize mode name - frontend sends "sales-simulation" but worker uses "sales-coach" internally
@@ -1160,14 +1162,20 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       ``,
       `MISSION: Help the rep develop emotional intelligence through reflective practice based on about-ei.md framework.`,
       ``,
-      `FOCUS AREAS (CASEL SEL Competencies):`,
-      `- Self-Awareness: Recognizing emotions, triggers, communication patterns`,
-      `- Self-Regulation: Managing stress, tone, composure under pressure`,
-      `- Empathy/Social Awareness: Acknowledging HCP perspective, validating concerns`,
-      `- Clarity: Concise messaging without jargon`,
-      `- Relationship Skills: Building rapport, navigating disagreement`,
-      `- Responsible Decision-Making/Compliance: Balancing empathy with ethical boundaries`,
-      ``,
+      // Include actual EI framework content if provided from frontend
+      ...(eiContext ? [
+        `EI FRAMEWORK CONTENT:\n${eiContext}`,
+        ``
+      ] : [
+        `FOCUS AREAS (CASEL SEL Competencies):`,
+        `- Self-Awareness: Recognizing emotions, triggers, communication patterns`,
+        `- Self-Regulation: Managing stress, tone, composure under pressure`,
+        `- Empathy/Social Awareness: Acknowledging HCP perspective, validating concerns`,
+        `- Clarity: Concise messaging without jargon`,
+        `- Relationship Skills: Building rapport, navigating disagreement`,
+        `- Responsible Decision-Making/Compliance: Balancing empathy with ethical boundaries`,
+        ``
+      ]),
       `TRIPLE-LOOP REFLECTION ARCHITECTURE:`,
       `Loop 1 (Task Outcome): Did they accomplish the communication objective?`,
       `Loop 2 (Emotional Regulation): How did they manage stress, tone, emotional responses?`,

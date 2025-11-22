@@ -21,7 +21,16 @@ export function createModule({ bus, store, register }){
     const {mode} = store.get();
     const {signal} = register.abortable();
     try{
-      const data = await chat({mode, messages:[{role:'user',content:msg}], signal});
+      // Load EI context for emotional-assessment mode
+      let eiContext = null;
+      if (mode === 'emotional-assessment' && window.EIContext) {
+        try {
+          eiContext = await window.EIContext.getSystemExtras();
+        } catch (e) {
+          console.warn('Failed to load EI context:', e);
+        }
+      }
+      const data = await chat({mode, messages:[{role:'user',content:msg}], signal, eiContext});
       appendMessage('assistant', data.reply);
     }catch(e){
       appendMessage('system', 'Error: '+e.message);

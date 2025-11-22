@@ -8,9 +8,16 @@ workers_dev = true
 account_id = "59fea97fab54fbd4d4168ccaa1fa3410"
 
 # OPTIONAL but recommended: Bind a custom Worker route for widget stability
-routes = [
-	{ pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "tonyabdelmalak.com" }
-]
+# Commented out until custom domain is configured in Cloudflare DNS
+# The workers.dev subdomain (my-chat-agent-v2.tonyabdelmalak.workers.dev) cannot be used
+# as a route pattern with a zone_name. Custom routes require actual custom domains.
+# To enable custom domain routing:
+#   1. Ensure tonyabdelmalak.com is added as a zone in Cloudflare
+#   2. Configure DNS records for the desired subdomain
+#   3. Update pattern to match: "tonyabdelmalak.com/api/*" or "api.tonyabdelmalak.com/*"
+# routes = [
+# 	{ pattern = "tonyabdelmalak.com/api/*", zone_name = "tonyabdelmalak.com" }
+# ]
 
 [vars]
 # Provider routing

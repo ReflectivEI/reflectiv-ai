@@ -121,9 +121,10 @@ async function workerFetch(path, payload, signal) {
  * @param {string} params.mode - Chat mode (sales-coach, role-play, etc.)
  * @param {Array} params.messages - Array of message objects with role and content
  * @param {AbortSignal} params.signal - Optional abort signal for cancellation
+ * @param {string} params.eiContext - Optional EI framework context for emotional-assessment mode
  * @returns {Promise<Object>} Response with reply, coach data, and plan
  */
-export async function chat({ mode, messages, signal }) {
+export async function chat({ mode, messages, signal, eiContext }) {
   if (!mode) {
     throw new Error('Mode is required');
   }
@@ -137,6 +138,11 @@ export async function chat({ mode, messages, signal }) {
     messages,
     threadId: crypto.randomUUID() // Generate a unique thread ID for this request
   };
+  
+  // Include EI context if provided (for emotional-assessment mode)
+  if (eiContext) {
+    payload.eiContext = eiContext;
+  }
   
   return await workerFetch('/chat', payload, signal);
 }
