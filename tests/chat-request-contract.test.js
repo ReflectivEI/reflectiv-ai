@@ -169,6 +169,27 @@ const testCases = [
     },
     shouldPass: false,
     expectedError: 'EMPTY_USER_MESSAGE'
+  },
+  {
+    name: 'Valid - missing mode (should default to sales-coach)',
+    payload: {
+      messages: [
+        { role: 'user', content: 'This is a valid message' }
+      ],
+      disease: 'HIV',
+      persona: 'Specialist'
+    },
+    shouldPass: true
+  },
+  {
+    name: 'Valid - missing optional fields (persona, disease, goal)',
+    payload: {
+      mode: 'general-knowledge',
+      messages: [
+        { role: 'user', content: 'What is the capital of France?' }
+      ]
+    },
+    shouldPass: true
   }
 ];
 
