@@ -453,9 +453,17 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "authorization": `Bearer ${key}`
+        "authorization": `Bearer ${key}`,
+        "user-agent": "ReflectivAI-Worker/1.0",
+        "accept": "application/json",
+        "accept-encoding": "gzip, deflate"
       },
-      body
+      body,
+      // Add fetch options to help with Cloudflare Worker connectivity
+      cf: {
+        cacheTtl: 0,
+        cacheEverything: false
+      }
     });
 
     const text = await r.text();
