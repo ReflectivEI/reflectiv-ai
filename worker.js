@@ -831,7 +831,7 @@ Rep Approach:
 • [BULLET 1: Specific clinical discussion point with full context - Include "as recommended..." or "as indicated..." phrasing - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
 • [BULLET 2: Supporting strategy with rationale - Include contextual phrases like "for PrEP" or "in the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
 • [BULLET 3: Safety/monitoring consideration with clinical detail - Include phrases like "to ensure..." or "per the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
-[EXACTLY 3 BULLETS - NO MORE, NO LESS]
+[EXACTLY 3 BULLETS - NO MORE, NO LESS - Use • or 1. 2. 3. or - format]
 
 Impact: [ONE SENTENCE describing expected outcome - 20-35 words - Connect back to Challenge]
 
@@ -1256,9 +1256,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       const hasImpact = /Impact:/i.test(reply);
       const hasSuggested = /Suggested Phrasing:/i.test(reply);
 
-      // Count bullets in Rep Approach section
+      // Count bullets in Rep Approach section - accept multiple formats
       const repMatch = reply.match(/Rep Approach:(.*?)(?=Impact:|Suggested Phrasing:|$)/is);
-      const bulletCount = repMatch ? (repMatch[1].match(/•/g) || []).length : 0;
+      const bulletCount = repMatch ? (
+        (repMatch[1].match(/•/g) || []).length +           // Unicode bullet
+        (repMatch[1].match(/\d+\./g) || []).length +       // Numbered list (1. 2. 3.)
+        (repMatch[1].match(/^\s*[-*]\s/gm) || []).length + // Dash or asterisk bullets
+        (repMatch[1].match(/●/g) || []).length             // Alternative bullet
+      ) : 0;
 
       // Validation warnings (log for monitoring, don't block)
       if (!hasChallenge || !hasRepApproach || !hasImpact || !hasSuggested) {
@@ -1289,11 +1294,33 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
       // Enforce exactly 3 bullets if Rep Approach exists but has wrong count
       if (hasRepApproach && bulletCount !== 3 && repMatch) {
-        const bullets = repMatch[1].split(/\n/).filter(l => l.includes('•')).slice(0, 3);
-        while (bullets.length < 3) {
-          bullets.push(`• Reinforce evidence-based approach`);
+        // Try to extract existing bullets using multiple patterns
+        const existingBullets = [];
+        const repText = repMatch[1];
+        
+        // Look for different bullet formats
+        const bulletPatterns = [
+          /(?:^|\n)\s*•\s*(.+?)(?=\n\s*•|\n\s*\d+\.|\n\s*[-*]|\n\s*Impact:|$)/g,
+          /(?:^|\n)\s*\d+\.\s*(.+?)(?=\n\s*\d+\.|\n\s*•|\n\s*[-*]|\n\s*Impact:|$)/g,
+          /(?:^|\n)\s*[-*]\s*(.+?)(?=\n\s*[-*]|\n\s*•|\n\s*\d+\.|\n\s*Impact:|$)/g
+        ];
+        
+        for (const pattern of bulletPatterns) {
+          let match;
+          while ((match = pattern.exec(repText)) !== null) {
+            existingBullets.push(match[1].trim());
+          }
         }
-        const newRepSection = `Rep Approach:\n${bullets.join('\n')}`;
+        
+        // Remove duplicates and take first 3
+        const uniqueBullets = [...new Set(existingBullets)].slice(0, 3);
+        
+        // Pad with defaults if needed
+        while (uniqueBullets.length < 3) {
+          uniqueBullets.push(`• Reinforce evidence-based approach`);
+        }
+        
+        const newRepSection = `Rep Approach:\n• ${uniqueBullets.join('\n• ')}`;
         reply = reply.replace(/Rep Approach:.*?(?=Impact:|Suggested Phrasing:|$)/is, newRepSection + '\n\n');
       }
     }

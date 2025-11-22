@@ -715,6 +715,12 @@
    * Suggested Phrasing: "[text]"
    */
   function parseSalesCoachSections(text) {
+    // Sales Coach formatting pipeline:
+    // 1. Parse AI response into 4 clean sections (Challenge, Rep Approach, Impact, Suggested Phrasing)
+    // 2. Extract single instances only - prevents duplication from malformed AI responses
+    // 3. Rep Approach bullets are split into array for proper <ul> rendering
+    // 4. Contract Warning banner is suppressed - soft console warnings used instead
+    // 5. Fallback to markdown if parsing fails completely
     const sections = {
       challenge: null,
       repApproach: null,
@@ -779,12 +785,12 @@
       sections[currentSection] = sectionContent.join('\n').trim();
     }
 
-    // For repApproach, split into bullets if possible
+    // For repApproach, split into bullets if possible - support multiple formats
     if (sections.repApproach) {
       const bullets = sections.repApproach
-        .split(/\n\s*[•●○\-*]\s*/)
+        .split(/\n\s*(?:•|●|○|\d+\.|\d+\)|\d+\-|\-|\*)\s*/)
         .map(b => b.trim())
-        .filter(b => b && b.length > 0 && b.length < 500);
+        .filter(b => b && b.length > 0 && b.length < 500 && !/^(?:rep approach|impact|suggested phrasing)/i.test(b));
       if (bullets.length > 1) {
         sections.repApproach = bullets;
       } else {
@@ -793,10 +799,17 @@
       }
     }
 
+    console.log('[SalesCoach] parse result:', Object.keys(sections).filter(k => sections[k]));
     return sections;
   }
 
   function formatSalesSimulationReply(text) {
+    // Sales Coach formatting: Clean structured HTML with no Contract Warning banner
+    // - Single instance of each section (no duplication)
+    // - Rep Approach as bullet list
+    // - Suggested Phrasing in blockquote
+    // - Console warnings for structural issues instead of UI banners
+    // - Markdown fallback on parsing failure
     if (!text) return "";
 
     console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
@@ -816,16 +829,16 @@
 
       // Challenge
       if (parsed.challenge) {
-        html += `<div class="sales-sim-section challenge">`;
-        html += `<h4>Challenge</h4>`;
+        html += `<div class="sales-sim-section">`;
+        html += `<h4>Challenge:</h4>`;
         html += `<p>${convertCitations(esc(parsed.challenge))}</p>`;
         html += `</div>`;
       }
 
       // Rep Approach
       if (parsed.repApproach) {
-        html += `<div class="sales-sim-section rep-approach">`;
-        html += `<h4>Rep Approach</h4>`;
+        html += `<div class="sales-sim-section">`;
+        html += `<h4>Rep Approach:</h4>`;
         if (Array.isArray(parsed.repApproach)) {
           html += `<ul>`;
           parsed.repApproach.forEach(bullet => {
@@ -840,17 +853,17 @@
 
       // Impact
       if (parsed.impact) {
-        html += `<div class="sales-sim-section impact">`;
-        html += `<h4>Impact</h4>`;
+        html += `<div class="sales-sim-section">`;
+        html += `<h4>Impact:</h4>`;
         html += `<p>${convertCitations(esc(parsed.impact))}</p>`;
         html += `</div>`;
       }
 
       // Suggested Phrasing
       if (parsed.suggestedPhrasing) {
-        html += `<div class="sales-sim-section suggested-phrasing">`;
-        html += `<h4>Suggested Phrasing</h4>`;
-        html += `<p>${convertCitations(esc(parsed.suggestedPhrasing))}</p>`;
+        html += `<div class="sales-sim-section">`;
+        html += `<h4>Suggested Phrasing:</h4>`;
+        html += `<blockquote>${convertCitations(esc(parsed.suggestedPhrasing))}</blockquote>`;
         html += `</div>`;
       }
 
