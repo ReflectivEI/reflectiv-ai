@@ -883,6 +883,18 @@ async function postChat(req, env) {
   const reqStart = Date.now();
   const reqId = req.headers.get("x-req-id") || cryptoRandomId();
 
+  // Hoist variables before try block to avoid ReferenceError in catch
+  let mode = "sales-coach";
+  let disease = "";
+  let persona = "";
+  let planId = null;
+  let user = "";
+  let history = [];
+  let goal = "";
+  let plan = null;
+  let session = "anon";
+  let eiContext = null;
+
   try {
     // Defensive check: ensure at least one provider key is configured
     const keyPool = getProviderKeyPool(env);
@@ -928,7 +940,6 @@ async function postChat(req, env) {
     // Handle both payload formats:
     // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
     // 2. Widget format: { model, temperature, messages, ... }
-    let mode, user, history, disease, persona, goal, plan, planId, session, eiContext;
 
     if (body.messages && Array.isArray(body.messages)) {
       // Widget is sending provider-style payload - extract user message from messages array
@@ -984,12 +995,13 @@ async function postChat(req, env) {
       mode = "sales-coach";
     }
 
-    // Validate user message is not empty
+    // PHASE 3 FIX: Handle empty/whitespace user messages gracefully instead of returning 400
+    // Convert empty inputs to a safe clarification prompt for the model
+    let isSilentUser = false;
     if (!user || String(user).trim() === "") {
-      console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_user_message", format: body.messages ? "widget" : "reflectiv", body });
-      return json({
-        error: { type: "bad_request", code: "EMPTY_USER_MESSAGE", message: "User message cannot be empty" }
-      }, 400, env, req, { "x-req-id": reqId });
+      isSilentUser = true;
+      user = "The user did not type anything (empty or spaces only). Ask one short, kind clarifying question about what sales or clinical challenge they want help with.";
+      console.warn("silent_user_input", { req_id: reqId, mode });
     }
 
     // Load or build a plan
@@ -1824,9 +1836,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId }, _meta }, 200, env, req);
   } catch (e) {
     const responseTime = Date.now() - reqStart;
+    
+    // PHASE 3 FIX: Safe error handling - variables are hoisted, no ReferenceError possible
     console.error("chat_error", {
       req_id: reqId,
       step: "general",
+      mode: mode || "unknown",
+      disease: disease || "unknown",
+      persona: persona || "unknown",
       message: e.message,
       stack: e.stack,
       duration_ms: responseTime
@@ -1875,13 +1892,11 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         }
       }, 502, env, req);
     } else if (isPlanError) {
-      // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
-      // eslint-disable-next-line no-undef
-      const diseaseVal = typeof disease !== 'undefined' ? disease : "unknown";
-      // eslint-disable-next-line no-undef
-      const modeVal = typeof mode !== 'undefined' ? mode : "unknown";
-      // eslint-disable-next-line no-undef
-      const personaVal = typeof persona !== 'undefined' ? persona : "unknown";
+      // PHASE 3 FIX: Plan validation errors return 400 with safe variable access (no typeof checks)
+      const diseaseVal = disease || "unknown";
+      const modeVal = mode || "unknown";
+      const personaVal = persona || "unknown";
+      
       return json({
         error: {
           type: "bad_request",
@@ -1893,14 +1908,15 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         }
       }, 400, env, req);
     } else {
-      // Other errors are treated as bad_request
+      // PHASE 3 FIX: All other errors return controlled 500 with safe JSON response
       return json({
+        ok: false,
         error: {
-          type: "bad_request",
-          code: "REQUEST_FAILED",
-          message: "Chat request failed"
+          type: "internal_error",
+          code: "CHAT_HANDLER_ERROR",
+          message: "An unexpected error occurred while processing the chat request"
         }
-      }, 400, env, req);
+      }, 500, env, req);
     }
   }
 }
