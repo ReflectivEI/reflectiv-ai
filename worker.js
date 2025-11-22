@@ -91,7 +91,15 @@ export default {
         const gate = rateLimit(`${ip}:chat`, env);
         if (!gate.ok) {
           const retry = Number(env.RATELIMIT_RETRY_AFTER || 2);
-          return json({ error: "rate_limited", retry_after_sec: retry }, 429, env, req, {
+          return json({
+            error: {
+              type: "rate_limited",
+              code: "RATE_LIMIT_EXCEEDED",
+              message: "Rate limit exceeded, please retry later",
+              source: "worker"
+            },
+            retry_after_sec: retry
+          }, 429, env, req, {
             "Retry-After": String(retry),
             "X-RateLimit-Limit": String(gate.limit),
             "X-RateLimit-Remaining": String(gate.remaining),
@@ -106,7 +114,9 @@ export default {
     } catch (e) {
       // Log the error for debugging but don't expose details to client
       console.error("Top-level error:", e);
-      return json({ error: "server_error", message: "Internal server error" }, 500, env, req, { "x-req-id": reqId });
+      return json({
+        error: { type: "server_error", code: "INTERNAL_ERROR", message: "Internal server error" }
+      }, 500, env, req, { "x-req-id": reqId });
     }
   }
 };
@@ -840,7 +850,9 @@ async function postChat(req, env) {
     const keyPool = getProviderKeyPool(env);
     if (!keyPool.length) {
       console.error("chat_error", { req_id: reqId, step: "config_check", message: "NO_PROVIDER_KEYS" });
-      return json({ error: "server_error", message: "No provider API keys configured" }, 500, env, req);
+      return json({
+        error: { type: "server_error", code: "NO_PROVIDER_KEYS", message: "No provider API keys configured" }
+      }, 500, env, req);
     }
 
     const body = await readJson(req);
@@ -849,10 +861,13 @@ async function postChat(req, env) {
     if (body._parseError) {
       console.error("chat_error", { req_id: reqId, step: "json_parse", error: body._parseError, raw: body._rawText });
       return json({
-        error: "bad_request",
-        message: body._parseError === "empty_body" 
-          ? "Request body is empty" 
-          : `Invalid JSON in request body: ${body._rawText || 'parse error'}`
+        error: {
+          type: "bad_request",
+          code: body._parseError === "empty_body" ? "EMPTY_BODY" : "INVALID_JSON",
+          message: body._parseError === "empty_body" 
+            ? "Request body is empty" 
+            : `Invalid JSON in request body: ${body._rawText || 'parse error'}`
+        }
       }, 400, env, req, { "x-req-id": reqId });
     }
 
@@ -885,8 +900,7 @@ async function postChat(req, env) {
       if (msgs.length === 0) {
         console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_messages_array" });
         return json({
-          error: "bad_request",
-          message: "messages array is empty"
+          error: { type: "bad_request", code: "EMPTY_MESSAGES", message: "messages array is empty" }
         }, 400, env, req, { "x-req-id": reqId });
       }
       
@@ -896,8 +910,7 @@ async function postChat(req, env) {
       if (!lastUserMsg) {
         console.error("chat_error", { req_id: reqId, step: "request_validation", message: "no_user_message_in_array", messages: msgs.map(m => ({ role: m?.role })) });
         return json({
-          error: "bad_request",
-          message: "No user message found in messages array"
+          error: { type: "bad_request", code: "NO_USER_MESSAGE", message: "No user message found in messages array" }
         }, 400, env, req, { "x-req-id": reqId });
       }
       
@@ -935,8 +948,7 @@ async function postChat(req, env) {
     if (!user || String(user).trim() === "") {
       console.error("chat_error", { req_id: reqId, step: "request_validation", message: "empty_user_message", format: body.messages ? "widget" : "reflectiv", body });
       return json({
-        error: "bad_request",
-        message: "User message cannot be empty"
+        error: { type: "bad_request", code: "EMPTY_USER_MESSAGE", message: "User message cannot be empty" }
       }, 400, env, req, { "x-req-id": reqId });
     }
 
@@ -1754,7 +1766,16 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
-    return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
+    // Add observability metadata
+    const _meta = {
+      duration_ms: Date.now() - reqStart,
+      mode: mode,
+      req_id: reqId,
+      used_fallback: false,  // Set to true if fallback was used
+      validation_warnings: validation.warnings?.length || 0
+    };
+
+    return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId }, _meta }, 200, env, req);
   } catch (e) {
     const responseTime = Date.now() - reqStart;
     console.error("chat_error", {
@@ -1774,10 +1795,28 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     const isPlanError = e.message === "no_active_plan_or_facts" || e.message === "invalid_plan_structure" || e.message === "no_facts_for_mode";
 
     if (isProviderError) {
-      // Provider errors return 502 Bad Gateway
+      // Check if it's a provider rate limit (429)
+      const isProvider429 = e.message === "provider_http_429";
+      if (isProvider429) {
+        // Propagate provider 429 as our own 429 with clear indication
+        return json({
+          error: {
+            type: "rate_limited",
+            code: "PROVIDER_RATE_LIMIT",
+            message: "External API rate limit exceeded",
+            source: "provider"
+          },
+          retry_after_sec: 60
+        }, 429, env, req, { "Retry-After": "60" });
+      }
+      
+      // Other provider errors return 502 Bad Gateway
       return json({
-        error: "provider_error",
-        message: "External provider failed or is unavailable"
+        error: {
+          type: "provider_error",
+          code: "PROVIDER_UNAVAILABLE",
+          message: "External provider failed or is unavailable"
+        }
       }, 502, env, req);
     } else if (isPlanError) {
       // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
@@ -1788,17 +1827,23 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       // eslint-disable-next-line no-undef
       const personaVal = typeof persona !== 'undefined' ? persona : "unknown";
       return json({
-        error: "bad_request",
-        message: e.message === "no_facts_for_mode"
-          ? `No facts available for disease "${diseaseVal}" in mode "${modeVal}". Please select a scenario or provide disease context.`
-          : "Unable to generate or validate plan with provided parameters",
-        details: { mode: modeVal, disease: diseaseVal, persona: personaVal, error: e.message }
+        error: {
+          type: "bad_request",
+          code: e.message === "no_facts_for_mode" ? "NO_FACTS_FOR_MODE" : "INVALID_PLAN",
+          message: e.message === "no_facts_for_mode"
+            ? `No facts available for disease "${diseaseVal}" in mode "${modeVal}". Please select a scenario or provide disease context.`
+            : "Unable to generate or validate plan with provided parameters",
+          details: { mode: modeVal, disease: diseaseVal, persona: personaVal, error: e.message }
+        }
       }, 400, env, req);
     } else {
       // Other errors are treated as bad_request
       return json({
-        error: "bad_request",
-        message: "Chat request failed"
+        error: {
+          type: "bad_request",
+          code: "REQUEST_FAILED",
+          message: "Chat request failed"
+        }
       }, 400, env, req);
     }
   }
