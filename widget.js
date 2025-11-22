@@ -356,6 +356,7 @@
 
   // === EI summary renderer for yellow panel ===
   function renderEiPanel(msg) {
+    // DEBUG_BREAKPOINT: widget.render.ei-pills
     const ei = msg && msg._coach && msg._coach.ei;
     if (!ei || !ei.scores) return "";
 
@@ -379,10 +380,15 @@
     <div class="ei-h">Emotional Intelligence Summary</div>
     <div class="ei-row">
       ${mk("empathy", "Empathy")}
-      ${mk("discovery", "Discovery")}
-      ${mk("compliance", "Compliance")}
       ${mk("clarity", "Clarity")}
-      ${mk("accuracy", "Accuracy")}
+      ${mk("compliance", "Compliance")}
+      ${mk("discovery", "Discovery")}
+      ${mk("objection_handling", "Objection Handling")}
+      ${mk("confidence", "Confidence")}
+      ${mk("active_listening", "Active Listening")}
+      ${mk("adaptability", "Adaptability")}
+      ${mk("action_insight", "Action Insight")}
+      ${mk("resilience", "Resilience")}
     </div>
     ${tips.length ? `<ul class="ei-tips">${tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
     <div class="ei-meta">Scored via EI rubric ${esc(rubver)} · <a href="/docs/about-ei.html#scoring" target="_blank" rel="noopener">how scoring works</a></div>
@@ -708,123 +714,154 @@
    *
    * Suggested Phrasing: "[text]"
    */
+  function parseSalesCoachSections(text) {
+    const sections = {
+      challenge: null,
+      repApproach: null,
+      impact: null,
+      suggestedPhrasing: null
+    };
+
+    if (!text) return sections;
+
+    // Normalize text
+    let normalized = text.replace(/\r\n?/g, '\n').trim();
+
+    // Split into lines for easier processing
+    const lines = normalized.split('\n').map(l => l.trim()).filter(l => l);
+
+    let currentSection = null;
+    let sectionContent = [];
+
+    for (const line of lines) {
+      // Check for section headers (case insensitive, optional colon)
+      const lowerLine = line.toLowerCase();
+      if (lowerLine.startsWith('challenge') && (lowerLine.includes(':') || lowerLine === 'challenge')) {
+        if (currentSection) {
+          sections[currentSection] = sectionContent.join('\n').trim();
+        }
+        currentSection = 'challenge';
+        sectionContent = [];
+        // Remove the header from content
+        const content = line.replace(/challenge:?\s*/i, '').trim();
+        if (content) sectionContent.push(content);
+      } else if ((lowerLine.startsWith('rep approach') || lowerLine.startsWith('rep strategy')) && (lowerLine.includes(':') || lowerLine.startsWith('rep approach') || lowerLine.startsWith('rep strategy'))) {
+        if (currentSection) {
+          sections[currentSection] = sectionContent.join('\n').trim();
+        }
+        currentSection = 'repApproach';
+        sectionContent = [];
+        const content = line.replace(/rep (approach|strategy):?\s*/i, '').trim();
+        if (content) sectionContent.push(content);
+      } else if (lowerLine.startsWith('impact') && (lowerLine.includes(':') || lowerLine === 'impact')) {
+        if (currentSection) {
+          sections[currentSection] = sectionContent.join('\n').trim();
+        }
+        currentSection = 'impact';
+        sectionContent = [];
+        const content = line.replace(/impact:?\s*/i, '').trim();
+        if (content) sectionContent.push(content);
+      } else if ((lowerLine.startsWith('suggested phrasing') || lowerLine.startsWith('suggested language')) && (lowerLine.includes(':') || lowerLine.startsWith('suggested phrasing') || lowerLine.startsWith('suggested language'))) {
+        if (currentSection) {
+          sections[currentSection] = sectionContent.join('\n').trim();
+        }
+        currentSection = 'suggestedPhrasing';
+        sectionContent = [];
+        const content = line.replace(/suggested (phrasing|language):?\s*/i, '').trim();
+        if (content) sectionContent.push(content);
+      } else if (currentSection) {
+        sectionContent.push(line);
+      }
+    }
+
+    // Don't forget the last section
+    if (currentSection) {
+      sections[currentSection] = sectionContent.join('\n').trim();
+    }
+
+    // For repApproach, split into bullets if possible
+    if (sections.repApproach) {
+      const bullets = sections.repApproach
+        .split(/\n\s*[•●○\-*]\s*/)
+        .map(b => b.trim())
+        .filter(b => b && b.length > 0 && b.length < 500);
+      if (bullets.length > 1) {
+        sections.repApproach = bullets;
+      } else {
+        // If no bullets, treat as single text
+        sections.repApproach = [sections.repApproach];
+      }
+    }
+
+    return sections;
+  }
+
   function formatSalesSimulationReply(text) {
     if (!text) return "";
 
     console.log('[Sales Coach Format] Input text:', text.substring(0, 200));
 
-    let html = "";
+    try {
+      const parsed = parseSalesCoachSections(text);
 
-    // DEDUPLICATION: LLM sometimes repeats sections 2-3x - remove duplicates first
-    // Look for patterns like "Challenge: X... Challenge: X..." and keep only first occurrence
-    let cleanedText = text;
-    
-    // Remove duplicate "Challenge:" sections
-    const challengeRegex = /(Challenge:\s*.+?)(\s+Challenge:)/is;
-    while (challengeRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(challengeRegex, '$1');
+      console.log('[Sales Coach Format] Parsed sections:', Object.keys(parsed).filter(k => parsed[k]));
+
+      // If no sections parsed, fall back to markdown
+      if (!parsed.challenge && !parsed.repApproach && !parsed.impact && !parsed.suggestedPhrasing) {
+        console.log('[Sales Coach Format] No sections found, using markdown fallback');
+        return md(text);
+      }
+
+      let html = '<div class="sales-coach-wrapper">';
+
+      // Challenge
+      if (parsed.challenge) {
+        html += `<div class="sales-sim-section challenge">`;
+        html += `<h4>Challenge</h4>`;
+        html += `<p>${convertCitations(esc(parsed.challenge))}</p>`;
+        html += `</div>`;
+      }
+
+      // Rep Approach
+      if (parsed.repApproach) {
+        html += `<div class="sales-sim-section rep-approach">`;
+        html += `<h4>Rep Approach</h4>`;
+        if (Array.isArray(parsed.repApproach)) {
+          html += `<ul>`;
+          parsed.repApproach.forEach(bullet => {
+            html += `<li>${convertCitations(esc(bullet))}</li>`;
+          });
+          html += `</ul>`;
+        } else {
+          html += `<p>${convertCitations(esc(parsed.repApproach))}</p>`;
+        }
+        html += `</div>`;
+      }
+
+      // Impact
+      if (parsed.impact) {
+        html += `<div class="sales-sim-section impact">`;
+        html += `<h4>Impact</h4>`;
+        html += `<p>${convertCitations(esc(parsed.impact))}</p>`;
+        html += `</div>`;
+      }
+
+      // Suggested Phrasing
+      if (parsed.suggestedPhrasing) {
+        html += `<div class="sales-sim-section suggested-phrasing">`;
+        html += `<h4>Suggested Phrasing</h4>`;
+        html += `<p>${convertCitations(esc(parsed.suggestedPhrasing))}</p>`;
+        html += `</div>`;
+      }
+
+      html += '</div>';
+
+      console.log('[Sales Coach Format] Successfully formatted', html.length, 'chars');
+      return html;
+    } catch (err) {
+      console.error('[Sales Coach Format] Exception during parsing:', err);
+      return md(text);
     }
-    
-    // Remove duplicate "Rep Approach:" sections
-    const repRegex = /(Rep Approach:\s*.+?)(\s+Rep Approach:)/is;
-    while (repRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(repRegex, '$1');
-    }
-    
-    // Remove duplicate "Impact:" sections
-    const impactRegex = /(Impact:\s*.+?)(\s+Impact:)/is;
-    while (impactRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(impactRegex, '$1');
-    }
-    
-    // Remove duplicate "Suggested Phrasing:" sections
-    const phrasingRegex = /(Suggested Phrasing:\s*.+?)(\s+Suggested Phrasing:)/is;
-    while (phrasingRegex.test(cleanedText)) {
-      cleanedText = cleanedText.replace(phrasingRegex, '$1');
-    }
-
-    // CRITICAL: Stop at first occurrence of each section to avoid duplication
-    // Split by major sections - use NON-GREEDY matching and stop at next section header
-    const challengeMatch = cleanedText.match(/Challenge:\s*(.+?)(?=\s+Rep Approach:|$)/is);
-    const repApproachMatch = cleanedText.match(/Rep Approach:\s*(.+?)(?=\s+Impact:|$)/is);
-    const impactMatch = cleanedText.match(/Impact:\s*(.+?)(?=\s+Suggested Phrasing:|$)/is);
-    const phrasingMatch = cleanedText.match(/Suggested Phrasing:\s*[""']?(.+?)[""']?\s*(?=\s+Challenge:|<coach>|$)/is);
-
-    console.log('[Sales Coach Format] Matches:', {
-      challenge: !!challengeMatch,
-      repApproach: !!repApproachMatch,
-      impact: !!impactMatch,
-      phrasing: !!phrasingMatch
-    });
-
-    // Challenge section
-    if (challengeMatch) {
-      const challengeText = challengeMatch[1].trim();
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Challenge:</strong></div>`;
-      html += `<div class="section-content">${convertCitations(esc(challengeText))}</div>`;
-      html += `</div>\n\n`;
-    }
-
-    // Rep Approach section
-    if (repApproachMatch) {
-      const repText = repApproachMatch[1].trim();
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Rep Approach:</strong></div>`;
-      html += `<ul class="section-bullets">`;
-
-      // Extract bullets - split on bullet characters (•, ●, ○) since LLM doesn't use newlines
-      const bullets = repText
-        .split(/\s*[•●○]\s*/)
-        .map(b => b.trim())
-        .filter(b => b.length > 0 && b.length < 500); // Filter out garbage/duplicates
-
-      bullets.forEach(bullet => {
-        html += `<li>${convertCitations(esc(bullet))}</li>`;
-      });
-
-      html += `</ul>`;
-      html += `</div>\n\n`;
-    }
-
-    // Impact section
-    if (impactMatch) {
-      const impactText = impactMatch[1].trim();
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Impact:</strong></div>`;
-      html += `<div class="section-content">${convertCitations(esc(impactText))}</div>`;
-      html += `</div>\n\n`;
-    }
-
-    // Suggested Phrasing section
-    if (phrasingMatch) {
-      const phrasingText = phrasingMatch[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
-      html += `<div class="sales-sim-section">`;
-      html += `<div class="section-header"><strong>Suggested Phrasing:</strong></div>`;
-      html += `<div class="section-quote">"${convertCitations(esc(phrasingText))}"</div>`;
-      html += `</div>`;
-    }
-
-    if (!html) {
-      console.error('[Sales Coach Format] CRITICAL: No sections matched - text may be malformed');
-      console.error('[Sales Coach Format] Text preview:', text.substring(0, 500));
-      // DO NOT fall back to md() - return a warning instead to preserve structure
-      return `<div class="sales-sim-section" style="background:#fee;padding:12px;border:2px solid #f00;border-radius:6px">
-        <strong style="color:#c00">⚠️ Format Error:</strong> Unable to parse Sales Coach response. Expected format:
-        <pre style="margin:8px 0;font-size:11px;background:#fff;padding:8px;border-radius:4px">Challenge: [text]
-Rep Approach:
-• [bullet]
-Impact: [text]
-Suggested Phrasing: "[text]"</pre>
-        <details style="margin-top:8px">
-          <summary style="cursor:pointer;color:#666">Show raw response</summary>
-          <div style="margin-top:8px;font-size:12px;max-height:200px;overflow-y:auto;background:#f9f9f9;padding:8px;border-radius:4px">${esc(text)}</div>
-        </details>
-      </div>`;
-    }
-
-    console.log('[Sales Coach Format] Successfully formatted', html.length, 'chars');
-    return html;
   }
 
   function md(text) {
@@ -1901,6 +1938,7 @@ ${COMMON}`
       const scores = fb.scores || fb.subscores || {};
 
       // Sales Simulation yellow panel spec:
+      // DEBUG_BREAKPOINT: widget.render.sales-coach
       if (currentMode === "sales-simulation") {
         // Optional dev shim (guarded)
         if (DEBUG_EI_SHIM && last && last._coach && !last._coach.ei) {
@@ -2568,6 +2606,7 @@ ${COMMON}`
 
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
 
+    // DEBUG_BREAKPOINT: widget.send.build-payload
     const payload = {
       mode: currentMode,
       user: lastUserMsg?.content || "",
@@ -2951,6 +2990,7 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
   }
 
   async function sendMessage(userText) {
+    // DEBUG_BREAKPOINT: widget.send.click-handler
     if (isSending) return;
 
     // Health gate: block sends when unhealthy
@@ -3064,6 +3104,7 @@ ${detail}`;
         }
 
         let { coach, clean } = extractCoach(raw);
+        // DEBUG_BREAKPOINT: widget.receive.handle-response
 
         // Re-ask once if phrasing is missing in sales-simulation mode
         const phrasing = coach?.phrasing;
