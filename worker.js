@@ -1462,11 +1462,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         }
       }, 200, env, req);
     } else if (isPlanError) {
-      // Plan validation errors return 422 Unprocessable Entity
+      // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
       return json({
-        error: "bad_request",
-        message: "Unable to generate or validate plan with provided parameters"
-      }, 422, env, req);
+        error: {
+          type: "bad_request",
+          code: "PLAN_VALIDATION_FAILED",
+          message: "Unable to generate or validate plan with provided parameters"
+        }
+      }, 400, env, req);
     } else {
       // Other errors are treated as bad_request
       return json({
