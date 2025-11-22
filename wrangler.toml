@@ -7,6 +7,9 @@ workers_dev = true
 # REQUIRED: Cloudflare account information for Wrangler → Cloudflare sync
 account_id = "59fea97fab54fbd4d4168ccaa1fa3410"
 
+# Explicitly clear routes to prevent deployment errors with workers.dev subdomain
+routes = []
+
 # OPTIONAL but recommended: Bind a custom Worker route for widget stability
 # Commented out until custom domain is configured in Cloudflare DNS
 # The workers.dev subdomain (my-chat-agent-v2.tonyabdelmalak.workers.dev) cannot be used
