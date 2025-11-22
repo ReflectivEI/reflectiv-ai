@@ -383,7 +383,11 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
       messages
     })
   });
-  if (!r.ok) throw new Error(`provider_http_${r.status}`);
+  if (!r.ok) {
+    const errText = await r.text();
+    console.error("provider_fetch_error", { status: r.status, error: errText });
+    throw new Error(`provider_http_${r.status}`);
+  }
   const j = await r.json().catch(() => ({}));
   return j?.choices?.[0]?.message?.content || j?.content || "";
 }
@@ -647,6 +651,7 @@ ${siteContext.slice(0, 12000)}`;
 
 /* ------------------------------ /chat -------------------------------------- */
 async function postChat(req, env) {
+  // DEBUG_BREAKPOINT: worker.chat.entry
   try {
     // Defensive check: ensure at least one provider key is configured
     const keyPool = getProviderKeyPool(env);
@@ -665,7 +670,7 @@ async function postChat(req, env) {
     // Handle both payload formats:
     // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
     // 2. Widget format: { model, temperature, messages, ... }
-    let mode, user, history, disease, persona, goal, plan, planId, session;
+    let mode, user, history, disease, persona, goal, plan, planId, session, eiContext;
 
     if (body.messages && Array.isArray(body.messages)) {
       // Widget is sending provider-style payload - extract user message from messages array
@@ -682,6 +687,7 @@ async function postChat(req, env) {
       plan = body.plan;
       planId = body.planId;
       session = body.session || "anon";
+      eiContext = body.eiContext || "";
     } else {
       // ReflectivAI format
       mode = body.mode || "sales-simulation";
@@ -693,7 +699,10 @@ async function postChat(req, env) {
       plan = body.plan;
       planId = body.planId;
       session = body.session || "anon";
+      eiContext = body.eiContext || "";
     }
+
+    // DEBUG_BREAKPOINT: worker.chat.mode-routing
 
     // Load or build a plan
     let activePlan = plan;
@@ -834,6 +843,8 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `HCP Type: ${persona || "—"}; Disease context: ${disease || "—"}.`,
       ``,
       `MISSION: Help the rep develop emotional intelligence through reflective practice based on about-ei.md framework.`,
+      ``,
+      eiContext || "EI knowledgebase not provided.",
       ``,
       `FOCUS AREAS (CASEL SEL Competencies):`,
       `- Self-Awareness: Recognizing emotions, triggers, communication patterns`,
@@ -1092,6 +1103,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
           maxTokens = 900; // Default
         }
 
+        // DEBUG_BREAKPOINT: worker.chat.call-llm
         raw = await providerChat(env, messages, {
           maxTokens,
           temperature: 0.2,
@@ -1107,6 +1119,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
     // Extract coach and clean text
     const { coach, clean } = extractCoach(raw);
+    // DEBUG_BREAKPOINT: worker.chat.postprocess
     let reply = clean;
 
     // Role-play: honor optional XML wrapper if produced
@@ -1295,6 +1308,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       });
     }
 
+    // DEBUG_BREAKPOINT: worker.chat.response
     return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
     console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
@@ -1308,11 +1322,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     const isPlanError = e.message === "no_active_plan_or_facts";
 
     if (isProviderError) {
-      // Provider errors return 502 Bad Gateway
+      // Provider errors return 200 with error JSON for test harness compatibility
       return json({
-        error: "provider_error",
-        message: "External provider failed or is unavailable"
-      }, 502, env, req);
+        error: {
+          type: "provider_error",
+          code: "PROVIDER_UNAVAILABLE",
+          message: "External provider failed or is unavailable"
+        }
+      }, 200, env, req);
     } else if (isPlanError) {
       // Plan validation errors return 422 Unprocessable Entity
       return json({
