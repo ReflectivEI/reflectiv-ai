@@ -575,6 +575,30 @@ function postToWorker(payload) {
 }
 
 /**
+ * Helper function to check if a result is a provider error (502)
+ * Provider errors indicate the request was valid but the AI provider is unavailable
+ * @param {object} result - Response object from postToWorkerWithRetry
+ * @returns {boolean} - True if the result indicates a provider error
+ */
+function isProviderError(result) {
+  if (!result) return false;
+  return result.statusCode === 502 || 
+         result.error === 'provider_error' || 
+         result.error === 'provider_empty_completion';
+}
+
+/**
+ * Helper function to check if a result is a bad request (400)
+ * Bad requests indicate invalid input that should be rejected
+ * @param {object} result - Response object from postToWorkerWithRetry
+ * @returns {boolean} - True if the result indicates a bad request
+ */
+function isBadRequest(result) {
+  if (!result) return false;
+  return result.statusCode === 400 || result.error === 'bad_request';
+}
+
+/**
  * POST to Worker with intelligent retry and rate-limit detection
  * Tuned backoff: 2000ms → 4000ms → 8000ms for 429 errors
  * Distinguishes rate-limit failures from contract/logic failures
@@ -598,11 +622,20 @@ async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
         continue;
       }
 
-      if (response.statusCode !== 200) {
+      // Return response body for all status codes (200, 400, 502, etc.)
+      // Tests will handle validation based on expected status
+      if (response.statusCode === 200) {
+        return response.body;
+      } else if (response.statusCode === 400 || response.statusCode === 502) {
+        // Return error response with status code metadata for test validation
+        return {
+          ...response.body,
+          statusCode: response.statusCode
+        };
+      } else {
+        // For other unexpected status codes, throw to trigger retry
         throw new Error(`HTTP ${response.statusCode}`);
       }
-
-      return response.body;
     } catch (e) {
       if (i === retries - 1) {
         // Final attempt failed
@@ -654,14 +687,18 @@ async function runInputEdgeCaseTest(testCase) {
 
           // Validate response structure for this mode
           const hasReply = result && typeof result.reply === 'string' && result.reply.trim().length > 0;
-          const isValidStructure = !result.error;
-          const isValidFormat = hasReply && isValidStructure;
+          const isValidFormat = hasReply || isProviderError(result);
 
           if (isValidFormat) {
-            console.log(`    ✅ ${mode} returned valid response`);
-            modeResults.push({ mode, passed: true, response: result.reply.substring(0, 100) + '...' });
+            if (hasReply) {
+              console.log(`    ✅ ${mode} returned valid response`);
+              modeResults.push({ mode, passed: true, response: result.reply.substring(0, 100) + '...' });
+            } else {
+              console.log(`    ✅ ${mode} valid request (provider error acceptable)`);
+              modeResults.push({ mode, passed: true, providerError: true });
+            }
           } else {
-            console.log(`    ❌ ${mode} returned invalid response: error=${result.error}`);
+            console.log(`    ❌ ${mode} returned invalid response: error=${result.error || 'unknown'}`);
             modeResults.push({ mode, passed: false, error: result.error });
             allPassed = false;
           }
@@ -717,8 +754,8 @@ async function runInputEdgeCaseTest(testCase) {
 
     if (expectStatus === 400) {
       // This test expects a 400 error for invalid input
-      const got400 = result.error && ['EMPTY_USER_MESSAGE', 'EMPTY_MESSAGES', 'NO_USER_MESSAGE', 'INVALID_MODE', 'INVALID_JSON', 'EMPTY_BODY'].includes(result.error.code);
-      if (got400) {
+      // Check if we got a 400 response (either via _statusCode metadata or error field)
+      if (isBadRequest(result)) {
         console.log(`  ✅ PASS - Correctly rejected invalid input with 400`);
         return { passed: true, testId: testCase.id };
       } else {
@@ -728,17 +765,17 @@ async function runInputEdgeCaseTest(testCase) {
     } else {
       // This test expects a 200 (or 502 if provider unavailable)
       const hasReply = result && typeof result.reply === 'string' && result.reply.trim().length > 0;
-      const isValidStructure = !result.error; // No HTTP 400 error
+      const hasClientError = result.error && !isProviderError(result); // Has error but not a provider error
 
-      if (hasReply && isValidStructure) {
+      if (hasReply && !hasClientError) {
         console.log(`  ✅ PASS - Valid response returned`);
         return { passed: true, testId: testCase.id };
-      } else if (result.error && result.error.type === 'provider_error') {
-        // Provider unavailable is acceptable for valid requests in test environment
-        console.log(`  ✅ PASS - Valid request (provider unavailable is acceptable in tests)`);
+      } else if (isProviderError(result)) {
+        // Provider errors (502) are acceptable for valid requests in test environment
+        console.log(`  ✅ PASS - Valid request (provider error is acceptable in tests)`);
         return { passed: true, testId: testCase.id };
       } else {
-        console.log(`  ⚠️  WARN - Response may be compromised: error=${result.error}`);
+        console.log(`  ⚠️  WARN - Response may be compromised: error=${result.error || 'none'}, statusCode=${result.statusCode || 'N/A'}`);
         return { passed: false, testId: testCase.id, error: 'INVALID_RESPONSE' };
       }
     }
@@ -768,8 +805,7 @@ async function runContextEdgeCaseTest(testCase) {
 
     if (expectStatus === 400) {
       // This test expects a 400 error for invalid input
-      const got400 = result.error && result.error.code;
-      if (got400) {
+      if (isBadRequest(result)) {
         console.log(`  ✅ PASS - Correctly rejected invalid input with 400`);
         return { passed: true, testId: testCase.id };
       } else {
@@ -779,9 +815,8 @@ async function runContextEdgeCaseTest(testCase) {
     } else {
       // This test expects a 200 (or 502 if provider unavailable)
       const hasReply = result && typeof result.reply === 'string';
-      const isValidStructure = !result.error || result.error.type === 'provider_error';
 
-      if (hasReply || (result.error && result.error.type === 'provider_error')) {
+      if (hasReply || isProviderError(result)) {
         console.log(`  ✅ PASS - Valid request (response generated or provider unavailable)`);
 
         // For thread-switch test, also test payload_2
@@ -795,8 +830,7 @@ async function runContextEdgeCaseTest(testCase) {
           }
 
           const hasReply2 = result2 && typeof result2.reply === 'string';
-          const isValid2 = hasReply2 || (result2.error && result2.error.type === 'provider_error');
-          if (isValid2) {
+          if (hasReply2 || isProviderError(result2)) {
             console.log(`  ✅ PASS - Second thread also valid`);
           } else {
             console.log(`  ⚠️  WARN - Second thread response invalid`);
@@ -834,6 +868,12 @@ async function runStructureEdgeCaseTest(testCase) {
     if (result.rateLimit) {
       console.log(`  ⚠️  RATE_LIMITED - Worker rate limit exceeded`);
       return { passed: false, testId: testCase.id, error: 'RATE_LIMIT_EXCEEDED', rateLimit: true };
+    }
+
+    // Structure tests accept provider errors (502) as passing since we're testing valid requests
+    if (isProviderError(result)) {
+      console.log(`  ✅ PASS - Valid request (provider error is acceptable in tests)`);
+      return { passed: true, testId: testCase.id };
     }
 
     if (!result || typeof result.reply !== 'string') {
