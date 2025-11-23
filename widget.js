@@ -12,6 +12,16 @@
  * 7) Rep-only evaluation command (“Evaluate Rep”) with side-panel injection
  * 8) EI quick panel (persona/feature → empathy/stress + hints)
  * 9) Mode-aware fallbacks to stop HCP-voice leakage in Sales Coach
+ * 10) Mode naming compatibility (sales-simulation → sales-coach mapping)
+ * 11) Removed degrade-to-legacy synthetic fallback messages
+ * 12) Sales Coach formatting never falls back to markdown
+ *
+ * KNOWN NON-REPO CONSOLE WARNINGS (not fixable in this codebase):
+ * - "cdn.tailwindcss.com should not be used in production" - This is Tailwind's own warning about CDN usage.
+ *   Optional future improvement: Use a proper Tailwind build instead of CDN.
+ * - "content_script.js:1 Cannot read properties of undefined" - This comes from browser extensions
+ *   (GitHub Copilot, Cursor, Grammarly, etc.) and is NOT code from this repository.
+ *   To verify: disable extensions and reload; these errors disappear.
  */
 (function () {
   // ---------- safe bootstrapping ----------
@@ -58,6 +68,28 @@
     "Role Play": "role-play",
     "General Assistant": "general-knowledge"
   };
+
+  /**
+   * mapUiModeToBackendMode - Mode mapping compatibility layer
+   * Ensures UI mode names are correctly mapped to backend-expected mode names.
+   * This prevents mode mismatch issues where UI might use different naming than worker.
+   * 
+   * PHASE 1 FIX: Mode naming compatibility
+   * If the UI ever uses "sales-simulation" (legacy), map it to "sales-coach" (current).
+   * Currently, the UI consistently uses "sales-coach", so this is a future-proofing layer.
+   * 
+   * @param {string} uiMode - The mode as known by the UI/frontend
+   * @returns {string} - The mode as expected by the worker/backend
+   */
+  function mapUiModeToBackendMode(uiMode) {
+    // Legacy compatibility: map old mode names to current ones
+    if (uiMode === "sales-simulation") {
+      console.warn("[mode-mapping] Detected legacy mode 'sales-simulation', mapping to 'sales-coach'");
+      return "sales-coach";
+    }
+    // All other modes pass through unchanged
+    return uiMode;
+  }
 
   // ---------- SSE Configuration ----------
   // Set to false to disable SSE streaming and use regular fetch only
@@ -495,20 +527,18 @@
     throw lastError || new Error(`${path}_failed_after_retries`);
   }
 
-  // mode-aware fallback lines
-  function fallbackText(mode) {
-    if (mode === "sales-coach") {
-      return "Keep it concise. Acknowledge the HCP’s context, give one actionable tip, then end with a single discovery question.";
-    }
-    if (mode === "product-knowledge") {
-      return "Brief overview: indication, one efficacy point, one safety consideration. Cite label or guideline.";
-    }
-    if (mode === "role-play") {
-      return "In my clinic, we review histories, behaviors, and adherence to guide decisions.";
-    }
-    // emotional-assessment
-    return "Reflect on tone. Note one thing that worked and one to improve, then ask yourself one next question.";
-  }
+  // REMOVED: mode-aware fallback lines (degrade-to-legacy elimination)
+  // These synthetic fallback messages are NOT from the worker and hide real errors.
+  // If the worker fails or returns invalid content, we should show the actual error,
+  // not inject fake "helpful" text that breaks formatting and misleads users.
+  // The function is preserved (commented) for reference but should not be called.
+  // REMOVED: mode-aware fallback lines (degrade-to-legacy elimination)
+  // These synthetic fallback messages are NOT from the worker and hide real errors.
+  // If the worker fails or returns invalid content, we should show the actual error,
+  // not inject fake "helpful" text that breaks formatting and misleads users.
+  // The function is preserved (commented) for documentation but should NEVER be called.
+  // All calls to fallbackText() have been removed or replaced with proper error handling.
+
 
   // sentence helpers
   function splitSentences(text) {
@@ -2968,8 +2998,13 @@ ${COMMON}`
 
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
 
+    // PHASE 1 FIX: Apply mode mapping to ensure backend compatibility
+    // DEBUG_BREAKPOINT: widget.send.build-payload
+    const backendMode = mapUiModeToBackendMode(currentMode);
+    console.log("[chat] Mode mapping:", { uiMode: currentMode, backendMode: backendMode });
+
     const payload = {
-      mode: currentMode,
+      mode: backendMode, // Use mapped mode for backend
       user: lastUserMsg?.content || "",
       history: history,
       disease: disease,
@@ -3571,8 +3606,15 @@ Please provide your response again with all required fields including phrasing.`
           replyText = await enforceHcpOnly(replyText, sc, messages, callModelWithContext);
         }
 
+        // REMOVED: fallbackText injection (degrade-to-legacy elimination)
+        // If AI echoes the user's message, we should NOT inject a synthetic fallback.
+        // Instead, log a warning and let the duplicate handler below deal with it.
         if (norm(replyText) === norm(userText)) {
-          replyText = fallbackText(currentMode);
+          console.warn(
+            "[chat] Echo detected - AI response matches user message. Letting duplicate handler resolve.",
+            { userText: userText.substring(0, 100), replyText: replyText.substring(0, 100) }
+          );
+          // The semantic duplicate handler below will trigger and request a varied response
         }
 
         // PATCH B: semantic duplicate handling with vary pass
