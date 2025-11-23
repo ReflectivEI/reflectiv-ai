@@ -3147,6 +3147,19 @@ ${COMMON}`
               currentTelemetry.tokens_rx = data.usage.completion_tokens;
             }
 
+            // ERROR HANDLING: Check for error responses even with 200 status
+            // Worker may return 200 with error object for compatibility reasons
+            // All errors use flat structure: { error: "error_code", message: "..." }
+            if (data.error) {
+              const errorMsg = data.message || data.error || "Request failed";
+              showToast(errorMsg, "error");
+              removeTypingIndicator(typingIndicator);
+              currentTelemetry.t_done = Date.now();
+              updateDebugFooter();
+              return ""; // Return empty to trigger sendMessage's empty check
+            }
+
+            // SUCCESS PATH: Extract content from response
             const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
 
             // Record first chunk (first response data)
@@ -3159,96 +3172,115 @@ ${COMMON}`
 
             return content;
           } catch (jsonErr) {
-            // JSON parse error
+            // ERROR HANDLING: JSON parse error - response body is not valid JSON
             console.error(`[chat] status=${r.status} path=/chat error=json_parse`);
-            showToast(`Request failed (JSON parse error). Please retry.`, "error");
-            throw new Error("JSON parse error");
+            showToast(`Response format error. Please retry.`, "error");
+            removeTypingIndicator(typingIndicator);
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            return ""; // Return empty to trigger sendMessage's empty check
           }
         }
 
-        // Record status even on error
+        // ERROR HANDLING: Non-OK HTTP status codes
         currentTelemetry.httpStatus = r.status.toString();
         updateDebugFooter();
+        console.error(`[chat] HTTP error status=${r.status} path=/chat`);
 
-        // Log error with status
-        console.error(`[chat] status=${r.status} path=/chat`);
-
-        // Don't retry 4xx client errors (except 429 rate limit)
+        // RETRY LOGIC: Retry 5xx errors and 429 rate limits
         const isRetryable = r.status === 429 || r.status >= 500;
-
-        // Check if we should retry
+        
         if (attempt < delays.length && isRetryable) {
           lastError = new Error("HTTP " + r.status);
           if (r.status === 429) {
-            showToast("You've reached the usage limit. Please wait a moment and try again.", "warning");
+            showToast("Rate limit reached. Retrying...", "warning");
           }
           await new Promise((res) => setTimeout(res, delays[attempt]));
-          continue;
+          continue; // Try again
         }
 
-        // For 429 after retries exhausted
+        // ERROR HANDLING: 429 Rate Limit (after retries exhausted)
         if (r.status === 429) {
-          showToast("You've reached the usage limit. Please wait a moment and try again.", "error");
-          throw new Error("HTTP 429: rate_limited");
+          showToast("Rate limit exceeded. Please wait a moment and try again.", "error");
+          removeTypingIndicator(typingIndicator);
+          currentTelemetry.httpStatus = "429";
+          currentTelemetry.t_done = Date.now();
+          updateDebugFooter();
+          return ""; // Return empty to trigger sendMessage's empty check
         }
 
-        // For 4xx errors (except 429), try to extract error message from response
-        if (r.status >= 400 && r.status < 500) {
+        // ERROR HANDLING: 4xx and 5xx errors (after retries exhausted)
+        // Parse JSON error response and extract user-friendly message
+        if (r.status >= 400) {
           try {
             const errorBody = await r.json();
+            // All errors use flat structure: { error: "error_code", message: "..." }
             const errorMsg = errorBody.message || errorBody.error || `Request failed (status ${r.status})`;
             showToast(errorMsg, "error");
-            throw new Error("HTTP " + r.status);
+            removeTypingIndicator(typingIndicator);
+            currentTelemetry.httpStatus = r.status.toString();
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            return ""; // Return empty to trigger sendMessage's empty check
           } catch (jsonErr) {
-            // If JSON parsing fails, show generic error
+            // ERROR HANDLING: JSON parse failed on error response
             showToast(`Request failed (status ${r.status}). Please retry.`, "error");
-            throw new Error("HTTP " + r.status);
+            removeTypingIndicator(typingIndicator);
+            currentTelemetry.httpStatus = r.status.toString();
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            return ""; // Return empty to trigger sendMessage's empty check
           }
         }
 
-        // Show toast for non-retryable errors
-        showToast(`Request failed (status ${r.status}). Please retry.`, "error");
-        throw new Error("HTTP " + r.status);
+        // FAILSAFE: Unexpected status code (should not happen)
+        showToast(`Unexpected response (status ${r.status}). Please retry.`, "error");
+        removeTypingIndicator(typingIndicator);
+        currentTelemetry.httpStatus = r.status.toString();
+        currentTelemetry.t_done = Date.now();
+        updateDebugFooter();
+        return "";
       } catch (e) {
         clearTimeout(timeout);
 
-        // Retry on timeout or network errors
+        // ERROR HANDLING: Network errors and timeouts - retry if possible
         if (attempt < delays.length && /timeout|TypeError|NetworkError/i.test(String(e))) {
           lastError = e;
           currentTelemetry.httpStatus = "timeout";
           updateDebugFooter();
-          console.error(`[chat] status=timeout path=/chat retry=${attempt + 1}`);
+          console.error(`[chat] Network error, retrying (attempt ${attempt + 1}): ${e.message}`);
           await new Promise((res) => setTimeout(res, delays[attempt]));
-          continue;
+          continue; // Try again
         }
 
+        // ERROR HANDLING: Network error (after retries exhausted)
         removeTypingIndicator(typingIndicator);
-        currentTelemetry.httpStatus = e.message || "error";
+        currentTelemetry.httpStatus = e.message || "network_error";
         currentTelemetry.t_done = Date.now();
         updateDebugFooter();
+        
+        console.error(`[chat] Network error (no more retries): ${e.message || "unknown"}`);
+        showToast(`Network error. Please check your connection.`, "error");
 
-        // Log network error
-        console.error(`[chat] status=network_error path=/chat error=${e.message || "unknown"}`);
-        showToast(`Network error. Please check your connection and retry.`, "error");
-
-        // Show retry UI if we've exhausted all retries and taken >= 8s total
+        // Show retry UI if request took >= 8 seconds total
         const totalElapsed = Date.now() - (window._lastCallModelAttempt || Date.now());
         if (totalElapsed >= 8000) {
           showRetryUI();
         }
 
-        return "";
+        return ""; // Return empty to trigger sendMessage's empty check
       }
     }
 
+    // FAILSAFE: This code should never be reached as all paths above return explicitly
+    // Kept as defensive programming in case of unexpected control flow
     removeTypingIndicator(typingIndicator);
-    currentTelemetry.httpStatus = lastError?.message || "failed";
+    currentTelemetry.httpStatus = "unknown_failure";
     currentTelemetry.t_done = Date.now();
     updateDebugFooter();
-
-    console.error(`[chat] status=all_retries_failed path=/chat`);
-    showToast(`Request failed after retries. Please try again.`, "error");
-    showRetryUI();
+    
+    console.error(`[chat] FAILSAFE: Unexpected code path reached`);
+    showToast(`Request failed. Please try again.`, "error");
     return "";
   }
 

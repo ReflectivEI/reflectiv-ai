@@ -787,11 +787,8 @@ async function postChat(req, env) {
     // INPUT EDGE CASES: Empty or whitespace-only user message returns 400
     if (!user || String(user).trim() === "") {
       return json({
-        error: {
-          type: "bad_request",
-          code: "EMPTY_USER_MESSAGE",
-          message: "User message cannot be empty or whitespace only"
-        }
+        error: "bad_request",
+        message: "User message cannot be empty or whitespace only"
       }, 400, env, req);
     }
 
@@ -1240,7 +1237,28 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
-    // Validate and fix Sales Coach contract if needed
+    // ERROR HANDLING: Check for empty response after all retry attempts
+    // Provider may return empty string if model has no response or encounters an error
+    // Use explicit null check (==) to catch both null and undefined
+    if (raw == null || String(raw).trim() === "") {
+      // Log diagnostic information for troubleshooting
+      console.error("provider_empty_completion", {
+        provider_url: env.PROVIDER_URL,
+        provider_model: env.PROVIDER_MODEL,
+        has_provider_keys: !!env.PROVIDER_KEYS,
+        has_provider_key: !!env.PROVIDER_KEY,
+        mode,
+        session
+      });
+      
+      // Return 502 Bad Gateway with user-friendly error message
+      return json({
+        error: "provider_empty_completion",
+        message: "The language model or provider did not return a response. Please check API credentials and provider health."
+      }, 502, env, req);
+    }
+
+    // VALIDATION: Sales Coach mode requires specific format (Challenge, Rep Approach, Impact, Phrasing)
     if (mode === "sales-coach") {
       const validation = validateSalesCoachContract(raw);
       if (!validation.ok) {
@@ -1249,7 +1267,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
-    // Extract coach and clean text
+    // EXTRACTION: Separate coaching metadata from user-facing reply
     const { coach, clean } = extractCoach(raw);
     // DEBUG_BREAKPOINT: worker.chat.postprocess
     let reply = clean;
@@ -1478,42 +1496,37 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       });
     }
 
+    // SUCCESS: Return response with reply, coaching data, and plan
     // DEBUG_BREAKPOINT: worker.chat.response
     return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
+    // ERROR HANDLING: Catch-all for unexpected errors during chat processing
     console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
 
-    // Distinguish provider errors from client bad_request errors
+    // Classify error to return appropriate status code and message
     const isProviderError = e.message && (
-      e.message.startsWith("provider_http_") ||
-      e.message === "plan_generation_failed"
+      e.message.startsWith("provider_http_") ||  // Provider returned HTTP error (500, 503, etc.)
+      e.message === "plan_generation_failed"      // Plan generation failed
     );
-
     const isPlanError = e.message === "no_active_plan_or_facts";
 
     if (isProviderError) {
-      // Provider errors return 200 with error JSON for test harness compatibility
+      // ERROR HANDLING: Provider errors - return 502 Bad Gateway
       return json({
-        error: {
-          type: "provider_error",
-          code: "PROVIDER_UNAVAILABLE",
-          message: "External provider failed or is unavailable"
-        }
-      }, 200, env, req);
+        error: "provider_error",
+        message: "The AI provider is temporarily unavailable. Please try again in a moment."
+      }, 502, env, req);
     } else if (isPlanError) {
-      // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
-      return json({
-        error: {
-          type: "bad_request",
-          code: "PLAN_VALIDATION_FAILED",
-          message: "Unable to generate or validate plan with provided parameters"
-        }
-      }, 400, env, req);
-    } else {
-      // Other errors are treated as bad_request
+      // ERROR HANDLING: Plan validation errors - return 400 Bad Request
       return json({
         error: "bad_request",
-        message: "Chat request failed"
+        message: "Unable to generate conversation plan with provided parameters"
+      }, 400, env, req);
+    } else {
+      // ERROR HANDLING: Unknown errors - return 400 Bad Request
+      return json({
+        error: "bad_request",
+        message: "Request could not be processed. Please check your input and try again."
       }, 400, env, req);
     }
   }
