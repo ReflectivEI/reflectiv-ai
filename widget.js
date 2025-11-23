@@ -3138,6 +3138,17 @@ ${COMMON}`
               currentTelemetry.tokens_rx = data.usage.completion_tokens;
             }
 
+            // Check for error responses (even with 200 status)
+            // All errors now use flat structure: { error: "error_code", message: "..." }
+            if (data.error) {
+              const errorMsg = data.message || data.error || "Request failed";
+              showToast(errorMsg, "error");
+              removeTypingIndicator(typingIndicator);
+              currentTelemetry.t_done = Date.now();
+              updateDebugFooter();
+              return "";
+            }
+
             const content = data?.content || data?.reply || data?.choices?.[0]?.message?.content || "";
 
             // Record first chunk (first response data)
@@ -3153,7 +3164,10 @@ ${COMMON}`
             // JSON parse error
             console.error(`[chat] status=${r.status} path=/chat error=json_parse`);
             showToast(`Request failed (JSON parse error). Please retry.`, "error");
-            throw new Error("JSON parse error");
+            removeTypingIndicator(typingIndicator);
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            return "";
           }
         }
 
@@ -3180,26 +3194,44 @@ ${COMMON}`
         // For 429 after retries exhausted
         if (r.status === 429) {
           showToast("You've reached the usage limit. Please wait a moment and try again.", "error");
-          throw new Error("HTTP 429: rate_limited");
+          removeTypingIndicator(typingIndicator);
+          currentTelemetry.httpStatus = "429";
+          currentTelemetry.t_done = Date.now();
+          updateDebugFooter();
+          return "";
         }
 
         // For 4xx and 5xx errors (after retries exhausted), try to extract error message from response
         if (r.status >= 400) {
           try {
             const errorBody = await r.json();
+            // All errors use flat structure: { error: "error_code", message: "..." }
             const errorMsg = errorBody.message || errorBody.error || `Request failed (status ${r.status})`;
             showToast(errorMsg, "error");
-            throw new Error("HTTP " + r.status);
+            // Return empty string to signal error without triggering catch block
+            removeTypingIndicator(typingIndicator);
+            currentTelemetry.httpStatus = r.status.toString();
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            return "";
           } catch (jsonErr) {
-            // If JSON parsing fails, show generic error
+            // If JSON parsing fails, show generic error and return empty
             showToast(`Request failed (status ${r.status}). Please retry.`, "error");
-            throw new Error("HTTP " + r.status);
+            removeTypingIndicator(typingIndicator);
+            currentTelemetry.httpStatus = r.status.toString();
+            currentTelemetry.t_done = Date.now();
+            updateDebugFooter();
+            return "";
           }
         }
 
         // Fallback for unexpected status codes
         showToast(`Request failed (status ${r.status}). Please retry.`, "error");
-        throw new Error("HTTP " + r.status);
+        removeTypingIndicator(typingIndicator);
+        currentTelemetry.httpStatus = r.status.toString();
+        currentTelemetry.t_done = Date.now();
+        updateDebugFooter();
+        return "";
       } catch (e) {
         clearTimeout(timeout);
 

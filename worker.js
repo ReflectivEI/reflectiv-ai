@@ -787,11 +787,8 @@ async function postChat(req, env) {
     // INPUT EDGE CASES: Empty or whitespace-only user message returns 400
     if (!user || String(user).trim() === "") {
       return json({
-        error: {
-          type: "bad_request",
-          code: "EMPTY_USER_MESSAGE",
-          message: "User message cannot be empty or whitespace only"
-        }
+        error: "bad_request",
+        message: "User message cannot be empty or whitespace only"
       }, 400, env, req);
     }
 
@@ -1511,22 +1508,16 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     const isPlanError = e.message === "no_active_plan_or_facts";
 
     if (isProviderError) {
-      // Provider errors return 200 with error JSON for test harness compatibility
+      // Provider errors return 502 with flat error structure for consistency
       return json({
-        error: {
-          type: "provider_error",
-          code: "PROVIDER_UNAVAILABLE",
-          message: "External provider failed or is unavailable"
-        }
-      }, 200, env, req);
+        error: "provider_error",
+        message: "External provider failed or is unavailable. Please try again or check provider health."
+      }, 502, env, req);
     } else if (isPlanError) {
-      // Plan validation errors return 400 Bad Request (not 422 - that confuses retry logic)
+      // Plan validation errors return 400 Bad Request
       return json({
-        error: {
-          type: "bad_request",
-          code: "PLAN_VALIDATION_FAILED",
-          message: "Unable to generate or validate plan with provided parameters"
-        }
+        error: "bad_request",
+        message: "Unable to generate or validate plan with provided parameters"
       }, 400, env, req);
     } else {
       // Other errors are treated as bad_request
