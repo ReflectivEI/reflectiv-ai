@@ -144,7 +144,7 @@ const FACTS_DB = [
 // Finite State Machines per mode (5 modes total)
 // CAPS INCREASED TO PREVENT CUTOFF - Sales Sim needs room for 4-section format
 const FSM = {
-  "sales-simulation": {
+  "sales-coach": {
     states: { START: { capSentences: 30, next: "COACH" }, COACH: { capSentences: 30, next: "COACH" } },
     start: "START"
   },
@@ -435,7 +435,7 @@ async function postFacts(req, env) {
 async function postPlan(req, env) {
   try {
     const body = await readJson(req);
-    const { mode = "sales-simulation", disease = "", persona = "", goal = "", topic = "" } = body || {};
+    const { mode = "sales-coach", disease = "", persona = "", goal = "", topic = "" } = body || {};
 
     const factsRes = FACTS_DB.filter(f => {
       const dOk = !disease || f.ta?.toLowerCase() === String(disease).toLowerCase();
@@ -454,7 +454,7 @@ async function postPlan(req, env) {
       planId: cryptoRandomId(),
       mode, disease, persona, goal,
       facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
-      fsm: FSM[mode] || FSM["sales-simulation"]
+      fsm: FSM[mode] || FSM["sales-coach"]
     };
 
     // Always return 200 - no validation failures that cause 422
@@ -469,7 +469,7 @@ async function postPlan(req, env) {
 
 /**
  * validateModeResponse - Enforce mode-specific guardrails and clean responses
- * @param {string} mode - Current mode (sales-simulation, role-play, emotional-assessment, product-knowledge)
+ * @param {string} mode - Current mode (sales-coach, role-play, emotional-assessment, product-knowledge)
  * @param {string} reply - AI response text
  * @param {object} coach - Coach metadata object
  * @returns {object} - { reply: cleanedReply, warnings: [...], violations: [...] }
@@ -509,7 +509,7 @@ function validateModeResponse(mode, reply, coach) {
   }
 
   // SALES-SIMULATION: Enforce coach voice, NO HCP impersonation
-  if (mode === "sales-simulation") {
+  if (mode === "sales-coach") {
     // Detect if AI is speaking as HCP instead of coach
     const hcpVoicePatterns = [
       /^I'm a (busy|difficult|engaged)/i,
@@ -574,7 +574,7 @@ function validateModeResponse(mode, reply, coach) {
  */
 function validateCoachSchema(coach, mode) {
   const requiredFields = {
-    "sales-simulation": ["scores", "worked", "improve", "feedback"],
+    "sales-coach": ["scores", "worked", "improve", "feedback"],
     "emotional-assessment": ["ei"],
     "product-knowledge": [],
     "role-play": [] // Should have NO coach data in messages
@@ -721,7 +721,7 @@ async function postChat(req, env) {
       const lastUserMsg = msgs.filter(m => m.role === "user").pop();
       const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
 
-      mode = body.mode || "sales-simulation";
+      mode = body.mode || "sales-coach";
       user = lastUserMsg?.content || "";
       history = historyMsgs;
       disease = body.disease || "";
@@ -733,7 +733,7 @@ async function postChat(req, env) {
       eiContext = body.eiContext || "";
     } else {
       // ReflectivAI format
-      mode = body.mode || "sales-simulation";
+      mode = body.mode || "sales-coach";
       user = body.user;
       history = body.history || [];
       disease = body.disease || "";
@@ -779,7 +779,7 @@ async function postChat(req, env) {
           planId: cryptoRandomId(),
           mode, disease, persona, goal,
           facts: facts.map(f => ({ id: f.id, text: f.text, cites: f.cites || [] })),
-          fsm: FSM[mode] || FSM["sales-simulation"]
+          fsm: FSM[mode] || FSM["sales-coach"]
         };
       } catch (e) {
         console.error("chat_error", { step: "plan_generation", message: e.message });
@@ -1149,7 +1149,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     let sys;
     if (mode === "role-play") {
       sys = rolePlayPrompt;
-    } else if (mode === "sales-simulation") {
+    } else if (mode === "sales-coach") {
       sys = salesSimPrompt;
     } else if (mode === "emotional-assessment") {
       sys = eiPrompt;
@@ -1173,7 +1173,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       try {
         // Token allocation prioritization
         let maxTokens;
-        if (mode === "sales-simulation") {
+        if (mode === "sales-coach") {
           maxTokens = 1600; // Increased to ensure all 4 sections complete (including Suggested Phrasing)
         } else if (mode === "role-play") {
           maxTokens = 1200; // Higher for natural conversation flow
@@ -1202,7 +1202,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     // Validate and fix Sales Coach contract if needed
-    if (mode === "sales-simulation") {
+    if (mode === "sales-coach") {
       const validation = validateSalesCoachContract(raw);
       if (!validation.ok) {
         console.log("Sales Coach contract validation failed, injecting placeholders", validation.missing);
@@ -1241,8 +1241,8 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       // Example: "• I prioritize follow-ups • I assess adherence"
     }
 
-    // Post-processing: Normalize headings and ENFORCE FORMAT for sales-simulation mode
-    if (mode === "sales-simulation") {
+    // Post-processing: Normalize headings and ENFORCE FORMAT for sales-coach mode
+    if (mode === "sales-coach") {
       reply = reply
         .replace(/Coach [Gg]uidance:/g, 'Challenge:')
         .replace(/Next[- ]?[Mm]ove [Pp]lanner:/g, 'Rep Approach:')
@@ -1326,7 +1326,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     // STRUCTURE EDGE CASES: Enforce paragraph separation for sales-coach mode (STR-30)
-    if (mode === "sales-simulation") {
+    if (mode === "sales-coach") {
       reply = reply
         .replace(/\r\n/g, "\n")
         .replace(/\s*Challenge:/gi, "\n\nChallenge:")
@@ -1355,7 +1355,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     // FSM clamps
-    const fsm = FSM[mode] || FSM["sales-simulation"];
+    const fsm = FSM[mode] || FSM["sales-coach"];
     const cap = fsm?.states?.[fsm?.start]?.capSentences || 5;
     reply = capSentences(reply, cap);
 
