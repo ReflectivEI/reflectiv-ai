@@ -27,6 +27,12 @@
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  */
 
+// Timeout constants (in milliseconds)
+// Cloudflare Workers have 30-50s execution limits; timeouts prevent worker death
+const TIMEOUT_PROVIDER_CHAT = 25000;  // 25s for main chat requests
+const TIMEOUT_ALORA_CHAT = 15000;     // 15s for Alora site assistant (shorter responses)
+const TIMEOUT_HEALTH_CHECK = 5000;    // 5s for health checks
+
 export default {
   async fetch(req, env, ctx) {
     const reqId = req.headers.get("x-req-id") || cryptoRandomId();
@@ -75,7 +81,7 @@ export default {
             if (key) {
               // FIX: Add timeout to health check
               const controller = new AbortController();
-              const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout for health check
+              const timeout = setTimeout(() => controller.abort(), TIMEOUT_HEALTH_CHECK);
               
               const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
                 headers: { "authorization": `Bearer ${key}` }, 
@@ -523,7 +529,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
       // Cloudflare Workers have a 30-50 second execution limit
       // Set provider timeout to 25 seconds to leave room for retries and error handling
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_PROVIDER_CHAT);
       
       const r = await fetch(providerUrl, {
         method: "POST",
@@ -593,10 +599,10 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
           provider_url: providerUrl,
           session,
           attempt: keyAttempt + 1,
-          timeout_ms: 25000
+          timeout_ms: TIMEOUT_PROVIDER_CHAT
         });
         const err = new Error("provider_network_error");
-        err.originalError = "Request timeout after 25 seconds";
+        err.originalError = `Request timeout after ${TIMEOUT_PROVIDER_CHAT / 1000} seconds`;
         throw err;
       }
       
@@ -862,7 +868,7 @@ ${siteContext.slice(0, 12000)}`;
 
     // FIX: Add timeout to Alora requests (shorter timeout for site assistant)
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout for Alora
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_ALORA_CHAT);
 
     const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -889,7 +895,7 @@ ${siteContext.slice(0, 12000)}`;
   } catch (e) {
     // Handle timeout errors
     if (e.name === 'AbortError') {
-      console.error("alora_timeout", { timeout_ms: 15000 });
+      console.error("alora_timeout", { timeout_ms: TIMEOUT_ALORA_CHAT });
       return json({
         error: "alora_timeout",
         message: "Request timeout",
