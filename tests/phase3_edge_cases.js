@@ -581,6 +581,7 @@ function postToWorker(payload) {
  * @returns {boolean} - True if the result indicates a provider error
  */
 function isProviderError(result) {
+  if (!result) return false;
   return result.statusCode === 502 || 
          result.error === 'provider_error' || 
          result.error === 'provider_empty_completion';
@@ -593,6 +594,7 @@ function isProviderError(result) {
  * @returns {boolean} - True if the result indicates a bad request
  */
 function isBadRequest(result) {
+  if (!result) return false;
   return result.statusCode === 400 || result.error === 'bad_request';
 }
 
@@ -696,7 +698,7 @@ async function runInputEdgeCaseTest(testCase) {
               modeResults.push({ mode, passed: true, providerError: true });
             }
           } else {
-            console.log(`    ❌ ${mode} returned invalid response: error=${result.error}`);
+            console.log(`    ❌ ${mode} returned invalid response: error=${result.error || 'unknown'}`);
             modeResults.push({ mode, passed: false, error: result.error });
             allPassed = false;
           }
