@@ -73,9 +73,17 @@ export default {
           try {
             const key = selectProviderKey(env, "healthcheck");
             if (key) {
+              // FIX: Add timeout to health check
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout for health check
+              
               const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
-                headers: { "authorization": `Bearer ${key}` }, method: "GET"
+                headers: { "authorization": `Bearer ${key}` }, 
+                method: "GET",
+                signal: controller.signal
               });
+              
+              clearTimeout(timeout);
               provider = { ok: r.ok, status: r.status };
             }
           } catch (e) {
@@ -511,6 +519,12 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
     }
     
     try {
+      // FIX: Add timeout to prevent worker from hanging on slow provider responses
+      // Cloudflare Workers have a 30-50 second execution limit
+      // Set provider timeout to 25 seconds to leave room for retries and error handling
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
+      
       const r = await fetch(providerUrl, {
         method: "POST",
         headers: {
@@ -522,8 +536,11 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
           temperature,
           max_tokens: finalMax,
           messages
-        })
+        }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeout);
       
       if (!r.ok) {
         const errText = await r.text();
@@ -570,6 +587,19 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
       const j = await r.json().catch(() => ({}));
       return j?.choices?.[0]?.message?.content || j?.content || "";
     } catch (e) {
+      // Handle timeout errors
+      if (e.name === 'AbortError') {
+        console.error("provider_timeout", {
+          provider_url: providerUrl,
+          session,
+          attempt: keyAttempt + 1,
+          timeout_ms: 25000
+        });
+        const err = new Error("provider_network_error");
+        err.originalError = "Request timeout after 25 seconds";
+        throw err;
+      }
+      
       // NETWORK ERROR HANDLING: Catch fetch failures (network errors, timeouts, etc.)
       if (e.providerStatus) {
         // Already a provider HTTP error, re-throw if not retryable
@@ -830,14 +860,21 @@ ${siteContext.slice(0, 12000)}`;
       stream: false
     };
 
+    // FIX: Add timeout to Alora requests (shorter timeout for site assistant)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout for Alora
+
     const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${key}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
+
+    clearTimeout(timeout);
 
     if (!providerResp.ok) {
       const errText = await providerResp.text();
@@ -850,6 +887,16 @@ ${siteContext.slice(0, 12000)}`;
 
     return json({ reply: reply.trim() }, 200, env, req);
   } catch (e) {
+    // Handle timeout errors
+    if (e.name === 'AbortError') {
+      console.error("alora_timeout", { timeout_ms: 15000 });
+      return json({
+        error: "alora_timeout",
+        message: "Request timeout",
+        reply: "I'm taking a bit longer than usual. Please try again or request a demo to speak with our team."
+      }, 500, env, req);
+    }
+    
     console.error("alora_chat_error", { message: e.message, stack: e.stack });
     return json({
       error: "alora_error",
