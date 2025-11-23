@@ -575,6 +575,26 @@ function postToWorker(payload) {
 }
 
 /**
+ * Helper function to check if a result is a provider error (502)
+ * @param {object} result - Response object from postToWorkerWithRetry
+ * @returns {boolean} - True if the result indicates a provider error
+ */
+function isProviderError(result) {
+  return result._statusCode === 502 || 
+         result.error === 'provider_error' || 
+         result.error === 'provider_empty_completion';
+}
+
+/**
+ * Helper function to check if a result is a bad request (400)
+ * @param {object} result - Response object from postToWorkerWithRetry
+ * @returns {boolean} - True if the result indicates a bad request
+ */
+function isBadRequest(result) {
+  return result._statusCode === 400 || result.error === 'bad_request';
+}
+
+/**
  * POST to Worker with intelligent retry and rate-limit detection
  * Tuned backoff: 2000ms → 4000ms → 8000ms for 429 errors
  * Distinguishes rate-limit failures from contract/logic failures
@@ -663,8 +683,7 @@ async function runInputEdgeCaseTest(testCase) {
 
           // Validate response structure for this mode
           const hasReply = result && typeof result.reply === 'string' && result.reply.trim().length > 0;
-          const isProviderError = result._statusCode === 502 || result.error === 'provider_error' || result.error === 'provider_empty_completion';
-          const isValidFormat = hasReply || isProviderError;
+          const isValidFormat = hasReply || isProviderError(result);
 
           if (isValidFormat) {
             if (hasReply) {
@@ -732,8 +751,7 @@ async function runInputEdgeCaseTest(testCase) {
     if (expectStatus === 400) {
       // This test expects a 400 error for invalid input
       // Check if we got a 400 response (either via _statusCode metadata or error field)
-      const got400 = (result._statusCode === 400) || (result.error === 'bad_request');
-      if (got400) {
+      if (isBadRequest(result)) {
         console.log(`  ✅ PASS - Correctly rejected invalid input with 400`);
         return { passed: true, testId: testCase.id };
       } else {
@@ -748,7 +766,7 @@ async function runInputEdgeCaseTest(testCase) {
       if (hasReply && isValidStructure) {
         console.log(`  ✅ PASS - Valid response returned`);
         return { passed: true, testId: testCase.id };
-      } else if (result._statusCode === 502 || result.error === 'provider_error' || result.error === 'provider_empty_completion') {
+      } else if (isProviderError(result)) {
         // Provider errors (502) are acceptable for valid requests in test environment
         console.log(`  ✅ PASS - Valid request (provider error is acceptable in tests)`);
         return { passed: true, testId: testCase.id };
@@ -783,8 +801,7 @@ async function runContextEdgeCaseTest(testCase) {
 
     if (expectStatus === 400) {
       // This test expects a 400 error for invalid input
-      const got400 = (result._statusCode === 400) || (result.error === 'bad_request');
-      if (got400) {
+      if (isBadRequest(result)) {
         console.log(`  ✅ PASS - Correctly rejected invalid input with 400`);
         return { passed: true, testId: testCase.id };
       } else {
@@ -794,9 +811,8 @@ async function runContextEdgeCaseTest(testCase) {
     } else {
       // This test expects a 200 (or 502 if provider unavailable)
       const hasReply = result && typeof result.reply === 'string';
-      const isProviderError = result._statusCode === 502 || result.error === 'provider_error' || result.error === 'provider_empty_completion';
 
-      if (hasReply || isProviderError) {
+      if (hasReply || isProviderError(result)) {
         console.log(`  ✅ PASS - Valid request (response generated or provider unavailable)`);
 
         // For thread-switch test, also test payload_2
@@ -810,8 +826,7 @@ async function runContextEdgeCaseTest(testCase) {
           }
 
           const hasReply2 = result2 && typeof result2.reply === 'string';
-          const isProviderError2 = result2._statusCode === 502 || result2.error === 'provider_error' || result2.error === 'provider_empty_completion';
-          if (hasReply2 || isProviderError2) {
+          if (hasReply2 || isProviderError(result2)) {
             console.log(`  ✅ PASS - Second thread also valid`);
           } else {
             console.log(`  ⚠️  WARN - Second thread response invalid`);
@@ -852,8 +867,7 @@ async function runStructureEdgeCaseTest(testCase) {
     }
 
     // Structure tests accept provider errors (502) as passing since we're testing valid requests
-    const isProviderError = result._statusCode === 502 || result.error === 'provider_error' || result.error === 'provider_empty_completion';
-    if (isProviderError) {
+    if (isProviderError(result)) {
       console.log(`  ✅ PASS - Valid request (provider error is acceptable in tests)`);
       return { passed: true, testId: testCase.id };
     }
