@@ -354,14 +354,10 @@ function getProviderKeyPool(env) {
   return pool.filter(Boolean);
 }
 
-function hashString(str) {
-  // FNV-1a 32-bit
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = (h >>> 0) * 0x01000193;
-  }
-  return h >>> 0;
+// Round-robin counter for provider key rotation
+// Using globalThis to persist across requests within the same worker instance
+if (typeof globalThis._keyRotationIndex === 'undefined') {
+  globalThis._keyRotationIndex = 0;
 }
 
 function selectProviderKey(env, session, excludeKeys = []) {
@@ -376,8 +372,21 @@ function selectProviderKey(env, session, excludeKeys = []) {
     return pool[0];
   }
   
-  const sid = String(session || "anon");
-  const idx = hashString(sid) % availablePool.length;
+  // ROUND-ROBIN ROTATION: Select next key in sequence
+  // This ensures even distribution across all keys
+  const idx = globalThis._keyRotationIndex % availablePool.length;
+  globalThis._keyRotationIndex = (globalThis._keyRotationIndex + 1) % 1000000; // Reset after 1M to prevent overflow
+  
+  if (env.DEBUG_MODE === "true") {
+    console.log({
+      event: "round_robin_select",
+      index: idx,
+      pool_size: availablePool.length,
+      excluded_count: excludeKeys.length,
+      key_prefix: availablePool[idx].substring(0, 8) + "..."
+    });
+  }
+  
   return availablePool[idx];
 }
 
