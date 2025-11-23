@@ -27,6 +27,12 @@
  *  - MAX_OUTPUT_TOKENS optional hard cap (string int)
  */
 
+// Timeout constants (in milliseconds)
+// Cloudflare Workers have 30-50s execution limits; timeouts prevent worker death
+const TIMEOUT_PROVIDER_CHAT = 25000;  // 25s for main chat requests
+const TIMEOUT_ALORA_CHAT = 15000;     // 15s for Alora site assistant (shorter responses)
+const TIMEOUT_HEALTH_CHECK = 5000;    // 5s for health checks
+
 export default {
   async fetch(req, env, ctx) {
     const reqId = req.headers.get("x-req-id") || cryptoRandomId();
@@ -37,7 +43,17 @@ export default {
       if (!globalThis.__CFG_LOGGED__) {
         const keyPool = getProviderKeyPool(env);
         const allowed = String(env.CORS_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-        console.log({ event: "startup_config", key_pool_size: keyPool.length, cors_allowlist_size: allowed.length, rotation_strategy: (env.PROVIDER_ROTATION_STRATEGY || 'session') });
+        
+        // Log key pool with masked keys for debugging rotation
+        const maskedKeys = keyPool.map((key, idx) => `key_${idx + 1}: ${key.substring(0, 7)}...${key.substring(key.length - 4)}`);
+        
+        console.log({ 
+          event: "startup_config", 
+          key_pool_size: keyPool.length, 
+          key_pool_masked: maskedKeys,
+          cors_allowlist_size: allowed.length, 
+          rotation_strategy: (env.PROVIDER_ROTATION_STRATEGY || 'round-robin')
+        });
         globalThis.__CFG_LOGGED__ = true;
       }
 
@@ -63,10 +79,20 @@ export default {
           try {
             const key = selectProviderKey(env, "healthcheck");
             if (key) {
-              const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
-                headers: { "authorization": `Bearer ${key}` }, method: "GET"
-              });
-              provider = { ok: r.ok, status: r.status };
+              // FIX: Add timeout to health check
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), TIMEOUT_HEALTH_CHECK);
+              
+              try {
+                const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
+                  headers: { "authorization": `Bearer ${key}` }, 
+                  method: "GET",
+                  signal: controller.signal
+                });
+                provider = { ok: r.ok, status: r.status };
+              } finally {
+                clearTimeout(timeout);
+              }
             }
           } catch (e) {
             provider = { ok: false, error: String(e?.message || e) };
@@ -351,13 +377,32 @@ function getProviderKeyPool(env) {
     const base = String(env.PROVIDER_KEY).trim();
     if (base && !pool.includes(base)) pool.push(base);
   }
-  return pool.filter(Boolean);
+  
+  // CRITICAL FIX: Deduplicate keys to ensure even distribution
+  // Use Set to remove duplicates, then convert back to array
+  const uniquePool = [...new Set(pool.filter(Boolean))];
+  
+  // Log warning if duplicates were found
+  if (pool.length !== uniquePool.length) {
+    console.warn("key_pool_deduplication", {
+      original_count: pool.length,
+      unique_count: uniquePool.length,
+      duplicates_removed: pool.length - uniquePool.length
+    });
+  }
+  
+  return uniquePool;
 }
 
 // Round-robin counter for provider key rotation
 // Using globalThis to persist across requests within the same worker instance
 if (typeof globalThis._keyRotationIndex === 'undefined') {
   globalThis._keyRotationIndex = 0;
+}
+
+// Track key usage for monitoring (resets per worker instance)
+if (typeof globalThis._keyUsageStats === 'undefined') {
+  globalThis._keyUsageStats = {};
 }
 
 function selectProviderKey(env, session, excludeKeys = []) {
@@ -377,17 +422,37 @@ function selectProviderKey(env, session, excludeKeys = []) {
   const idx = globalThis._keyRotationIndex % availablePool.length;
   globalThis._keyRotationIndex = (globalThis._keyRotationIndex + 1) % 1000000; // Reset after 1M to prevent overflow
   
+  const selectedKey = availablePool[idx];
+  
+  // Track usage statistics
+  const keyId = selectedKey.substring(0, 7) + "..." + selectedKey.substring(selectedKey.length - 4);
+  if (!globalThis._keyUsageStats[keyId]) {
+    globalThis._keyUsageStats[keyId] = 0;
+  }
+  globalThis._keyUsageStats[keyId]++;
+  
+  // Log every 100th request to monitor distribution
+  if (globalThis._keyRotationIndex % 100 === 0) {
+    console.log({
+      event: "key_usage_stats",
+      rotation_count: globalThis._keyRotationIndex,
+      stats: globalThis._keyUsageStats,
+      pool_size: availablePool.length
+    });
+  }
+  
   if (env.DEBUG_MODE === "true") {
     console.log({
       event: "round_robin_select",
       index: idx,
       pool_size: availablePool.length,
       excluded_count: excludeKeys.length,
-      key_prefix: availablePool[idx].substring(0, 8) + "..."
+      key_id: keyId,
+      usage_count: globalThis._keyUsageStats[keyId]
     });
   }
   
-  return availablePool[idx];
+  return selectedKey;
 }
 
 function sanitizeLLM(s) {
@@ -462,65 +527,90 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
     }
     
     try {
-      const r = await fetch(providerUrl, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "authorization": `Bearer ${key}`
-        },
-        body: JSON.stringify({
-          model: providerModel,
-          temperature,
-          max_tokens: finalMax,
-          messages
-        })
-      });
+      // FIX: Add timeout to prevent worker from hanging on slow provider responses
+      // Cloudflare Workers have a 30-50 second execution limit
+      // Set provider timeout to 25 seconds to leave room for retries and error handling
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_PROVIDER_CHAT);
       
-      if (!r.ok) {
-        const errText = await r.text();
-        // Parse error response if it's JSON
-        let errorDetails = errText;
-        try {
-          const errorJson = JSON.parse(errText);
-          errorDetails = errorJson.error?.message || errorJson.message || errText;
-        } catch (e) {
-          // Not JSON, use raw text
-        }
-        
-        // Enhanced error logging with more context
-        console.error("provider_fetch_error", {
-          status: r.status,
-          statusText: r.statusText,
-          provider_url: providerUrl,
-          provider_model: providerModel,
-          error_details: errorDetails,
-          has_key: !!key,
-          key_prefix: key ? key.substring(0, 8) + "..." : "none",
-          session,
-          attempt: keyAttempt + 1
+      try {
+        const r = await fetch(providerUrl, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: providerModel,
+            temperature,
+            max_tokens: finalMax,
+            messages
+          }),
+          signal: controller.signal
         });
         
-        // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
-        if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
-          console.warn("provider_rate_limited_failover", {
-            key_prefix: key.substring(0, 8) + "...",
-            attempt: keyAttempt + 1,
-            next_attempt: keyAttempt + 2
+        if (!r.ok) {
+          const errText = await r.text();
+          // Parse error response if it's JSON
+          let errorDetails = errText;
+          try {
+            const errorJson = JSON.parse(errText);
+            errorDetails = errorJson.error?.message || errorJson.message || errText;
+          } catch (e) {
+            // Not JSON, use raw text
+          }
+          
+          // Enhanced error logging with more context
+          console.error("provider_fetch_error", {
+            status: r.status,
+            statusText: r.statusText,
+            provider_url: providerUrl,
+            provider_model: providerModel,
+            error_details: errorDetails,
+            has_key: !!key,
+            key_prefix: key ? key.substring(0, 8) + "..." : "none",
+            session,
+            attempt: keyAttempt + 1
           });
-          excludedKeys.push(key);
-          continue; // Try next key
+          
+          // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
+          if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
+            console.warn("provider_rate_limited_failover", {
+              key_prefix: key.substring(0, 8) + "...",
+              attempt: keyAttempt + 1,
+              next_attempt: keyAttempt + 2
+            });
+            excludedKeys.push(key);
+            continue; // Try next key
+          }
+          
+          // Throw error with both status and details
+          const err = new Error(`provider_http_${r.status}`);
+          err.providerStatus = r.status;
+          err.providerError = errorDetails;
+          throw err;
         }
         
-        // Throw error with both status and details
-        const err = new Error(`provider_http_${r.status}`);
-        err.providerStatus = r.status;
-        err.providerError = errorDetails;
+        const j = await r.json().catch(() => ({}));
+        return j?.choices?.[0]?.message?.content || j?.content || "";
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (e) {
+      // Handle timeout errors specifically
+      if (e.name === 'AbortError') {
+        console.error("provider_timeout", {
+          provider_url: providerUrl,
+          session,
+          attempt: keyAttempt + 1,
+          timeout_ms: TIMEOUT_PROVIDER_CHAT
+        });
+        // Use specific error type for timeouts to distinguish from other network issues
+        const err = new Error("provider_timeout_error");
+        err.originalError = `Request timeout after ${TIMEOUT_PROVIDER_CHAT / 1000} seconds`;
         throw err;
       }
       
-      const j = await r.json().catch(() => ({}));
-      return j?.choices?.[0]?.message?.content || j?.content || "";
-    } catch (e) {
       // NETWORK ERROR HANDLING: Catch fetch failures (network errors, timeouts, etc.)
       if (e.providerStatus) {
         // Already a provider HTTP error, re-throw if not retryable
@@ -781,26 +871,45 @@ ${siteContext.slice(0, 12000)}`;
       stream: false
     };
 
-    const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+    // FIX: Add timeout to Alora requests (shorter timeout for site assistant)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_ALORA_CHAT);
 
-    if (!providerResp.ok) {
-      const errText = await providerResp.text();
-      console.error("alora_provider_error", { status: providerResp.status, error: errText });
-      throw new Error(`Provider error: ${providerResp.status}`);
+    try {
+      const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${key}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      if (!providerResp.ok) {
+        const errText = await providerResp.text();
+        console.error("alora_provider_error", { status: providerResp.status, error: errText });
+        throw new Error(`Provider error: ${providerResp.status}`);
+      }
+
+      const data = await providerResp.json();
+      const reply = data.choices?.[0]?.message?.content || "I'm having trouble responding right now. Please try again or contact our team.";
+
+      return json({ reply: reply.trim() }, 200, env, req);
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const data = await providerResp.json();
-    const reply = data.choices?.[0]?.message?.content || "I'm having trouble responding right now. Please try again or contact our team.";
-
-    return json({ reply: reply.trim() }, 200, env, req);
   } catch (e) {
+    // Handle timeout errors
+    if (e.name === 'AbortError') {
+      console.error("alora_timeout", { timeout_ms: TIMEOUT_ALORA_CHAT });
+      return json({
+        error: "alora_timeout",
+        message: "Request timeout",
+        reply: "I'm taking a bit longer than usual. Please try again or request a demo to speak with our team."
+      }, 500, env, req);
+    }
+    
     console.error("alora_chat_error", { message: e.message, stack: e.stack });
     return json({
       error: "alora_error",
@@ -1649,6 +1758,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     const isProviderError = e.message && (
       e.message.startsWith("provider_http_") ||  // Provider returned HTTP error (500, 503, etc.)
       e.message === "provider_network_error" ||  // Network error calling provider
+      e.message === "provider_timeout_error" ||  // Timeout calling provider
       e.message === "provider_key_missing" ||    // No API key configured
       e.message === "plan_generation_failed"      // Plan generation failed
     );
@@ -1659,7 +1769,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       let errorMessage = "The AI provider is temporarily unavailable. Please try again in a moment.";
       
       // Provide more specific error messages based on the error type
-      if (e.message === "provider_key_missing") {
+      if (e.message === "provider_timeout_error") {
+        errorMessage = "The AI provider request timed out. Please try again with a shorter message or simpler request.";
+      } else if (e.message === "provider_key_missing") {
         errorMessage = "Server configuration error: No AI provider API key configured. Please contact support.";
       } else if (e.providerStatus === 401 || e.providerStatus === 403) {
         errorMessage = "Server configuration error: AI provider authentication failed. Please contact support.";
