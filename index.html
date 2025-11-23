@@ -9,13 +9,13 @@
   <link rel="icon" type="image/png" href="logo-modern.png">
 
   <!-- Content Security Policy (meta-based; GH Pages can't set headers) -->
-  <!-- Allows Tailwind CDN + Google Fonts + your Worker + Cloudflare Access -->
+  <!-- Allows Google Fonts + your Worker + Cloudflare Access -->
   <meta http-equiv="Content-Security-Policy" content="
           default-src 'self';
           img-src 'self' data:;
           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
           font-src  'self' https://fonts.gstatic.com;
-          script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
+          script-src 'self' 'unsafe-inline';
           connect-src 'self' https://my-chat-agent-v2.tonyabdelmalak.workers.dev https://*.cloudflareaccess.com
         ">
 
@@ -23,9 +23,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <!-- Tailwind -->
-  <!-- TODO: Replace CDN with compiled Tailwind for production -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS (compiled) -->
+  <link rel="stylesheet" href="dist/tailwind.min.css">
 
   <!-- Type + quick utilities -->
   <style>
