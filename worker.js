@@ -37,7 +37,17 @@ export default {
       if (!globalThis.__CFG_LOGGED__) {
         const keyPool = getProviderKeyPool(env);
         const allowed = String(env.CORS_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-        console.log({ event: "startup_config", key_pool_size: keyPool.length, cors_allowlist_size: allowed.length, rotation_strategy: (env.PROVIDER_ROTATION_STRATEGY || 'session') });
+        
+        // Log key pool with masked keys for debugging rotation
+        const maskedKeys = keyPool.map((key, idx) => `key_${idx + 1}: ${key.substring(0, 7)}...${key.substring(key.length - 4)}`);
+        
+        console.log({ 
+          event: "startup_config", 
+          key_pool_size: keyPool.length, 
+          key_pool_masked: maskedKeys,
+          cors_allowlist_size: allowed.length, 
+          rotation_strategy: (env.PROVIDER_ROTATION_STRATEGY || 'round-robin')
+        });
         globalThis.__CFG_LOGGED__ = true;
       }
 
@@ -351,13 +361,32 @@ function getProviderKeyPool(env) {
     const base = String(env.PROVIDER_KEY).trim();
     if (base && !pool.includes(base)) pool.push(base);
   }
-  return pool.filter(Boolean);
+  
+  // CRITICAL FIX: Deduplicate keys to ensure even distribution
+  // Use Set to remove duplicates, then convert back to array
+  const uniquePool = [...new Set(pool.filter(Boolean))];
+  
+  // Log warning if duplicates were found
+  if (pool.length !== uniquePool.length) {
+    console.warn("key_pool_deduplication", {
+      original_count: pool.length,
+      unique_count: uniquePool.length,
+      duplicates_removed: pool.length - uniquePool.length
+    });
+  }
+  
+  return uniquePool;
 }
 
 // Round-robin counter for provider key rotation
 // Using globalThis to persist across requests within the same worker instance
 if (typeof globalThis._keyRotationIndex === 'undefined') {
   globalThis._keyRotationIndex = 0;
+}
+
+// Track key usage for monitoring (resets per worker instance)
+if (typeof globalThis._keyUsageStats === 'undefined') {
+  globalThis._keyUsageStats = {};
 }
 
 function selectProviderKey(env, session, excludeKeys = []) {
@@ -377,17 +406,37 @@ function selectProviderKey(env, session, excludeKeys = []) {
   const idx = globalThis._keyRotationIndex % availablePool.length;
   globalThis._keyRotationIndex = (globalThis._keyRotationIndex + 1) % 1000000; // Reset after 1M to prevent overflow
   
+  const selectedKey = availablePool[idx];
+  
+  // Track usage statistics
+  const keyId = selectedKey.substring(0, 7) + "..." + selectedKey.substring(selectedKey.length - 4);
+  if (!globalThis._keyUsageStats[keyId]) {
+    globalThis._keyUsageStats[keyId] = 0;
+  }
+  globalThis._keyUsageStats[keyId]++;
+  
+  // Log every 100th request to monitor distribution
+  if (globalThis._keyRotationIndex % 100 === 0) {
+    console.log({
+      event: "key_usage_stats",
+      rotation_count: globalThis._keyRotationIndex,
+      stats: globalThis._keyUsageStats,
+      pool_size: availablePool.length
+    });
+  }
+  
   if (env.DEBUG_MODE === "true") {
     console.log({
       event: "round_robin_select",
       index: idx,
       pool_size: availablePool.length,
       excluded_count: excludeKeys.length,
-      key_prefix: availablePool[idx].substring(0, 8) + "..."
+      key_id: keyId,
+      usage_count: globalThis._keyUsageStats[keyId]
     });
   }
   
-  return availablePool[idx];
+  return selectedKey;
 }
 
 function sanitizeLLM(s) {
