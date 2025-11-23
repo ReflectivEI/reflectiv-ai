@@ -41,7 +41,10 @@ export default {
         globalThis.__CFG_LOGGED__ = true;
       }
 
-      // CORS preflight
+      // CORS Preflight Handling (OPTIONS requests)
+      // Browser sends OPTIONS before actual request to check if cross-origin request is allowed
+      // We respond with 204 No Content + full CORS headers
+      // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#preflighted_requests
       if (req.method === "OPTIONS") {
         const h = cors(env, req);
         h["x-req-id"] = reqId;
@@ -208,10 +211,37 @@ const COACH_SCHEMA = {
 /**
  * CORS configuration and header builder.
  *
- * IMPORTANT: CORS_ORIGINS must include https://reflectivei.github.io for GitHub Pages deployment.
+ * IMPLEMENTATION NOTES:
+ * - CORS_ORIGINS is a comma-separated list of allowed origins (production + localhost for dev)
+ * - When an origin is in the allowlist, we echo it back exactly in Access-Control-Allow-Origin
+ * - When no CORS_ORIGINS is set, we allow any origin (permissive mode)
+ * - When an origin is denied, we return "null" to explicitly block the request
  *
- * When an origin is allowed, we echo it back in Access-Control-Allow-Origin.
- * When an origin is denied, we log a warning and return "null" to block the request.
+ * ALLOWED ORIGINS (from CORS_ORIGINS env var):
+ * Production:
+ *   - https://reflectivei.github.io (GitHub Pages main)
+ *   - https://reflectivei.github.io/reflectiv-ai (GitHub Pages with path)
+ *   - https://reflectivai.github.io
+ *   - https://tonyabdelmalak.github.io
+ *   - https://tonyabdelmalak.com
+ *   - https://reflectivai.com
+ *   - https://www.reflectivai.com
+ *   - https://www.tonyabdelmalak.com
+ *   - https://dash.cloudflare.com
+ *   - https://my-chat-agent-v2.tonyabdelmalak.workers.dev
+ * Development (localhost):
+ *   - http://localhost:3000
+ *   - http://127.0.0.1:3000
+ *   - http://localhost:5500
+ *   - http://127.0.0.1:5500
+ *   - http://localhost:8080
+ *   - http://127.0.0.1:8080
+ *
+ * BROWSER CORS FLOW:
+ * 1. Browser sends OPTIONS preflight with Origin header
+ * 2. Worker responds with Access-Control-Allow-Origin: <exact origin> (if allowed)
+ * 3. Browser sends actual request (POST/GET) with Origin header
+ * 4. Worker responds with same CORS headers
  */
 function cors(env, req) {
   const reqOrigin = req.headers.get("Origin") || "";
@@ -220,38 +250,46 @@ function cors(env, req) {
     .map(s => s.trim())
     .filter(Boolean);
 
-  // If no allowlist is configured, allow any origin
+  // Determine if the requesting origin is allowed
+  // If no allowlist is configured (allowed.length === 0), allow any origin
   // If allowlist exists, check if request origin is in the list
   const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
 
-  // Log CORS denials for diagnostics
+  // Enhanced logging for CORS diagnostics
   if (!isAllowed && reqOrigin) {
-    console.warn("CORS deny", { origin: reqOrigin, allowedList: allowed });
+    console.warn("CORS_DENY", {
+      origin: reqOrigin,
+      allowedCount: allowed.length,
+      allowedList: allowed.slice(0, 5), // Log first 5 to avoid spam
+      hasAllowlist: allowed.length > 0
+    });
   }
 
   // Determine the Access-Control-Allow-Origin value
   let allowOrigin;
   if (isAllowed && reqOrigin) {
-    // Specific origin is allowed and present - echo it back
+    // Specific origin is allowed and present - echo it back exactly
     allowOrigin = reqOrigin;
   } else if (isAllowed && !reqOrigin) {
-    // Allowed but no origin header (e.g., same-origin or non-browser request)
+    // Allowed but no origin header (e.g., same-origin request, cURL, Postman)
     allowOrigin = "*";
   } else {
-    // Not allowed
+    // Origin not allowed - return "null" to explicitly block
     allowOrigin = "null";
   }
 
+  // Build CORS headers
   const headers = {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
-    "Access-Control-Max-Age": "86400",
-    "Vary": "Origin"
+    "Access-Control-Max-Age": "86400",  // Cache preflight for 24 hours
+    "Vary": "Origin"  // Important for caching - response varies by Origin header
   };
 
-  // Only set credentials header when we have a specific origin
-  // Cannot use credentials with wildcard origin (*)
+  // Set credentials header only for specific origins
+  // Cannot use Access-Control-Allow-Credentials: true with wildcard (*)
+  // Cannot use credentials with "null" origin (blocked)
   if (allowOrigin !== "*" && allowOrigin !== "null") {
     headers["Access-Control-Allow-Credentials"] = "true";
   }
