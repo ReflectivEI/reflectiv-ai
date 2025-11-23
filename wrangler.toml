@@ -35,8 +35,8 @@ MAX_TOKENS = "1400"
 # Fully approved frontend origins
 # Production origins + localhost for development
 # Note: This is a single-line comma-separated list (wrangler.toml format)
-# Includes: Production URLs (GitHub Pages, custom domains) + Localhost (ports 3000, 5500, 8080)
-CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://127.0.0.1:8080"
+# Includes: Production URLs (GitHub Pages, custom domains) + Localhost (ports 3000, 5500, 8080, 8787 for wrangler dev)
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://127.0.0.1:8080,http://localhost:8787,http://127.0.0.1:8787"
 
 # Secrets (store via `wrangler secret put` or Cloudflare dashboard)
 # wrangler secret put PROVIDER_KEY

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReflectivAI Worker Diagnostics</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #2f3a4f;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #2f3a4f;
+      font-size: 18px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status.pending {
+      background: #ffc107;
+      color: #000;
+    }
+    .status.success {
+      background: #4caf50;
+      color: white;
+    }
+    .status.error {
+      background: #f44336;
+      color: white;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-left: 3px solid #ddd;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .result.success {
+      border-left-color: #4caf50;
+    }
+    .result.error {
+      border-left-color: #f44336;
+    }
+    button {
+      background: #2f3a4f;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #1f2a3f;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .recommendation {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    .recommendation h3 {
+      margin-top: 0;
+      color: #856404;
+    }
+    .recommendation ul {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 ReflectivAI Worker Diagnostics</h1>
+  <p class="subtitle">This page tests the Cloudflare Worker deployment and identifies configuration issues</p>
+
+  <div class="test-section">
+    <h2>Test 1: Worker Accessibility <span class="status pending" id="status1">Testing...</span></h2>
+    <p>Testing if the worker is deployed and responding...</p>
+    <div class="result" id="result1">Running test...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 2: Worker Version <span class="status pending" id="status2">Pending</span></h2>
+    <p>Checking worker version to confirm deployment...</p>
+    <div class="result" id="result2">Waiting for Test 1...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 3: Deep Health Check <span class="status pending" id="status3">Pending</span></h2>
+    <p>Testing provider API connectivity and configuration...</p>
+    <div class="result" id="result3">Waiting for Test 2...</div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 4: Chat Endpoint Test <span class="status pending" id="status4">Pending</span></h2>
+    <p>Attempting to send a test message to the chat endpoint...</p>
+    <div class="result" id="result4">Waiting for Test 3...</div>
+    <button id="retryChat" style="display:none;">Retry Chat Test</button>
+  </div>
+
+  <div id="recommendations" style="display:none;">
+    <!-- Recommendations will be inserted here -->
+  </div>
+
+  <script>
+    const WORKER_URL = 'https://my-chat-agent-v2.tonyabdelmalak.workers.dev';
+    const results = {};
+
+    async function test1() {
+      const statusEl = document.getElementById('status1');
+      const resultEl = document.getElementById('result1');
+      
+      try {
+        const response = await fetch(`${WORKER_URL}/health`, {
+          method: 'GET',
+          headers: { 'Accept': 'text/plain' }
+        });
+        
+        const text = await response.text();
+        
+        if (response.ok) {
+          statusEl.className = 'status success';
+          statusEl.textContent = 'PASS';
+          resultEl.className = 'result success';
+          resultEl.textContent = `✓ Worker is accessible and responding\nStatus: ${response.status}\nResponse: ${text}`;
+          results.test1 = { pass: true, status: response.status };
+          return true;
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'FAIL';
+          resultEl.className = 'result error';
+          resultEl.textContent = `✗ Worker returned error\nStatus: ${response.status}\nResponse: ${text}`;
+          results.test1 = { pass: false, status: response.status, error: text };
+          return false;
+        }
+      } catch (error) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'FAIL';
+        resultEl.className = 'result error';
+        resultEl.textContent = `✗ Cannot reach worker\nError: ${error.message}\n\nPossible causes:\n- Worker not deployed\n- DNS not propagated\n- Network connectivity issue`;
+        results.test1 = { pass: false, error: error.message };
+        return false;
+      }
+    }
+
+    async function test2() {
+      const statusEl = document.getElementById('status2');
+      const resultEl = document.getElementById('result2');
+      
+      try {
+        const response = await fetch(`${WORKER_URL}/version`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.version) {
+          statusEl.className = 'status success';
+          statusEl.textContent = 'PASS';
+          resultEl.className = 'result success';
+          resultEl.textContent = `✓ Worker version: ${data.version}\nFull response: ${JSON.stringify(data, null, 2)}`;
+          results.test2 = { pass: true, version: data.version };
+          return true;
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'FAIL';
+          resultEl.className = 'result error';
+          resultEl.textContent = `✗ Version check failed\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+          results.test2 = { pass: false, status: response.status };
+          return false;
+        }
+      } catch (error) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'FAIL';
+        resultEl.className = 'result error';
+        resultEl.textContent = `✗ Version check failed\nError: ${error.message}`;
+        results.test2 = { pass: false, error: error.message };
+        return false;
+      }
+    }
+
+    async function test3() {
+      const statusEl = document.getElementById('status3');
+      const resultEl = document.getElementById('result3');
+      
+      try {
+        const response = await fetch(`${WORKER_URL}/health?deep=true`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        let details = JSON.stringify(data, null, 2);
+        
+        if (response.ok) {
+          const providerOk = data.provider?.ok;
+          const keyPoolSize = data.key_pool || 0;
+          
+          if (keyPoolSize === 0) {
+            statusEl.className = 'status error';
+            statusEl.textContent = 'FAIL';
+            resultEl.className = 'result error';
+            resultEl.textContent = `✗ CRITICAL: No API keys configured\n\n${details}\n\n⚠️ PROVIDER_KEY secret is not set in Cloudflare!`;
+            results.test3 = { pass: false, issue: 'no_keys', data };
+            return false;
+          } else if (!providerOk) {
+            statusEl.className = 'status error';
+            statusEl.textContent = 'FAIL';
+            resultEl.className = 'result error';
+            const providerStatus = data.provider?.status || 'unknown';
+            const providerError = data.provider?.error || 'unknown';
+            resultEl.textContent = `✗ Provider API check failed\n\n${details}\n\n⚠️ Provider returned: ${providerStatus}\nError: ${providerError}\n\nPossible causes:\n- Invalid/expired API key\n- Groq API is down\n- Rate limit exceeded`;
+            results.test3 = { pass: false, issue: 'provider_failed', status: providerStatus, data };
+            return false;
+          } else {
+            statusEl.className = 'status success';
+            statusEl.textContent = 'PASS';
+            resultEl.className = 'result success';
+            resultEl.textContent = `✓ Provider API connectivity OK\n\n${details}\n\nKey pool size: ${keyPoolSize}\nProvider status: ${data.provider.status}`;
+            results.test3 = { pass: true, data };
+            return true;
+          }
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'FAIL';
+          resultEl.className = 'result error';
+          resultEl.textContent = `✗ Deep health check failed\nStatus: ${response.status}\nResponse: ${details}`;
+          results.test3 = { pass: false, status: response.status, data };
+          return false;
+        }
+      } catch (error) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'FAIL';
+        resultEl.className = 'result error';
+        resultEl.textContent = `✗ Deep health check failed\nError: ${error.message}`;
+        results.test3 = { pass: false, error: error.message };
+        return false;
+      }
+    }
+
+    async function test4() {
+      const statusEl = document.getElementById('status4');
+      const resultEl = document.getElementById('result4');
+      const retryBtn = document.getElementById('retryChat');
+      
+      try {
+        const payload = {
+          mode: "general-knowledge",
+          user: "What is 2+2?",
+          history: [],
+          disease: "",
+          persona: "",
+          goal: "",
+          session: "diagnostic-test-" + Date.now()
+        };
+        
+        resultEl.textContent = `Sending test message...\nPayload: ${JSON.stringify(payload, null, 2)}`;
+        
+        const response = await fetch(`${WORKER_URL}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        let details = JSON.stringify(data, null, 2);
+        
+        if (response.ok && data.reply) {
+          statusEl.className = 'status success';
+          statusEl.textContent = 'PASS';
+          resultEl.className = 'result success';
+          resultEl.textContent = `✓ Chat endpoint working!\n\nResponse preview:\n${data.reply.substring(0, 200)}${data.reply.length > 200 ? '...' : ''}\n\nFull response:\n${details}`;
+          results.test4 = { pass: true, data };
+          retryBtn.style.display = 'none';
+          return true;
+        } else if (response.status === 502) {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'FAIL - 502';
+          resultEl.className = 'result error';
+          resultEl.textContent = `✗ 502 Bad Gateway Error\n\n${details}\n\n⚠️ This is the SAME error the widget is experiencing!\n\nThe provider API call is failing. Check Test 3 results above.`;
+          results.test4 = { pass: false, status: 502, data };
+          retryBtn.style.display = 'block';
+          return false;
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = `FAIL - ${response.status}`;
+          resultEl.className = 'result error';
+          resultEl.textContent = `✗ Chat endpoint returned error\nStatus: ${response.status}\nResponse: ${details}`;
+          results.test4 = { pass: false, status: response.status, data };
+          retryBtn.style.display = 'block';
+          return false;
+        }
+      } catch (error) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'FAIL';
+        resultEl.className = 'result error';
+        resultEl.textContent = `✗ Chat endpoint test failed\nError: ${error.message}`;
+        results.test4 = { pass: false, error: error.message };
+        retryBtn.style.display = 'block';
+        return false;
+      }
+    }
+
+    function showRecommendations() {
+      const recEl = document.getElementById('recommendations');
+      let html = '<div class="recommendation"><h3>🔧 Diagnosis & Recommendations</h3>';
+      
+      if (!results.test1?.pass) {
+        html += '<p><strong>Critical Issue:</strong> Worker is not accessible</p>';
+        html += '<ul><li>Verify the worker is deployed in Cloudflare dashboard</li>';
+        html += '<li>Check DNS propagation (may take a few minutes after deployment)</li>';
+        html += '<li>Verify account_id in wrangler.toml matches your Cloudflare account</li></ul>';
+      } else if (results.test3?.issue === 'no_keys') {
+        html += '<p><strong>Critical Issue:</strong> No API keys configured</p>';
+        html += '<ul><li><strong>Action Required:</strong> Set PROVIDER_KEY secret in Cloudflare dashboard</li>';
+        html += '<li>Go to: Workers & Pages → my-chat-agent-v2 → Settings → Variables</li>';
+        html += '<li>Add secret: PROVIDER_KEY with your Groq API key (gsk_...)</li>';
+        html += '<li>Redeploy or wait a few minutes for the change to take effect</li></ul>';
+      } else if (results.test3?.issue === 'provider_failed') {
+        html += '<p><strong>Provider API Issue:</strong> Cannot connect to Groq API</p>';
+        html += '<ul><li>Verify PROVIDER_KEY is a valid Groq API key</li>';
+        html += '<li>Check if the API key has expired or been revoked</li>';
+        html += '<li>Verify you have not exceeded Groq rate limits</li>';
+        html += '<li>Check Groq API status: <a href="https://status.groq.com" target="_blank">https://status.groq.com</a></li>';
+        html += '<li>Test your API key directly: <code>curl -H "Authorization: Bearer YOUR_KEY" https://api.groq.com/openai/v1/models</code></li></ul>';
+      } else if (results.test4?.status === 502) {
+        html += '<p><strong>502 Error Reproduced:</strong> This matches the widget error!</p>';
+        html += '<ul><li>The worker is deployed correctly but the provider API is failing</li>';
+        html += '<li>Review Test 3 results above for the specific provider issue</li>';
+        html += '<li>The enhanced error logging in worker.js will help identify the exact cause</li></ul>';
+      } else if (results.test4?.pass) {
+        html += '<p><strong>✓ All Tests Passed!</strong></p>';
+        html += '<ul><li>The worker is functioning correctly</li>';
+        html += '<li>If the widget still shows errors, check:</li>';
+        html += '<li>- Browser console for network errors</li>';
+        html += '<li>- config.json points to correct worker URL</li>';
+        html += '<li>- CORS settings allow your frontend origin</li></ul>';
+      }
+      
+      html += '</div>';
+      recEl.innerHTML = html;
+      recEl.style.display = 'block';
+    }
+
+    // Run tests sequentially
+    async function runAllTests() {
+      const test1Pass = await test1();
+      
+      if (test1Pass) {
+        await test2();
+        const test3Pass = await test3();
+        await test4();
+      }
+      
+      showRecommendations();
+    }
+
+    // Retry button handler
+    document.getElementById('retryChat').addEventListener('click', () => {
+      document.getElementById('status4').className = 'status pending';
+      document.getElementById('status4').textContent = 'Retrying...';
+      test4().then(() => showRecommendations());
+    });
+
+    // Start tests on page load
+    runAllTests();
+  </script>
+</body>
+</html>

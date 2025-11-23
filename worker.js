@@ -354,22 +354,40 @@ function getProviderKeyPool(env) {
   return pool.filter(Boolean);
 }
 
-function hashString(str) {
-  // FNV-1a 32-bit
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = (h >>> 0) * 0x01000193;
-  }
-  return h >>> 0;
+// Round-robin counter for provider key rotation
+// Using globalThis to persist across requests within the same worker instance
+if (typeof globalThis._keyRotationIndex === 'undefined') {
+  globalThis._keyRotationIndex = 0;
 }
 
-function selectProviderKey(env, session) {
+function selectProviderKey(env, session, excludeKeys = []) {
   const pool = getProviderKeyPool(env);
   if (!pool.length) return null;
-  const sid = String(session || "anon");
-  const idx = hashString(sid) % pool.length;
-  return pool[idx];
+  
+  // Filter out excluded keys (e.g., rate-limited keys)
+  const availablePool = pool.filter(key => !excludeKeys.includes(key));
+  if (!availablePool.length) {
+    // All keys excluded, fall back to full pool (better to try than fail)
+    console.warn("All provider keys excluded, falling back to full pool");
+    return pool[0];
+  }
+  
+  // ROUND-ROBIN ROTATION: Select next key in sequence
+  // This ensures even distribution across all keys
+  const idx = globalThis._keyRotationIndex % availablePool.length;
+  globalThis._keyRotationIndex = (globalThis._keyRotationIndex + 1) % 1000000; // Reset after 1M to prevent overflow
+  
+  if (env.DEBUG_MODE === "true") {
+    console.log({
+      event: "round_robin_select",
+      index: idx,
+      pool_size: availablePool.length,
+      excluded_count: excludeKeys.length,
+      key_prefix: availablePool[idx].substring(0, 8) + "..."
+    });
+  }
+  
+  return availablePool[idx];
 }
 
 function sanitizeLLM(s) {
@@ -408,31 +426,129 @@ function extractCoach(raw) {
 async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2, session = "anon", providerKey } = {}) {
   const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
   const finalMax = cap > 0 ? Math.min(maxTokens, cap) : maxTokens;
-  const key = providerKey || selectProviderKey(env, session) || env.PROVIDER_KEY;
-  if (!key) throw new Error("provider_key_missing");
-  if (env.DEBUG_MODE === "true") {
-    console.log({ event: "provider_key_select", session, key_len: key.length, rotated: key !== env.PROVIDER_KEY });
+  
+  // ENHANCED ERROR HANDLING: Log provider request details for debugging
+  const providerUrl = env.PROVIDER_URL;
+  const providerModel = env.PROVIDER_MODEL;
+  
+  // Get key pool for failover
+  const keyPool = getProviderKeyPool(env);
+  const excludedKeys = [];
+  
+  // Try keys with automatic failover on rate limits
+  for (let keyAttempt = 0; keyAttempt < Math.min(keyPool.length, 3); keyAttempt++) {
+    let key;
+    if (providerKey) {
+      // Explicit key provided (used for health checks)
+      key = providerKey;
+    } else {
+      // Select key from pool, excluding previously failed keys
+      key = selectProviderKey(env, session, excludedKeys);
+    }
+    
+    if (!key) {
+      throw new Error("provider_key_missing");
+    }
+    
+    if (env.DEBUG_MODE === "true") {
+      console.log({ 
+        event: "provider_key_select", 
+        session, 
+        key_len: key.length, 
+        key_prefix: key.substring(0, 8) + "...",
+        attempt: keyAttempt + 1,
+        excluded_count: excludedKeys.length
+      });
+    }
+    
+    try {
+      const r = await fetch(providerUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: providerModel,
+          temperature,
+          max_tokens: finalMax,
+          messages
+        })
+      });
+      
+      if (!r.ok) {
+        const errText = await r.text();
+        // Parse error response if it's JSON
+        let errorDetails = errText;
+        try {
+          const errorJson = JSON.parse(errText);
+          errorDetails = errorJson.error?.message || errorJson.message || errText;
+        } catch (e) {
+          // Not JSON, use raw text
+        }
+        
+        // Enhanced error logging with more context
+        console.error("provider_fetch_error", {
+          status: r.status,
+          statusText: r.statusText,
+          provider_url: providerUrl,
+          provider_model: providerModel,
+          error_details: errorDetails,
+          has_key: !!key,
+          key_prefix: key ? key.substring(0, 8) + "..." : "none",
+          session,
+          attempt: keyAttempt + 1
+        });
+        
+        // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
+        if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
+          console.warn("provider_rate_limited_failover", {
+            key_prefix: key.substring(0, 8) + "...",
+            attempt: keyAttempt + 1,
+            next_attempt: keyAttempt + 2
+          });
+          excludedKeys.push(key);
+          continue; // Try next key
+        }
+        
+        // Throw error with both status and details
+        const err = new Error(`provider_http_${r.status}`);
+        err.providerStatus = r.status;
+        err.providerError = errorDetails;
+        throw err;
+      }
+      
+      const j = await r.json().catch(() => ({}));
+      return j?.choices?.[0]?.message?.content || j?.content || "";
+    } catch (e) {
+      // NETWORK ERROR HANDLING: Catch fetch failures (network errors, timeouts, etc.)
+      if (e.providerStatus) {
+        // Already a provider HTTP error, re-throw if not retryable
+        if (e.providerStatus !== 429 || keyAttempt >= Math.min(keyPool.length, 3) - 1) {
+          throw e;
+        }
+        // Rate limit - try next key
+        excludedKeys.push(key);
+        continue;
+      }
+      // Network or other fetch error
+      console.error("provider_network_error", {
+        message: e.message,
+        provider_url: providerUrl,
+        session,
+        attempt: keyAttempt + 1
+      });
+      const err = new Error("provider_network_error");
+      err.originalError = e.message;
+      throw err;
+    }
   }
-  const r = await fetch(env.PROVIDER_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "authorization": `Bearer ${key}`
-    },
-    body: JSON.stringify({
-      model: env.PROVIDER_MODEL,
-      temperature,
-      max_tokens: finalMax,
-      messages
-    })
-  });
-  if (!r.ok) {
-    const errText = await r.text();
-    console.error("provider_fetch_error", { status: r.status, error: errText });
-    throw new Error(`provider_http_${r.status}`);
-  }
-  const j = await r.json().catch(() => ({}));
-  return j?.choices?.[0]?.message?.content || j?.content || "";
+  
+  // If we get here, all keys were rate-limited
+  const err = new Error("provider_http_429");
+  err.providerStatus = 429;
+  err.providerError = "All provider keys are rate-limited";
+  throw err;
 }
 
 function deterministicScore({ reply, usedFactIds = [] }) {
@@ -735,11 +851,21 @@ function fixSalesCoachContract(text, validation) {
 async function postChat(req, env) {
   // DEBUG_BREAKPOINT: worker.chat.entry
   try {
-    // Defensive check: ensure at least one provider key is configured
+    // Defensive check: ensure provider is properly configured
     const keyPool = getProviderKeyPool(env);
     if (!keyPool.length) {
       console.error("chat_error", { step: "config_check", message: "NO_PROVIDER_KEYS" });
       return json({ error: "server_error", message: "No provider API keys configured" }, 500, env, req);
+    }
+    
+    // Validate PROVIDER_URL and PROVIDER_MODEL are configured
+    if (!env.PROVIDER_URL) {
+      console.error("chat_error", { step: "config_check", message: "NO_PROVIDER_URL" });
+      return json({ error: "server_error", message: "Provider URL not configured" }, 500, env, req);
+    }
+    if (!env.PROVIDER_MODEL) {
+      console.error("chat_error", { step: "config_check", message: "NO_PROVIDER_MODEL" });
+      return json({ error: "server_error", message: "Provider model not configured" }, 500, env, req);
     }
 
     const body = await readJson(req);
@@ -1205,6 +1331,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
     // Provider call with retry and mode-specific token allocation
     let raw = "";
+    let lastProviderError = null;
     for (let i = 0; i < 3; i++) {
       try {
         // Token allocation prioritization
@@ -1231,7 +1358,15 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         });
         if (raw) break;
       } catch (e) {
-        console.error("chat_error", { step: "provider_call", attempt: i + 1, message: e.message });
+        lastProviderError = e;
+        console.error("chat_error", { 
+          step: "provider_call", 
+          attempt: i + 1, 
+          message: e.message,
+          provider_status: e.providerStatus,
+          provider_error: e.providerError,
+          original_error: e.originalError
+        });
         if (i === 2) throw e;
         await new Promise(r => setTimeout(r, 300 * (i + 1)));
       }
@@ -1501,20 +1636,58 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
     // ERROR HANDLING: Catch-all for unexpected errors during chat processing
-    console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
+    console.error("chat_error", { 
+      step: "general", 
+      message: e.message, 
+      stack: e.stack,
+      provider_status: e.providerStatus,
+      provider_error: e.providerError,
+      original_error: e.originalError
+    });
 
     // Classify error to return appropriate status code and message
     const isProviderError = e.message && (
       e.message.startsWith("provider_http_") ||  // Provider returned HTTP error (500, 503, etc.)
+      e.message === "provider_network_error" ||  // Network error calling provider
+      e.message === "provider_key_missing" ||    // No API key configured
       e.message === "plan_generation_failed"      // Plan generation failed
     );
     const isPlanError = e.message === "no_active_plan_or_facts";
 
     if (isProviderError) {
-      // ERROR HANDLING: Provider errors - return 502 Bad Gateway
+      // ERROR HANDLING: Provider errors - return 502 Bad Gateway with helpful diagnostics
+      let errorMessage = "The AI provider is temporarily unavailable. Please try again in a moment.";
+      
+      // Provide more specific error messages based on the error type
+      if (e.message === "provider_key_missing") {
+        errorMessage = "Server configuration error: No AI provider API key configured. Please contact support.";
+      } else if (e.providerStatus === 401 || e.providerStatus === 403) {
+        errorMessage = "Server configuration error: AI provider authentication failed. Please contact support.";
+        // Log this as it likely means API keys are invalid
+        console.error("CRITICAL: Provider authentication failed", {
+          status: e.providerStatus,
+          error: e.providerError
+        });
+      } else if (e.providerStatus === 429) {
+        errorMessage = "The AI provider rate limit has been exceeded. Please try again in a few moments.";
+      } else if (e.providerStatus >= 500) {
+        errorMessage = "The AI provider service is experiencing issues. Please try again in a moment.";
+      } else if (e.message === "provider_network_error") {
+        errorMessage = "Unable to connect to AI provider. Please check your internet connection and try again.";
+      } else if (e.providerError) {
+        // Include provider's error message if available (but sanitize it first)
+        const sanitizedError = String(e.providerError).substring(0, 200);
+        errorMessage = `AI provider error: ${sanitizedError}`;
+      }
+      
       return json({
         error: "provider_error",
-        message: "The AI provider is temporarily unavailable. Please try again in a moment."
+        message: errorMessage,
+        details: env.DEBUG_MODE === "true" ? {
+          provider_status: e.providerStatus,
+          provider_error: e.providerError,
+          error_type: e.message
+        } : undefined
       }, 502, env, req);
     } else if (isPlanError) {
       // ERROR HANDLING: Plan validation errors - return 400 Bad Request
