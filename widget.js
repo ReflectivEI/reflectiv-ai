@@ -3133,6 +3133,13 @@ ${COMMON}`
 
             const data = JSON.parse(bodyText);
 
+            // PHASE: Error transparency - check if backend returned error object
+            // Backend may return 200 OK with error JSON for compatibility
+            if (data && data.error) {
+              // Return the error object to be handled in sendMessage
+              return data;
+            }
+
             // Extract tokens if available (prefer completion_tokens for accuracy)
             if (data.usage?.completion_tokens) {
               currentTelemetry.tokens_rx = data.usage.completion_tokens;
