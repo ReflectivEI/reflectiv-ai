@@ -3135,6 +3135,8 @@ ${COMMON}`
 
             // PHASE: Error transparency - check if backend returned error object
             // Backend may return 200 OK with error JSON for compatibility
+            // Note: This intentionally returns an object (not string) so sendMessage
+            // can distinguish between error objects and empty responses
             if (data && data.error) {
               // Return the error object to be handled in sendMessage
               return data;
@@ -3551,7 +3553,7 @@ ${detail}`;
         // PHASE: Error transparency - detect and surface backend errors
         // Check for structured error object from backend
         if (typeof raw === 'object' && raw && raw.error) {
-          const errorMessage = raw.message || raw.error;
+          const errorMessage = raw.message || String(raw.error);
           console.error("[coach] Backend error object received:", raw);
           showToast(`Backend error: ${errorMessage}`, "error");
           return;
