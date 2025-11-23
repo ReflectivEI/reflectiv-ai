@@ -3183,8 +3183,8 @@ ${COMMON}`
           throw new Error("HTTP 429: rate_limited");
         }
 
-        // For 4xx errors (except 429), try to extract error message from response
-        if (r.status >= 400 && r.status < 500) {
+        // For 4xx and 5xx errors (after retries exhausted), try to extract error message from response
+        if (r.status >= 400) {
           try {
             const errorBody = await r.json();
             const errorMsg = errorBody.message || errorBody.error || `Request failed (status ${r.status})`;
@@ -3197,7 +3197,7 @@ ${COMMON}`
           }
         }
 
-        // Show toast for non-retryable errors
+        // Fallback for unexpected status codes
         showToast(`Request failed (status ${r.status}). Please retry.`, "error");
         throw new Error("HTTP " + r.status);
       } catch (e) {
