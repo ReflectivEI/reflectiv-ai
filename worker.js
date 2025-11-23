@@ -257,10 +257,11 @@ function cors(env, req) {
 
   // Enhanced logging for CORS diagnostics
   if (!isAllowed && reqOrigin) {
+    const LOG_LIMIT = 5; // Limit logged origins to avoid spam in logs
     console.warn("CORS_DENY", {
       origin: reqOrigin,
       allowedCount: allowed.length,
-      allowedList: allowed.slice(0, 5), // Log first 5 to avoid spam
+      allowedList: allowed.slice(0, LOG_LIMIT), // First 5 origins only
       hasAllowlist: allowed.length > 0
     });
   }
