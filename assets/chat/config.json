@@ -1,16 +1,17 @@
 
+
 {
   "version": "2025-10-14",
   "schemaVersion": "coach-v2",
-  "model": "llama-3.1-8b-instant",
+  "model": "llama-3.3-70b-versatile",
   "apiBase": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
-  "workerUrlFallback": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
-  "stream": false,
+  "workerUrl": "https://my-chat-agent-v2.tonyabdelmalak.workers.dev",
+  "stream": true,
   "modes": [
-    "sales-coach",
-    "role-play",
     "emotional-assessment",
     "product-knowledge",
+    "sales-coach",
+    "role-play",
     "general-knowledge"
   ],
   "defaultMode": "sales-coach",
