@@ -576,22 +576,24 @@ function postToWorker(payload) {
 
 /**
  * Helper function to check if a result is a provider error (502)
+ * Provider errors indicate the request was valid but the AI provider is unavailable
  * @param {object} result - Response object from postToWorkerWithRetry
  * @returns {boolean} - True if the result indicates a provider error
  */
 function isProviderError(result) {
-  return result._statusCode === 502 || 
+  return result.statusCode === 502 || 
          result.error === 'provider_error' || 
          result.error === 'provider_empty_completion';
 }
 
 /**
  * Helper function to check if a result is a bad request (400)
+ * Bad requests indicate invalid input that should be rejected
  * @param {object} result - Response object from postToWorkerWithRetry
  * @returns {boolean} - True if the result indicates a bad request
  */
 function isBadRequest(result) {
-  return result._statusCode === 400 || result.error === 'bad_request';
+  return result.statusCode === 400 || result.error === 'bad_request';
 }
 
 /**
@@ -623,10 +625,10 @@ async function postToWorkerWithRetry(payload, retries = MAX_RETRIES) {
       if (response.statusCode === 200) {
         return response.body;
       } else if (response.statusCode === 400 || response.statusCode === 502) {
-        // Return error response with status code metadata
+        // Return error response with status code metadata for test validation
         return {
           ...response.body,
-          _statusCode: response.statusCode
+          statusCode: response.statusCode
         };
       } else {
         // For other unexpected status codes, throw to trigger retry
@@ -761,9 +763,9 @@ async function runInputEdgeCaseTest(testCase) {
     } else {
       // This test expects a 200 (or 502 if provider unavailable)
       const hasReply = result && typeof result.reply === 'string' && result.reply.trim().length > 0;
-      const isValidStructure = !result.error; // No error field present
+      const hasClientError = result.error && !isProviderError(result); // Has error but not a provider error
 
-      if (hasReply && isValidStructure) {
+      if (hasReply && !hasClientError) {
         console.log(`  ✅ PASS - Valid response returned`);
         return { passed: true, testId: testCase.id };
       } else if (isProviderError(result)) {
@@ -771,7 +773,7 @@ async function runInputEdgeCaseTest(testCase) {
         console.log(`  ✅ PASS - Valid request (provider error is acceptable in tests)`);
         return { passed: true, testId: testCase.id };
       } else {
-        console.log(`  ⚠️  WARN - Response may be compromised: error=${result.error}, statusCode=${result._statusCode}`);
+        console.log(`  ⚠️  WARN - Response may be compromised: error=${result.error || 'none'}, statusCode=${result.statusCode || 'N/A'}`);
         return { passed: false, testId: testCase.id, error: 'INVALID_RESPONSE' };
       }
     }
