@@ -593,7 +593,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
       const j = await r.json().catch(() => ({}));
       return j?.choices?.[0]?.message?.content || j?.content || "";
     } catch (e) {
-      // Handle timeout errors
+      // Handle timeout errors specifically
       if (e.name === 'AbortError') {
         console.error("provider_timeout", {
           provider_url: providerUrl,
@@ -601,7 +601,8 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
           attempt: keyAttempt + 1,
           timeout_ms: TIMEOUT_PROVIDER_CHAT
         });
-        const err = new Error("provider_network_error");
+        // Use specific error type for timeouts to distinguish from other network issues
+        const err = new Error("provider_timeout_error");
         err.originalError = `Request timeout after ${TIMEOUT_PROVIDER_CHAT / 1000} seconds`;
         throw err;
       }
@@ -1751,6 +1752,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     const isProviderError = e.message && (
       e.message.startsWith("provider_http_") ||  // Provider returned HTTP error (500, 503, etc.)
       e.message === "provider_network_error" ||  // Network error calling provider
+      e.message === "provider_timeout_error" ||  // Timeout calling provider
       e.message === "provider_key_missing" ||    // No API key configured
       e.message === "plan_generation_failed"      // Plan generation failed
     );
@@ -1761,7 +1763,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       let errorMessage = "The AI provider is temporarily unavailable. Please try again in a moment.";
       
       // Provide more specific error messages based on the error type
-      if (e.message === "provider_key_missing") {
+      if (e.message === "provider_timeout_error") {
+        errorMessage = "The AI provider request timed out. Please try again with a shorter message or simpler request.";
+      } else if (e.message === "provider_key_missing") {
         errorMessage = "Server configuration error: No AI provider API key configured. Please contact support.";
       } else if (e.providerStatus === 401 || e.providerStatus === 403) {
         errorMessage = "Server configuration error: AI provider authentication failed. Please contact support.";
