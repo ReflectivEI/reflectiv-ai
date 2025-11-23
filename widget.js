@@ -3133,6 +3133,15 @@ ${COMMON}`
 
             const data = JSON.parse(bodyText);
 
+            // PHASE: Error transparency - check if backend returned error object
+            // Backend may return 200 OK with error JSON for compatibility
+            // Note: This intentionally returns an object (not string) so sendMessage
+            // can distinguish between error objects and empty responses
+            if (data && data.error) {
+              // Return the error object to be handled in sendMessage
+              return data;
+            }
+
             // Extract tokens if available (prefer completion_tokens for accuracy)
             if (data.usage?.completion_tokens) {
               currentTelemetry.tokens_rx = data.usage.completion_tokens;
@@ -3541,10 +3550,19 @@ ${detail}`;
 
         let raw = await callModel(messages, sc);
 
-        // If response is empty or null, throw error instead of degrading to legacy
-        if (!raw || !raw.trim()) {
-          console.error("[coach] empty_response_from_worker mode=" + currentMode);
-          showToast("Received empty response from server. Please retry.", "error");
+        // PHASE: Error transparency - detect and surface backend errors
+        // Check for structured error object from backend
+        if (typeof raw === 'object' && raw && raw.error) {
+          const errorMessage = raw.message || String(raw.error);
+          console.error("[coach] Backend error object received:", raw);
+          showToast(`Backend error: ${errorMessage}`, "error");
+          return;
+        }
+
+        // Check for empty/blank string response (model/provider failure)
+        if (typeof raw === 'string' && (!raw || !raw.trim())) {
+          console.error("[coach] Empty/blank response from backend. Raw value:", raw);
+          showToast("No response from server: Model or provider failed to generate a reply.", "error");
           return;
         }
 
