@@ -1237,8 +1237,9 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
-    // Check for empty response after all retries
-    // Use explicit null/undefined check to avoid false positives with numeric zero
+    // ERROR HANDLING: Check for empty response after all retry attempts
+    // Provider may return empty string if model has no response or encounters an error
+    // Use explicit null check (==) to catch both null and undefined
     if (raw == null || String(raw).trim() === "") {
       // Log diagnostic information for troubleshooting
       console.error("provider_empty_completion", {
@@ -1250,13 +1251,14 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         session
       });
       
+      // Return 502 Bad Gateway with user-friendly error message
       return json({
         error: "provider_empty_completion",
         message: "The language model or provider did not return a response. Please check API credentials and provider health."
       }, 502, env, req);
     }
 
-    // Validate and fix Sales Coach contract if needed
+    // VALIDATION: Sales Coach mode requires specific format (Challenge, Rep Approach, Impact, Phrasing)
     if (mode === "sales-coach") {
       const validation = validateSalesCoachContract(raw);
       if (!validation.ok) {
@@ -1265,7 +1267,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
-    // Extract coach and clean text
+    // EXTRACTION: Separate coaching metadata from user-facing reply
     const { coach, clean } = extractCoach(raw);
     // DEBUG_BREAKPOINT: worker.chat.postprocess
     let reply = clean;
@@ -1494,36 +1496,37 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       });
     }
 
+    // SUCCESS: Return response with reply, coaching data, and plan
     // DEBUG_BREAKPOINT: worker.chat.response
     return json({ reply, coach: coachObj, plan: { id: planId || activePlan.planId } }, 200, env, req);
   } catch (e) {
+    // ERROR HANDLING: Catch-all for unexpected errors during chat processing
     console.error("chat_error", { step: "general", message: e.message, stack: e.stack });
 
-    // Distinguish provider errors from client bad_request errors
+    // Classify error to return appropriate status code and message
     const isProviderError = e.message && (
-      e.message.startsWith("provider_http_") ||
-      e.message === "plan_generation_failed"
+      e.message.startsWith("provider_http_") ||  // Provider returned HTTP error (500, 503, etc.)
+      e.message === "plan_generation_failed"      // Plan generation failed
     );
-
     const isPlanError = e.message === "no_active_plan_or_facts";
 
     if (isProviderError) {
-      // Provider errors return 502 with flat error structure for consistency
+      // ERROR HANDLING: Provider errors - return 502 Bad Gateway
       return json({
         error: "provider_error",
-        message: "External provider failed or is unavailable. Please try again or check provider health."
+        message: "The AI provider is temporarily unavailable. Please try again in a moment."
       }, 502, env, req);
     } else if (isPlanError) {
-      // Plan validation errors return 400 Bad Request
+      // ERROR HANDLING: Plan validation errors - return 400 Bad Request
       return json({
         error: "bad_request",
-        message: "Unable to generate or validate plan with provided parameters"
+        message: "Unable to generate conversation plan with provided parameters"
       }, 400, env, req);
     } else {
-      // Other errors are treated as bad_request
+      // ERROR HANDLING: Unknown errors - return 400 Bad Request
       return json({
         error: "bad_request",
-        message: "Chat request failed"
+        message: "Request could not be processed. Please check your input and try again."
       }, 400, env, req);
     }
   }
