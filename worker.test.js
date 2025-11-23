@@ -36,7 +36,7 @@ function assertEquals(actual, expected, message) {
 const mockEnv = {
   CORS_ORIGINS: "https://reflectivai.github.io,https://tonyabdelmalak.github.io",
   PROVIDER_URL: "https://api.groq.com/openai/v1/chat/completions",
-  PROVIDER_MODEL: "llama-3.1-70b-versatile",
+  PROVIDER_MODEL: "llama-3.1-8b-instant",
   PROVIDER_KEY: "test-key",
   MAX_OUTPUT_TOKENS: "1400"
 };

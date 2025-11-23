@@ -9,7 +9,7 @@ import worker from "./worker.js";
 const mockEnvWithLocalhost = {
   CORS_ORIGINS: "https://reflectivei.github.io,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://127.0.0.1:8080",
   PROVIDER_URL: "https://api.groq.com/openai/v1/chat/completions",
-  PROVIDER_MODEL: "llama-3.1-70b-versatile",
+  PROVIDER_MODEL: "llama-3.1-8b-instant",
   PROVIDER_KEY: "test-key",
   MAX_OUTPUT_TOKENS: "1400"
 };
