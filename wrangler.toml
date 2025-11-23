@@ -1,69 +1,51 @@
-# name must match your worker name in Cloudflare dashboard
+# Updated worker manifest to match required Cloudflare config
 name = "my-chat-agent-v2"
 main = "worker.js"
 compatibility_date = "2024-11-12"
 workers_dev = true
 
-# Production routes (uncomment when ready to deploy to custom domain)
+# REQUIRED: Cloudflare account information for Wrangler → Cloudflare sync
+account_id = "59fea97fab54fbd4d4168ccaa1fa3410"
+
+# Explicitly clear routes to prevent deployment errors with workers.dev subdomain
+routes = []
+
+# OPTIONAL but recommended: Bind a custom Worker route for widget stability
+# Commented out until custom domain is configured in Cloudflare DNS
+# The workers.dev subdomain (my-chat-agent-v2.tonyabdelmalak.workers.dev) cannot be used
+# as a route pattern with a zone_name. Custom routes require actual custom domains.
+# To enable custom domain routing:
+#   1. Ensure tonyabdelmalak.com is added as a zone in Cloudflare
+#   2. Configure DNS records for the desired subdomain
+#   3. Update pattern to match: "tonyabdelmalak.com/api/*" or "api.tonyabdelmalak.com/*"
 # routes = [
-#   { pattern = "my-chat-agent-v2.tonyabdelmalak.workers.dev/*", zone_name = "" }
+# 	{ pattern = "tonyabdelmalak.com/api/*", zone_name = "tonyabdelmalak.com" }
 # ]
 
 [vars]
-# Provider configuration
+# Provider routing
+PROVIDER = "groq"
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
 PROVIDER_MODEL = "llama-3.1-8b-instant"
-PROVIDER_MODEL_HCP = "llama-3.1-8b-instant"
-PROVIDER_MODEL_COACH = "llama-3.1-8b-instant"
-PROVIDER_SIG = "groq:llama-3.1-8b-instant"
 
-# Context and response limits
-MAX_CHARS_CONTEXT = "12000"
-RESPONSE_TTL_SECONDS = "86400"
+# Response limits (both names for compatibility)
+MAX_OUTPUT_TOKENS = "1400"
+MAX_TOKENS = "1400"
 
-# CORS Origins - All allowed domains
-CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://www.tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,http://localhost:8000,http://127.0.0.1:8000"
+# Fully approved frontend origins
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev"
 
-# Rate limiting configuration
-RATELIMIT_RATE = "10"
-RATELIMIT_BURST = "4"
-RATELIMIT_RATE_TONY = "10"
-RATELIMIT_BURST_TONY = "4"
-RATELIMIT_RATE_REFLECTIVAI = "10"
-RATELIMIT_BURST_REFLECTIVAI = "4"
-RATELIMIT_RETRY_AFTER = "2"
+# Secrets (store via `wrangler secret put` or Cloudflare dashboard)
+# wrangler secret put PROVIDER_KEY
+# wrangler secret put PROVIDER_KEY_2
+# wrangler secret put PROVIDER_KEY_3
 
-# Remote content URLs (optional)
-TONY_SYSTEM_URL = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/system.md"
-TONY_KB_URL = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/about-tony.md"
-TONY_PERSONA_URL = "https://raw.githubusercontent.com/tonyabdelmalak/tonyabdelmalak.github.io/main/chat-widget/assets/chat/persona.json"
+# PROVIDER_KEY must be set as a secret using:
+# wrangler secret put PROVIDER_KEY
+# The secret value should be your GROQ API key starting with "gsk_..."
 
-# KV Namespace for session storage (OPTIONAL - r10.1 worker doesn't use KV)
-# [[kv_namespaces]]
-# binding = "SESS"
-# id = "dev-sess-kv"
-# preview_id = "dev-sess-kv"
-
-# Optional: Metrics KV namespace
-# [[kv_namespaces]]
-# binding = "METRICS_KV"
-# id = "metrics-kv"
-# preview_id = "metrics-kv"
-
-# =============================================================================
-# SECRETS (Must be set via wrangler CLI - NOT stored in this file)
-# =============================================================================
-# These must be configured using: wrangler secret put SECRET_NAME
-#
-# Required secrets:
-# - GROQ_KEY_1 (or GROQ_API_KEY) - Primary Groq API key
-# - GROQ_KEY_2 (or GROQ_API_KEY_2) - Secondary Groq API key (optional, for rotation)
-# - GROQ_KEY_3 (or GROQ_API_KEY_3) - Tertiary Groq API key (optional, for rotation)
-#
-# To set secrets:
-#   wrangler secret put GROQ_KEY_1
-#   wrangler secret put GROQ_KEY_2
-#   wrangler secret put GROQ_KEY_3
-#
-# Get your Groq API keys from: https://console.groq.com/keys
-# =============================================================================
+[[kv_namespaces]]
+binding = "SESS"
+id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
+# preview_id can repeat id for dev
+preview_id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
