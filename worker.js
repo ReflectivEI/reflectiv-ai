@@ -1240,6 +1240,24 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
+    // Check for empty response after all retries
+    if (!raw || String(raw).trim() === "") {
+      // Log diagnostic information for troubleshooting
+      console.error("provider_empty_completion", {
+        provider_url: env.PROVIDER_URL,
+        provider_model: env.PROVIDER_MODEL,
+        has_provider_keys: !!env.PROVIDER_KEYS,
+        has_provider_key: !!env.PROVIDER_KEY,
+        mode,
+        session
+      });
+      
+      return json({
+        error: "provider_empty_completion",
+        message: "The language model or provider did not return a response. Please check API credentials and provider health."
+      }, 502, env, req);
+    }
+
     // Validate and fix Sales Coach contract if needed
     if (mode === "sales-coach") {
       const validation = validateSalesCoachContract(raw);
