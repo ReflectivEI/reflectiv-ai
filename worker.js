@@ -364,12 +364,21 @@ function hashString(str) {
   return h >>> 0;
 }
 
-function selectProviderKey(env, session) {
+function selectProviderKey(env, session, excludeKeys = []) {
   const pool = getProviderKeyPool(env);
   if (!pool.length) return null;
+  
+  // Filter out excluded keys (e.g., rate-limited keys)
+  const availablePool = pool.filter(key => !excludeKeys.includes(key));
+  if (!availablePool.length) {
+    // All keys excluded, fall back to full pool (better to try than fail)
+    console.warn("All provider keys excluded, falling back to full pool");
+    return pool[0];
+  }
+  
   const sid = String(session || "anon");
-  const idx = hashString(sid) % pool.length;
-  return pool[idx];
+  const idx = hashString(sid) % availablePool.length;
+  return availablePool[idx];
 }
 
 function sanitizeLLM(s) {
@@ -408,79 +417,129 @@ function extractCoach(raw) {
 async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2, session = "anon", providerKey } = {}) {
   const cap = Number(env.MAX_OUTPUT_TOKENS || 0);
   const finalMax = cap > 0 ? Math.min(maxTokens, cap) : maxTokens;
-  const key = providerKey || selectProviderKey(env, session) || env.PROVIDER_KEY;
-  if (!key) throw new Error("provider_key_missing");
-  if (env.DEBUG_MODE === "true") {
-    console.log({ event: "provider_key_select", session, key_len: key.length, rotated: key !== env.PROVIDER_KEY });
-  }
   
   // ENHANCED ERROR HANDLING: Log provider request details for debugging
   const providerUrl = env.PROVIDER_URL;
   const providerModel = env.PROVIDER_MODEL;
   
-  try {
-    const r = await fetch(providerUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "authorization": `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: providerModel,
-        temperature,
-        max_tokens: finalMax,
-        messages
-      })
-    });
+  // Get key pool for failover
+  const keyPool = getProviderKeyPool(env);
+  const excludedKeys = [];
+  
+  // Try keys with automatic failover on rate limits
+  for (let keyAttempt = 0; keyAttempt < Math.min(keyPool.length, 3); keyAttempt++) {
+    let key;
+    if (providerKey) {
+      // Explicit key provided (used for health checks)
+      key = providerKey;
+    } else {
+      // Select key from pool, excluding previously failed keys
+      key = selectProviderKey(env, session, excludedKeys);
+    }
     
-    if (!r.ok) {
-      const errText = await r.text();
-      // Parse error response if it's JSON
-      let errorDetails = errText;
-      try {
-        const errorJson = JSON.parse(errText);
-        errorDetails = errorJson.error?.message || errorJson.message || errText;
-      } catch (e) {
-        // Not JSON, use raw text
-      }
-      
-      // Enhanced error logging with more context
-      console.error("provider_fetch_error", {
-        status: r.status,
-        statusText: r.statusText,
-        provider_url: providerUrl,
-        provider_model: providerModel,
-        error_details: errorDetails,
-        has_key: !!key,
-        key_prefix: key ? key.substring(0, 8) + "..." : "none",
-        session
+    if (!key) {
+      throw new Error("provider_key_missing");
+    }
+    
+    if (env.DEBUG_MODE === "true") {
+      console.log({ 
+        event: "provider_key_select", 
+        session, 
+        key_len: key.length, 
+        key_prefix: key.substring(0, 8) + "...",
+        attempt: keyAttempt + 1,
+        excluded_count: excludedKeys.length
+      });
+    }
+    
+    try {
+      const r = await fetch(providerUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: providerModel,
+          temperature,
+          max_tokens: finalMax,
+          messages
+        })
       });
       
-      // Throw error with both status and details
-      const err = new Error(`provider_http_${r.status}`);
-      err.providerStatus = r.status;
-      err.providerError = errorDetails;
+      if (!r.ok) {
+        const errText = await r.text();
+        // Parse error response if it's JSON
+        let errorDetails = errText;
+        try {
+          const errorJson = JSON.parse(errText);
+          errorDetails = errorJson.error?.message || errorJson.message || errText;
+        } catch (e) {
+          // Not JSON, use raw text
+        }
+        
+        // Enhanced error logging with more context
+        console.error("provider_fetch_error", {
+          status: r.status,
+          statusText: r.statusText,
+          provider_url: providerUrl,
+          provider_model: providerModel,
+          error_details: errorDetails,
+          has_key: !!key,
+          key_prefix: key ? key.substring(0, 8) + "..." : "none",
+          session,
+          attempt: keyAttempt + 1
+        });
+        
+        // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
+        if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
+          console.warn("provider_rate_limited_failover", {
+            key_prefix: key.substring(0, 8) + "...",
+            attempt: keyAttempt + 1,
+            next_attempt: keyAttempt + 2
+          });
+          excludedKeys.push(key);
+          continue; // Try next key
+        }
+        
+        // Throw error with both status and details
+        const err = new Error(`provider_http_${r.status}`);
+        err.providerStatus = r.status;
+        err.providerError = errorDetails;
+        throw err;
+      }
+      
+      const j = await r.json().catch(() => ({}));
+      return j?.choices?.[0]?.message?.content || j?.content || "";
+    } catch (e) {
+      // NETWORK ERROR HANDLING: Catch fetch failures (network errors, timeouts, etc.)
+      if (e.providerStatus) {
+        // Already a provider HTTP error, re-throw if not retryable
+        if (e.providerStatus !== 429 || keyAttempt >= Math.min(keyPool.length, 3) - 1) {
+          throw e;
+        }
+        // Rate limit - try next key
+        excludedKeys.push(key);
+        continue;
+      }
+      // Network or other fetch error
+      console.error("provider_network_error", {
+        message: e.message,
+        provider_url: providerUrl,
+        session,
+        attempt: keyAttempt + 1
+      });
+      const err = new Error("provider_network_error");
+      err.originalError = e.message;
       throw err;
     }
-    
-    const j = await r.json().catch(() => ({}));
-    return j?.choices?.[0]?.message?.content || j?.content || "";
-  } catch (e) {
-    // NETWORK ERROR HANDLING: Catch fetch failures (network errors, timeouts, etc.)
-    if (e.providerStatus) {
-      // Already a provider HTTP error, re-throw
-      throw e;
-    }
-    // Network or other fetch error
-    console.error("provider_network_error", {
-      message: e.message,
-      provider_url: providerUrl,
-      session
-    });
-    const err = new Error("provider_network_error");
-    err.originalError = e.message;
-    throw err;
   }
+  
+  // If we get here, all keys were rate-limited
+  const err = new Error("provider_http_429");
+  err.providerStatus = 429;
+  err.providerError = "All provider keys are rate-limited";
+  throw err;
 }
 
 function deterministicScore({ reply, usedFactIds = [] }) {
