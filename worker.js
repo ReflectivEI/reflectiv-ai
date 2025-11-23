@@ -83,14 +83,16 @@ export default {
               const controller = new AbortController();
               const timeout = setTimeout(() => controller.abort(), TIMEOUT_HEALTH_CHECK);
               
-              const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
-                headers: { "authorization": `Bearer ${key}` }, 
-                method: "GET",
-                signal: controller.signal
-              });
-              
-              clearTimeout(timeout);
-              provider = { ok: r.ok, status: r.status };
+              try {
+                const r = await fetch((env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions").replace(/\/chat\/completions$/, "/models"), {
+                  headers: { "authorization": `Bearer ${key}` }, 
+                  method: "GET",
+                  signal: controller.signal
+                });
+                provider = { ok: r.ok, status: r.status };
+              } finally {
+                clearTimeout(timeout);
+              }
             }
           } catch (e) {
             provider = { ok: false, error: String(e?.message || e) };
@@ -531,67 +533,69 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), TIMEOUT_PROVIDER_CHAT);
       
-      const r = await fetch(providerUrl, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "authorization": `Bearer ${key}`
-        },
-        body: JSON.stringify({
-          model: providerModel,
-          temperature,
-          max_tokens: finalMax,
-          messages
-        }),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeout);
-      
-      if (!r.ok) {
-        const errText = await r.text();
-        // Parse error response if it's JSON
-        let errorDetails = errText;
-        try {
-          const errorJson = JSON.parse(errText);
-          errorDetails = errorJson.error?.message || errorJson.message || errText;
-        } catch (e) {
-          // Not JSON, use raw text
-        }
-        
-        // Enhanced error logging with more context
-        console.error("provider_fetch_error", {
-          status: r.status,
-          statusText: r.statusText,
-          provider_url: providerUrl,
-          provider_model: providerModel,
-          error_details: errorDetails,
-          has_key: !!key,
-          key_prefix: key ? key.substring(0, 8) + "..." : "none",
-          session,
-          attempt: keyAttempt + 1
+      try {
+        const r = await fetch(providerUrl, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: providerModel,
+            temperature,
+            max_tokens: finalMax,
+            messages
+          }),
+          signal: controller.signal
         });
         
-        // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
-        if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
-          console.warn("provider_rate_limited_failover", {
-            key_prefix: key.substring(0, 8) + "...",
-            attempt: keyAttempt + 1,
-            next_attempt: keyAttempt + 2
+        if (!r.ok) {
+          const errText = await r.text();
+          // Parse error response if it's JSON
+          let errorDetails = errText;
+          try {
+            const errorJson = JSON.parse(errText);
+            errorDetails = errorJson.error?.message || errorJson.message || errText;
+          } catch (e) {
+            // Not JSON, use raw text
+          }
+          
+          // Enhanced error logging with more context
+          console.error("provider_fetch_error", {
+            status: r.status,
+            statusText: r.statusText,
+            provider_url: providerUrl,
+            provider_model: providerModel,
+            error_details: errorDetails,
+            has_key: !!key,
+            key_prefix: key ? key.substring(0, 8) + "..." : "none",
+            session,
+            attempt: keyAttempt + 1
           });
-          excludedKeys.push(key);
-          continue; // Try next key
+          
+          // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
+          if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
+            console.warn("provider_rate_limited_failover", {
+              key_prefix: key.substring(0, 8) + "...",
+              attempt: keyAttempt + 1,
+              next_attempt: keyAttempt + 2
+            });
+            excludedKeys.push(key);
+            continue; // Try next key
+          }
+          
+          // Throw error with both status and details
+          const err = new Error(`provider_http_${r.status}`);
+          err.providerStatus = r.status;
+          err.providerError = errorDetails;
+          throw err;
         }
         
-        // Throw error with both status and details
-        const err = new Error(`provider_http_${r.status}`);
-        err.providerStatus = r.status;
-        err.providerError = errorDetails;
-        throw err;
+        const j = await r.json().catch(() => ({}));
+        return j?.choices?.[0]?.message?.content || j?.content || "";
+      } finally {
+        clearTimeout(timeout);
       }
-      
-      const j = await r.json().catch(() => ({}));
-      return j?.choices?.[0]?.message?.content || j?.content || "";
     } catch (e) {
       // Handle timeout errors specifically
       if (e.name === 'AbortError') {
@@ -871,28 +875,30 @@ ${siteContext.slice(0, 12000)}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_ALORA_CHAT);
 
-    const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
+    try {
+      const providerResp = await fetch(env.PROVIDER_URL || "https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${key}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
 
-    clearTimeout(timeout);
+      if (!providerResp.ok) {
+        const errText = await providerResp.text();
+        console.error("alora_provider_error", { status: providerResp.status, error: errText });
+        throw new Error(`Provider error: ${providerResp.status}`);
+      }
 
-    if (!providerResp.ok) {
-      const errText = await providerResp.text();
-      console.error("alora_provider_error", { status: providerResp.status, error: errText });
-      throw new Error(`Provider error: ${providerResp.status}`);
+      const data = await providerResp.json();
+      const reply = data.choices?.[0]?.message?.content || "I'm having trouble responding right now. Please try again or contact our team.";
+
+      return json({ reply: reply.trim() }, 200, env, req);
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const data = await providerResp.json();
-    const reply = data.choices?.[0]?.message?.content || "I'm having trouble responding right now. Please try again or contact our team.";
-
-    return json({ reply: reply.trim() }, 200, env, req);
   } catch (e) {
     // Handle timeout errors
     if (e.name === 'AbortError') {
