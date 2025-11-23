@@ -1241,7 +1241,8 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     }
 
     // Check for empty response after all retries
-    if (!raw || String(raw).trim() === "") {
+    // Use explicit null/undefined check to avoid false positives with numeric zero
+    if (raw == null || String(raw).trim() === "") {
       // Log diagnostic information for troubleshooting
       console.error("provider_empty_completion", {
         provider_url: env.PROVIDER_URL,
