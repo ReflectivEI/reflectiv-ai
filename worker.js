@@ -1161,7 +1161,9 @@ async function postChat(req, env) {
     }
 
     // Provider prompts with format hardening
-    const factsStr = activePlan.facts.map((f, idx) => `- [FACT-${idx + 1}] ${f.text}`).join("\n");
+    // Use actual citation IDs (e.g., HIV-PREP-ELIG-001) instead of generic FACT-1, FACT-2
+    // This ensures citations can be converted to real hyperlinks via citations.json
+    const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
     const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
 
     // Mode-specific contracts - ENTERPRISE PHARMA FORMATTING
@@ -1195,9 +1197,9 @@ RESPONSE FORMAT (MANDATORY - MUST INCLUDE ALL 4 SECTIONS):
 Challenge: [ONE SENTENCE describing the HCP's concern, barrier, or knowledge gap - 15-25 words]
 
 Rep Approach:
-• [BULLET 1: Specific clinical discussion point with full context - Include "as recommended..." or "as indicated..." phrasing - 20-35 words - MUST include reference code [FACT-1]]
-• [BULLET 2: Supporting strategy with rationale - Include contextual phrases like "for treatment" or "in the FDA label" - 20-35 words - MUST include reference code [FACT-2]]
-• [BULLET 3: Safety/monitoring consideration with clinical detail - Include phrases like "to ensure..." or "per the FDA label" - 20-35 words - MUST include reference code [FACT-3]]
+• [BULLET 1: Specific clinical discussion point with full context - Include "as recommended..." or "as indicated..." phrasing - 20-35 words - MUST include actual citation ID from Facts list above]
+• [BULLET 2: Supporting strategy with rationale - Include contextual phrases like "for treatment" or "in the FDA label" - 20-35 words - MUST include actual citation ID from Facts list above]
+• [BULLET 3: Safety/monitoring consideration with clinical detail - Include phrases like "to ensure..." or "per the FDA label" - 20-35 words - MUST include actual citation ID from Facts list above]
 [EXACTLY 3 BULLETS - NO MORE, NO LESS - Use • or 1. 2. 3. or - format]
 
 Impact: [ONE SENTENCE describing expected outcome - 20-35 words - Connect back to Challenge]
@@ -1221,9 +1223,9 @@ EXAMPLE (follow this detailed style):
 Challenge: The HCP may not be prioritizing prescriptions due to lack of awareness about the substantial risk in certain patient populations.
 
 Rep Approach:
-• Discuss the importance of assessing risk factors to identify individuals at substantial risk, as recommended for eligibility [FACT-1].
-• Highlight the efficacy and safety profile of the therapy, as indicated in the FDA label [FACT-2].
-• Emphasize the need for function assessment before and during treatment, considering thresholds per the FDA label, to ensure safe prescribing practices [FACT-3].
+• Discuss the importance of assessing risk factors to identify individuals at substantial risk, as recommended for eligibility [HIV-PREP-ELIG-001].
+• Highlight the efficacy and safety profile of the therapy, as indicated in the FDA label [HIV-PREP-TAF-002].
+• Emphasize the need for function assessment before and during treatment, considering thresholds per the FDA label, to ensure safe prescribing practices [HIV-PREP-SAFETY-003].
 
 Impact: By emphasizing the importance of risk assessment, the benefits of the therapy, and the need for monitoring, the HCP will be more likely to prioritize prescriptions for at-risk patients and commit to proactive prescribing.
 
