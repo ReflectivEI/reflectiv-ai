@@ -33,5 +33,96 @@
         "year": "2022",
         "url": "https://journals.lww.com/jaids",
         "apa": "Grant, R. M., et al. (2022). Adherence patterns and effectiveness of daily oral PrEP: Systematic review and meta-analysis. Journal of Acquired Immune Deficiency Syndromes, 89(3), 245-256."
+    },
+    "ONCOLOGY-TREATMENT-001": {
+        "title": "Targeted Cancer Therapies",
+        "source": "National Cancer Institute",
+        "year": "2024",
+        "url": "https://www.cancer.gov/about-cancer/treatment/types/targeted-therapies",
+        "apa": "National Cancer Institute. (2024). Targeted cancer therapies: Overview of molecularly targeted therapy."
+    },
+    "ONCOLOGY-SURVIVAL-002": {
+        "title": "Cancer Survival Statistics",
+        "source": "SEER Cancer Statistics",
+        "year": "2024",
+        "url": "https://seer.cancer.gov/statfacts/",
+        "apa": "Surveillance, Epidemiology, and End Results Program. (2024). Cancer stat facts. National Cancer Institute."
+    },
+    "ONCOLOGY-SIDE-EFFECTS-003": {
+        "title": "Managing Cancer Treatment Side Effects",
+        "source": "NCCN Clinical Practice Guidelines",
+        "year": "2024",
+        "url": "https://www.nccn.org/guidelines/category_1",
+        "apa": "National Comprehensive Cancer Network. (2024). NCCN clinical practice guidelines in oncology: Supportive care."
+    },
+    "CARDIOVASCULAR-RISK-001": {
+        "title": "Understanding Heart Attack Risk Factors",
+        "source": "American Heart Association",
+        "year": "2024",
+        "url": "https://www.heart.org/en/health-topics/heart-attack/understand-your-risks-to-prevent-a-heart-attack",
+        "apa": "American Heart Association. (2024). Understand your risks to prevent a heart attack."
+    },
+    "CARDIOVASCULAR-STATINS-002": {
+        "title": "ACC/AHA Cholesterol Management Guidelines",
+        "source": "American College of Cardiology",
+        "year": "2018",
+        "url": "https://www.ahajournals.org/doi/10.1161/CIR.0000000000000625",
+        "apa": "Grundy, S. M., et al. (2018). 2018 AHA/ACC/AACVPR/AAPA/ABC/ACPM/ADA/AGS/APhA/ASPC/NLA/PCNA guideline on the management of blood cholesterol. Circulation, 139(25), e1082-e1143."
+    },
+    "CARDIOVASCULAR-MONITORING-003": {
+        "title": "Statin Safety Information",
+        "source": "U.S. Food and Drug Administration",
+        "year": "2024",
+        "url": "https://www.fda.gov/drugs/postmarket-drug-safety-information-patients-and-providers/statins-information",
+        "apa": "U.S. Food and Drug Administration. (2024). Statins: Drug safety communication and information."
+    },
+    "VACCINES-EFFICACY-001": {
+        "title": "Understanding How Vaccines Work",
+        "source": "Centers for Disease Control and Prevention",
+        "year": "2024",
+        "url": "https://www.cdc.gov/vaccines/vac-gen/howvax.htm",
+        "apa": "Centers for Disease Control and Prevention. (2024). Understanding how vaccines work."
+    },
+    "VACCINES-SCHEDULE-002": {
+        "title": "CDC Immunization Schedules",
+        "source": "Centers for Disease Control and Prevention",
+        "year": "2024",
+        "url": "https://www.cdc.gov/vaccines/schedules/index.html",
+        "apa": "Centers for Disease Control and Prevention. (2024). Recommended immunization schedules for children, adolescents, and adults."
+    },
+    "VACCINES-SAFETY-003": {
+        "title": "Vaccine Adverse Event Reporting System (VAERS)",
+        "source": "U.S. Department of Health and Human Services",
+        "year": "2024",
+        "url": "https://vaers.hhs.gov/",
+        "apa": "U.S. Department of Health and Human Services. (2024). Vaccine Adverse Event Reporting System (VAERS)."
+    },
+    "COVID-VACCINES-001": {
+        "title": "Understanding mRNA COVID-19 Vaccines",
+        "source": "Centers for Disease Control and Prevention",
+        "year": "2024",
+        "url": "https://www.cdc.gov/coronavirus/2019-ncov/vaccines/facts.html",
+        "apa": "Centers for Disease Control and Prevention. (2024). Understanding mRNA COVID-19 vaccines."
+    },
+    "COVID-TREATMENT-002": {
+        "title": "COVID-19 Treatment Guidelines",
+        "source": "National Institutes of Health",
+        "year": "2024",
+        "url": "https://www.covid19treatmentguidelines.nih.gov/",
+        "apa": "National Institutes of Health. (2024). Coronavirus disease 2019 (COVID-19) treatment guidelines."
+    },
+    "COVID-PREVENTION-003": {
+        "title": "COVID-19 Prevention Strategies",
+        "source": "Centers for Disease Control and Prevention",
+        "year": "2024",
+        "url": "https://www.cdc.gov/coronavirus/2019-ncov/prevent-getting-sick/prevention.html",
+        "apa": "Centers for Disease Control and Prevention. (2024). How to protect yourself and others from COVID-19."
+    },
+    "COVID-VARIANTS-004": {
+        "title": "Tracking SARS-CoV-2 Variants",
+        "source": "World Health Organization",
+        "year": "2024",
+        "url": "https://www.who.int/activities/tracking-SARS-CoV-2-variants",
+        "apa": "World Health Organization. (2024). Tracking SARS-CoV-2 variants."
     }
 }
