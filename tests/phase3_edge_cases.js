@@ -452,11 +452,11 @@ const STRUCTURE_EDGE_CASES = [
     mode: 'product-knowledge',
     message: 'Tell me about the efficacy data',
     validationCheck: (response) => {
-      const validCitations = /\[\d+\]|\[\w{3,}-\w{2,}-\w{2,}-\d{1,}\]|\[\w{3,}-\w{2,}-\d{1,}\]/g;
-      const matches = response.reply.match(validCitations) || [];
-      const allValid = matches.length > 0 && matches.every(m => {
-        return /^\[\d+\]$/.test(m) || /^\[[A-Z]+-[A-Z]+-\d+\]$/.test(m) || /^\[[A-Z]+-[A-Z]+-[A-Z]+-\d+\]$/i.test(m);
-      });
+      // Citation patterns: numeric [1], 3-part [ABC-DEF-123], or 4-part [HIV-PREP-ELIG-001]
+      const validCitationPattern = /^\[\d+\]$|^\[[A-Z]+-[A-Z]+-\d+\]$|^\[[A-Z]+-[A-Z]+-[A-Z]+-\d+\]$/i;
+      const citationMatcher = /\[\d+\]|\[\w{3,}-\w{2,}-\w{2,}-\d{1,}\]|\[\w{3,}-\w{2,}-\d{1,}\]/g;
+      const matches = response.reply.match(citationMatcher) || [];
+      const allValid = matches.length > 0 && matches.every(m => validCitationPattern.test(m));
       return {
         passed: allValid,
         error: !allValid ? 'PK_MALFORMED_CITATIONS' : null

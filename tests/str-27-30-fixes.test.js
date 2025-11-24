@@ -55,11 +55,14 @@ function testCitationValidation() {
 }
 
 // Test 2: STR-30 Paragraph Preservation in capSentences
-// Simulates the updated capSentences function from worker.js
+// NOTE: This test duplicates the capSentences function from worker.js for testing purposes.
+// Ideally we would import it, but worker.js is a Cloudflare Worker module with complex dependencies.
+// This duplication allows us to test the logic independently.
 function testParagraphPreservation() {
   console.log("\n=== STR-30: Paragraph Preservation Tests ===");
   
-  // Simulated capSentences function (same as our fix)
+  // Duplicated capSentences function from worker.js (lines 438-459)
+  // Keep this in sync with the actual implementation
   function capSentences(text, n) {
     const paragraphs = String(text || "").split(/\n\n/);
     let sentenceCount = 0;

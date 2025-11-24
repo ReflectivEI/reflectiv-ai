@@ -438,6 +438,8 @@ async function readJson(req) {
 function capSentences(text, n) {
   // Preserve paragraph breaks (\n\n) while capping sentences
   // Strategy: Split by paragraph breaks, process each paragraph separately, then rejoin
+  // NOTE: Simple regex pattern may not handle all edge cases (e.g., abbreviations like 'Dr.', 'U.S.A.' or ellipsis '...')
+  // This is a known limitation that could be improved with more sophisticated sentence boundary detection
   const paragraphs = String(text || "").split(/\n\n/);
   let sentenceCount = 0;
   const cappedParagraphs = [];
