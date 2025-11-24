@@ -1720,6 +1720,19 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       }
     }
 
+    // STRUCTURE EDGE CASES: Normalize citations to uppercase format (STR-27)
+    // Convert any formatted citations like [hiv-prep-abc-123] to [HIV-PREP-ABC-123]
+    if (mode === "product-knowledge") {
+      reply = reply.replace(/\[([a-z0-9-]+)\]/gi, (match, content) => {
+        // Only uppercase if it looks like a formatted citation (has dashes)
+        if (/-/.test(content)) {
+          return `[${content.toUpperCase()}]`;
+        }
+        // Keep numeric citations as-is: [1], [2], etc.
+        return match;
+      });
+    }
+
     // STRUCTURE EDGE CASES: Enforce paragraph separation for sales-coach mode (STR-30)
     if (mode === "sales-coach") {
       reply = reply
