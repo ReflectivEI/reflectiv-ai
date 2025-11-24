@@ -1,4 +1,3 @@
-
 /**
  * Cloudflare Worker — ReflectivAI Gateway (r10.1)
  * Endpoints: POST /facts, POST /plan, POST /chat, GET/HEAD /health, GET /version, GET /debug/ei
@@ -145,151 +144,120 @@ export default {
 
 /* ------------------------- Inlined Knowledge & Rules ------------------------ */
 
+// Minimal curated facts for demo. Add more or move to KV.
 const FACTS_DB = [
-  // HIV - Existing facts (unchanged)
   {
     id: "HIV-PREP-ELIG-001",
     ta: "HIV",
     topic: "PrEP Eligibility",
     text: "PrEP is recommended for individuals at substantial risk of HIV. Discuss sexual and injection risk factors.",
-    cites: ["CDC PrEP 2024"]
+    cites: ["[CDC PrEP Guidelines](https://www.cdc.gov/hiv/pdf/risk/prep/cdc-hiv-prep-guidelines-2021.pdf)"]
   },
   {
     id: "HIV-PREP-TAF-002",
     ta: "HIV",
     topic: "Descovy for PrEP",
     text: "Descovy (emtricitabine/tenofovir alafenamide) is indicated for PrEP excluding receptive vaginal sex.",
-    cites: ["FDA Label Descovy PrEP"]
+    cites: ["[Descovy PI](https://www.gilead.com/-/media/files/pdfs/medicines/hiv/descovy/descovy_pi.pdf)"]
   },
   {
     id: "HIV-PREP-SAFETY-003",
     ta: "HIV",
     topic: "Safety",
     text: "Assess renal function before and during PrEP. Consider eGFR thresholds per label.",
-    cites: ["FDA Label Descovy", "CDC PrEP 2024"]
+    cites: ["[Descovy PI](https://www.gilead.com/-/media/files/pdfs/medicines/hiv/descovy/descovy_pi.pdf)", "[CDC PrEP Guidelines](https://www.cdc.gov/hiv/pdf/risk/prep/cdc-hiv-prep-guidelines-2021.pdf)"]
   },
-
-  // Oncology - Cancer treatment facts
   {
-    id: "ONC-TARGET-001",
+    id: "ONCOLOGY-TREATMENT-001",
     ta: "Oncology",
     topic: "Targeted Therapies",
-    text: "Targeted therapies inhibit specific molecules involved in cancer growth. Consider BRAF mutations for melanoma treatment.",
-    cites: ["NCCN Guidelines 2024", "FDA Targeted Therapy Label"]
+    text: "Targeted therapies inhibit specific molecules involved in cancer growth and progression.",
+    cites: ["[NCI Targeted Therapies](https://www.cancer.gov/about-cancer/treatment/types/targeted-therapies)"]
   },
   {
-    id: "ONC-IMMUNO-002",
+    id: "ONCOLOGY-SURVIVAL-002",
     ta: "Oncology",
-    topic: "Immunotherapy",
-    text: "Immune checkpoint inhibitors block PD-1/PD-L1 pathway. Assess for autoimmune toxicities before starting treatment.",
-    cites: ["ASCO Immunotherapy Guidelines", "FDA Keytruda Label"]
+    topic: "Survival Rates",
+    text: "Five-year survival rates vary by cancer type and stage at diagnosis.",
+    cites: ["[SEER Data](https://seer.cancer.gov/statfacts/)"]
   },
   {
-    id: "ONC-ADJUVANT-003",
+    id: "ONCOLOGY-SIDE-EFFECTS-003",
     ta: "Oncology",
-    topic: "Adjuvant Therapy",
-    text: "Adjuvant chemotherapy reduces recurrence risk in early-stage cancers. Consider patient performance status and comorbidities.",
-    cites: ["NCCN Breast Cancer Guidelines", "Oncology Adjuvant Therapy Review"]
+    topic: "Side Effects Management",
+    text: "Manage side effects through supportive care and dose adjustments as needed.",
+    cites: ["[NCCN Guidelines](https://www.nccn.org/guidelines/category_1)"]
   },
   {
-    id: "ONC-SUPPORT-004",
-    ta: "Oncology",
-    topic: "Supportive Care",
-    text: "Antiemetics prevent chemotherapy-induced nausea. Use NK1 receptor antagonists for highly emetogenic regimens.",
-    cites: ["MASCC Antiemetic Guidelines", "FDA Emend Label"]
-  },
-
-  // Cardiovascular - Heart disease facts
-  {
-    id: "CV-STATIN-001",
+    id: "CARDIOVASCULAR-RISK-001",
     ta: "Cardiovascular",
-    topic: "Statin Therapy",
-    text: "Statins reduce LDL cholesterol by 30-50%. Monitor liver enzymes and creatine kinase for adverse effects.",
-    cites: ["ACC/AHA Cholesterol Guidelines", "FDA Atorvastatin Label"]
+    topic: "Risk Factors",
+    text: "Key risk factors include hypertension, hyperlipidemia, diabetes, and smoking.",
+    cites: ["[AHA Risk Factors](https://www.heart.org/en/health-topics/heart-attack/understand-your-risks-to-prevent-a-heart-attack)"]
   },
   {
-    id: "CV-ANTIPLATELET-002",
+    id: "CARDIOVASCULAR-STATINS-002",
     ta: "Cardiovascular",
-    topic: "Antiplatelet Therapy",
-    text: "Aspirin reduces cardiovascular events in high-risk patients. Consider clopidogrel for aspirin-intolerant patients.",
-    cites: ["AHA Antiplatelet Guidelines", "FDA Plavix Label"]
+    topic: "Statins",
+    text: "Statins reduce LDL cholesterol and cardiovascular events in high-risk patients.",
+    cites: ["[ACC/AHA Guidelines](https://www.ahajournals.org/doi/10.1161/CIR.0000000000000625)"]
   },
   {
-    id: "CV-HF-003",
+    id: "CARDIOVASCULAR-MONITORING-003",
     ta: "Cardiovascular",
-    topic: "Heart Failure Management",
-    text: "ACE inhibitors improve survival in heart failure. Titrate doses carefully and monitor renal function.",
-    cites: ["ACC/AHA Heart Failure Guidelines", "FDA Lisinopril Label"]
+    topic: "Monitoring",
+    text: "Regular monitoring of lipid profiles and liver function is essential during statin therapy.",
+    cites: ["[FDA Statin Label](https://www.fda.gov/drugs/postmarket-drug-safety-information-patients-and-providers/statins-information)"]
   },
   {
-    id: "CV-ANTICOAG-004",
-    ta: "Cardiovascular",
-    topic: "Anticoagulation",
-    text: "DOACs have fewer drug interactions than warfarin. Regular monitoring not required for most patients.",
-    cites: ["CHEST Anticoagulation Guidelines", "FDA Eliquis Label"]
-  },
-
-  // Diabetes - Blood sugar management facts
-  {
-    id: "DM-METFORMIN-001",
-    ta: "Diabetes",
-    topic: "Metformin Therapy",
-    text: "Metformin is first-line therapy for type 2 diabetes. Monitor vitamin B12 levels with long-term use.",
-    cites: ["ADA Diabetes Guidelines", "FDA Metformin Label"]
+    id: "VACCINES-EFFICACY-001",
+    ta: "Vaccines",
+    topic: "Efficacy",
+    text: "Vaccines provide immunity by stimulating the production of antibodies against specific pathogens.",
+    cites: ["[CDC Vaccines](https://www.cdc.gov/vaccines/vac-gen/howvax.htm)"]
   },
   {
-    id: "DM-INSULIN-002",
-    ta: "Diabetes",
-    topic: "Insulin Management",
-    text: "Basal insulin provides 24-hour coverage. Adjust doses based on fasting glucose and patterns.",
-    cites: ["ADA Insulin Guidelines", "FDA Lantus Label"]
+    id: "VACCINES-SCHEDULE-002",
+    ta: "Vaccines",
+    topic: "Schedule",
+    text: "Vaccination schedules are designed to provide optimal protection at different life stages.",
+    cites: ["[CDC Schedule](https://www.cdc.gov/vaccines/schedules/index.html)"]
   },
   {
-    id: "DM-SGLT2-003",
-    ta: "Diabetes",
-    topic: "SGLT2 Inhibitors",
-    text: "SGLT2 inhibitors reduce cardiovascular risk in diabetes. Monitor for genital infections and euglycemic ketoacidosis.",
-    cites: ["ADA SGLT2 Guidelines", "FDA Jardiance Label"]
+    id: "VACCINES-SAFETY-003",
+    ta: "Vaccines",
+    topic: "Safety",
+    text: "Vaccines undergo rigorous safety testing and monitoring for adverse events.",
+    cites: ["[VAERS](https://vaers.hhs.gov/)"]
   },
   {
-    id: "DM-GLP1-004",
-    ta: "Diabetes",
-    topic: "GLP-1 Receptor Agonists",
-    text: "GLP-1 agonists promote weight loss and glycemic control. Start at low doses to minimize GI side effects.",
-    cites: ["ADA GLP-1 Guidelines", "FDA Trulicity Label"]
-  },
-
-  // Respiratory - Lung disease facts
-  {
-    id: "RESP-ASTHMA-001",
-    ta: "Respiratory",
-    topic: "Asthma Management",
-    text: "ICS/LABA combinations control persistent asthma. Step up therapy based on symptom control and lung function.",
-    cites: ["GINA Asthma Guidelines", "FDA Advair Label"]
+    id: "COVID-VACCINES-001",
+    ta: "COVID-19",
+    topic: "mRNA Vaccines",
+    text: "mRNA vaccines instruct cells to produce a harmless spike protein to trigger immune response.",
+    cites: ["[CDC mRNA](https://www.cdc.gov/coronavirus/2019-ncov/vaccines/facts.html)"]
   },
   {
-    id: "RESP-COPD-002",
-    ta: "Respiratory",
-    topic: "COPD Treatment",
-    text: "LAMA/LABA combinations improve lung function in COPD. Use rescue inhalers for acute exacerbations.",
-    cites: ["GOLD COPD Guidelines", "FDA Spiriva Label"]
+    id: "COVID-TREATMENT-002",
+    ta: "COVID-19",
+    topic: "Antiviral Treatments",
+    text: "Antiviral treatments can reduce severity and hospitalization in high-risk patients.",
+    cites: ["[NIH COVID](https://www.covid19treatmentguidelines.nih.gov/)"]
   },
   {
-    id: "RESP-PNEUMONIA-003",
-    ta: "Respiratory",
-    topic: "Pneumonia Prevention",
-    text: "Pneumococcal vaccine reduces pneumonia risk. Consider both conjugate and polysaccharide vaccines.",
-    cites: ["CDC Pneumococcal Guidelines", "FDA Prevnar Label"]
+    id: "COVID-PREVENTION-003",
+    ta: "COVID-19",
+    topic: "Prevention",
+    text: "Prevention strategies include vaccination, masking, and social distancing.",
+    cites: ["[CDC Prevention](https://www.cdc.gov/coronavirus/2019-ncov/prevent-getting-sick/prevention.html)"]
   },
   {
-    id: "RESP-CF-004",
-    ta: "Respiratory",
-    topic: "Cystic Fibrosis",
-    text: "CFTR modulators improve lung function in cystic fibrosis. Monitor liver enzymes and drug interactions.",
-    cites: ["CFF CF Guidelines", "FDA Trikafta Label"]
+    id: "COVID-VARIANTS-004",
+    ta: "COVID-19",
+    topic: "Variants",
+    text: "Variants may affect vaccine efficacy and require updated prevention measures.",
+    cites: ["[WHO Variants](https://www.who.int/activities/tracking-SARS-CoV-2-variants)"]
   }
-
-  // Add more disease states here as you expand
 ];
 
 // Finite State Machines per mode (5 modes total)
@@ -698,7 +666,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
           // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
           if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
             console.warn("provider_rate_limited_failover", {
-              key_prefix: key.substring(0, 8) + "...",
+              key_prefix: key.substring(0, 8) + "..." : "none",
               attempt: keyAttempt + 1,
               next_attempt: keyAttempt + 2
             });
@@ -713,7 +681,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
           throw err;
         }
         
-        const j = await r.json().catch(() => ({}));
+        const j = await r.json();
         return j?.choices?.[0]?.message?.content || j?.content || "";
       } finally {
         clearTimeout(timeout);
@@ -1097,7 +1065,7 @@ async function postChat(req, env) {
     if (!env.PROVIDER_MODEL) {
       console.error("chat_error", { step: "config_check", message: "NO_PROVIDER_MODEL" });
       return json({ error: "server_error", message: "Provider model not configured" }, 500, env, req);
-    }
+  }
 
     const body = await readJson(req);
 
@@ -1187,7 +1155,7 @@ async function postChat(req, env) {
     }
 
     // Provider prompts with format hardening
-    const factsStr = activePlan.facts.map(f => `- [${f.id}] ${f.text}`).join("\n");
+    const factsStr = activePlan.facts.map((f, idx) => `- [FACT-${idx + 1}] ${f.text}`).join("\n");
     const citesStr = activePlan.facts.flatMap(f => f.cites || []).slice(0, 6).map(c => `- ${c}`).join("\n");
 
     // Mode-specific contracts - ENTERPRISE PHARMA FORMATTING
@@ -1221,9 +1189,9 @@ RESPONSE FORMAT (MANDATORY - MUST INCLUDE ALL 4 SECTIONS):
 Challenge: [ONE SENTENCE describing the HCP's concern, barrier, or knowledge gap - 15-25 words]
 
 Rep Approach:
-• [BULLET 1: Specific clinical discussion point with full context - Include "as recommended..." or "as indicated..." phrasing - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
-• [BULLET 2: Supporting strategy with rationale - Include contextual phrases like "for PrEP" or "in the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
-• [BULLET 3: Safety/monitoring consideration with clinical detail - Include phrases like "to ensure..." or "per the FDA label" - 20-35 words - MUST include reference code [HIV-PREP-XXX]]
+• [BULLET 1: Specific clinical discussion point with full context - Include "as recommended..." or "as indicated..." phrasing - 20-35 words - MUST include reference code [FACT-1]]
+• [BULLET 2: Supporting strategy with rationale - Include contextual phrases like "for treatment" or "in the FDA label" - 20-35 words - MUST include reference code [FACT-2]]
+• [BULLET 3: Safety/monitoring consideration with clinical detail - Include phrases like "to ensure..." or "per the FDA label" - 20-35 words - MUST include reference code [FACT-3]]
 [EXACTLY 3 BULLETS - NO MORE, NO LESS - Use • or 1. 2. 3. or - format]
 
 Impact: [ONE SENTENCE describing expected outcome - 20-35 words - Connect back to Challenge]
@@ -1244,16 +1212,16 @@ BULLET WRITING REQUIREMENTS:
 - Each bullet should be 20-35 words (NOT the old 25 word max)
 
 EXAMPLE (follow this detailed style):
-Challenge: The HCP may not be prioritizing PrEP prescriptions due to lack of awareness about the substantial risk of HIV in certain patient populations.
+Challenge: The HCP may not be prioritizing prescriptions due to lack of awareness about the substantial risk in certain patient populations.
 
 Rep Approach:
-• Discuss the importance of assessing sexual and injection risk factors to identify individuals at substantial risk of HIV, as recommended for PrEP eligibility [HIV-PREP-ELIG-001].
-• Highlight the efficacy and safety profile of Descovy (emtricitabine/tenofovir alafenamide) for PrEP, excluding receptive vaginal sex, as indicated in the FDA label [HIV-PREP-TAF-002].
-• Emphasize the need for renal function assessment before and during PrEP, considering eGFR thresholds per the FDA label, to ensure safe prescribing practices [HIV-PREP-SAFETY-003].
+• Discuss the importance of assessing risk factors to identify individuals at substantial risk, as recommended for eligibility [FACT-1].
+• Highlight the efficacy and safety profile of the therapy, as indicated in the FDA label [FACT-2].
+• Emphasize the need for function assessment before and during treatment, considering thresholds per the FDA label, to ensure safe prescribing practices [FACT-3].
 
-Impact: By emphasizing the importance of risk assessment, the benefits of Descovy for PrEP, and the need for renal function monitoring, the HCP will be more likely to prioritize PrEP prescriptions for at-risk patients and commit to proactive Descovy prescribing.
+Impact: By emphasizing the importance of risk assessment, the benefits of the therapy, and the need for monitoring, the HCP will be more likely to prioritize prescriptions for at-risk patients and commit to proactive prescribing.
 
-Suggested Phrasing: "Given the substantial risk of HIV in certain patient populations, I recommend we discuss how to identify and assess these individuals for PrEP eligibility, and consider Descovy as a safe and effective option."
+Suggested Phrasing: "Given the substantial risk in certain patient populations, I recommend we discuss how to identify and assess these individuals for eligibility, and consider this therapy as a safe and effective option."
 
 Then append deterministic EI scoring:
 <coach>{
@@ -1280,22 +1248,25 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
     // Enhanced prompts for format hardening
     const salesSimPrompt = [
       `You are the ReflectivAI Sales Coach. Be label-aligned and specific to the facts.`,
-      `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+      disease ? `Disease: ${disease}` : '',
+      persona ? `Persona: ${persona}` : '',
+      goal ? `Goal: ${goal}` : '',
       `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
       ``,
       salesContract
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     const rolePlayPrompt = [
       `You are the HCP in Role Play mode. Speak ONLY as the HCP in first person.`,
       ``,
-      `Disease: ${disease || "—"}; Persona: ${persona || "—"}; Goal: ${goal || "—"}.`,
+      disease ? `Disease: ${disease}` : '',
+      persona ? `Persona: ${persona}` : '',
+      goal ? `Goal: ${goal}` : '',
       `Facts:\n${factsStr}\nReferences:\n${citesStr}`,
       ``,
       `HCP BEHAVIOR:`,
       `- Respond naturally as this HCP would in a real clinical setting`,
-      `- Use 1-4 sentences OR brief bulleted lists when explaining clinical reasoning`,
-      `- Bullets ARE natural for HCPs when listing: priorities, processes, treatment steps, monitoring criteria`,
+      `- Use 1-4 sentences in conversational paragraphs`,
       `- Reflect time pressure, priorities, and decision style from persona`,
       `- Stay professional and realistic`,
       ``,
@@ -1304,20 +1275,22 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- NO evaluation or scores  `,
       `- NO "Suggested Phrasing:" or "Rep Approach:" meta-commentary`,
       `- STAY IN CHARACTER as HCP throughout entire conversation`,
+      `- NO bullet points or lists - keep responses natural and flowing`,
       ``,
       `EXAMPLE HCP RESPONSES:`,
       `"From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context."`,
-      `"• I prioritize regular follow-up appointments to assess treatment efficacy and detect any potential issues early. • I also encourage patients to report any changes in symptoms or side effects promptly. • Additionally, I consider using digital tools to enhance patient engagement and monitoring."`,
+      `"I prioritize regular follow-up appointments to assess treatment efficacy and detect any potential issues early. I also encourage patients to report any changes in symptoms or side effects promptly. Additionally, I consider using digital tools to enhance patient engagement and monitoring."`,
       `"I appreciate your emphasis on timely interventions and proactive prescribing."`,
       `"I've got a few minutes, what's on your mind?"`,
       ``,
-      `Remember: You are the HCP. Natural, brief, clinical voice only - bullets allowed when clinically appropriate.`
-    ].join("\n");
+      `Remember: You are the HCP. Natural, brief, clinical voice only - no bullets or structured lists.`
+    ].filter(Boolean).join("\n");
 
     const eiPrompt = [
       `You are Reflectiv Coach in Emotional Intelligence mode.`,
       ``,
-      `HCP Type: ${persona || "—"}; Disease context: ${disease || "—"}.`,
+      persona ? `HCP Type: ${persona}` : '',
+      disease ? `Disease context: ${disease}` : '',
       ``,
       `MISSION: Help the rep develop emotional intelligence through reflective practice based on about-ei.md framework.`,
       ``,
@@ -1355,7 +1328,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Provide sales coaching or product info`,
       `- Include coach scores or rubrics`,
       `- Use structured Challenge/Rep Approach format`
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     const pkPrompt = [
       `You are ReflectivAI, an advanced AI knowledge partner for life sciences professionals.`,
@@ -1427,6 +1400,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       ``,
       `RESPONSE LENGTH:`,
       `- Short questions: 100-200 words`,
+      `- Standard questions: 200-400 words`,
       `- Complex topics: 300-600 words`,
       `- Very complex or multi-part questions: up to 800 words`,
       `- Always prioritize clarity over brevity`,
@@ -1490,7 +1464,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- Simple factual questions: 50-150 words`,
       `- Standard questions: 200-400 words`,
       `- Complex or multi-part questions: 400-700 words`,
-      `- Very complex topics requiring depth: up to 900 words`,
+      `- Very complex topics: up to 900 words`,
       ``,
       `QUALITY STANDARDS:`,
       `- Accuracy: Provide correct, up-to-date information`,
@@ -1649,7 +1623,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
 
     // Post-processing: Strip unwanted formatting for role-play mode
     if (mode === "role-play") {
-      // Remove coaching labels but KEEP bullets for clinical explanations (natural HCP speech)
+      // Remove coaching labels and strip bullets for natural conversation
       reply = reply
         .replace(/^[\s]*Suggested Phrasing:\s*/gmi, '')  // Remove "Suggested Phrasing:" labels
         .replace(/^[\s]*Coach Guidance:\s*/gmi, '')      // Remove any leaked coach headings
@@ -1658,10 +1632,8 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         .replace(/^[\s]*Impact:\s*/gmi, '')
         .replace(/^[\s]*Next-Move Planner:\s*/gmi, '')
         .replace(/^[\s]*Risk Flags:\s*/gmi, '')
+        .replace(/^\s*[-*•]\s+/gm, '')  // Strip bullet points for natural speech
         .trim();
-
-      // Don't remove bullets - HCPs naturally use them for clinical processes
-      // Example: "• I prioritize follow-ups • I assess adherence"
     }
 
     // Post-processing: Normalize headings and ENFORCE FORMAT for sales-coach mode
@@ -1757,6 +1729,25 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         .replace(/\s*Impact:/gi, "\n\nImpact:")
         .replace(/\s*Suggested Phrasing:/gi, "\n\nSuggested Phrasing:");
       reply = reply.replace(/\n{3,}/g, "\n\n").trim();
+
+      // DEDUPLICATION FIX: Remove duplicate content within sections
+      // Remove consecutive duplicate sentences in Suggested Phrasing
+      const phrasingMatch = reply.match(/Suggested Phrasing:(.*?)$/s);
+      if (phrasingMatch) {
+        let phrasing = phrasingMatch[1].trim();
+        // Split into sentences and remove duplicates
+        const sentences = phrasing.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0);
+        const uniqueSentences = [];
+        const seen = new Set();
+        for (const sentence of sentences) {
+          if (!seen.has(sentence.toLowerCase())) {
+            seen.add(sentence.toLowerCase());
+            uniqueSentences.push(sentence);
+          }
+        }
+        const dedupedPhrasing = uniqueSentences.join('. ') + (uniqueSentences.length > 0 ? '.' : '');
+        reply = reply.replace(/Suggested Phrasing:.*?$/s, `Suggested Phrasing: ${dedupedPhrasing}`);
+      }
     }
 
     // Mid-sentence cut-off guard + one-pass auto-continue
@@ -1789,7 +1780,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       if (mode === "role-play") {
         reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
       } else {
-        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: “For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?”";
+        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: "For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?"";
       }
     }
     state.lastNorm = norm(reply);
@@ -1894,96 +1885,87 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       if (e.message === "provider_timeout_error") {
         errorMessage = "The AI provider request timed out. Please try again with a shorter message or simpler request.";
       } else if (e.message === "provider_key_missing") {
-        errorMessage = "Server configuration error: No AI provider API key configured. Please contact support.";
-      } else if (e.providerStatus === 401 || e.providerStatus === 403) {
-        errorMessage = "Server configuration error: AI provider authentication failed. Please contact support.";
-        // Log this as it likely means API keys are invalid
-        console.error("CRITICAL: Provider authentication failed", {
-          status: e.providerStatus,
-          error: e.providerError
-        });
-      } else if (e.providerStatus === 429) {
-        errorMessage = "The AI provider rate limit has been exceeded. Please try again in a few moments.";
-      } else if (e.providerStatus >= 500) {
-        errorMessage = "The AI provider service is experiencing issues. Please try again in a moment.";
-      } else if (e.message === "provider_network_error") {
-        errorMessage = "Unable to connect to AI provider. Please check your internet connection and try again.";
-      } else if (e.providerError) {
-        // Include provider's error message if available (but sanitize it first)
-        const sanitizedError = String(e.providerError).substring(0, 200);
-        errorMessage = `AI provider error: ${sanitizedError}`;
+        errorMessage = "No AI provider API keys configured.";
+      } else if (e.message === "plan_generation_failed") {
+        errorMessage = "Failed to generate conversation plan.";
       }
       
       return json({
         error: "provider_error",
-        message: errorMessage,
-        details: env.DEBUG_MODE === "true" ? {
-          provider_status: e.providerStatus,
-          provider_error: e.providerError,
-          error_type: e.message
-        } : undefined
+        message: errorMessage
       }, 502, env, req);
     } else if (isPlanError) {
-      // ERROR HANDLING: Plan validation errors - return 400 Bad Request
       return json({
-        error: "bad_request",
-        message: "Unable to generate conversation plan with provided parameters"
+        error: "plan_error",
+        message: "No valid conversation plan or facts available."
       }, 400, env, req);
     } else {
-      // ERROR HANDLING: Unknown errors - return 400 Bad Request
+      // Generic server error
       return json({
-        error: "bad_request",
-        message: "Request could not be processed. Please check your input and try again."
-      }, 400, env, req);
+        error: "server_error",
+        message: "An unexpected error occurred. Please try again."
+      }, 500, env, req);
     }
   }
 }
 
-/* -------------------------- /coach-metrics --------------------------------- */
+/* ------------------------------ Coach Metrics -------------------------------- */
 async function postCoachMetrics(req, env) {
   try {
     const body = await readJson(req);
+    const { mode, reply, coach } = body || {};
 
-    // Log the metrics (in production, you could store these in KV or send to analytics)
-    console.log("coach_metrics", {
-      ts: body.ts || Date.now(),
-      schema: body.schema || "coach-v2",
-      mode: body.mode,
-      scenarioId: body.scenarioId,
-      turn: body.turn,
-      overall: body.overall,
-      scores: body.scores
-    });
+    // Basic validation
+    if (!mode || !reply) {
+      return json({ error: "bad_request", message: "Mode and reply are required" }, 400, env, req);
+    }
 
-    // Return success
-    return json({
-      ok: true,
-      message: "Metrics recorded",
-      timestamp: Date.now()
-    }, 200, env, req);
+    // For now, just return success - metrics processing can be added later
+    return json({ success: true, message: "Metrics recorded" }, 200, env, req);
   } catch (e) {
     console.error("postCoachMetrics error:", e);
-    return json({ error: "server_error", message: "Failed to record metrics" }, 500, env, req);
+    return json({ error: "server_error", message: "Failed to process metrics" }, 500, env, req);
   }
 }
 
-function cryptoRandomId() {
-  const a = new Uint8Array(8);
-  crypto.getRandomValues(a);
-  return [...a].map(x => x.toString(16).padStart(2, "0")).join("");
+// Rate limiting utility
+function rateLimit(key, env) {
+  // Simple in-memory rate limiting (resets on worker restart)
+  // In production, use a proper rate limiting service like Upstash Rate Limit
+  const now = Date.now();
+  const windowMs = (env.RATELIMIT_WINDOW_MINUTES || 1) * 60 * 1000;
+  const maxRequests = env.RATELIMIT_MAX_REQUESTS || 10;
+
+  if (!globalThis.rateLimitStore) {
+    globalThis.rateLimitStore = new Map();
+  }
+
+  const store = globalThis.rateLimitStore;
+  const entry = store.get(key) || { count: 0, resetTime: now + windowMs };
+
+  // Reset if window has passed
+  if (now > entry.resetTime) {
+    entry.count = 0;
+    entry.resetTime = now + windowMs;
+  }
+
+  // Check if limit exceeded
+  const ok = entry.count < maxRequests;
+  if (ok) {
+    entry.count++;
+  }
+
+  store.set(key, entry);
+
+  return {
+    ok,
+    remaining: Math.max(0, maxRequests - entry.count),
+    limit: maxRequests,
+    resetTime: entry.resetTime
+  };
 }
 
-/* -------------------------- Rate limiting --------------------------- */
-const _buckets = new Map();
-function rateLimit(key, env) {
-  const rate = Number(env.RATELIMIT_RATE || 10);
-  const burst = Number(env.RATELIMIT_BURST || 4);
-  const now = Date.now();
-  const b = _buckets.get(key) || { tokens: burst, ts: now };
-  const elapsed = (now - b.ts) / 60000; // per minute
-  b.tokens = Math.min(burst, b.tokens + elapsed * rate);
-  b.ts = now;
-  if (b.tokens < 1) { _buckets.set(key, b); return { ok: false, limit: rate, remaining: 0 }; }
-  b.tokens -= 1; _buckets.set(key, b);
-  return { ok: true, limit: rate, remaining: Math.max(0, Math.floor(b.tokens)) };
+// Utility to generate random IDs
+function cryptoRandomId() {
+  return crypto.getRandomValues(new Uint8Array(16)).reduce((a, b) => a + b.toString(16).padStart(2, '0'), '');
 }
