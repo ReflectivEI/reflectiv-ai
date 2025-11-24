@@ -1276,6 +1276,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       `- NO "Suggested Phrasing:" or "Rep Approach:" meta-commentary`,
       `- STAY IN CHARACTER as HCP throughout entire conversation`,
       `- NO bullet points or lists - keep responses natural and flowing`,
+      `- DO NOT output any <coach> tags, JSON metadata, or evaluation blocks`,
       ``,
       `EXAMPLE HCP RESPONSES:`,
       `"From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context."`,
