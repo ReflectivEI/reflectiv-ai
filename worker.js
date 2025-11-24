@@ -1542,15 +1542,15 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         // Token allocation prioritization
         let maxTokens;
         if (mode === "sales-coach") {
-          maxTokens = 1600; // Increased to ensure all 4 sections complete (including Suggested Phrasing)
+          maxTokens = 1700; // Increased to ensure all 4 sections complete (including Suggested Phrasing)
         } else if (mode === "role-play") {
-          maxTokens = 1200; // Higher for natural conversation flow
+          maxTokens = 1500; // Higher for natural conversation flow
         } else if (mode === "emotional-assessment") {
-          maxTokens = 1200; // Comprehensive EI coaching with reflective questions
+          maxTokens = 1100; // Comprehensive EI coaching with reflective questions
         } else if (mode === "product-knowledge") {
-          maxTokens = 1800; // HIGH - comprehensive AI assistant responses (like ChatGPT)
+          maxTokens = 1700; // HIGH - comprehensive AI assistant responses (like ChatGPT)
         } else if (mode === "general-knowledge") {
-          maxTokens = 1800; // HIGH - comprehensive general knowledge responses
+          maxTokens = 1700; // HIGH - comprehensive general knowledge responses
         } else {
           maxTokens = 900; // Default
         }
