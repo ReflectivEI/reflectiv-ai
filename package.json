@@ -8,19 +8,12 @@
     "test": "node worker.test.js && node tests/chat-request-contract.test.js",
     "test:cors": "node worker.cors.test.js",
     "test:gk-date": "node test-general-knowledge-date.js",
-    "test:all": "node worker.cors.test.js && node worker.test.js && node test-general-knowledge-date.js && node tests/chat-request-contract.test.js",
-    "build:css": "postcss src/tailwind.css -o dist/tailwind.min.css",
-    "watch:css": "postcss src/tailwind.css -o dist/tailwind.min.css --watch"
+    "test:all": "node worker.cors.test.js && node worker.test.js && node test-general-knowledge-date.js && node tests/chat-request-contract.test.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@tailwindcss/postcss": "^4.1.17",
-    "autoprefixer": "^10.4.22",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "^7.37.5",
-    "globals": "^16.5.0",
-    "postcss": "^8.5.6",
-    "postcss-cli": "^11.0.1",
-    "tailwindcss": "^4.1.17"
+    "globals": "^16.5.0"
   }
 }
