@@ -885,7 +885,9 @@ function validateModeResponse(mode, reply, coach) {
     }
 
     // Ensure citations present with robust validation
-    const validCitations = /\[\d+\]|\[\w{3,}-\w{2,}-\d{1,}\]/g;
+    // Accept numeric citations [1], [2] or ID-based citations [HIV-PREP-001]
+    // ID format must be uppercase to ensure consistency and proper hyperlink mapping to citations.json
+    const validCitations = /\[\d+\]|\[[A-Z]{3,}-[A-Z]{2,}-\d{1,}\]/g;
     const matches = cleaned.match(validCitations) || [];
     const allValid = matches.length > 0 && matches.every(m => {
       return /^\[\d+\]$/.test(m) || /^\[[A-Z]+-[A-Z]+-\d+\]$/.test(m);
