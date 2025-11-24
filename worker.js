@@ -884,9 +884,13 @@ function validateModeResponse(mode, reply, coach) {
       }
     }
 
-    // Ensure citations present
-    const hasCitations = /\[HIV-PREP-[A-Z]+-\d+\]|\[\d+\]/i.test(cleaned);
-    if (!hasCitations) {
+    // Ensure citations present with robust validation
+    const validCitations = /\[\d+\]|\[\w{3,}-\w{2,}-\d{1,}\]/g;
+    const matches = cleaned.match(validCitations) || [];
+    const allValid = matches.length > 0 && matches.every(m => {
+      return /^\[\d+\]$/.test(m) || /^\[[A-Z]+-[A-Z]+-\d+\]$/.test(m);
+    });
+    if (!allValid) {
       warnings.push("no_citations_detected");
     }
   }
