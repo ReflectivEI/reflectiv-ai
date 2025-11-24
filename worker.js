@@ -666,7 +666,7 @@ async function providerChat(env, messages, { maxTokens = 900, temperature = 0.2,
           // RATE LIMIT FAILOVER: If this key is rate-limited, try another one
           if (r.status === 429 && keyAttempt < Math.min(keyPool.length, 3) - 1) {
             console.warn("provider_rate_limited_failover", {
-              key_prefix: key.substring(0, 8) + "..." : "none",
+              key_prefix: key ? key.substring(0, 8) + "..." : "none",
               attempt: keyAttempt + 1,
               next_attempt: keyAttempt + 2
             });
@@ -1542,15 +1542,15 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
         // Token allocation prioritization
         let maxTokens;
         if (mode === "sales-coach") {
-          maxTokens = 1700; // Increased to ensure all 4 sections complete (including Suggested Phrasing)
+          maxTokens = 1600; // Reduced from 1700 to prevent timeout issues
         } else if (mode === "role-play") {
           maxTokens = 1500; // Higher for natural conversation flow
         } else if (mode === "emotional-assessment") {
           maxTokens = 1100; // Comprehensive EI coaching with reflective questions
         } else if (mode === "product-knowledge") {
-          maxTokens = 1700; // HIGH - comprehensive AI assistant responses (like ChatGPT)
+          maxTokens = 1600; // Reduced from 1700 to prevent timeout issues
         } else if (mode === "general-knowledge") {
-          maxTokens = 1700; // HIGH - comprehensive general knowledge responses
+          maxTokens = 1600; // Reduced from 1700 to prevent timeout issues
         } else {
           maxTokens = 900; // Default
         }
@@ -1780,7 +1780,7 @@ CRITICAL: Base all claims on the provided Facts context. NO fabricated citations
       if (mode === "role-play") {
         reply = "In my clinic, we review history, adherence, and recent exposures before deciding. Follow-up timing guides next steps.";
       } else {
-        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: "For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?"";
+        reply = "Anchor to eligibility, one safety check, and end with a single discovery question about patient selection. Suggested Phrasing: 'For patients with consistent risk, would confirming eGFR today help you start one eligible person this month?'";
       }
     }
     state.lastNorm = norm(reply);
