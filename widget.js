@@ -484,25 +484,6 @@
     return "Reflect on tone. Note one thing that worked and one to improve, then ask yourself one next question.";
   }
 
-  // All hardcoded fallback strings that should never be displayed as real responses
-  const HARDCODED_FALLBACKS = new Set([
-    // fallbackText outputs
-    "Keep it concise. Acknowledge the HCP’s context, give one actionable tip, then end with a single discovery question.",
-    "Brief overview: indication, one efficacy point, one safety consideration. Cite label or guideline.",
-    "In my clinic, we review histories, behaviors, and adherence to guide decisions.",
-    "Reflect on tone. Note one thing that worked and one to improve, then ask yourself one next question.",
-    // enforceHcpOnly variants
-    "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-    "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-    "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence.",
-    // sanitizeRolePlayOnly fallback
-    "From my perspective, we evaluate high-risk patients using history, behaviors, and adherence context.",
-    // duplicate handling alts (same as variants)
-    "In my clinic, initial risk assessment drives the plan; we confirm eligibility, counsel, and arrange an early follow-up.",
-    "I look at recent exposures and adherence risks, choose an appropriate option, and schedule a check-in within a month.",
-    "We review history and labs, agree on an initiation pathway, and monitor early to ensure tolerability and adherence."
-  ]);
-
   // sentence helpers
   function splitSentences(text) {
     const t = String(text || "");
@@ -925,7 +906,7 @@
       .split(/\n{2,}/)
       .map((p) => {
         if (p.startsWith("<ul>") || p.startsWith("<ol>") || p.startsWith("<h3>") ||
-            p.startsWith("<h4>") || p.startsWith("<pre>")) {
+          p.startsWith("<h4>") || p.startsWith("<pre>")) {
           return p;
         }
         return `<p>${p.replace(/\n/g, "<br>")}</p>`;
@@ -2020,8 +2001,8 @@ ${COMMON}`
           return `<div class="coach-subs" style="display:none">${orderedPills(scores)}</div><div class="muted">No coach feedback available</div>`;
         })();
 
-    body.innerHTML = `<div class="coach-feedback-block">${eiHTML || oldYellowHTML}</div>`;
-    return;
+        body.innerHTML = `<div class="coach-feedback-block">${eiHTML || oldYellowHTML}</div>`;
+        return;
       }
 
       // Emotional-assessment and Role Play final eval - Use EI 5-point scale
@@ -2991,10 +2972,11 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       // INTELLIGENT MODE AUTO-DETECTION
       // If user asks a general knowledge question (What/How/Why/Explain)
       // without HCP simulation context, auto-switch to Product Knowledge
+      // SKIP auto-detection in role-play mode to preserve HCP persona
       const generalQuestionPatterns = /^(what|how|why|explain|tell me|describe|define|compare|list|when)/i;
       const simulationContextWords = /(hcp|doctor|physician|clinician|rep|objection|customer|prescriber)/i;
 
-      if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
+      if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText) && currentMode !== "role-play") {
         // This looks like a general knowledge question - use Product Knowledge mode
         const prevMode = currentMode;
         currentMode = "product-knowledge";
@@ -3186,12 +3168,6 @@ Please provide your response again with all required fields including phrasing.`
           }
           return computed;
         })();
-
-        // Prevent showing hardcoded fallback text
-        if (HARDCODED_FALLBACKS.has(replyText)) {
-          console.warn("[sendMessage] Blocking hardcoded fallback text from being displayed:", replyText);
-          return;
-        }
 
         conversation.push({
           role: "assistant",
