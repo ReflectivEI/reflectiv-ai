@@ -145,8 +145,8 @@ export default {
 
 /* ------------------------- Inlined Knowledge & Rules ------------------------ */
 
-// Minimal curated facts for demo. Add more or move to KV.
 const FACTS_DB = [
+  // HIV - Existing facts (unchanged)
   {
     id: "HIV-PREP-ELIG-001",
     ta: "HIV",
@@ -167,7 +167,129 @@ const FACTS_DB = [
     topic: "Safety",
     text: "Assess renal function before and during PrEP. Consider eGFR thresholds per label.",
     cites: ["FDA Label Descovy", "CDC PrEP 2024"]
+  },
+
+  // Oncology - Cancer treatment facts
+  {
+    id: "ONC-TARGET-001",
+    ta: "Oncology",
+    topic: "Targeted Therapies",
+    text: "Targeted therapies inhibit specific molecules involved in cancer growth. Consider BRAF mutations for melanoma treatment.",
+    cites: ["NCCN Guidelines 2024", "FDA Targeted Therapy Label"]
+  },
+  {
+    id: "ONC-IMMUNO-002",
+    ta: "Oncology",
+    topic: "Immunotherapy",
+    text: "Immune checkpoint inhibitors block PD-1/PD-L1 pathway. Assess for autoimmune toxicities before starting treatment.",
+    cites: ["ASCO Immunotherapy Guidelines", "FDA Keytruda Label"]
+  },
+  {
+    id: "ONC-ADJUVANT-003",
+    ta: "Oncology",
+    topic: "Adjuvant Therapy",
+    text: "Adjuvant chemotherapy reduces recurrence risk in early-stage cancers. Consider patient performance status and comorbidities.",
+    cites: ["NCCN Breast Cancer Guidelines", "Oncology Adjuvant Therapy Review"]
+  },
+  {
+    id: "ONC-SUPPORT-004",
+    ta: "Oncology",
+    topic: "Supportive Care",
+    text: "Antiemetics prevent chemotherapy-induced nausea. Use NK1 receptor antagonists for highly emetogenic regimens.",
+    cites: ["MASCC Antiemetic Guidelines", "FDA Emend Label"]
+  },
+
+  // Cardiovascular - Heart disease facts
+  {
+    id: "CV-STATIN-001",
+    ta: "Cardiovascular",
+    topic: "Statin Therapy",
+    text: "Statins reduce LDL cholesterol by 30-50%. Monitor liver enzymes and creatine kinase for adverse effects.",
+    cites: ["ACC/AHA Cholesterol Guidelines", "FDA Atorvastatin Label"]
+  },
+  {
+    id: "CV-ANTIPLATELET-002",
+    ta: "Cardiovascular",
+    topic: "Antiplatelet Therapy",
+    text: "Aspirin reduces cardiovascular events in high-risk patients. Consider clopidogrel for aspirin-intolerant patients.",
+    cites: ["AHA Antiplatelet Guidelines", "FDA Plavix Label"]
+  },
+  {
+    id: "CV-HF-003",
+    ta: "Cardiovascular",
+    topic: "Heart Failure Management",
+    text: "ACE inhibitors improve survival in heart failure. Titrate doses carefully and monitor renal function.",
+    cites: ["ACC/AHA Heart Failure Guidelines", "FDA Lisinopril Label"]
+  },
+  {
+    id: "CV-ANTICOAG-004",
+    ta: "Cardiovascular",
+    topic: "Anticoagulation",
+    text: "DOACs have fewer drug interactions than warfarin. Regular monitoring not required for most patients.",
+    cites: ["CHEST Anticoagulation Guidelines", "FDA Eliquis Label"]
+  },
+
+  // Diabetes - Blood sugar management facts
+  {
+    id: "DM-METFORMIN-001",
+    ta: "Diabetes",
+    topic: "Metformin Therapy",
+    text: "Metformin is first-line therapy for type 2 diabetes. Monitor vitamin B12 levels with long-term use.",
+    cites: ["ADA Diabetes Guidelines", "FDA Metformin Label"]
+  },
+  {
+    id: "DM-INSULIN-002",
+    ta: "Diabetes",
+    topic: "Insulin Management",
+    text: "Basal insulin provides 24-hour coverage. Adjust doses based on fasting glucose and patterns.",
+    cites: ["ADA Insulin Guidelines", "FDA Lantus Label"]
+  },
+  {
+    id: "DM-SGLT2-003",
+    ta: "Diabetes",
+    topic: "SGLT2 Inhibitors",
+    text: "SGLT2 inhibitors reduce cardiovascular risk in diabetes. Monitor for genital infections and euglycemic ketoacidosis.",
+    cites: ["ADA SGLT2 Guidelines", "FDA Jardiance Label"]
+  },
+  {
+    id: "DM-GLP1-004",
+    ta: "Diabetes",
+    topic: "GLP-1 Receptor Agonists",
+    text: "GLP-1 agonists promote weight loss and glycemic control. Start at low doses to minimize GI side effects.",
+    cites: ["ADA GLP-1 Guidelines", "FDA Trulicity Label"]
+  },
+
+  // Respiratory - Lung disease facts
+  {
+    id: "RESP-ASTHMA-001",
+    ta: "Respiratory",
+    topic: "Asthma Management",
+    text: "ICS/LABA combinations control persistent asthma. Step up therapy based on symptom control and lung function.",
+    cites: ["GINA Asthma Guidelines", "FDA Advair Label"]
+  },
+  {
+    id: "RESP-COPD-002",
+    ta: "Respiratory",
+    topic: "COPD Treatment",
+    text: "LAMA/LABA combinations improve lung function in COPD. Use rescue inhalers for acute exacerbations.",
+    cites: ["GOLD COPD Guidelines", "FDA Spiriva Label"]
+  },
+  {
+    id: "RESP-PNEUMONIA-003",
+    ta: "Respiratory",
+    topic: "Pneumonia Prevention",
+    text: "Pneumococcal vaccine reduces pneumonia risk. Consider both conjugate and polysaccharide vaccines.",
+    cites: ["CDC Pneumococcal Guidelines", "FDA Prevnar Label"]
+  },
+  {
+    id: "RESP-CF-004",
+    ta: "Respiratory",
+    topic: "Cystic Fibrosis",
+    text: "CFTR modulators improve lung function in cystic fibrosis. Monitor liver enzymes and drug interactions.",
+    cites: ["CFF CF Guidelines", "FDA Trikafta Label"]
   }
+
+  // Add more disease states here as you expand
 ];
 
 // Finite State Machines per mode (5 modes total)
