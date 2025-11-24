@@ -1198,6 +1198,12 @@ Impact: [ONE SENTENCE describing expected outcome - 20-35 words - Connect back t
 
 Suggested Phrasing: "[EXACT words rep should say - Conversational, professional tone - 25-40 words total - Include key clinical points]"
 
+CRITICAL FORMATTING REQUIREMENTS:
+- EACH SECTION MUST BE SEPARATED BY A BLANK LINE (\\n\\n)
+- Format: Challenge: [text]\\n\\nRep Approach:\\n[bullets]\\n\\nImpact: [text]\\n\\nSuggested Phrasing: [text]
+- DO NOT collapse sections together without blank lines
+- Blank lines ensure readability and proper parsing
+
 CRITICAL ANTI-REPETITION RULES:
 - RETURN EACH SECTION EXACTLY ONCE - DO NOT REPEAT ANY SECTION
 - DO NOT ECHO THE FORMAT TEMPLATE MULTIPLE TIMES
