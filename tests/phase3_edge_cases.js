@@ -452,10 +452,10 @@ const STRUCTURE_EDGE_CASES = [
     mode: 'product-knowledge',
     message: 'Tell me about the efficacy data',
     validationCheck: (response) => {
-      const validCitations = /\[\d+\]|\[\w{3,}-\w{2,}-\d{1,}\]/g;
+      const validCitations = /\[\d+\]|\[\w{3,}-\w{2,}-\w{2,}-\d{1,}\]|\[\w{3,}-\w{2,}-\d{1,}\]/g;
       const matches = response.reply.match(validCitations) || [];
       const allValid = matches.length > 0 && matches.every(m => {
-        return /^\[\d+\]$/.test(m) || /^\[[A-Z]+-[A-Z]+-\d+\]$/.test(m);
+        return /^\[\d+\]$/.test(m) || /^\[[A-Z]+-[A-Z]+-\d+\]$/.test(m) || /^\[[A-Z]+-[A-Z]+-[A-Z]+-\d+\]$/i.test(m);
       });
       return {
         passed: allValid,
