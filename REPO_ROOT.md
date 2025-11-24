@@ -2,22 +2,35 @@
 
 ## Repository Root Location
 
-The repository root is located at:
+The repository root is the directory where you cloned this repository. It contains files like `package.json`, `wrangler.toml`, `worker.js`, and the `.git` directory.
+
+**For CI/CD environments (GitHub Actions):**
 ```
 /home/runner/work/reflectiv-ai/reflectiv-ai
 ```
+
+**For local development:**
+The path depends on where you cloned the repository (e.g., `~/projects/reflectiv-ai` or `/Users/yourname/reflectiv-ai`)
 
 ## Quick Reference Commands
 
 ### Navigate to Repository Root
 ```bash
-cd /home/runner/work/reflectiv-ai/reflectiv-ai
+# Using git to find the root
+cd $(git rev-parse --show-toplevel)
+
+# Or navigate to where you cloned the repository
+cd ~/path/to/reflectiv-ai
 ```
 
 ### Verify Current Location
 ```bash
 pwd
-# Should output: /home/runner/work/reflectiv-ai/reflectiv-ai
+# Should output the absolute path to your repository clone
+
+# Verify you're in the right place
+ls package.json wrangler.toml worker.js
+# Should show these files exist
 ```
 
 ### View Repository Structure
