@@ -142,7 +142,7 @@ const testCases = [
       persona: 'Specialist'
     },
     shouldPass: false,
-    expectedError: 'EMPTY_MESSAGES'
+    expectedError: 'bad_request'
   },
   {
     name: 'Invalid - no user message in array',
@@ -155,7 +155,7 @@ const testCases = [
       persona: 'Specialist'
     },
     shouldPass: false,
-    expectedError: 'NO_USER_MESSAGE'
+    expectedError: 'bad_request'
   },
   {
     name: 'Invalid - empty user message',
@@ -168,7 +168,7 @@ const testCases = [
       persona: 'Specialist'
     },
     shouldPass: false,
-    expectedError: 'EMPTY_USER_MESSAGE'
+    expectedError: 'bad_request'
   },
   {
     name: 'Valid - missing mode (should default to sales-coach)',

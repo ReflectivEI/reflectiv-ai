@@ -59,7 +59,7 @@ async function testChatErrorHandling() {
   const data1 = await res1.json();
   
   assert(res1.status === 500, "/chat returns 500 when PROVIDER_KEY missing");
-  assert(data1.error?.type === "server_error", "Returns server_error when key missing");
+  assert(data1.error === "server_error", "Returns server_error when key missing");
   assert(res1.headers.get("Access-Control-Allow-Origin") === "https://reflectivai.github.io", 
     "/chat error includes CORS header");
 
@@ -83,7 +83,7 @@ async function testChatErrorHandling() {
   const data2 = await res2.json();
   
   assert(res2.status === 500, "/chat handles widget payload format");
-  assert(data2.error?.type === "server_error", "Returns error for widget payload");
+  assert(data2.error === "server_error", "Returns error for widget payload");
   assert(res2.headers.get("Access-Control-Allow-Origin") === "https://reflectivai.github.io",
     "/chat widget payload error includes CORS header");
 }

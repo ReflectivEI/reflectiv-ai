@@ -3505,8 +3505,9 @@ Return scores in <coach> JSON with keys: empathy, clarity, compliance, discovery
       const generalQuestionPatterns = /^(what|how|why|explain|tell me|describe|define|compare|list|when)/i;
       const simulationContextWords = /(hcp|doctor|physician|clinician|rep|objection|customer|prescriber)/i;
 
-      if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText)) {
+      if (generalQuestionPatterns.test(userText) && !simulationContextWords.test(userText) && currentMode !== "role-play") {
         // This looks like a general knowledge question - use Product Knowledge mode
+        // Skip auto-detection in role-play mode to prevent mode drift and maintain HCP persona
         const prevMode = currentMode;
         currentMode = "product-knowledge";
         console.log(`[Auto-Detect] Switched from ${prevMode} → product-knowledge for general question`);
