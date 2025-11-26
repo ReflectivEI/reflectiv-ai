@@ -1,26 +1,13 @@
-# Updated worker manifest to match required Cloudflare config
 name = "my-chat-agent-v2"
 main = "worker.js"
 compatibility_date = "2024-11-12"
 workers_dev = true
 
-# REQUIRED: Cloudflare account information for Wrangler → Cloudflare sync
+# Cloudflare account
 account_id = "59fea97fab54fbd4d4168ccaa1fa3410"
 
-# Explicitly clear routes to prevent deployment errors with workers.dev subdomain
+# No custom routes yet; use the workers.dev subdomain only
 routes = []
-
-# OPTIONAL but recommended: Bind a custom Worker route for widget stability
-# Commented out until custom domain is configured in Cloudflare DNS
-# The workers.dev subdomain (my-chat-agent-v2.tonyabdelmalak.workers.dev) cannot be used
-# as a route pattern with a zone_name. Custom routes require actual custom domains.
-# To enable custom domain routing:
-#   1. Ensure tonyabdelmalak.com is added as a zone in Cloudflare
-#   2. Configure DNS records for the desired subdomain
-#   3. Update pattern to match: "tonyabdelmalak.com/api/*" or "api.tonyabdelmalak.com/*"
-# routes = [
-# 	{ pattern = "tonyabdelmalak.com/api/*", zone_name = "tonyabdelmalak.com" }
-# ]
 
 [vars]
 # Provider routing
@@ -28,27 +15,19 @@ PROVIDER = "groq"
 PROVIDER_URL = "https://api.groq.com/openai/v1/chat/completions"
 PROVIDER_MODEL = "llama-3.1-8b-instant"
 
-# Response limits (both names for compatibility)
+# Response limits
 MAX_OUTPUT_TOKENS = "1600"
 MAX_TOKENS = "1600"
 
-# Fully approved frontend origins
-# Production origins + localhost for development
-# Note: This is a single-line comma-separated list (wrangler.toml format)
-# Includes: Production URLs (GitHub Pages, custom domains) + Localhost (ports 3000, 5500, 8080, 8787 for wrangler dev)
-CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://dash.cloudflare.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://127.0.0.1:8080,http://localhost:8787,http://127.0.0.1:8787"
+# Allowed frontend origins (single comma-separated string)
+CORS_ORIGINS = "https://reflectivei.github.io,https://reflectivei.github.io/reflectiv-ai,https://reflectivai.github.io,https://tonyabdelmalak.github.io,https://tonyabdelmalak.com,https://reflectivai.com,https://www.reflectivai.com,https://www.tonyabdelmalak.com,https://my-chat-agent-v2.tonyabdelmalak.workers.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://127.0.0.1:8080,http://localhost:8787,http://127.0.0.1:8787"
 
-# Secrets (store via `wrangler secret put` or Cloudflare dashboard)
-# wrangler secret put PROVIDER_KEY
-# wrangler secret put PROVIDER_KEY_2
-# wrangler secret put PROVIDER_KEY_3
-
-# PROVIDER_KEY must be set as a secret using:
-# wrangler secret put PROVIDER_KEY
-# The secret value should be your GROQ API key starting with "gsk_..."
+# Secrets are NOT defined here; set them via:
+#   wrangler secret put PROVIDER_KEY
+#   wrangler secret put PROVIDER_KEY_2
+#   wrangler secret put PROVIDER_KEY_3
 
 [[kv_namespaces]]
 binding = "SESS"
 id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
-# preview_id can repeat id for dev
 preview_id = "75ab38c3bd1d4c37a0f91d4ffc5909a7"
