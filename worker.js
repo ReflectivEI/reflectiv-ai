@@ -361,53 +361,64 @@ const COACH_SCHEMA = {
  */
 function cors(env, req) {
   const reqOrigin = req.headers.get("Origin") || "";
-  const allowed = String(env.CORS_ORIGINS || "")
+  const allowedRaw = String(env.CORS_ORIGINS || "").trim();
+
+  // Build allowlist from env
+  const allowlist = allowedRaw
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
 
-  // Determine if the requesting origin is allowed
-  // If no allowlist is configured (allowed.length === 0), allow any origin
-  // If allowlist exists, check if request origin is in the list
-  const isAllowed = allowed.length === 0 || allowed.includes(reqOrigin);
+  // Decide if this origin is explicitly allowed
+  let isAllowed = false;
 
-  // Enhanced logging for CORS diagnostics
+  if (!allowlist.length) {
+    // No allowlist configured → permissive mode
+    isAllowed = true;
+  } else if (reqOrigin && allowlist.includes(reqOrigin)) {
+    isAllowed = true;
+  }
+
   if (!isAllowed && reqOrigin) {
-    const LOG_LIMIT = 5; // Limit logged origins to avoid spam in logs
+    // We’re seeing an origin that isn’t on the allowlist
+    // Log for debugging, but DO NOT send "null" back anymore
+    const LOG_LIMIT = 5;
     console.warn("CORS_DENY", {
       origin: reqOrigin,
-      allowedCount: allowed.length,
-      allowedList: allowed.slice(0, LOG_LIMIT), // First 5 origins only
-      hasAllowlist: allowed.length > 0
+      allowedCount: allowlist.length,
+      allowedSample: allowlist.slice(0, LOG_LIMIT),
+      hasAllowlist: allowlist.length > 0,
     });
   }
 
-  // Determine the Access-Control-Allow-Origin value
-  let allowOrigin;
+  // CRITICAL CHANGE:
+  // - Never return "null" as Access-Control-Allow-Origin
+  // - If allowed → echo Origin
+  // - Else → fall back to "*"
+  let allowOrigin = "*";
+
   if (isAllowed && reqOrigin) {
-    // Specific origin is allowed and present - echo it back exactly
+    // Origin is on the allowlist → echo exact origin
     allowOrigin = reqOrigin;
   } else if (isAllowed && !reqOrigin) {
-    // Allowed but no origin header (e.g., same-origin request, cURL, Postman)
+    // No Origin header but no allowlist → allow all
     allowOrigin = "*";
-  } else {
-    // Origin not allowed - return "null" to explicitly block
-    allowOrigin = "null";
+  } else if (!isAllowed && reqOrigin) {
+    // Origin not on allowlist → still allow for now (wildcard)
+    // If you want to hard block instead, change this branch back to "null"
+    allowOrigin = "*";
   }
 
-  // Build CORS headers
   const headers = {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "content-type,authorization,x-req-id",
-    "Access-Control-Max-Age": "86400",  // Cache preflight for 24 hours
-    "Vary": "Origin"  // Important for caching - response varies by Origin header
+    "Access-Control-Max-Age": "86400", // cache preflight 24h
+    "Vary": "Origin",
   };
 
-  // Set credentials header only for specific origins
-  // Cannot use Access-Control-Allow-Credentials: true with wildcard (*)
-  // Cannot use credentials with "null" origin (blocked)
-  if (allowOrigin !== "*" && allowOrigin !== "null") {
+  // Only send credentials flag when we echo a specific origin
+  if (allowOrigin !== "*" && allowOrigin) {
     headers["Access-Control-Allow-Credentials"] = "true";
   }
 
