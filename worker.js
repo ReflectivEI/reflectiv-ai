@@ -447,8 +447,28 @@ async function readJson(req) {
 }
 
 function capSentences(text, n) {
-  const parts = String(text || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [];
-  return parts.slice(0, n).join(" ").trim();
+  // Preserve paragraph breaks (\n\n) while capping sentences
+  // Strategy: Split by paragraph breaks, process each paragraph separately, then rejoin
+  // NOTE: Simple regex pattern may not handle all edge cases (e.g., abbreviations like 'Dr.', 'U.S.A.' or ellipsis '...')
+  // This is a known limitation that could be improved with more sophisticated sentence boundary detection
+  const paragraphs = String(text || "").split(/\n\n/);
+  let sentenceCount = 0;
+  const cappedParagraphs = [];
+  
+  for (const paragraph of paragraphs) {
+    if (sentenceCount >= n) break;
+    
+    const sentences = paragraph.match(/[^.!?]+[.!?]?/g) || [];
+    const remaining = n - sentenceCount;
+    const toTake = Math.min(sentences.length, remaining);
+    
+    if (toTake > 0) {
+      cappedParagraphs.push(sentences.slice(0, toTake).join(" ").trim());
+      sentenceCount += toTake;
+    }
+  }
+  
+  return cappedParagraphs.join("\n\n");
 }
 
 // ───────────────────── Provider Key Rotation Utilities ──────────────────────
