@@ -1103,12 +1103,17 @@ async function postChat(req, env) {
         message: "User message cannot be empty or missing"
       }, 400, env, req);
     }
-    /* ---------------------------------------------------------------------- */
+          /* ---------------------------------------------------------------------- */
 
     // Handle Alora site assistant separately - it needs concise, helpful answers, not coaching format
     if (body.role === 'alora') {
       return handleAloraChat(body, env, req);
     }
+
+    // Phase B: normalize concierge metadata (safe, optional)
+    const conciergeData = body.concierge || {};
+    const conciergeMode = conciergeData.mode || "general";
+    const conciergeRole = body.conciergeRole || "none";
 
     // Handle both payload formats:
     // 1. ReflectivAI format: { mode, user, history, disease, persona, goal, plan, planId, session }
