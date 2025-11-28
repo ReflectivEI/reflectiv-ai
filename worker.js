@@ -1082,9 +1082,28 @@ async function postChat(req, env) {
     if (!env.PROVIDER_MODEL) {
       console.error("chat_error", { step: "config_check", message: "NO_PROVIDER_MODEL" });
       return json({ error: "server_error", message: "Provider model not configured" }, 500, env, req);
-  }
+    }
 
     const body = await readJson(req);
+
+    /* ---------------------------------------------------------------------- *
+     * INSERTED PATCH: Universal fallback message intake
+     * (Phase B Step 2 — REQUIRED)
+     * ---------------------------------------------------------------------- */
+    let incomingMessage =
+      body.user ||
+      body.message ||
+      (Array.isArray(body.messages) &&
+       body.messages[body.messages.length - 1]?.content) ||
+      null;
+
+    if (!incomingMessage || String(incomingMessage).trim() === "") {
+      return json({
+        error: "bad_request",
+        message: "User message cannot be empty or missing"
+      }, 400, env, req);
+    }
+    /* ---------------------------------------------------------------------- */
 
     // Handle Alora site assistant separately - it needs concise, helpful answers, not coaching format
     if (body.role === 'alora') {
@@ -1103,7 +1122,7 @@ async function postChat(req, env) {
       const historyMsgs = msgs.filter(m => m.role !== "system" && m !== lastUserMsg);
 
       mode = body.mode || "sales-coach";
-      user = lastUserMsg?.content || "";
+      user = lastUserMsg?.content || incomingMessage;  // <-- ensure fallback maps in
       history = historyMsgs;
       disease = body.disease || "";
       persona = body.persona || "";
@@ -1115,7 +1134,7 @@ async function postChat(req, env) {
     } else {
       // ReflectivAI format
       mode = body.mode || "sales-coach";
-      user = body.user;
+      user = body.user || incomingMessage;  // <-- ensure fallback maps in
       history = body.history || [];
       disease = body.disease || "";
       persona = body.persona || "";
