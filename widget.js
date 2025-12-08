@@ -1228,6 +1228,11 @@ Suggested Phrasing: "[text]"</pre>
         </ul>
       </div>
 
+      ${(() => {
+        const phr = (coachObj.suggested_phrasing || coachObj.phrasing || "").trim();
+        return phr ? `<p><strong>Suggested Phrasing:</strong> "${esc(phr)}"</p>` : "";
+      })()}
+
       <div class="coach-section">
         <div class="coach-label">Suggested Phrasing:</div>
         <div class="coach-quote">“${esc(phrasing)}”</div>
